@@ -1,0 +1,31 @@
+# Unit systemd untuk menjalankan server game di Raspberry Pi.
+#
+# Pasang:
+#   make build
+#   sudo cp deploy/gameserver.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gameserver
+#
+# Lihat log:  journalctl -u gameserver -f
+[Unit]
+Description=Game_server (server game RPG)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi5
+WorkingDirectory=/home/pi5/Game_server
+ExecStart=/home/pi5/Game_server/bin/gameserver
+Environment=GAME_ADDR=:8090
+Environment=GAME_DB=/home/pi5/Game_server/data/game.db
+Restart=on-failure
+RestartSec=3
+
+# Pengerasan dasar
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/pi5/Game_server/data
+
+[Install]
+WantedBy=multi-user.target

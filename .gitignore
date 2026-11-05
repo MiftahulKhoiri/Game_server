@@ -1,0 +1,29 @@
+# Hasil build
+/bin/
+
+# Data runtime (database pemain, dll.)
+/data/
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Godot (klien)
+client/.godot/
+client/.import/
+client/export/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Rahasia
+.env
+*.pem
