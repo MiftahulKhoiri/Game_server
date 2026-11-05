@@ -11,6 +11,7 @@ const RETRY_DELAY := 5.0
 const HUD_TOP := 960
 const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap langkah di ladang
 const BATTLE_SCENE := "res://scenes/battle.tscn"
+const SHOP_SCENE := "res://scenes/shop.tscn"
 
 var _map_id := Maps.DEFAULT_MAP
 var _vis := Vector2.ZERO  # posisi gambar pemain (piksel), digeser halus oleh tween
@@ -149,6 +150,15 @@ func _enter_battle(data: Dictionary) -> void:
 	get_tree().change_scene_to_file(BATTLE_SCENE)
 
 
+func _open_shop() -> void:
+	if _encountering:
+		return
+	_encountering = true  # kunci gerak selagi pindah layar
+	_held = Vector2i.ZERO
+	await _flush_save()  # versi pemain harus sinkron dengan server sebelum berdagang
+	get_tree().change_scene_to_file(SHOP_SCENE)
+
+
 func _flush_save() -> void:
 	_save_timer.stop()
 	while _saving:
@@ -204,6 +214,16 @@ func _build_ui() -> void:
 	_hud.position = Vector2(24, HUD_TOP + 20)
 	_hud.add_theme_font_size_override("font_size", 30)
 	layer.add_child(_hud)
+
+	var shop := Button.new()
+	shop.text = "Toko"
+	shop.position = Vector2(24, 1110)
+	shop.size = Vector2(200, 70)
+	shop.focus_mode = Control.FOCUS_NONE
+	shop.add_theme_font_size_override("font_size", 28)
+	shop.disabled = Session.offline  # toko butuh server
+	shop.pressed.connect(_open_shop)
+	layer.add_child(shop)
 
 	_status = Label.new()
 	_status.position = Vector2(24, 1200)

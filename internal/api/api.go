@@ -52,6 +52,9 @@ func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.
 	mux.Handle("GET /v1/battle", s.auth(http.HandlerFunc(s.getBattle)))
 	mux.Handle("POST /v1/battle/start", s.auth(http.HandlerFunc(s.startBattle)))
 	mux.Handle("POST /v1/battle/action", s.auth(http.HandlerFunc(s.battleAction)))
+	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
+	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.Buy))))
+	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.Sell))))
 	return s.logRequests(s.clientGate(mux))
 }
 
@@ -236,6 +239,46 @@ func (s *Server) battleAction(w http.ResponseWriter, r *http.Request) {
 			Battle: sess.Battle, Player: sess.Player,
 			Status: result.Status, Log: result.Log, Rewards: result.Rewards,
 		})
+	}
+}
+
+// --- toko ---
+
+func (s *Server) getShop(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"items": game.Items()})
+}
+
+type tradeRequest struct {
+	Item string `json:"item"`
+	Qty  int    `json:"qty"`
+}
+
+// shopTrade membuat handler jual/beli. Transaksi atomik: gagal berarti tidak ada yang berubah.
+func (s *Server) shopTrade(trade func(*game.State, string, int) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req tradeRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
+			if sess.Battle != nil {
+				return errBattleActive
+			}
+			return trade(&sess.Player.State, req.Item, req.Qty)
+		})
+		switch {
+		case errors.Is(err, errBattleActive):
+			writeError(w, http.StatusConflict, "tidak bisa berdagang saat bertarung")
+		case errors.Is(err, game.ErrUnknownItem):
+			writeError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
+			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull):
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+		case err != nil:
+			s.fail(w, r, err)
+		default:
+			writeJSON(w, http.StatusOK, sess.Player)
+		}
 	}
 }
 

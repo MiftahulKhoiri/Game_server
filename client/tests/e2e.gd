@@ -170,6 +170,34 @@ func _run() -> void:
 	var gone: Dictionary = await Api.battle_get()
 	_check(not gone.ok and gone.status == 404, "pertarungan terhapus di server setelah selesai")
 
+	print("== toko")
+	var shop_list: Dictionary = await Api.shop_get()
+	_check(shop_list.ok and shop_list.data.items.size() > 0, "daftar toko")
+	var gold_before: int = Session.player.state.gold
+	var shop_scene: Control = load("res://scenes/shop.tscn").instantiate()
+	root.add_child(shop_scene)
+	await create_timer(0.8).timeout
+	_check(shop_scene._list.get_child_count() > 2, "layar toko menampilkan barang")
+	shop_scene._on_trade("sell", "ramuan")
+	while shop_scene._busy:
+		await process_frame
+	await process_frame
+	var shop_me: Dictionary = await Api.get_me()
+	_check(int(shop_me.data.state.gold) == gold_before + 6, "menjual 1 ramuan menambah 6 emas di server")
+	_check(Session.player.state.gold == int(shop_me.data.state.gold), "emas lokal sama dengan server")
+	_check(Session.player.version == int(shop_me.data.version), "versi lokal sinkron setelah dagang")
+	var gold_mid: int = int(shop_me.data.state.gold)
+	shop_scene._on_trade("buy", "ramuan")
+	while shop_scene._busy:
+		await process_frame
+	var shop_me2: Dictionary = await Api.get_me()
+	var expected := gold_mid - 15 if gold_mid >= 15 else gold_mid  # emas kurang -> ditolak, emas tetap
+	_check(int(shop_me2.data.state.gold) == expected, "beli ramuan: emas %d -> %d" % [gold_mid, expected])
+	shop_scene.queue_free()
+	await process_frame
+	var bad_buy: Dictionary = await Api.shop_buy("naga", 1)
+	_check(not bad_buy.ok and bad_buy.status == 404, "barang asing 404")
+
 	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
 	Session.player.state.x = 8
 	Session.merge_server_player(merged)

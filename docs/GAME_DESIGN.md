@@ -29,13 +29,49 @@ server mudah diuji, dan nyaman di layar sentuh.
   nenek penjual sayur dan petani (NPC), goblin (musuh). Ogre batu menyusul.
 - Gambar masuk bertahap; yang belum ada memakai placeholder.
 
+## Keputusan desain (pemilik proyek, 5 Nov 2026)
+
+1. **Musuh bertambah mengikuti level.** Musuh paling awal paling lemah; tiap naik
+   level ada musuh baru yang lebih kuat. Satu musuh baru = satu baris di
+   `internal/game/enemy.go` (`MinLevel` menentukan kapan muncul) + gambar
+   `client/assets/enemies/<id>.png`. Hama sawah (tikus, belalang, ular, babi hutan)
+   dipertahankan sebagai musuh awal; monster menyusul seiring gambarnya tersedia.
+2. **Penduduk yang diselamatkan memberi hadiah.** Bila misi berhasil, NPC yang
+   ditolong (nenek penjual sayur, petani, dst.) langsung memberikan hadiah
+   (emas dan barang). Sistem misi di server: lihat "Rencana misi" di bawah.
+3. **Pilihan ksatria.** Pemain nanti bisa memilih ksatria. Saat ini hanya satu
+   (`client/assets/characters/ksatria.png`); ksatria lain ditambahkan bertahap
+   setelah gambarnya ada.
+4. **Nuansa:** kerajaan yang harus dilindungi dari serangan monster.
+5. **Barang** dipakai sebagai hadiah misi dan sebagai dagangan toko.
+
+## Barang (v0.5.0)
+
+Daftar ada di `internal/game/item.go`. Barang baru = satu baris di sana + (opsional)
+gambar `client/assets/items/<id>.png`; tanpa gambar klien memakai kotak berwarna.
+
+| Id | Nama | Jenis | Beli | Jual |
+|----|------|-------|------|------|
+| `ramuan` | Ramuan Penyembuh | consumable | 15 | 6 |
+| `taring_goblin` | Taring Goblin | material (jatuhan goblin 35%) | - | 12 |
+| `koin_kuno` | Koin Kuno | treasure (hadiah misi) | - | 25 |
+| `permata_merah` | Permata Merah | treasure (hadiah misi) | - | 60 |
+
+Harga jual selalu lebih murah dari harga beli agar tidak bisa untung tanpa batas.
+
+## Rencana misi
+
+- Misi bertipe "kalahkan N musuh X": server menghitung kemenangan dalam
+  pertarungan (klien tidak bisa memalsukan).
+- NPC memberi misi; saat selesai pemain menerima hadiah dari NPC itu lewat
+  endpoint klaim (satu kali per misi, atomik di server).
+- Butuh peta dengan NPC dan layar dialog; menunggu peta bernuansa kerajaan.
+
 ## Masih perlu diputuskan (pemilik proyek)
 
 1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
-2. **Kelas karakter.** Satu ksatria tetap atau boleh memilih kelas?
-3. **Peran NPC.** Nenek dan petani: pemberi misi, penjual, atau penunjuk jalan?
-4. **Nasib hama sawah.** Tikus, belalang, ular, dan babi hutan masih memakai
-   tema lama. Dipertahankan sebagai musuh awal, atau diganti monster?
+2. **Misi pertama.** Siapa yang diselamatkan lebih dulu, dari musuh apa, hadiahnya apa?
+3. **Peta.** Ganti Desa Awal menjadi desa kerajaan? Seperti apa gerbang kerajaannya?
 
 ## Sistem yang sudah ada di server
 
@@ -81,5 +117,5 @@ Di klien, tiap langkah di petak ladang punya peluang 18% bertemu musuh
 2. Klien Godot minimal: daftar, masuk, gerak di peta grid, simpan otomatis (selesai, gambar placeholder).
 3. Peta pertama (Desa Awal: rumah, alun-alun, sungai, ladang) sudah ada dengan gambar placeholder; gambar ilustrator menggantikannya, lihat [MAP_REFERENCES](MAP_REFERENCES.md).
 4. Musuh dan pertarungan bergiliran (logika di server) (selesai di v0.3.0, gambar placeholder).
-5. Inventori, toko, dan misi.
+5. Toko dan barang (selesai di v0.5.0, ikon placeholder); inventori dan misi menyusul.
 6. Rilis APK lewat GitHub Actions (selesai sejak v0.2.0).

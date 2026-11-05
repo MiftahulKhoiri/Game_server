@@ -51,6 +51,19 @@ func battle_action(action: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/action", {"action": action}, true)
 
 
+## Daftar barang dan harga toko.
+func shop_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/shop", null, true)
+
+
+func shop_buy(item: String, qty: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/shop/buy", {"item": item, "qty": qty}, true)
+
+
+func shop_sell(item: String, qty: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/shop/sell", {"item": item, "qty": qty}, true)
+
+
 func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -> Dictionary:
 	var req := HTTPRequest.new()
 	req.timeout = 10.0

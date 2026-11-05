@@ -130,6 +130,25 @@ ikut server, sedangkan posisi tetap milik klien (kecuali setelah kalah).
 
 Daftar musuh dan rumusnya ada di [GAME_DESIGN](GAME_DESIGN.md).
 
+## Toko (v0.5.0)
+
+Semua harga ditentukan server. Transaksi atomik: bila gagal, emas dan tas tidak berubah.
+Tidak bisa berdagang saat ada pertarungan aktif (`409`).
+
+### `GET /v1/shop`  (login)
+`200 {"items": [{"id", "name", "kind", "buy_price", "sell_price"}, ...]}`.
+`buy_price` 0 = tidak dijual toko; `sell_price` 0 = toko tidak membeli.
+`kind`: `consumable`, `material`, `treasure`.
+
+### `POST /v1/shop/buy` dan `POST /v1/shop/sell`  (login)
+Body: `{"item": "ramuan", "qty": 1}` (qty 1..99). `200` berisi objek pemain terbaru.
+
+| Status | Arti |
+|--------|------|
+| 404 | Barang tidak dikenal |
+| 409 | Sedang bertarung |
+| 422 | Jumlah salah, emas tidak cukup, barang kurang, tas penuh, atau barang tidak dijual / tidak dibeli |
+
 ## Objek
 
 ```json

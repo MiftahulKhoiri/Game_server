@@ -360,3 +360,52 @@ func TestBattleAndSaveDoNotOverwriteEachOther(t *testing.T) {
 		t.Errorf("pertarungan/posisi salah: %d %+v", code, b.Player.State)
 	}
 }
+
+// --- toko ---
+
+func TestShop(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pedagang")
+
+	resp, data := do(t, "GET", ts.URL+"/v1/shop", cr.Token, nil)
+	var catalog struct {
+		Items []game.ItemDef `json:"items"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &catalog) != nil || len(catalog.Items) == 0 {
+		t.Fatalf("daftar toko: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ := do(t, "GET", ts.URL+"/v1/shop", "", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
+
+	call := func(path string, body any) (int, game.Player) {
+		resp, data := do(t, "POST", ts.URL+path, cr.Token, body)
+		var p game.Player
+		_ = json.Unmarshal(data, &p)
+		return resp.StatusCode, p
+	}
+
+	code, p := call("/v1/shop/sell", map[string]any{"item": "ramuan", "qty": 2})
+	if code != http.StatusOK || p.State.Gold != 12 || len(p.State.Inventory) != 0 || p.Version != 2 {
+		t.Fatalf("jual 2 ramuan: %d gold=%d inv=%v ver=%d", code, p.State.Gold, p.State.Inventory, p.Version)
+	}
+	for _, c := range []struct {
+		path string
+		body map[string]any
+		want int
+	}{
+		{"/v1/shop/buy", map[string]any{"item": "ramuan", "qty": 1}, http.StatusUnprocessableEntity}, // emas 12 < 15
+		{"/v1/shop/buy", map[string]any{"item": "naga", "qty": 1}, http.StatusNotFound},
+		{"/v1/shop/buy", map[string]any{"item": "taring_goblin", "qty": 1}, http.StatusUnprocessableEntity},
+		{"/v1/shop/sell", map[string]any{"item": "ramuan", "qty": 1}, http.StatusUnprocessableEntity}, // sudah habis
+		{"/v1/shop/sell", map[string]any{"item": "ramuan", "qty": 0}, http.StatusUnprocessableEntity},
+	} {
+		if code, _ := call(c.path, c.body); code != c.want {
+			t.Errorf("%s %v: mau %d, dapat %d", c.path, c.body, c.want, code)
+		}
+	}
+	battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+	if code, _ := call("/v1/shop/sell", map[string]any{"item": "ramuan", "qty": 1}); code != http.StatusConflict {
+		t.Errorf("berdagang saat bertarung harus 409, dapat %d", code)
+	}
+}
