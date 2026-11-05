@@ -55,6 +55,10 @@ func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.
 	mux.Handle("GET /v1/quests", s.auth(http.HandlerFunc(s.getQuests)))
 	mux.Handle("POST /v1/quests/accept", s.auth(http.HandlerFunc(s.questAction(false))))
 	mux.Handle("POST /v1/quests/claim", s.auth(http.HandlerFunc(s.questAction(true))))
+	mux.Handle("POST /v1/inventory/use", s.auth(s.itemAction(func(st *game.State, item string) error { return st.UseItem(item) })))
+	mux.Handle("POST /v1/inventory/equip", s.auth(s.itemAction(func(st *game.State, item string) error { return st.Equip(item) })))
+	mux.Handle("POST /v1/inventory/unequip", s.auth(s.slotAction()))
+	mux.Handle("POST /v1/rest", s.auth(s.restAction()))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.Buy))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.Sell))))
@@ -327,6 +331,78 @@ func (s *Server) questAction(claim bool) http.HandlerFunc {
 	}
 }
 
+// --- tas, perlengkapan, istirahat ---
+
+type itemRequest struct {
+	Item string `json:"item"`
+}
+
+type slotRequest struct {
+	Slot string `json:"slot"`
+}
+
+// applyToState menjalankan fn atas state pemain secara atomik (ditolak saat bertarung)
+// lalu menjawab dengan pemain terbaru atau kode kesalahan yang sesuai.
+func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*game.State) error) {
+	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
+		if sess.Battle != nil {
+			return errBattleActive
+		}
+		return fn(&sess.Player.State)
+	})
+	switch {
+	case err == nil:
+		writeJSON(w, http.StatusOK, sess.Player)
+	case errors.Is(err, errBattleActive):
+		writeError(w, http.StatusConflict, "tidak bisa dilakukan saat bertarung")
+	case errors.Is(err, game.ErrUnknownItem):
+		writeError(w, http.StatusNotFound, err.Error())
+	case isRuleError(err):
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+	default:
+		s.fail(w, r, err)
+	}
+}
+
+// isRuleError: pelanggaran aturan game (bukan kesalahan server).
+func isRuleError(err error) bool {
+	for _, e := range []error{
+		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
+		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest,
+	} {
+		if errors.Is(err, e) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) itemAction(fn func(*game.State, string) error) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req itemRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		s.applyToState(w, r, func(st *game.State) error { return fn(st, req.Item) })
+	})
+}
+
+func (s *Server) slotAction() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req slotRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		s.applyToState(w, r, func(st *game.State) error { return st.Unequip(req.Slot) })
+	})
+}
+
+func (s *Server) restAction() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.applyToState(w, r, func(st *game.State) error { return st.Rest() })
+	})
+}
+
 // --- toko ---
 
 func (s *Server) getShop(w http.ResponseWriter, r *http.Request) {
@@ -357,7 +433,8 @@ func (s *Server) shopTrade(trade func(*game.State, string, int) error) http.Hand
 		case errors.Is(err, game.ErrUnknownItem):
 			writeError(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
-			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull):
+			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull),
+			errors.Is(err, game.ErrEquipped):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		case err != nil:
 			s.fail(w, r, err)

@@ -52,6 +52,26 @@ func battle_action(action: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/action", {"action": action}, true)
 
 
+## Pakai ramuan di luar pertarungan.
+func inventory_use(item: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/inventory/use", {"item": item}, true)
+
+
+## Pasang perlengkapan dari tas.
+func inventory_equip(item: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/inventory/equip", {"item": item}, true)
+
+
+## Lepas perlengkapan dari slot ("weapon" atau "armor").
+func inventory_unequip(slot: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/inventory/unequip", {"slot": slot}, true)
+
+
+## Istirahat: HP pulih penuh, gratis, hanya di desa.
+func rest() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/rest", null, true)
+
+
 ## Semua misi beserta kemajuan pemain (status: available/active/done/claimed).
 func quests_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/quests", null, true)

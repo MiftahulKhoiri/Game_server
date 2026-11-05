@@ -582,3 +582,78 @@ func TestBossBattleOnlyAtBossSpot(t *testing.T) {
 		t.Errorf("mulai dua kali harus 409, dapat %d", code)
 	}
 }
+
+// --- tas, perlengkapan, istirahat ---
+
+func TestInventoryEquipUseRest(t *testing.T) {
+	ts, st := newTestServerWithStore(t)
+	cr := register(t, ts, "Pemakai")
+	call := func(path string, body any) (int, game.Player) {
+		resp, data := do(t, "POST", ts.URL+path, cr.Token, body)
+		var p game.Player
+		_ = json.Unmarshal(data, &p)
+		return resp.StatusCode, p
+	}
+	item := func(id string) map[string]string { return map[string]string{"item": id} }
+
+	if code, _ := call("/v1/inventory/equip", item("pedang_besi")); code != http.StatusUnprocessableEntity {
+		t.Errorf("equip barang yang tidak dimiliki harus 422, dapat %d", code)
+	}
+	if code, _ := call("/v1/inventory/equip", item("naga")); code != http.StatusNotFound {
+		t.Errorf("barang asing harus 404, dapat %d", code)
+	}
+	if code, _ := call("/v1/inventory/use", item("ramuan")); code != http.StatusUnprocessableEntity {
+		t.Errorf("ramuan saat HP penuh harus 422, dapat %d", code)
+	}
+	if code, _ := call("/v1/rest", nil); code != http.StatusUnprocessableEntity {
+		t.Errorf("istirahat saat HP penuh harus 422, dapat %d", code)
+	}
+
+	// Beri pedang dan luka lewat store (sama seperti hadiah/pertarungan).
+	if _, err := st.Update(t.Context(), cr.Player.ID, func(sess *store.Session) error {
+		sess.Player.State.AddItem("pedang_besi", 1)
+		sess.Player.State.HP = 4
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	code, p := call("/v1/inventory/equip", item("pedang_besi"))
+	if code != http.StatusOK || p.State.Equipment.Weapon != "pedang_besi" {
+		t.Fatalf("equip: %d %+v", code, p.State.Equipment)
+	}
+	if code, p := call("/v1/inventory/use", item("ramuan")); code != http.StatusOK || p.State.HP != 4+game.PotionHeal {
+		t.Errorf("pakai ramuan: %d hp=%d", code, p.State.HP)
+	}
+	if code, _ := call("/v1/shop/sell", map[string]any{"item": "pedang_besi", "qty": 1}); code != http.StatusUnprocessableEntity {
+		t.Errorf("menjual pedang yang dipakai harus 422, dapat %d", code)
+	}
+	if code, p := call("/v1/rest", nil); code != http.StatusOK || p.State.HP != p.State.MaxHP {
+		t.Errorf("istirahat di desa: %d hp=%d/%d", code, p.State.HP, p.State.MaxHP)
+	}
+	if code, p := call("/v1/inventory/unequip", map[string]string{"slot": "weapon"}); code != http.StatusOK || p.State.Equipment.Weapon != "" {
+		t.Errorf("lepas: %d %+v", code, p.State.Equipment)
+	}
+	if code, _ := call("/v1/inventory/unequip", map[string]string{"slot": "weapon"}); code != http.StatusUnprocessableEntity {
+		t.Errorf("lepas slot kosong harus 422, dapat %d", code)
+	}
+
+	// Tidak bisa saat bertarung.
+	battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+	if code, _ := call("/v1/rest", nil); code != http.StatusConflict {
+		t.Errorf("istirahat saat bertarung harus 409, dapat %d", code)
+	}
+	if resp, _ := do(t, "POST", ts.URL+"/v1/rest", "", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
+}
+
+func TestRestRefusedOutsideVillage(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pengembara")
+	st := cr.Player.State
+	st.Map, st.X, st.Y = game.MapPerbatasan, 7, 1
+	do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st})
+	if resp, _ := do(t, "POST", ts.URL+"/v1/rest", cr.Token, nil); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("istirahat di perbatasan harus 422, dapat %d", resp.StatusCode)
+	}
+}

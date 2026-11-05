@@ -12,6 +12,7 @@ const HUD_TOP := 960
 const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap langkah di ladang
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const SHOP_SCENE := "res://scenes/shop.tscn"
+const INVENTORY_SCENE := "res://scenes/inventory.tscn"
 const DIALOG_SCENE := "res://scenes/dialog.tscn"
 const NPC_ART_DIR := "res://assets/characters/"
 
@@ -200,12 +201,18 @@ func _talk() -> void:
 
 
 func _open_shop() -> void:
+	await _open_screen(SHOP_SCENE)
+
+
+## Pindah ke layar lain (toko, tas) setelah menyimpan posisi: versi pemain harus
+## sinkron dengan server sebelum bertransaksi.
+func _open_screen(scene: String) -> void:
 	if _encountering:
 		return
 	_encountering = true  # kunci gerak selagi pindah layar
 	_held = Vector2i.ZERO
-	await _flush_save()  # versi pemain harus sinkron dengan server sebelum berdagang
-	get_tree().change_scene_to_file(SHOP_SCENE)
+	await _flush_save()
+	get_tree().change_scene_to_file(scene)
 
 
 func _flush_save() -> void:
@@ -266,10 +273,10 @@ func _build_ui() -> void:
 
 	_talk_button = Button.new()
 	_talk_button.text = "Bicara"
-	_talk_button.position = Vector2(240, 1110)
-	_talk_button.size = Vector2(200, 70)
+	_talk_button.position = Vector2(148, 1110)
+	_talk_button.size = Vector2(112, 70)
 	_talk_button.focus_mode = Control.FOCUS_NONE
-	_talk_button.add_theme_font_size_override("font_size", 28)
+	_talk_button.add_theme_font_size_override("font_size", 24)
 	_talk_button.pressed.connect(_talk)
 	layer.add_child(_talk_button)
 	_update_talk_button()
@@ -277,12 +284,22 @@ func _build_ui() -> void:
 	var shop := Button.new()
 	shop.text = "Toko"
 	shop.position = Vector2(24, 1110)
-	shop.size = Vector2(200, 70)
+	shop.size = Vector2(112, 70)
 	shop.focus_mode = Control.FOCUS_NONE
-	shop.add_theme_font_size_override("font_size", 28)
+	shop.add_theme_font_size_override("font_size", 24)
 	shop.disabled = Session.offline  # toko butuh server
 	shop.pressed.connect(_open_shop)
 	layer.add_child(shop)
+
+	var bag := Button.new()
+	bag.text = "Tas"
+	bag.position = Vector2(272, 1110)
+	bag.size = Vector2(112, 70)
+	bag.focus_mode = Control.FOCUS_NONE
+	bag.add_theme_font_size_override("font_size", 24)
+	bag.disabled = Session.offline  # tas butuh server
+	bag.pressed.connect(_open_screen.bind(INVENTORY_SCENE))
+	layer.add_child(bag)
 
 	_status = Label.new()
 	_status.position = Vector2(24, 1200)

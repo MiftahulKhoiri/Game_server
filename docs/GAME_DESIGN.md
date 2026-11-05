@@ -57,7 +57,19 @@ gambar `client/assets/items/<id>.png`; tanpa gambar klien memakai kotak berwarna
 | `koin_kuno` | Koin Kuno | treasure (hadiah misi) | - | 25 |
 | `permata_merah` | Permata Merah | treasure (hadiah misi) | - | 60 |
 
+| `pedang_besi` | Pedang Besi | senjata, serang +3 | 120 | 40 |
+| `pedang_baja` | Pedang Baja | senjata, serang +6 | 320 | 110 |
+| `pedang_rune` | Pedang Rune | senjata, serang +10 (hadiah misi akhir) | - | - |
+| `baju_kulit` | Baju Kulit | pelindung, tahan +2 | 80 | 25 |
+| `zirah_besi` | Zirah Besi | pelindung, tahan +4 | 240 | 80 |
+
 Harga jual selalu lebih murah dari harga beli agar tidak bisa untung tanpa batas.
+
+### Tas, perlengkapan, istirahat (v0.11.0)
+Dua slot: senjata dan pelindung. Bonusnya menambah serang/tahan dari level. Ramuan
+bisa diminum di luar pertarungan. Istirahat di desa gratis dan memulihkan HP penuh,
+jadi ramuan dipakai untuk perjalanan jauh. Pedang Rune hanya didapat dari misi
+"Hentikan Raja Goblin".
 
 ## Misi (v0.6.0)
 

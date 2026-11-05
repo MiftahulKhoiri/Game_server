@@ -91,7 +91,7 @@ var quests = []QuestDef{
 		TargetIDs:   []string{"raja_goblin"},
 		Count:       1,
 		RewardGold:  500,
-		RewardItems: []Item{{ID: "permata_merah", Qty: 3}},
+		RewardItems: []Item{{ID: "permata_merah", Qty: 3}, {ID: "pedang_rune", Qty: 1}},
 		Requires:    "usir_ogre",
 	},
 }

@@ -99,7 +99,7 @@ func (b *Battle) Act(p *Player, action string, rng Rand) (Result, error) {
 
 	switch action {
 	case ActionAttack:
-		dmg, crit := rollDamage(AttackForLevel(st.Level), e.Defense, rng, true)
+		dmg, crit := rollDamage(st.Attack(), e.Defense, rng, true)
 		b.EnemyHP -= dmg
 		if crit {
 			logf("Serangan kritis! %s kehilangan %d HP.", b.EnemyName, dmg)
@@ -136,7 +136,7 @@ func (b *Battle) Act(p *Player, action string, rng Rand) (Result, error) {
 	}
 
 	// Giliran musuh.
-	dmg, _ := rollDamage(e.Attack, DefenseForLevel(st.Level), rng, false)
+	dmg, _ := rollDamage(e.Attack, st.Defense(), rng, false)
 	if defending {
 		dmg = max(1, dmg/DefendDivisor)
 	}

@@ -10,6 +10,13 @@ const (
 	KindConsumable = "consumable" // bisa dipakai (mis. ramuan)
 	KindMaterial   = "material"   // bahan, dijatuhkan musuh
 	KindTreasure   = "treasure"   // harta, hadiah misi
+	KindEquipment  = "equipment"  // bisa dipakai di slot perlengkapan
+)
+
+// Slot perlengkapan.
+const (
+	SlotWeapon = "weapon" // menambah serangan
+	SlotArmor  = "armor"  // menambah pertahanan
 )
 
 // MaxBuyQty membatasi jumlah satu kali transaksi.
@@ -22,6 +29,10 @@ type ItemDef struct {
 	Kind      string `json:"kind"`
 	BuyPrice  int    `json:"buy_price"`  // harga beli pemain dari toko
 	SellPrice int    `json:"sell_price"` // harga jual pemain ke toko
+	// Khusus perlengkapan (Kind == KindEquipment):
+	Slot    string `json:"slot,omitempty"`
+	Attack  int    `json:"attack,omitempty"`  // bonus serangan (SlotWeapon)
+	Defense int    `json:"defense,omitempty"` // bonus pertahanan (SlotArmor)
 }
 
 // Daftar barang. Barang baru: tambahkan satu baris di sini lalu (opsional)
@@ -31,6 +42,11 @@ var items = []ItemDef{
 	{ID: "taring_goblin", Name: "Taring Goblin", Kind: KindMaterial, SellPrice: 12},
 	{ID: "koin_kuno", Name: "Koin Kuno", Kind: KindTreasure, SellPrice: 25},
 	{ID: "permata_merah", Name: "Permata Merah", Kind: KindTreasure, SellPrice: 60},
+	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Slot: SlotWeapon, Attack: 3},
+	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Slot: SlotWeapon, Attack: 6},
+	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual
+	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Slot: SlotArmor, Defense: 2},
+	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Slot: SlotArmor, Defense: 4},
 }
 
 // Kesalahan transaksi toko.
@@ -42,6 +58,7 @@ var (
 	ErrNoGold        = errors.New("emas tidak cukup")
 	ErrNotEnough     = errors.New("barang yang dimiliki tidak cukup")
 	ErrInventoryFull = errors.New("tas penuh")
+	ErrEquipped      = errors.New("lepas dulu perlengkapan ini sebelum menjualnya")
 )
 
 // Items mengembalikan salinan seluruh daftar barang.
@@ -92,9 +109,14 @@ func Sell(st *State, id string, qty int) error {
 	if def.SellPrice <= 0 {
 		return ErrNotBuyable
 	}
-	if !st.RemoveItem(id, qty) {
+	owned := st.itemQty(id)
+	if owned < qty {
 		return ErrNotEnough
 	}
+	if st.Equipment.Has(id) && owned-qty < 1 {
+		return ErrEquipped // salinan terakhir yang sedang dipakai tidak boleh dijual
+	}
+	st.RemoveItem(id, qty)
 	st.Gold += def.SellPrice * qty
 	return nil
 }

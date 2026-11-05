@@ -162,7 +162,9 @@ Tidak bisa berdagang saat ada pertarungan aktif (`409`).
 ### `GET /v1/shop`  (login)
 `200 {"items": [{"id", "name", "kind", "buy_price", "sell_price"}, ...]}`.
 `buy_price` 0 = tidak dijual toko; `sell_price` 0 = toko tidak membeli.
-`kind`: `consumable`, `material`, `treasure`.
+`kind`: `consumable`, `material`, `treasure`, `equipment`. Perlengkapan juga membawa
+`slot` (`weapon`/`armor`), `attack`, `defense` (bonus). Penjualan perlengkapan yang sedang
+dipakai (salinan terakhir) ditolak `422`.
 
 ### `POST /v1/shop/buy` dan `POST /v1/shop/sell`  (login)
 Body: `{"item": "ramuan", "qty": 1}` (qty 1..99). `200` berisi objek pemain terbaru.
@@ -172,6 +174,20 @@ Body: `{"item": "ramuan", "qty": 1}` (qty 1..99). `200` berisi objek pemain terb
 | 404 | Barang tidak dikenal |
 | 409 | Sedang bertarung |
 | 422 | Jumlah salah, emas tidak cukup, barang kurang, tas penuh, atau barang tidak dijual / tidak dibeli |
+
+## Tas & perlengkapan (v0.11.0)
+
+Semua aksi atomik dan mengembalikan `200` berisi objek pemain terbaru. `409` bila sedang
+bertarung, `404` bila barang tidak dikenal, `422` bila melanggar aturan.
+
+| Endpoint | Body | Efek |
+|----------|------|------|
+| `POST /v1/inventory/use` | `{"item":"ramuan"}` | Minum ramuan (+15 HP). `422` bila HP penuh / tidak punya |
+| `POST /v1/inventory/equip` | `{"item":"pedang_besi"}` | Pasang dari tas; yang lama kembali ke tas. `422` bila bukan perlengkapan / tidak dimiliki |
+| `POST /v1/inventory/unequip` | `{"slot":"weapon"}` | Lepas ke tas. `422` bila slot kosong / tas penuh |
+| `POST /v1/rest` | - | Istirahat gratis, HP penuh; hanya di `desa_awal` (`422` di tempat lain atau bila HP penuh) |
+
+Bonus perlengkapan ditambahkan ke serang/tahan dari level, dan dipakai dalam pertarungan.
 
 ## Objek
 
@@ -185,7 +201,8 @@ Body: `{"item": "ramuan", "qty": 1}` (qty 1..99). `200` berisi objek pemain terb
   "state": {
     "level": 1, "xp": 0, "hp": 30, "max_hp": 30, "gold": 0,
     "map": "desa_awal", "x": 5, "y": 5,
-    "inventory": [{"id": "ramuan", "qty": 3}]
+    "inventory": [{"id": "ramuan", "qty": 3}],
+    "equipment": {"weapon": "", "armor": ""}
   }
 }
 ```

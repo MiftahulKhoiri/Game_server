@@ -15,6 +15,7 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
   tengah pertarungan, pertarungan dilanjutkan saat masuk lagi.
 - **Bicara dengan NPC** (`scenes/dialog.tscn`): tombol Bicara aktif bila berdiri di sebelah NPC; terima misi dan ambil hadiah.
 - **Toko** (`scenes/shop.tscn`): tombol Toko di peta; beli/jual barang, harga dari server.
+- **Tas** (`scenes/inventory.tscn`): tombol Tas di peta; lihat barang, pasang/lepas perlengkapan, minum ramuan, istirahat gratis di desa.
 - Token login disimpan di `user://settings.cfg` (di HP: penyimpanan aplikasi).
 
 ## Struktur

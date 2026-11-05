@@ -209,6 +209,39 @@ func _run() -> void:
 	var bad_buy: Dictionary = await Api.shop_buy("naga", 1)
 	_check(not bad_buy.ok and bad_buy.status == 404, "barang asing 404")
 
+	print("== tas & perlengkapan")
+	_check(Session.player.state.has("equipment") and Session.player.state.equipment.weapon == "", "pemain baru belum memakai senjata")
+	var eq_none: Dictionary = await Api.inventory_equip("pedang_besi")
+	_check(not eq_none.ok and eq_none.status == 422, "memasang barang yang tidak dimiliki ditolak 422")
+	var eq_potion: Dictionary = await Api.inventory_equip("ramuan")
+	_check(not eq_potion.ok and eq_potion.status == 422, "ramuan bukan perlengkapan -> 422")
+	var uneq_empty: Dictionary = await Api.inventory_unequip("weapon")
+	_check(not uneq_empty.ok and uneq_empty.status == 422, "melepas slot kosong ditolak 422")
+	var eq_alien: Dictionary = await Api.inventory_equip("naga")
+	_check(not eq_alien.ok and eq_alien.status == 404, "barang asing 404")
+	var bag_scene: Control = load("res://scenes/inventory.tscn").instantiate()
+	root.add_child(bag_scene)
+	await create_timer(0.8).timeout
+	_check(bag_scene._list.get_child_count() >= 4, "layar tas menampilkan perlengkapan dan barang")
+	_check(bag_scene._summary.text.contains(str(Session.player.name)), "layar tas menampilkan nama pemain")
+	var hp_now: int = Session.player.state.hp
+	var hp_max: int = Session.player.state.max_hp
+	bag_scene._on_rest()
+	while bag_scene._busy:
+		await process_frame
+	var rested: Dictionary = await Api.get_me()
+	if hp_now < hp_max:
+		_check(int(rested.data.state.hp) == hp_max, "istirahat memulihkan HP penuh di desa")
+	else:
+		_check(int(rested.data.state.hp) == hp_max, "HP sudah penuh, istirahat tidak mengubah apa pun")
+	_check(Session.player.version == int(rested.data.version), "versi lokal sinkron setelah istirahat")
+	var rest_full: Dictionary = await Api.rest()
+	_check(not rest_full.ok and rest_full.status == 422, "istirahat saat HP penuh ditolak 422")
+	var use_full: Dictionary = await Api.inventory_use("ramuan")
+	_check(not use_full.ok and use_full.status == 422, "minum ramuan saat HP penuh ditolak 422")
+	bag_scene.queue_free()
+	await process_frame
+
 	print("== misi")
 	var q0: Dictionary = await Api.quests_get()
 	_check(q0.ok and q0.data.quests.size() > 0 and q0.data.quests[0].status == "available", "misi awal tersedia")
@@ -288,10 +321,11 @@ func _run() -> void:
 		bscene.queue_free()
 		await process_frame
 
-	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
+	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "equipment": {"weapon": "pedang_besi", "armor": ""}, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
 	Session.player.state.x = 8
 	Session.merge_server_player(merged)
 	_check(Session.player.state.x == 8 and Session.player.state.level == 3, "merge: posisi lokal tetap, statistik ikut server")
+	_check(Session.player.state.equipment.weapon == "pedang_besi", "merge: perlengkapan ikut server")
 	_check(typeof(Session.player.state.inventory[0].qty) == TYPE_INT and Session.player.version == 9, "merge: angka menjadi int")
 	Session.merge_server_player(merged, true)
 	_check(Session.player.state.x == 1, "merge dengan adopt_position memakai posisi server")
