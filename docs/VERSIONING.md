@@ -65,6 +65,11 @@ unduhan" (cara lama). Syarat agar APK baru diterima sebagai pembaruan: ditandata
 dengan kunci yang sama (`deploy/android/debug.keystore`) dan `version code` lebih tinggi
 (otomatis dari nomor build CI). Pasang otomatis butuh Android 10 ke atas.
 
+Sejak v0.13.1 langkah pasang tidak memakai bidang statis Java, mencoba `ACTION_VIEW` lalu
+`INSTALL_PACKAGE`, dan bila gagal pesan di layar menyebut langkah serta kesalahan Androidnya.
+Berkas hasil unduhan juga tersimpan di `Download/GamePetualang-update.apk` sehingga bisa
+dibuka manual lewat aplikasi File.
+
 Versi yang memuat fitur ini sendiri harus dipasang manual sekali; setelah itu
 pembaruan berikutnya bisa lewat dalam aplikasi.
 

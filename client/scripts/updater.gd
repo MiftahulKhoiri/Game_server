@@ -114,8 +114,8 @@ func run(update_url: String) -> Dictionary:
 	status.emit("Membuka pemasang...")
 	var install_err := _install(SAVE_PATH)
 	if install_err != "":
-		return {"ok": false, "message": install_err, "web": true}
-	return {"ok": true, "web": false, "message": "Pemasang Android terbuka. Tekan Pasang, lalu buka aplikasi lagi."}
+		return {"ok": false, "message": install_err + MANUAL_HINT, "web": true}
+	return {"ok": true, "web": false, "message": "Pemasang Android seharusnya terbuka: tekan Pasang, lalu buka aplikasi lagi." + MANUAL_HINT}
 
 
 ## Ambil info rilis terbaru dari GitHub. {"ok", "asset" | "error"}.
@@ -174,6 +174,26 @@ func _process(_delta: float) -> void:
 
 
 # --- Android ---
+# Nilai konstanta Android ditulis langsung (bukan lewat bidang statis kelas Java) supaya
+# tidak bergantung pada JavaClassWrapper membaca bidang statis.
+
+const ACTION_VIEW := "android.intent.action.VIEW"
+const ACTION_INSTALL_PACKAGE := "android.intent.action.INSTALL_PACKAGE"
+const ACTION_MANAGE_UNKNOWN_APP_SOURCES := "android.settings.MANAGE_UNKNOWN_APP_SOURCES"
+const FLAG_GRANT_READ_URI_PERMISSION := 1
+const FLAG_ACTIVITY_NEW_TASK := 0x10000000
+const DOWNLOADS_URI := "content://media/external_primary/downloads"
+const MANUAL_HINT := " Bila pemasang tidak muncul, buka aplikasi File > Download > %s lalu ketuk berkas itu." % MEDIA_NAME
+
+
+## Kesalahan Java terakhir ("" bila tidak ada). Panggilan JavaClassWrapper yang gagal
+## tidak melempar ke GDScript, hanya mengembalikan null; kesalahannya diambil di sini.
+static func java_error() -> String:
+	var ex: Variant = JavaClassWrapper.get_exception()
+	if ex == null:
+		return ""
+	return str(ex.toString())
+
 
 func _can_install() -> bool:
 	var rt: Object = Engine.get_singleton("AndroidRuntime")
@@ -190,26 +210,32 @@ func _open_install_settings() -> void:
 	var Intent: Variant = JavaClassWrapper.wrap("android.content.Intent")
 	var Uri: Variant = JavaClassWrapper.wrap("android.net.Uri")
 	var uri: Variant = Uri.parse("package:" + str(ctx.getPackageName()))
-	var intent: Variant = Intent.Intent("android.settings.MANAGE_UNKNOWN_APP_SOURCES", uri)
-	intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+	var intent: Variant = Intent.Intent(ACTION_MANAGE_UNKNOWN_APP_SOURCES, uri)
+	intent.addFlags(FLAG_ACTIVITY_NEW_TASK)
 	rt.getActivity().startActivity(intent)
 
 
-## Salin APK ke Download (MediaStore) lalu buka pemasang. "" = berhasil.
+## Salin APK ke Download (MediaStore) lalu buka pemasang. "" = berhasil, selain itu
+## pesan kesalahan yang menyebut langkah yang gagal.
 func _install(path: String) -> String:
+	java_error()  # buang sisa kesalahan lama
 	var rt: Object = Engine.get_singleton("AndroidRuntime")
 	var activity: Variant = rt.getActivity()
 	var resolver: Variant = rt.getApplicationContext().getContentResolver()
-	var sdk: int = JavaClassWrapper.wrap("android.os.Build$VERSION").SDK_INT
+	if activity == null or resolver == null:
+		return "Android tidak memberi akses aktivitas/ContentResolver. " + java_error()
+	var Build: Variant = JavaClassWrapper.wrap("android.os.Build$VERSION")
+	var sdk := int(Build.SDK_INT) if Build != null and Build.SDK_INT != null else 29
 	if sdk < 29:
 		return "Android di bawah 10 belum didukung untuk pasang otomatis."
 
-	var Downloads: Variant = JavaClassWrapper.wrap("android.provider.MediaStore$Downloads")
-	var table: Variant = Downloads.EXTERNAL_CONTENT_URI
+	var Uri: Variant = JavaClassWrapper.wrap("android.net.Uri")
+	var table: Variant = Uri.parse(DOWNLOADS_URI)
 	if table == null:
-		return "Folder Download tidak bisa diakses."
+		return "Langkah 1 (alamat folder Download) gagal. " + java_error()
 	# Buang salinan lama agar namanya tidak jadi "(1)".
 	resolver.delete(table, "_display_name='%s'" % MEDIA_NAME, null)
+	java_error()  # gagal menghapus salinan lama tidak fatal
 
 	var ContentValues: Variant = JavaClassWrapper.wrap("android.content.ContentValues")
 	var values: Variant = ContentValues.ContentValues()
@@ -218,24 +244,36 @@ func _install(path: String) -> String:
 	values.put("relative_path", "Download/")
 	var uri: Variant = resolver.insert(table, values)
 	if uri == null:
-		return "Tidak bisa membuat berkas di folder Download."
+		return "Langkah 2 (membuat berkas di Download) gagal. " + java_error()
 
 	var out: Variant = resolver.openOutputStream(uri)
 	var src := FileAccess.open(path, FileAccess.READ)
 	if out == null or src == null:
-		return "Tidak bisa menulis berkas pembaruan."
+		return "Langkah 3 (membuka berkas tujuan) gagal. " + java_error()
 	while not src.eof_reached():
 		var chunk := src.get_buffer(CHUNK)
 		if chunk.is_empty():
 			break
 		out.write(chunk)
+		var werr := java_error()
+		if werr != "":
+			return "Langkah 4 (menulis berkas) gagal. " + werr
 	out.flush()
 	out.close()
 	src.close()
 
 	var Intent: Variant = JavaClassWrapper.wrap("android.content.Intent")
-	var intent: Variant = Intent.Intent(Intent.ACTION_VIEW)
-	intent.setDataAndType(uri, MIME_APK)
-	intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK)
-	activity.startActivity(intent)
-	return ""
+	var last_err := ""
+	# ACTION_VIEW lebih dulu; bila ditolak, coba pemasang paket langsung.
+	for action: String in [ACTION_VIEW, ACTION_INSTALL_PACKAGE]:
+		var intent: Variant = Intent.Intent(action)
+		if intent == null:
+			last_err = "Intent gagal dibuat. " + java_error()
+			continue
+		intent.setDataAndType(uri, MIME_APK)
+		intent.addFlags(FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK)
+		activity.startActivity(intent)
+		last_err = java_error()
+		if last_err == "":
+			return ""
+	return "Langkah 5 (membuka pemasang) gagal: " + last_err
