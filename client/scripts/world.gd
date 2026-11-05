@@ -107,6 +107,11 @@ func _on_move_done() -> void:
 	_moving = false
 	queue_redraw()
 	_update_talk_button()
+	var st0: Dictionary = Session.player.state
+	var ex := Maps.exit_at(_map_id, st0.x, st0.y)
+	if not ex.is_empty():
+		_go_to_map(str(ex.to), ex.at)
+		return
 	if Session.offline or _encountering:
 		return
 	var st: Dictionary = Session.player.state
@@ -117,6 +122,22 @@ func _on_move_done() -> void:
 		return
 	if randf() < ENCOUNTER_CHANCE:
 		_start_encounter()
+
+
+## Pindah ke peta lain; posisi baru disimpan seperti gerakan biasa.
+func _go_to_map(map_id: String, at: Vector2i) -> void:
+	var st: Dictionary = Session.player.state
+	_held = Vector2i.ZERO
+	_map_id = map_id
+	st.map = map_id
+	st.x = at.x
+	st.y = at.y
+	_vis = Vector2(at) * TILE
+	_unsaved = true
+	_save_timer.start(SAVE_DELAY)
+	_update_talk_button()
+	queue_redraw()
+	_set_status("Memasuki %s" % Maps.NAMES.get(map_id, map_id))
 
 
 # --- pertarungan ---
@@ -377,6 +398,12 @@ func _draw_tile(tile: String, pos: Vector2) -> void:
 			draw_circle(pos + Vector2(14, 16), 4, Color("f0d040"))
 			draw_circle(pos + Vector2(32, 30), 4, Color("e86a9a"))
 			draw_circle(pos + Vector2(30, 12), 3, Color("ffffff"))
+		"S":
+			draw_rect(rect, Color("7d7d85"))
+			for i in 3:
+				draw_rect(Rect2(pos + Vector2(0, 14 + i * 14), Vector2(TILE, 2)), Color("55555c"))
+			draw_rect(Rect2(pos + Vector2(14, 0), Vector2(2, 14)), Color("55555c"))
+			draw_rect(Rect2(pos + Vector2(32, 14), Vector2(2, 14)), Color("55555c"))
 		"#":
 			draw_rect(rect, Color("2f6b2f"))
 			draw_rect(Rect2(pos + Vector2(20, 28), Vector2(8, 16)), Color("5b3b1e"))

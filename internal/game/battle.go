@@ -66,7 +66,7 @@ type Result struct {
 
 // StartBattle memulai pertarungan melawan musuh acak yang cocok untuk level pemain.
 func StartBattle(p *Player, rng Rand) Battle {
-	e := PickEnemy(p.State.Level, rng)
+	e := PickEnemy(p.State.Level, p.State.Map, rng)
 	return Battle{EnemyID: e.ID, EnemyName: e.Name, EnemyHP: e.HP, EnemyMaxHP: e.HP, Round: 1}
 }
 

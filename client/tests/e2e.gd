@@ -56,6 +56,12 @@ func _run() -> void:
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 7, 8), "sumur menghalangi")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 4, 2), "pintu rumah bisa dilewati")
 	_check_map_connected(Maps.DEFAULT_MAP)
+	_check_map_connected(Maps.PERBATASAN)
+	for id: String in Maps.EXITS:
+		for e: Dictionary in Maps.EXITS[id]:
+			_check(Maps.walkable(id, e.pos.x, e.pos.y), "pintu %s %s berada di petak yang bisa dilewati" % [id, e.pos])
+			_check(Maps.walkable(e.to, e.at.x, e.at.y) and Maps.exit_at(e.to, e.at.x, e.at.y).is_empty(), "tujuan pintu %s -> %s aman dan bukan pintu" % [id, e.to])
+	_check(not Maps.walkable(Maps.PERBATASAN, 3, 8), "tembok batu menghalangi")
 
 	print("== api")
 	Api.base_url = OS.get_environment("GAME_URL") if OS.get_environment("GAME_URL") != "" else "http://127.0.0.1:8099"
@@ -229,6 +235,29 @@ func _run() -> void:
 	await process_frame
 	_check(Maps.npc_at(Maps.DEFAULT_MAP, 11, 6) == "petani", "petani berdiri di (11,6)")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 3, 6), "petak nenek tetap bagian peta (diblokir oleh gerak, bukan peta)")
+
+	print("== pindah peta")
+	var bm: Dictionary = (await Api.get_me()).data
+	Session.set_player(bm)
+	Session.player.state.map = Maps.DEFAULT_MAP
+	Session.player.state.x = 7
+	Session.player.state.y = 18
+	Session.safe_steps = 100000
+	var world2: Node2D = load("res://scenes/world.tscn").instantiate()
+	root.add_child(world2)
+	await process_frame
+	world2._try_move(Vector2i.DOWN)  # (7,18) -> (7,19) = pintu ke perbatasan
+	await create_timer(0.5).timeout
+	_check(Session.player.state.map == Maps.PERBATASAN and Session.player.state.y == 1, "melewati gerbang selatan masuk Perbatasan (7,1)")
+	await create_timer(2.5).timeout
+	var moved: Dictionary = await Api.get_me()
+	_check(moved.data.state.map == "perbatasan" and int(moved.data.state.y) == 1, "server menyimpan peta baru")
+	world2.queue_free()
+	await process_frame
+	var pb: Dictionary = await Api.battle_start()
+	_check(pb.ok and pb.data.battle.enemy_id == "goblin" or pb.ok and pb.data.battle.enemy_id == "serigala_hutan", "musuh di Perbatasan berbeda dari desa (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
+	if pb.ok:
+		await Api.battle_action("flee")
 
 	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
 	Session.player.state.x = 8

@@ -137,8 +137,12 @@ func (s *Server) saveMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	// Server otoritatif: hanya posisi yang diterima dari klien.
+	// Server otoritatif: hanya posisi yang diterima dari klien, dan harus di dalam peta yang dikenal.
 	st := req.State
+	if !game.ValidPosition(st.Map, st.X, st.Y) {
+		writeError(w, http.StatusUnprocessableEntity, "posisi di luar peta atau peta tidak dikenal")
+		return
+	}
 	p, err := s.store.SavePosition(r.Context(), playerFrom(r).ID, st.Map, st.X, st.Y, req.Version)
 	switch {
 	case errors.Is(err, store.ErrConflict):

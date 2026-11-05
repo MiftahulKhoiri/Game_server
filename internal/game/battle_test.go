@@ -173,18 +173,54 @@ func TestBadAction(t *testing.T) {
 	}
 }
 
-func TestPickEnemyRespectsLevel(t *testing.T) {
+func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 	for i := 0; i < 300; i++ {
-		if e := PickEnemy(1, RandomSource{}); e.MinLevel > 1 {
-			t.Fatalf("level 1 bertemu %s (butuh level %d)", e.ID, e.MinLevel)
+		if e := PickEnemy(1, MapDesaAwal, RandomSource{}); e.MinLevel > 1 || e.Zone != MapDesaAwal {
+			t.Fatalf("level 1 di desa bertemu %s (zona %q, butuh level %d)", e.ID, e.Zone, e.MinLevel)
+		}
+		if e := PickEnemy(1, MapPerbatasan, RandomSource{}); e.Zone != MapPerbatasan || e.MinLevel > 1 {
+			t.Fatalf("level 1 di perbatasan bertemu %s", e.ID)
 		}
 	}
-	seen := map[string]bool{}
-	for i := 0; i < 500; i++ {
-		seen[PickEnemy(5, RandomSource{}).ID] = true
+	for _, zone := range []string{MapDesaAwal, MapPerbatasan} {
+		seen := map[string]bool{}
+		want := 0
+		for _, e := range enemies {
+			if e.Zone == zone {
+				want++
+			}
+		}
+		for i := 0; i < 800; i++ {
+			seen[PickEnemy(10, zone, RandomSource{}).ID] = true
+		}
+		if len(seen) != want {
+			t.Errorf("%s level 10 harus bisa bertemu %d musuh, dapat %v", zone, want, seen)
+		}
 	}
-	if len(seen) != len(enemies) {
-		t.Errorf("level 5 harus bisa bertemu semua musuh, dapat %v", seen)
+	// Peta tak dikenal tidak boleh membuat server panik.
+	if e := PickEnemy(1, "tidak_ada", RandomSource{}); e.ID == "" {
+		t.Error("harus tetap memilih musuh")
+	}
+}
+
+func TestValidPosition(t *testing.T) {
+	ok := []struct {
+		m    string
+		x, y int
+	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 14, 19}, {MapPerbatasan, 7, 1}}
+	for _, c := range ok {
+		if !ValidPosition(c.m, c.x, c.y) {
+			t.Errorf("%v harus valid", c)
+		}
+	}
+	bad := []struct {
+		m    string
+		x, y int
+	}{{MapDesaAwal, 15, 0}, {MapDesaAwal, 0, 20}, {MapDesaAwal, -1, 0}, {"neraka", 1, 1}, {"", 0, 0}}
+	for _, c := range bad {
+		if ValidPosition(c.m, c.x, c.y) {
+			t.Errorf("%v harus ditolak", c)
+		}
 	}
 }
 

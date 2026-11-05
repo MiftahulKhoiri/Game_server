@@ -525,3 +525,37 @@ func TestQuestEndToEnd(t *testing.T) {
 		t.Error("status akhir harus claimed")
 	}
 }
+
+func TestSaveRejectsUnknownMapAndOutOfBounds(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Penjelajah")
+	save := func(version int, mapID string, x, y int) int {
+		st := cr.Player.State
+		st.Map, st.X, st.Y = mapID, x, y
+		resp, _ := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: version, State: st})
+		return resp.StatusCode
+	}
+	if code := save(1, "neraka", 1, 1); code != http.StatusUnprocessableEntity {
+		t.Errorf("peta asing harus 422, dapat %d", code)
+	}
+	if code := save(1, game.MapDesaAwal, 99, 3); code != http.StatusUnprocessableEntity {
+		t.Errorf("di luar peta harus 422, dapat %d", code)
+	}
+	if code := save(1, game.MapPerbatasan, 7, 1); code != http.StatusOK {
+		t.Errorf("pindah ke perbatasan harus 200, dapat %d", code)
+	}
+}
+
+func TestBattleEnemyDependsOnMap(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pemburu")
+	st := cr.Player.State
+	st.Map, st.X, st.Y = game.MapPerbatasan, 7, 2
+	if resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st}); resp.StatusCode != http.StatusOK {
+		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
+	}
+	_, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+	if start.Battle == nil || start.Battle.EnemyID != "goblin" {
+		t.Errorf("level 1 di perbatasan harus bertemu goblin: %s", d)
+	}
+}

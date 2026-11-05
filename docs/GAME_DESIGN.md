@@ -69,7 +69,7 @@ dan gambar `client/assets/characters/<id npc>.png`.
 | Misi | Pemberi | Tugas | Hadiah |
 |------|---------|-------|--------|
 | Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 tikus sawah atau belalang raksasa | 40 emas |
-| Selamatkan Petani | Petani (11,6) | Kalahkan 3 goblin (muncul mulai level 2). Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
+| Selamatkan Petani | Petani (11,6) | Kalahkan 3 goblin di Perbatasan. Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
 
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
@@ -78,7 +78,7 @@ ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 
 1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
 2. **Misi berikutnya.** Setelah Petani: siapa lagi yang perlu diselamatkan, dan dari monster apa? Ogre batu menunggu gambar yang transparan.
-3. **Peta.** Ganti Desa Awal menjadi desa kerajaan? Seperti apa gerbang kerajaannya?
+3. **Peta berikutnya.** Di mana Ogre Batu bersarang? Hutan, tambang, atau gerbang istana kerajaan?
 
 ## Sistem yang sudah ada di server
 
@@ -107,15 +107,32 @@ Bergiliran, dihitung server. Pemain memilih satu aksi, lalu musuh membalas.
 Naik level memulihkan HP penuh. Kalah: emas berkurang separuh, HP pulih
 separuh, kembali ke titik awal desa.
 
-| Musuh | HP | Serang | Bertahan | XP | Emas | Min. level | Jatuh ramuan |
-|-------|----|--------|----------|----|------|------------|--------------|
-| Tikus Sawah | 10 | 3 | 0 | 6 | 2 | 1 | 10% |
-| Belalang Raksasa | 14 | 4 | 1 | 8 | 3 | 1 | 10% |
-| Ular Sawah | 20 | 6 | 1 | 12 | 5 | 2 | 15% |
-| Goblin | 26 | 7 | 2 | 15 | 7 | 2 | 20% |
-| Babi Hutan | 34 | 8 | 3 | 22 | 9 | 3 | 25% |
+| Musuh | Wilayah | HP | Serang | Bertahan | XP | Emas | Min. level | Jatuhan |
+|-------|---------|----|--------|----------|----|------|------------|---------|
+| Tikus Sawah | Desa | 10 | 3 | 0 | 6 | 2 | 1 | Ramuan 10% |
+| Belalang Raksasa | Desa | 14 | 4 | 1 | 8 | 3 | 1 | Ramuan 10% |
+| Ular Sawah | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
+| Babi Hutan | Desa | 34 | 8 | 3 | 22 | 9 | 3 | Ramuan 25% |
+| Goblin | Perbatasan | 26 | 7 | 2 | 15 | 7 | 1 | Taring Goblin 35% |
+| Serigala Hutan | Perbatasan | 32 | 9 | 2 | 20 | 9 | 3 | Ramuan 20% |
+| Ogre Batu | Perbatasan | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
 
-Di klien, tiap langkah di petak ladang punya peluang 18% bertemu musuh
+Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
+terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
+Hutan dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
+
+## Peta
+
+| Peta | Isi | Pintu |
+|------|-----|-------|
+| Desa Awal (`desa_awal`) | Rumah, alun-alun, sungai, ladang, Nenek dan Petani | Gerbang selatan (7,19) ke Perbatasan |
+| Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Gerbang utara (7,0) kembali ke desa; ujung selatan masih tertutup |
+
+Server mengenal ukuran tiap peta (`internal/game/world.go`) dan menolak posisi di luar
+peta atau peta asing. Bentuk petak (tembok, air) masih milik klien (`client/scripts/maps.gd`);
+pintu baru = satu entri di `EXITS` plus peta baru di kedua sisi.
+
+Di klien, tiap langkah di petak ladang (`T`, di kedua peta) punya peluang 18% bertemu musuh
 (tidak ada pertemuan baru selama 3 langkah setelah pertarungan).
 
 ## Peta jalan

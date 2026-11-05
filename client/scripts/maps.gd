@@ -6,10 +6,21 @@ extends RefCounted
 ##   .  rumput          =  jalan tanah        f  bunga (bisa dilewati)
 ##   T  ladang          B  jembatan           D  pintu rumah (bisa dilewati)
 ##   #  pohon           ~  air                H  tembok/atap rumah
-##   F  pagar           W  sumur
+##   F  pagar           W  sumur              S  tembok batu (reruntuhan)
 ## Yang bisa dilewati: . = f T B D   (sisanya menghalangi)
 
 const DEFAULT_MAP := "desa_awal"
+const PERBATASAN := "perbatasan"
+
+## Nama peta untuk ditampilkan.
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan"}
+
+## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
+## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
+const EXITS := {
+	"desa_awal": [{"pos": Vector2i(7, 19), "to": "perbatasan", "at": Vector2i(7, 1)}],
+	"perbatasan": [{"pos": Vector2i(7, 0), "to": "desa_awal", "at": Vector2i(7, 18)}],
+}
 const SPAWN := Vector2i(5, 5)
 const WALKABLE := ".=fTBD"
 
@@ -66,9 +77,47 @@ static func npc_near(map_id: String, x: int, y: int) -> String:
 	return ""
 
 
+## Perbatasan Kerajaan (15x20): jalan raja dari gerbang desa di utara, ladang yang
+## dirusak monster, dan reruntuhan benteng di tengah. Ujung selatan masih tertutup
+## tembok (belum ada peta berikutnya).
+const PERBATASAN_ROWS: Array[String] = [
+	"#######=#######",
+	"#......=......#",
+	"#.TT...=...TT.#",
+	"#.TT...=...TT.#",
+	"#......=......#",
+	"#.##...=...##.#",
+	"#.##...=...##.#",
+	"#......=......#",
+	"#..SSS.=.SSS..#",
+	"#..S.......S..#",
+	"#..S..TTT..S..#",
+	"#..S..TTT..S..#",
+	"#..SSS.=.SSS..#",
+	"#......=......#",
+	"#.TT...=...TT.#",
+	"#.TT...=...TT.#",
+	"#......=......#",
+	"#......=......#",
+	"#......=......#",
+	"#######S#######",
+]
+
+
+## Pintu di (x, y) berupa {pos, to, at}, atau {} bila bukan pintu.
+static func exit_at(map_id: String, x: int, y: int) -> Dictionary:
+	for e: Dictionary in EXITS.get(map_id, []):
+		if e.pos == Vector2i(x, y):
+			return e
+	return {}
+
+
 static func rows(map_id: String) -> Array[String]:
-	if map_id == DEFAULT_MAP:
-		return DESA_AWAL
+	match map_id:
+		DEFAULT_MAP:
+			return DESA_AWAL
+		PERBATASAN:
+			return PERBATASAN_ROWS
 	return []
 
 

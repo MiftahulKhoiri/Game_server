@@ -65,7 +65,7 @@ var quests = []QuestDef{
 		ID:          "selamatkan_petani",
 		Title:       "Selamatkan Petani",
 		Giver:       "petani",
-		Description: "Goblin-goblin menyerbu ladang dan mengancam sang petani. Kalahkan 3 goblin. Goblin baru muncul bila kamu sudah level 2.",
+		Description: "Goblin-goblin menyerbu dari ladang perbatasan di luar gerbang selatan desa dan mengancam sang petani. Kalahkan 3 goblin di ladang perbatasan.",
 		TargetIDs:   []string{"goblin"},
 		Count:       3,
 		RewardGold:  25,
