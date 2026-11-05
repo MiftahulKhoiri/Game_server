@@ -1,9 +1,11 @@
 extends Control
 ## Layar pertarungan bergiliran. Semua hasil dihitung SERVER; layar ini hanya
 ## mengirim aksi pemain dan menampilkan jawaban server (docs/API.md).
-## Gambar musuh masih placeholder sampai aset ilustrator masuk.
+## Gambar musuh dimuat dari res://assets/enemies/<id musuh>.png bila ada;
+## musuh yang gambarnya belum dibuat tetap memakai bulatan placeholder.
 
 const WORLD_SCENE := "res://scenes/world.tscn"
+const ENEMY_ART_DIR := "res://assets/enemies/"
 const POTION_ID := "ramuan"
 const MAX_LOG_LINES := 6
 const SAFE_STEPS_AFTER_BATTLE := 3
@@ -16,6 +18,7 @@ const ENEMY_COLORS := {
 }
 
 var _enemy_id := ""
+var _enemy_tex: Texture2D
 var _enemy_name: Label
 var _enemy_bar: ProgressBar
 var _enemy_view: Control
@@ -37,6 +40,7 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred(WORLD_SCENE)
 		return
 	_enemy_id = str(Session.battle.get("enemy_id", ""))
+	_enemy_tex = _load_enemy_art(_enemy_id)
 	_build_ui()
 	_add_lines(["%s muncul!" % str(Session.battle.get("enemy_name", "Musuh"))])
 	_refresh()
@@ -154,7 +158,7 @@ func _build_ui() -> void:
 	box.add_child(_enemy_bar)
 
 	_enemy_view = Control.new()
-	_enemy_view.custom_minimum_size = Vector2(0, 340)
+	_enemy_view.custom_minimum_size = Vector2(0, 380)
 	_enemy_view.draw.connect(_draw_enemy)
 	box.add_child(_enemy_view)
 
@@ -187,8 +191,21 @@ func _build_ui() -> void:
 	box.add_child(_btn_continue)
 
 
+func _load_enemy_art(id: String) -> Texture2D:
+	var path := ENEMY_ART_DIR + id + ".png"
+	if id != "" and ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return null
+
+
 func _draw_enemy() -> void:
 	var size := _enemy_view.size
+	if _enemy_tex:
+		var tex_size := _enemy_tex.get_size()
+		var scale := minf(size.x / tex_size.x, size.y / tex_size.y)
+		var draw_size := tex_size * scale
+		_enemy_view.draw_texture_rect(_enemy_tex, Rect2((size - draw_size) / 2.0, draw_size), false)
+		return
 	var center := size / 2.0
 	var color: Color = ENEMY_COLORS.get(_enemy_id, Color("b04a8a"))
 	_enemy_view.draw_circle(center + Vector2(0, 120), 90, Color(0, 0, 0, 0.25))  # bayangan

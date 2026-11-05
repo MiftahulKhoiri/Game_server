@@ -9,7 +9,24 @@ supaya semua gambar konsisten dan mudah dipakai klien. Ubah bila perlu.
 - Tanpa kompresi lossy (jangan simpan sprite sebagai JPG).
 - Nama file: huruf kecil, angka, dan garis bawah, tanpa spasi. Contoh: `pohon_besar.png`.
 
-## Ukuran (usulan, untuk grid top-down)
+## Gambar karakter (ilustrasi)
+
+Gaya yang dipilih adalah ilustrasi, bukan pixel art. Gambar yang dipakai klien
+disimpan di `client/assets/` (harus di dalam proyek Godot):
+
+| Berkas | Isi |
+|--------|-----|
+| `characters/ksatria.png` | Pemain |
+| `characters/nenek_penjual.png`, `characters/petani.png` | NPC desa |
+| `enemies/<id musuh>.png` | Musuh; nama berkas = id musuh di server (mis. `goblin.png`). Bila tidak ada, klien memakai bulatan placeholder |
+
+**Penting:** simpan sebagai PNG dengan latar transparan **sungguhan**. Kotak-kotak
+abu-putih yang ikut tergambar di JPG bukan transparan; gambar seperti itu harus
+dibersihkan dulu. Gambar ogre batu masih punya latar pemandangan, jadi perlu
+diekspor ulang dengan latar transparan sebelum bisa dipakai.
+Disarankan tinggi sekitar 384-512 px.
+
+## Ukuran tile (usulan, untuk grid top-down)
 
 | Jenis | Ukuran | Contoh |
 |-------|--------|--------|

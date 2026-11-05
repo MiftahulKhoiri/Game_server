@@ -1,6 +1,6 @@
 package game
 
-// Enemy adalah jenis musuh. Tema: hama desa petani.
+// Enemy adalah jenis musuh. Tema: monster yang menyerang desa kerajaan.
 type Enemy struct {
 	ID          string
 	Name        string
@@ -18,6 +18,7 @@ var enemies = []Enemy{
 	{ID: "tikus_sawah", Name: "Tikus Sawah", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10},
 	{ID: "belalang_raksasa", Name: "Belalang Raksasa", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
 	{ID: "ular_sawah", Name: "Ular Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
+	{ID: "goblin", Name: "Goblin", HP: 26, Attack: 7, Defense: 2, XP: 15, Gold: 7, MinLevel: 2, DropID: PotionID, DropPercent: 20},
 	{ID: "babi_hutan", Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25},
 }
 

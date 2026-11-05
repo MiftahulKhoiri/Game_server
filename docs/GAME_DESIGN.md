@@ -17,11 +17,25 @@
 Alasannya hemat tenaga: gambar lebih sedikit (tanpa animasi banyak arah), logika
 server mudah diuji, dan nyaman di layar sentuh.
 
+## Tema dan gaya (diputuskan pemilik proyek, 5 Nov 2026)
+
+- **Tema:** desa di sebuah kerajaan yang diserang monster. Pemain adalah
+  ksatria kerajaan (zirah perak, perisai singa, pedang berhuruf rune) yang
+  melindungi penduduk desa.
+- **Gaya gambar:** ilustrasi berwarna bergaya komik/lukisan dengan garis tepi
+  tebal, bukan pixel art. Karakter, NPC, dan musuh digambar utuh (potret/badan
+  penuh) dan dipakai di layar pertarungan dan dialog. Tile peta tetap kecil.
+- **Gambar karakter yang sudah ada** (`client/assets/`): ksatria (pemain),
+  nenek penjual sayur dan petani (NPC), goblin (musuh). Ogre batu menyusul.
+- Gambar masuk bertahap; yang belum ada memakai placeholder.
+
 ## Masih perlu diputuskan (pemilik proyek)
 
-1. **Tema dan cerita.** Dunia apa, siapa tokoh utama, apa tujuan akhirnya?
-2. **Kelas karakter.** Satu karakter tetap atau boleh memilih kelas?
-3. **Nuansa gambar.** Pixel art 32x32, atau gaya lain?
+1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
+2. **Kelas karakter.** Satu ksatria tetap atau boleh memilih kelas?
+3. **Peran NPC.** Nenek dan petani: pemberi misi, penjual, atau penunjuk jalan?
+4. **Nasib hama sawah.** Tikus, belalang, ular, dan babi hutan masih memakai
+   tema lama. Dipertahankan sebagai musuh awal, atau diganti monster?
 
 ## Sistem yang sudah ada di server
 
@@ -55,6 +69,7 @@ separuh, kembali ke titik awal desa.
 | Tikus Sawah | 10 | 3 | 0 | 6 | 2 | 1 | 10% |
 | Belalang Raksasa | 14 | 4 | 1 | 8 | 3 | 1 | 10% |
 | Ular Sawah | 20 | 6 | 1 | 12 | 5 | 2 | 15% |
+| Goblin | 26 | 7 | 2 | 15 | 7 | 2 | 20% |
 | Babi Hutan | 34 | 8 | 3 | 22 | 9 | 3 | 25% |
 
 Di klien, tiap langkah di petak ladang punya peluang 18% bertemu musuh
