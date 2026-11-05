@@ -22,7 +22,7 @@ import (
 
 // Kesalahan yang bisa dikembalikan Store.
 var (
-	ErrNotFound  = errors.New("store: pemain tidak ditemukan")
+	ErrNotFound  = errors.New("store: tidak ditemukan")
 	ErrNameTaken = errors.New("store: nama sudah dipakai")
 	ErrConflict  = errors.New("store: versi data tidak cocok")
 )
@@ -36,11 +36,22 @@ CREATE TABLE IF NOT EXISTS players (
 	version    INTEGER NOT NULL DEFAULT 1,
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS battles (
+	player_id  TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+	state      TEXT NOT NULL,
+	updated_at TEXT NOT NULL
 );`
 
 // Store membungkus koneksi database.
 type Store struct {
 	db *sql.DB
+}
+
+// Session adalah pemain beserta pertarungannya yang sedang berjalan (bila ada).
+type Session struct {
+	Player game.Player
+	Battle *game.Battle
 }
 
 // Open membuka (dan membuat bila belum ada) database di path.
@@ -54,7 +65,8 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("buka database: %w", err)
 	}
-	// SQLite hanya mengizinkan satu penulis; satu koneksi menjaga semuanya sederhana.
+	// SQLite hanya mengizinkan satu penulis; satu koneksi menjaga semuanya sederhana
+	// dan membuat setiap transaksi berjalan bergantian (tidak saling menimpa).
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
@@ -91,45 +103,114 @@ func (s *Store) CreatePlayer(ctx context.Context, id, name, tokenHash string, st
 
 // PlayerByID mengambil pemain berdasarkan id.
 func (s *Store) PlayerByID(ctx context.Context, id string) (game.Player, error) {
-	return s.scan(s.db.QueryRowContext(ctx, selectPlayer+` WHERE id = ?`, id))
+	return scanPlayer(s.db.QueryRowContext(ctx, selectPlayer+` WHERE id = ?`, id))
 }
 
 // PlayerByTokenHash mengambil pemain berdasarkan hash token.
 func (s *Store) PlayerByTokenHash(ctx context.Context, hash string) (game.Player, error) {
-	return s.scan(s.db.QueryRowContext(ctx, selectPlayer+` WHERE token_hash = ?`, hash))
+	return scanPlayer(s.db.QueryRowContext(ctx, selectPlayer+` WHERE token_hash = ?`, hash))
 }
 
-// SaveState menimpa progress pemain. expectedVersion harus sama dengan versi
-// yang tersimpan; jika tidak, ErrConflict dikembalikan (mencegah simpanan lama
-// menimpa yang baru).
-func (s *Store) SaveState(ctx context.Context, id string, st game.State, expectedVersion int) (game.Player, error) {
-	js, err := json.Marshal(st)
+// Battle mengambil pertarungan yang sedang berjalan, atau ErrNotFound bila tidak ada.
+func (s *Store) Battle(ctx context.Context, playerID string) (game.Battle, error) {
+	b, err := loadBattle(ctx, s.db, playerID)
 	if err != nil {
-		return game.Player{}, err
+		return game.Battle{}, err
 	}
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE players SET state = ?, version = version + 1, updated_at = ?
-		 WHERE id = ? AND version = ?`,
-		string(js), time.Now().UTC().Format(time.RFC3339Nano), id, expectedVersion)
+	return *b, nil
+}
+
+// SavePosition menyimpan posisi pemain (peta, x, y) dari klien. Hanya posisi yang
+// diterima: HP, XP, emas, level, dan tas dihitung server dan tidak bisa diubah klien.
+// expectedVersion harus sama dengan versi tersimpan, jika tidak ErrConflict.
+func (s *Store) SavePosition(ctx context.Context, id, mapID string, x, y, expectedVersion int) (game.Player, error) {
+	sess, err := s.mutate(ctx, id, expectedVersion, func(sess *Session) error {
+		sess.Player.State.Map, sess.Player.State.X, sess.Player.State.Y = mapID, x, y
+		return nil
+	})
+	return sess.Player, err
+}
+
+// Update menjalankan fn atas pemain dan pertarungannya dalam SATU transaksi:
+// semua perubahan tersimpan bersama, atau tidak sama sekali bila fn mengembalikan
+// error. Versi pemain naik 1. Mengatur sess.Battle = nil menghapus pertarungan.
+func (s *Store) Update(ctx context.Context, id string, fn func(*Session) error) (Session, error) {
+	return s.mutate(ctx, id, -1, fn)
+}
+
+// mutate: expectedVersion < 0 berarti tanpa pemeriksaan versi.
+func (s *Store) mutate(ctx context.Context, id string, expectedVersion int, fn func(*Session) error) (Session, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return game.Player{}, fmt.Errorf("simpan progress: %w", err)
+		return Session{}, fmt.Errorf("mulai transaksi: %w", err)
 	}
-	n, err := res.RowsAffected()
+	defer tx.Rollback() // tidak berpengaruh setelah Commit
+
+	p, err := scanPlayer(tx.QueryRowContext(ctx, selectPlayer+` WHERE id = ?`, id))
 	if err != nil {
-		return game.Player{}, err
+		return Session{}, err
 	}
-	if n == 0 {
-		if _, err := s.PlayerByID(ctx, id); err != nil {
-			return game.Player{}, err // ErrNotFound
+	if expectedVersion >= 0 && p.Version != expectedVersion {
+		return Session{}, ErrConflict
+	}
+	b, err := loadBattle(ctx, tx, id)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return Session{}, err
+	}
+	sess := Session{Player: p, Battle: b}
+
+	if err := fn(&sess); err != nil {
+		return Session{}, err
+	}
+
+	now := time.Now().UTC()
+	stamp := now.Format(time.RFC3339Nano)
+	js, err := json.Marshal(sess.Player.State)
+	if err != nil {
+		return Session{}, err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE players SET state = ?, version = version + 1, updated_at = ? WHERE id = ?`,
+		string(js), stamp, id); err != nil {
+		return Session{}, fmt.Errorf("simpan progress: %w", err)
+	}
+	if sess.Battle != nil {
+		bjs, err := json.Marshal(sess.Battle)
+		if err != nil {
+			return Session{}, err
 		}
-		return game.Player{}, ErrConflict
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO battles (player_id, state, updated_at) VALUES (?, ?, ?)
+			 ON CONFLICT(player_id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
+			id, string(bjs), stamp); err != nil {
+			return Session{}, fmt.Errorf("simpan pertarungan: %w", err)
+		}
+	} else if _, err := tx.ExecContext(ctx, `DELETE FROM battles WHERE player_id = ?`, id); err != nil {
+		return Session{}, fmt.Errorf("hapus pertarungan: %w", err)
 	}
-	return s.PlayerByID(ctx, id)
+	if err := tx.Commit(); err != nil {
+		return Session{}, fmt.Errorf("simpan transaksi: %w", err)
+	}
+
+	sess.Player.Version++
+	sess.Player.UpdatedAt = now
+	if sess.Player.State.Inventory == nil {
+		sess.Player.State.Inventory = []game.Item{}
+	}
+	return sess, nil
 }
 
 const selectPlayer = `SELECT id, name, state, version, created_at, updated_at FROM players`
 
-func (s *Store) scan(row *sql.Row) (game.Player, error) {
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+type queryer interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+func scanPlayer(row rowScanner) (game.Player, error) {
 	var (
 		p                   game.Player
 		stateJSON, cAt, uAt string
@@ -154,4 +235,20 @@ func (s *Store) scan(row *sql.Row) (game.Player, error) {
 		p.State.Inventory = []game.Item{}
 	}
 	return p, nil
+}
+
+func loadBattle(ctx context.Context, q queryer, playerID string) (*game.Battle, error) {
+	var js string
+	err := q.QueryRowContext(ctx, `SELECT state FROM battles WHERE player_id = ?`, playerID).Scan(&js)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("baca pertarungan: %w", err)
+	}
+	var b game.Battle
+	if err := json.Unmarshal([]byte(js), &b); err != nil {
+		return nil, fmt.Errorf("pertarungan rusak: %w", err)
+	}
+	return &b, nil
 }

@@ -53,11 +53,44 @@ func NewState() State {
 		Level:     1,
 		HP:        30,
 		MaxHP:     30,
-		Map:       "desa_awal",
-		X:         5,
-		Y:         5,
-		Inventory: []Item{},
+		Map:       SpawnMap,
+		X:         SpawnX,
+		Y:         SpawnY,
+		Inventory: []Item{{ID: PotionID, Qty: 2}},
 	}
+}
+
+// AddItem menambah qty barang ke tas. Mengembalikan false bila tas penuh.
+func (s *State) AddItem(id string, qty int) bool {
+	for i := range s.Inventory {
+		if s.Inventory[i].ID == id {
+			s.Inventory[i].Qty = min(MaxStack, s.Inventory[i].Qty+qty)
+			return true
+		}
+	}
+	if len(s.Inventory) >= MaxInventory {
+		return false
+	}
+	s.Inventory = append(s.Inventory, Item{ID: id, Qty: min(MaxStack, qty)})
+	return true
+}
+
+// RemoveItem mengurangi qty barang. Mengembalikan false bila jumlahnya kurang.
+func (s *State) RemoveItem(id string, qty int) bool {
+	for i := range s.Inventory {
+		if s.Inventory[i].ID != id {
+			continue
+		}
+		if s.Inventory[i].Qty < qty {
+			return false
+		}
+		s.Inventory[i].Qty -= qty
+		if s.Inventory[i].Qty == 0 {
+			s.Inventory = append(s.Inventory[:i], s.Inventory[i+1:]...)
+		}
+		return true
+	}
+	return false
 }
 
 // Validate memeriksa apakah State masuk akal. Server tidak boleh percaya

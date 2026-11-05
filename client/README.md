@@ -10,6 +10,9 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
   layar (atau tombol panah di komputer). Pohon, air, dan rumah menghalangi.
 - **Simpan otomatis**: 1,5 detik setelah berhenti bergerak, juga saat aplikasi dijeda.
   Bila versi di server berbeda (409), klien mengikuti versi server lalu menyimpan ulang.
+- **Pertarungan** (`scenes/battle.tscn`): muncul acak di ladang, tombol Serang /
+  Bertahan / Ramuan / Kabur. Hasil dihitung server; bila aplikasi ditutup di
+  tengah pertarungan, pertarungan dilanjutkan saat masuk lagi.
 - Token login disimpan di `user://settings.cfg` (di HP: penyimpanan aplikasi).
 
 ## Struktur
@@ -20,7 +23,7 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
 | `scripts/session.gd` | Autoload `Session`: pemain aktif dan pengaturan tersimpan |
 | `scripts/version.gd`, `scripts/build_info.gd` | Versi aplikasi dan pembanding versi; `build_info.gd` diisi CI |
 | `scripts/maps.gd` | Data peta sementara (teks) dan aturan tabrakan |
-| `scripts/login.gd`, `scripts/world.gd` | Dua layar |
+| `scripts/login.gd`, `scripts/world.gd`, `scripts/battle.gd` | Tiga layar |
 | `tests/e2e.gd` | Uji ujung-ke-ujung terhadap server Go asli |
 | `export_presets.cfg` | Pengaturan ekspor APK |
 

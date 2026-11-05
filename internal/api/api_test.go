@@ -29,7 +29,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { st.Close() })
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	ts := httptest.NewServer(New(st, log, testInfo))
+	ts := httptest.NewServer(NewWithRand(st, log, testInfo, game.RandFunc(func(n int) int { return 99 % n })))
 	t.Cleanup(ts.Close)
 	return ts
 }
@@ -123,13 +123,15 @@ func TestAuthRequired(t *testing.T) {
 	}
 }
 
-func TestSaveAndConflict(t *testing.T) {
+func TestSaveOnlyAppliesPosition(t *testing.T) {
 	ts := newTestServer(t)
 	cr := register(t, ts, "Dewi")
 
+	// Klien mencoba curang: menaikkan level, emas, dan tas sekaligus bergerak.
 	st := cr.Player.State
-	st.Level, st.XP, st.Gold = 2, 120, 50
-	st.Inventory = []game.Item{{ID: "ramuan", Qty: 3}}
+	st.Level, st.XP, st.Gold = 50, 9999, 999999
+	st.Inventory = []game.Item{{ID: "pedang_dewa", Qty: 1}}
+	st.X, st.Y = 7, 8
 
 	resp, data := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token,
 		saveRequest{Version: cr.Player.Version, State: st})
@@ -138,22 +140,34 @@ func TestSaveAndConflict(t *testing.T) {
 	}
 	var saved game.Player
 	_ = json.Unmarshal(data, &saved)
-	if saved.Version != 2 || saved.State.Level != 2 || len(saved.State.Inventory) != 1 {
-		t.Fatalf("hasil simpan salah: %+v", saved)
+	if saved.State.X != 7 || saved.State.Y != 8 || saved.Version != 2 {
+		t.Errorf("posisi/versi tidak tersimpan: %+v", saved)
 	}
+	if saved.State.Level != 1 || saved.State.Gold != 0 || saved.State.XP != 0 {
+		t.Errorf("statistik tidak boleh bisa diubah klien: %+v", saved.State)
+	}
+	if len(saved.State.Inventory) != 1 || saved.State.Inventory[0].ID != game.PotionID {
+		t.Errorf("tas tidak boleh bisa diubah klien: %+v", saved.State.Inventory)
+	}
+}
 
-	// Menyimpan lagi dengan versi lama harus ditolak.
-	resp, _ = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token,
-		saveRequest{Version: 1, State: st})
+func TestSaveConflictAndValidation(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Eko")
+	st := cr.Player.State
+	st.X = 6
+
+	resp, _ := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("simpan pertama: %d", resp.StatusCode)
+	}
+	resp, _ = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st})
 	if resp.StatusCode != http.StatusConflict {
 		t.Errorf("versi lama harus 409, dapat %d", resp.StatusCode)
 	}
-
-	// Data tidak masuk akal harus ditolak.
 	bad := st
 	bad.HP = bad.MaxHP + 10
-	resp, _ = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token,
-		saveRequest{Version: 2, State: bad})
+	resp, _ = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 2, State: bad})
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Errorf("state tidak valid harus 422, dapat %d", resp.StatusCode)
 	}
@@ -238,5 +252,111 @@ func TestOldClientMustUpdate(t *testing.T) {
 	resp, _ = doWithVersion(t, "GET", ts.URL+"/v1/version", "0.0.1", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("/v1/version harus terbuka untuk klien lama, dapat %d", resp.StatusCode)
+	}
+}
+
+// --- pertarungan ---
+// Sumber acak tetap (99 % n): tidak kritis, kabur selalu gagal, tidak ada drop,
+// variasi kerusakan 97%, dan musuh level 1 dipilih tetap.
+
+func battleCall(t *testing.T, ts *httptest.Server, token, method, path string, body any) (int, battleResponse, []byte) {
+	t.Helper()
+	resp, data := do(t, method, ts.URL+path, token, body)
+	var br battleResponse
+	_ = json.Unmarshal(data, &br)
+	return resp.StatusCode, br, data
+}
+
+func TestBattleFullFlow(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pejuang")
+
+	if code, _, _ := battleCall(t, ts, cr.Token, "GET", "/v1/battle", nil); code != http.StatusNotFound {
+		t.Errorf("sebelum mulai harus 404, dapat %d", code)
+	}
+	if code, _, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "attack"}); code != http.StatusNotFound {
+		t.Errorf("aksi tanpa pertarungan harus 404, dapat %d: %s", code, d)
+	}
+
+	code, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+	if code != http.StatusCreated || start.Battle == nil || start.Battle.EnemyHP <= 0 {
+		t.Fatalf("mulai: %d %s", code, d)
+	}
+	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil); code != http.StatusConflict {
+		t.Errorf("mulai dua kali harus 409, dapat %d", code)
+	}
+	// Dapat dilanjutkan (mis. aplikasi ditutup di tengah pertarungan).
+	code, resumed, _ := battleCall(t, ts, cr.Token, "GET", "/v1/battle", nil)
+	if code != http.StatusOK || resumed.Battle == nil || resumed.Battle.EnemyID != start.Battle.EnemyID {
+		t.Errorf("lanjutkan salah: %d %+v", code, resumed)
+	}
+
+	var last battleResponse
+	for i := 0; i < 40; i++ {
+		code, last, d = battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "attack"})
+		if code != http.StatusOK {
+			t.Fatalf("aksi: %d %s", code, d)
+		}
+		if last.Status != "ongoing" {
+			break
+		}
+	}
+	if last.Status != "won" || last.Battle != nil || last.Rewards == nil {
+		t.Fatalf("harus menang dan pertarungan hilang: %+v", last)
+	}
+	if last.Player.State.XP != last.Rewards.XP || last.Player.State.Gold != last.Rewards.Gold {
+		t.Errorf("hadiah tidak masuk ke pemain: %+v", last)
+	}
+	if last.Player.Version <= cr.Player.Version {
+		t.Errorf("versi harus naik: %d", last.Player.Version)
+	}
+	if code, _, _ := battleCall(t, ts, cr.Token, "GET", "/v1/battle", nil); code != http.StatusNotFound {
+		t.Errorf("setelah selesai harus 404, dapat %d", code)
+	}
+
+	// Hasil tersimpan permanen.
+	_, data := do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
+	var me game.Player
+	_ = json.Unmarshal(data, &me)
+	if me.State.XP != last.Rewards.XP {
+		t.Errorf("XP tidak tersimpan: %+v", me.State)
+	}
+}
+
+func TestBattleActionErrors(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Teliti")
+	battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+
+	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "teleport"}); code != http.StatusUnprocessableEntity {
+		t.Errorf("aksi asing harus 422, dapat %d", code)
+	}
+	if code, _, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "potion"}); code != http.StatusUnprocessableEntity {
+		t.Errorf("ramuan saat HP penuh harus 422, dapat %d: %s", code, d)
+	}
+	if code, _, _ := battleCall(t, ts, "", "POST", "/v1/battle/start", nil); code != http.StatusUnauthorized {
+		t.Errorf("tanpa token harus 401, dapat %d", code)
+	}
+}
+
+func TestBattleAndSaveDoNotOverwriteEachOther(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Balapan")
+	_, start, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+
+	// Simpan posisi dengan versi LAMA (klien belum tahu pertarungan menaikkan versi): 409.
+	st := cr.Player.State
+	st.X = 9
+	resp, _ := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: cr.Player.Version, State: st})
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("versi lama setelah pertarungan harus 409, dapat %d", resp.StatusCode)
+	}
+	// Dengan versi terbaru: berhasil, dan pertarungan tidak terganggu.
+	resp, _ = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: start.Player.Version, State: st})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("simpan versi terbaru: %d", resp.StatusCode)
+	}
+	if code, b, _ := battleCall(t, ts, cr.Token, "GET", "/v1/battle", nil); code != http.StatusOK || b.Player.State.X != 9 {
+		t.Errorf("pertarungan/posisi salah: %d %+v", code, b.Player.State)
 	}
 }

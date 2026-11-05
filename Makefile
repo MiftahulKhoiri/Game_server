@@ -1,4 +1,4 @@
-.PHONY: build run test vet fmt check client-test clean
+.PHONY: build run test vet fmt check client-test install-user-service restart clean
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -29,6 +29,17 @@ check:
 # Uji klien Godot <-> server. Butuh Godot 4.7:  make client-test GODOT=/path/ke/godot
 client-test:
 	GODOT=$(GODOT) bash scripts/client-test.sh
+
+# Pasang server sebagai layanan pengguna systemd (tanpa sudo), lalu nyalakan.
+install-user-service: build
+	mkdir -p $(HOME)/.config/systemd/user
+	cp deploy/gameserver.user.service $(HOME)/.config/systemd/user/gameserver.service
+	systemctl --user daemon-reload
+	systemctl --user enable --now gameserver
+
+# Bangun ulang lalu mulai ulang layanan (setelah mengubah kode server).
+restart: build
+	systemctl --user restart gameserver
 
 clean:
 	rm -rf bin

@@ -36,6 +36,21 @@ func save(version: int, state: Dictionary) -> Dictionary:
 	return await _call(HTTPClient.METHOD_PUT, "/v1/players/me/save", body, true)
 
 
+## Pertarungan yang sedang berjalan (404 bila tidak ada).
+func battle_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/battle", null, true)
+
+
+## Mulai pertarungan dengan musuh acak (409 bila sudah ada yang berjalan).
+func battle_start() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/battle/start", null, true)
+
+
+## action: "attack" | "defend" | "potion" | "flee"
+func battle_action(action: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/battle/action", {"action": action}, true)
+
+
 func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -> Dictionary:
 	var req := HTTPRequest.new()
 	req.timeout = 10.0

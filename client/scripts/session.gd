@@ -5,6 +5,10 @@ const CONFIG_PATH := "user://settings.cfg"
 
 ## {"id", "name", "version", "state": {...}}  -- bentuk sama dengan docs/API.md
 var player: Dictionary = {}
+## Pertarungan yang sedang berjalan (jawaban server: enemy_id, enemy_name, enemy_hp, ...), {} bila tidak ada.
+var battle: Dictionary = {}
+## Sisa langkah aman di ladang setelah pertarungan (tidak ada pertemuan baru).
+var safe_steps := 0
 ## true = tidak terhubung ke server (mis. menguji peta langsung dari editor); tidak disimpan.
 var offline := false
 
@@ -37,6 +41,20 @@ func set_player(p: Dictionary) -> void:
 		"version": int(p.get("version", 1)),
 		"state": _normalize_state(p.get("state", {})),
 	}
+
+
+## Menggabungkan data pemain dari server (mis. hasil pertarungan) ke data lokal.
+## Statistik dan tas SELALU ikut server. Posisi (peta, x, y) tetap milik klien,
+## kecuali adopt_position (mis. pemain kalah dan dipulangkan ke desa).
+func merge_server_player(p: Dictionary, adopt_position := false) -> void:
+	var incoming := _normalize_state(p.get("state", {}))
+	var st: Dictionary = player.state
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory"]:
+		st[key] = incoming[key]
+	if adopt_position:
+		for key: String in ["map", "x", "y"]:
+			st[key] = incoming[key]
+	player.version = int(p.get("version", player.version))
 
 
 ## Pemain sementara untuk uji tanpa server (sama dengan keadaan awal di server).

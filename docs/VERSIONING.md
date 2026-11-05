@@ -5,7 +5,7 @@ Dua hal yang dijawab sistem ini: **aplikasi di HP sekarang versi berapa**, dan
 
 ## Format
 
-`MAJOR.MINOR.PATCH`, contoh `0.2.0`.
+`MAJOR.MINOR.PATCH`, contoh `0.3.0`.
 
 | Bagian | Naik bila |
 |--------|-----------|
@@ -14,8 +14,8 @@ Dua hal yang dijawab sistem ini: **aplikasi di HP sekarang versi berapa**, dan
 | PATCH | Perbaikan bug kecil |
 
 Selain itu tiap APK punya **nomor build** (urutan build di GitHub Actions) dan
-kode commit. Contoh tampilan: `v0.2.0 (build 12)`. Build lokal/editor tampil
-sebagai `v0.2.0 (dev)`.
+kode commit. Contoh tampilan: `v0.3.0 (build 12)`. Build lokal/editor tampil
+sebagai `v0.3.0 (dev)`.
 
 ## Di mana versi disimpan
 
@@ -32,7 +32,7 @@ Server dan klien tidak harus selalu sama nomornya; yang menentukan adalah
 ## Cara kerja di HP
 
 1. Saat layar masuk dibuka, aplikasi menanyakan `GET /v1/version` ke server.
-2. Di bawah layar tampil `Aplikasi v0.2.0 (build 12) | Server v0.2.0`.
+2. Di bawah layar tampil `Aplikasi v0.3.0 (build 12) | Server v0.3.0`.
 3. Hasil perbandingan:
 
 | Keadaan | Yang terjadi |

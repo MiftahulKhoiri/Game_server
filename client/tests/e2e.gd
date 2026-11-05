@@ -103,6 +103,7 @@ func _run() -> void:
 
 	print("== world: gerak lalu simpan otomatis")
 	Session.offline = false
+	Session.safe_steps = 100000  # cegah pertemuan acak mengganggu uji gerak
 	var world: Node2D = load("res://scenes/world.tscn").instantiate()
 	root.add_child(world)
 	await process_frame
@@ -128,6 +129,54 @@ func _run() -> void:
 		await create_timer(0.12).timeout
 	var y: int = Session.player.state.y
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Session.player.state.x, y), "pemain tetap di petak yang bisa dilewati (y=%d)" % y)
+
+	print("== pertarungan")
+	world.queue_free()
+	await process_frame
+	Session.safe_steps = 0
+	var none: Dictionary = await Api.battle_get()
+	_check(not none.ok and none.status == 404, "belum ada pertarungan -> 404")
+	var pos_before := Vector2i(Session.player.state.x, Session.player.state.y)
+	var start: Dictionary = await Api.battle_start()
+	_check(start.ok and start.status == 201, "mulai pertarungan 201")
+	if start.ok:
+		var again: Dictionary = await Api.battle_start()
+		_check(not again.ok and again.status == 409, "mulai dua kali ditolak 409")
+		Session.merge_server_player(start.data.player)
+		Session.battle = start.data.battle
+		_check(Vector2i(Session.player.state.x, Session.player.state.y) == pos_before, "merge tidak mengubah posisi lokal")
+		_check(typeof(Session.player.state.hp) == TYPE_INT, "hasil merge memakai int")
+		var scene: Control = load("res://scenes/battle.tscn").instantiate()
+		root.add_child(scene)
+		await process_frame
+		_check(scene._enemy_name.text == str(Session.battle.enemy_name), "layar pertarungan menampilkan nama musuh")
+		_check((scene._buttons["potion"] as Button).disabled, "ramuan nonaktif saat HP penuh")
+		var guard := 0
+		while not scene._finished and guard < 60:
+			guard += 1
+			scene._on_action("attack")
+			while scene._busy:
+				await process_frame
+		_check(scene._finished, "pertarungan selesai (%s) dalam %d aksi" % [scene._result, guard])
+		_check(Session.battle.is_empty(), "sesi tidak lagi menyimpan pertarungan")
+		_check(scene._btn_continue.visible, "tombol lanjut muncul")
+		var after: Dictionary = await Api.get_me()
+		_check(after.ok and int(after.data.state.hp) == Session.player.state.hp, "HP lokal sama dengan server")
+		_check(int(after.data.version) == Session.player.version, "versi lokal sinkron setelah pertarungan")
+		if scene._result == "won":
+			_check(int(after.data.state.xp) > 0 or int(after.data.state.level) > 1, "menang memberi XP")
+		scene.queue_free()
+		await process_frame
+	var gone: Dictionary = await Api.battle_get()
+	_check(not gone.ok and gone.status == 404, "pertarungan terhapus di server setelah selesai")
+
+	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
+	Session.player.state.x = 8
+	Session.merge_server_player(merged)
+	_check(Session.player.state.x == 8 and Session.player.state.level == 3, "merge: posisi lokal tetap, statistik ikut server")
+	_check(typeof(Session.player.state.inventory[0].qty) == TYPE_INT and Session.player.version == 9, "merge: angka menjadi int")
+	Session.merge_server_player(merged, true)
+	_check(Session.player.state.x == 1, "merge dengan adopt_position memakai posisi server")
 
 	print("== token salah")
 	Api.token = "salah"

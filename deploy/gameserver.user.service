@@ -1,0 +1,24 @@
+# Layanan systemd tingkat PENGGUNA (tanpa sudo) untuk server game di Raspberry Pi.
+# Menyala otomatis saat Pi hidup bila `loginctl show-user $USER -p Linger` = yes
+# (jika "no": sudo loginctl enable-linger $USER).
+#
+# Pasang:
+#   make install-user-service
+# Kendali:
+#   systemctl --user status gameserver
+#   systemctl --user restart gameserver     (atau: make restart setelah build ulang)
+#   journalctl --user -u gameserver -f      (log)
+[Unit]
+Description=Game_server (server game RPG)
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/Game_server
+ExecStart=%h/Game_server/bin/gameserver
+Environment=GAME_ADDR=:8090
+Environment=GAME_DB=%h/Game_server/data/game.db
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

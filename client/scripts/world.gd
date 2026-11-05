@@ -9,6 +9,8 @@ const MOVE_TIME := 0.10
 const SAVE_DELAY := 1.5
 const RETRY_DELAY := 5.0
 const HUD_TOP := 960
+const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap langkah di ladang
+const BATTLE_SCENE := "res://scenes/battle.tscn"
 
 var _map_id := Maps.DEFAULT_MAP
 var _vis := Vector2.ZERO  # posisi gambar pemain (piksel), digeser halus oleh tween
@@ -16,6 +18,7 @@ var _moving := false
 var _held := Vector2i.ZERO  # arah tombol layar yang sedang ditekan
 var _unsaved := false
 var _saving := false
+var _encountering := false  # sedang menuju pertarungan: gerak dikunci
 var _save_timer: Timer
 var _hud: Label
 var _status: Label
@@ -43,9 +46,13 @@ func _ready() -> void:
 	_build_ui()
 	_refresh_hud()
 	_set_status("Mode uji (tidak disimpan)" if Session.offline else "Tersimpan")
+	if not Session.offline:
+		_resume_battle_if_any()  # mis. aplikasi ditutup di tengah pertarungan
 
 
 func _process(_delta: float) -> void:
+	if _encountering:
+		return
 	if _moving:
 		queue_redraw()
 		return
@@ -94,6 +101,60 @@ func _try_move(dir: Vector2i) -> void:
 func _on_move_done() -> void:
 	_moving = false
 	queue_redraw()
+	if Session.offline or _encountering:
+		return
+	var st: Dictionary = Session.player.state
+	if Maps.tile_at(_map_id, st.x, st.y) != "T":
+		return  # pertemuan hanya terjadi di ladang
+	if Session.safe_steps > 0:
+		Session.safe_steps -= 1
+		return
+	if randf() < ENCOUNTER_CHANCE:
+		_start_encounter()
+
+
+# --- pertarungan ---
+
+func _start_encounter() -> void:
+	_encountering = true
+	_held = Vector2i.ZERO
+	_set_status("Sesuatu bergerak di ladang...")
+	await _flush_save()  # posisi harus tersimpan dulu; server tidak ikut gerak kita
+	var res: Dictionary = await Api.battle_start()
+	if res.ok:
+		_enter_battle(res.data)
+	elif res.status == 409:
+		# Sudah ada pertarungan di server: lanjutkan yang itu.
+		if not await _resume_battle_if_any():
+			_encountering = false
+	else:
+		_encountering = false
+		_set_status(str(res.error))
+
+
+## Mengembalikan true bila ada pertarungan berjalan dan layar pindah ke sana.
+func _resume_battle_if_any() -> bool:
+	var res: Dictionary = await Api.battle_get()
+	if not res.ok:
+		return false
+	_encountering = true
+	_enter_battle(res.data)
+	return true
+
+
+func _enter_battle(data: Dictionary) -> void:
+	Session.merge_server_player(data.player)
+	var battle: Variant = data.get("battle")
+	Session.battle = battle if battle is Dictionary else {}
+	get_tree().change_scene_to_file(BATTLE_SCENE)
+
+
+func _flush_save() -> void:
+	_save_timer.stop()
+	while _saving:
+		await get_tree().process_frame
+	if _unsaved:
+		await _save()
 
 
 # --- simpan ke server ---
@@ -174,8 +235,13 @@ func _add_pad(layer: CanvasLayer, text: String, dir: Vector2i, pos: Vector2) -> 
 
 func _refresh_hud() -> void:
 	var st: Dictionary = Session.player.state
-	_hud.text = "%s  Lv %d\nHP %d/%d\nEmas %d" % [
+	var potions := 0
+	for item: Dictionary in st.inventory:
+		if item.id == "ramuan":
+			potions = int(item.qty)
+	_hud.text = "%s  Lv %d\nHP %d/%d  Emas %d\nRamuan %d  XP %d/%d" % [
 		Session.player.name, st.level, st.hp, st.max_hp, st.gold,
+		potions, st.xp, 20 * int(st.level),
 	]
 
 

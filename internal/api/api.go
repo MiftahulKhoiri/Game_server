@@ -32,17 +32,26 @@ type Server struct {
 	store *store.Store
 	log   *slog.Logger
 	info  version.Info
+	rng   game.Rand
 }
 
 // New membuat http.Handler lengkap dengan routing.
 func New(st *store.Store, log *slog.Logger, info version.Info) http.Handler {
-	s := &Server{store: st, log: log, info: info}
+	return NewWithRand(st, log, info, game.RandomSource{})
+}
+
+// NewWithRand sama seperti New tetapi dengan sumber acak buatan sendiri (untuk tes).
+func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.Rand) http.Handler {
+	s := &Server{store: st, log: log, info: info, rng: rng}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /v1/version", s.versionInfo)
 	mux.HandleFunc("POST /v1/players", s.createPlayer)
 	mux.Handle("GET /v1/players/me", s.auth(http.HandlerFunc(s.getMe)))
 	mux.Handle("PUT /v1/players/me/save", s.auth(http.HandlerFunc(s.saveMe)))
+	mux.Handle("GET /v1/battle", s.auth(http.HandlerFunc(s.getBattle)))
+	mux.Handle("POST /v1/battle/start", s.auth(http.HandlerFunc(s.startBattle)))
+	mux.Handle("POST /v1/battle/action", s.auth(http.HandlerFunc(s.battleAction)))
 	return s.logRequests(s.clientGate(mux))
 }
 
@@ -122,7 +131,9 @@ func (s *Server) saveMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	p, err := s.store.SaveState(r.Context(), playerFrom(r).ID, req.State, req.Version)
+	// Server otoritatif: hanya posisi yang diterima dari klien.
+	st := req.State
+	p, err := s.store.SavePosition(r.Context(), playerFrom(r).ID, st.Map, st.X, st.Y, req.Version)
 	switch {
 	case errors.Is(err, store.ErrConflict):
 		writeError(w, http.StatusConflict, "versi data tidak cocok; ambil data terbaru dulu")
@@ -132,6 +143,99 @@ func (s *Server) saveMe(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 	default:
 		writeJSON(w, http.StatusOK, p)
+	}
+}
+
+// --- pertarungan ---
+
+var (
+	errBattleActive = errors.New("sudah ada pertarungan yang berjalan")
+	errNoBattle     = errors.New("tidak ada pertarungan")
+)
+
+type battleResponse struct {
+	// Battle bernilai null bila pertarungan sudah selesai.
+	Battle  *game.Battle  `json:"battle"`
+	Player  game.Player   `json:"player"`
+	Status  string        `json:"status,omitempty"`
+	Log     []string      `json:"log,omitempty"`
+	Rewards *game.Rewards `json:"rewards,omitempty"`
+}
+
+func (s *Server) getBattle(w http.ResponseWriter, r *http.Request) {
+	id := playerFrom(r).ID
+	b, err := s.store.Battle(r.Context(), id)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, errNoBattle.Error())
+		return
+	}
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	p, err := s.store.PlayerByID(r.Context(), id)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, battleResponse{Battle: &b, Player: p, Status: game.StatusOngoing})
+}
+
+func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
+	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
+		if sess.Battle != nil {
+			return errBattleActive
+		}
+		b := game.StartBattle(&sess.Player, s.rng)
+		sess.Battle = &b
+		return nil
+	})
+	switch {
+	case errors.Is(err, errBattleActive):
+		writeError(w, http.StatusConflict, "masih ada pertarungan yang berjalan; lanjutkan lewat GET /v1/battle")
+	case err != nil:
+		s.fail(w, r, err)
+	default:
+		writeJSON(w, http.StatusCreated, battleResponse{Battle: sess.Battle, Player: sess.Player, Status: game.StatusOngoing})
+	}
+}
+
+type actionRequest struct {
+	Action string `json:"action"`
+}
+
+func (s *Server) battleAction(w http.ResponseWriter, r *http.Request) {
+	var req actionRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	var result game.Result
+	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
+		if sess.Battle == nil {
+			return errNoBattle
+		}
+		res, err := sess.Battle.Act(&sess.Player, req.Action, s.rng)
+		if err != nil {
+			return err
+		}
+		result = res
+		if res.Status != game.StatusOngoing {
+			sess.Battle = nil // pertarungan selesai
+		}
+		return nil
+	})
+	switch {
+	case errors.Is(err, errNoBattle):
+		writeError(w, http.StatusNotFound, errNoBattle.Error())
+	case errors.Is(err, game.ErrBadAction), errors.Is(err, game.ErrNoPotion), errors.Is(err, game.ErrFullHP):
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+	case err != nil:
+		s.fail(w, r, err)
+	default:
+		writeJSON(w, http.StatusOK, battleResponse{
+			Battle: sess.Battle, Player: sess.Player,
+			Status: result.Status, Log: result.Log, Rewards: result.Rewards,
+		})
 	}
 }
 
