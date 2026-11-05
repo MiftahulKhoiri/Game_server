@@ -72,6 +72,17 @@ var quests = []QuestDef{
 		RewardItems: []Item{{ID: "permata_merah", Qty: 1}},
 		Requires:    "selamatkan_nenek",
 	},
+	{
+		ID:          "usir_ogre",
+		Title:       "Usir Ogre Batu",
+		Giver:       "nenek_penjual",
+		Description: "Ogre Batu bersarang di Gunung Batu, di selatan ladang perbatasan, dan terus mengirim monster ke kerajaan. Kalahkan satu Ogre Batu di sana.",
+		TargetIDs:   []string{"ogre_batu"},
+		Count:       1,
+		RewardGold:  150,
+		RewardItems: []Item{{ID: "koin_kuno", Qty: 2}},
+		Requires:    "selamatkan_petani",
+	},
 }
 
 // QuestProgress adalah catatan misi pada pemain (disimpan di State).

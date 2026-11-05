@@ -115,8 +115,9 @@ func _on_move_done() -> void:
 	if Session.offline or _encountering:
 		return
 	var st: Dictionary = Session.player.state
-	if Maps.tile_at(_map_id, st.x, st.y) != "T":
-		return  # pertemuan hanya terjadi di ladang
+	var tile := Maps.tile_at(_map_id, st.x, st.y)
+	if tile == "" or not Maps.ENCOUNTER_TILES.contains(tile):
+		return  # pertemuan hanya terjadi di ladang / kerikil
 	if Session.safe_steps > 0:
 		Session.safe_steps -= 1
 		return
@@ -398,6 +399,18 @@ func _draw_tile(tile: String, pos: Vector2) -> void:
 			draw_circle(pos + Vector2(14, 16), 4, Color("f0d040"))
 			draw_circle(pos + Vector2(32, 30), 4, Color("e86a9a"))
 			draw_circle(pos + Vector2(30, 12), 3, Color("ffffff"))
+		"M":
+			draw_rect(rect, Color("8a7f72"))
+			draw_rect(Rect2(pos + Vector2(10, 12), Vector2(6, 4)), Color("756b5f"))
+			draw_rect(Rect2(pos + Vector2(30, 32), Vector2(8, 4)), Color("9a8f81"))
+		"G":
+			draw_rect(rect, Color("6e6258"))
+			for i in 6:
+				draw_circle(pos + Vector2(8 + (i * 17) % 36, 8 + (i * 13) % 34), 3, Color("968a7c"))
+		"R":
+			draw_rect(rect, Color("8a7f72"))
+			draw_circle(pos + Vector2(24, 26), 20, Color("55504a"))
+			draw_circle(pos + Vector2(20, 20), 12, Color("6b655d"))
 		"S":
 			draw_rect(rect, Color("7d7d85"))
 			for i in 3:

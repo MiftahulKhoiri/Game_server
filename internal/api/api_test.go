@@ -541,6 +541,9 @@ func TestSaveRejectsUnknownMapAndOutOfBounds(t *testing.T) {
 	if code := save(1, game.MapDesaAwal, 99, 3); code != http.StatusUnprocessableEntity {
 		t.Errorf("di luar peta harus 422, dapat %d", code)
 	}
+	if code := save(1, game.MapGunungBatu, 99, 1); code != http.StatusUnprocessableEntity {
+		t.Errorf("di luar peta gunung harus 422, dapat %d", code)
+	}
 	if code := save(1, game.MapPerbatasan, 7, 1); code != http.StatusOK {
 		t.Errorf("pindah ke perbatasan harus 200, dapat %d", code)
 	}

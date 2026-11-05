@@ -1,5 +1,7 @@
 package game
 
+import "slices"
+
 // Enemy adalah jenis musuh. Tema: monster yang menyerang desa kerajaan.
 type Enemy struct {
 	ID          string
@@ -9,21 +11,24 @@ type Enemy struct {
 	Defense     int
 	XP          int
 	Gold        int
-	Zone        string // peta tempat muncul ("" = di mana saja)
-	MinLevel    int    // baru muncul bila level pemain >= ini
-	DropID      string // barang yang mungkin dijatuhkan ("" = tidak ada)
-	DropPercent int    // peluang jatuh, 0-100
+	Zones       []string // peta tempat muncul (kosong = di mana saja)
+	MinLevel    int      // baru muncul bila level pemain >= ini
+	DropID      string   // barang yang mungkin dijatuhkan ("" = tidak ada)
+	DropPercent int      // peluang jatuh, 0-100
 }
 
 var enemies = []Enemy{
-	{ID: "tikus_sawah", Zone: MapDesaAwal, Name: "Tikus Sawah", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10},
-	{ID: "belalang_raksasa", Zone: MapDesaAwal, Name: "Belalang Raksasa", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
-	{ID: "ular_sawah", Zone: MapDesaAwal, Name: "Ular Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
-	{ID: "babi_hutan", Zone: MapDesaAwal, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25},
+	{ID: "tikus_sawah", Zones: []string{MapDesaAwal}, Name: "Tikus Sawah", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10},
+	{ID: "belalang_raksasa", Zones: []string{MapDesaAwal}, Name: "Belalang Raksasa", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
+	{ID: "ular_sawah", Zones: []string{MapDesaAwal}, Name: "Ular Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
+	{ID: "babi_hutan", Zones: []string{MapDesaAwal}, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25},
 	// Perbatasan: wilayah di luar gerbang desa, lebih berbahaya.
-	{ID: "goblin", Zone: MapPerbatasan, Name: "Goblin", HP: 26, Attack: 7, Defense: 2, XP: 15, Gold: 7, MinLevel: 1, DropID: "taring_goblin", DropPercent: 35},
-	{ID: "serigala_hutan", Zone: MapPerbatasan, Name: "Serigala Hutan", HP: 32, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 20},
-	{ID: "ogre_batu", Zone: MapPerbatasan, Name: "Ogre Batu", HP: 70, Attack: 12, Defense: 5, XP: 45, Gold: 25, MinLevel: 5, DropID: "permata_merah", DropPercent: 30},
+	{ID: "goblin", Zones: []string{MapPerbatasan}, Name: "Goblin", HP: 26, Attack: 7, Defense: 2, XP: 15, Gold: 7, MinLevel: 1, DropID: "taring_goblin", DropPercent: 35},
+	{ID: "serigala_hutan", Zones: []string{MapPerbatasan, MapGunungBatu}, Name: "Serigala Hutan", HP: 32, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 20},
+	// Gunung Batu: sarang Ogre Batu, wilayah paling berbahaya saat ini.
+	{ID: "kelelawar_gua", Zones: []string{MapGunungBatu}, Name: "Kelelawar Gua", HP: 28, Attack: 8, Defense: 1, XP: 18, Gold: 8, MinLevel: 3, DropID: PotionID, DropPercent: 20},
+	{ID: "golem_kerikil", Zones: []string{MapGunungBatu}, Name: "Golem Kerikil", HP: 50, Attack: 10, Defense: 6, XP: 32, Gold: 14, MinLevel: 4, DropID: "koin_kuno", DropPercent: 25},
+	{ID: "ogre_batu", Zones: []string{MapGunungBatu}, Name: "Ogre Batu", HP: 70, Attack: 12, Defense: 5, XP: 45, Gold: 25, MinLevel: 5, DropID: "permata_merah", DropPercent: 30},
 }
 
 // EnemyByID mencari musuh berdasarkan id.
@@ -36,24 +41,36 @@ func EnemyByID(id string) (Enemy, bool) {
 	return Enemy{}, false
 }
 
+// inZone: apakah musuh muncul di peta ini.
+func (e Enemy) inZone(mapID string) bool {
+	return len(e.Zones) == 0 || slices.Contains(e.Zones, mapID)
+}
+
 // PickEnemy memilih musuh acak yang cocok untuk level pemain dan peta tempat ia berada.
-// Bila peta tidak punya musuh yang cocok, dipilih dari semua musuh yang levelnya sesuai.
+// Bila pemain terlalu rendah levelnya untuk peta itu, ia tetap bertemu musuh terlemah
+// di peta itu (masuk wilayah berbahaya terlalu dini memang berisiko).
 func PickEnemy(level int, mapID string, rng Rand) Enemy {
-	var eligible, anywhere []Enemy
+	var eligible, inMap []Enemy
 	for _, e := range enemies {
-		if e.MinLevel > level {
+		if !e.inZone(mapID) {
 			continue
 		}
-		anywhere = append(anywhere, e)
-		if e.Zone == "" || e.Zone == mapID {
+		inMap = append(inMap, e)
+		if e.MinLevel <= level {
 			eligible = append(eligible, e)
 		}
 	}
 	if len(eligible) == 0 {
-		eligible = anywhere
-	}
-	if len(eligible) == 0 {
-		eligible = enemies[:1]
+		if len(inMap) == 0 {
+			inMap = enemies // peta tak dikenal: semua musuh
+		}
+		weakest := inMap[0]
+		for _, e := range inMap {
+			if e.MinLevel < weakest.MinLevel {
+				weakest = e
+			}
+		}
+		return weakest
 	}
 	return eligible[rng.Intn(len(eligible))]
 }

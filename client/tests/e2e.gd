@@ -57,11 +57,14 @@ func _run() -> void:
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 4, 2), "pintu rumah bisa dilewati")
 	_check_map_connected(Maps.DEFAULT_MAP)
 	_check_map_connected(Maps.PERBATASAN)
+	_check_map_connected(Maps.GUNUNG)
 	for id: String in Maps.EXITS:
 		for e: Dictionary in Maps.EXITS[id]:
 			_check(Maps.walkable(id, e.pos.x, e.pos.y), "pintu %s %s berada di petak yang bisa dilewati" % [id, e.pos])
 			_check(Maps.walkable(e.to, e.at.x, e.at.y) and Maps.exit_at(e.to, e.at.x, e.at.y).is_empty(), "tujuan pintu %s -> %s aman dan bukan pintu" % [id, e.to])
 	_check(not Maps.walkable(Maps.PERBATASAN, 3, 8), "tembok batu menghalangi")
+	_check(not Maps.walkable(Maps.GUNUNG, 0, 5) and Maps.walkable(Maps.GUNUNG, 7, 0), "batu besar menghalangi, pintu gunung terbuka")
+	_check(Maps.ENCOUNTER_TILES.contains(Maps.tile_at(Maps.GUNUNG, 2, 2)), "kerikil gunung tempat pertemuan musuh")
 
 	print("== api")
 	Api.base_url = OS.get_environment("GAME_URL") if OS.get_environment("GAME_URL") != "" else "http://127.0.0.1:8099"

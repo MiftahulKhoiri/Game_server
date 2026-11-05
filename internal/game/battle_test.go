@@ -175,27 +175,31 @@ func TestBadAction(t *testing.T) {
 
 func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 	for i := 0; i < 300; i++ {
-		if e := PickEnemy(1, MapDesaAwal, RandomSource{}); e.MinLevel > 1 || e.Zone != MapDesaAwal {
-			t.Fatalf("level 1 di desa bertemu %s (zona %q, butuh level %d)", e.ID, e.Zone, e.MinLevel)
+		if e := PickEnemy(1, MapDesaAwal, RandomSource{}); e.MinLevel > 1 || !e.inZone(MapDesaAwal) {
+			t.Fatalf("level 1 di desa bertemu %s", e.ID)
 		}
-		if e := PickEnemy(1, MapPerbatasan, RandomSource{}); e.Zone != MapPerbatasan || e.MinLevel > 1 {
+		if e := PickEnemy(1, MapPerbatasan, RandomSource{}); !e.inZone(MapPerbatasan) || e.MinLevel > 1 {
 			t.Fatalf("level 1 di perbatasan bertemu %s", e.ID)
 		}
 	}
-	for _, zone := range []string{MapDesaAwal, MapPerbatasan} {
+	for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu} {
 		seen := map[string]bool{}
 		want := 0
 		for _, e := range enemies {
-			if e.Zone == zone {
+			if e.inZone(zone) {
 				want++
 			}
 		}
-		for i := 0; i < 800; i++ {
+		for i := 0; i < 1500; i++ {
 			seen[PickEnemy(10, zone, RandomSource{}).ID] = true
 		}
 		if len(seen) != want {
 			t.Errorf("%s level 10 harus bisa bertemu %d musuh, dapat %v", zone, want, seen)
 		}
+	}
+	// Terlalu rendah untuk wilayahnya: tetap bertemu musuh terlemah di sana, bukan musuh peta lain.
+	if e := PickEnemy(1, MapGunungBatu, RandomSource{}); !e.inZone(MapGunungBatu) || e.MinLevel != 3 {
+		t.Errorf("level 1 di gunung harus bertemu musuh terlemah gunung, dapat %s", e.ID)
 	}
 	// Peta tak dikenal tidak boleh membuat server panik.
 	if e := PickEnemy(1, "tidak_ada", RandomSource{}); e.ID == "" {
@@ -203,11 +207,18 @@ func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 	}
 }
 
+func TestOgreOnlyInGunung(t *testing.T) {
+	e, ok := EnemyByID("ogre_batu")
+	if !ok || e.inZone(MapDesaAwal) || e.inZone(MapPerbatasan) || !e.inZone(MapGunungBatu) {
+		t.Errorf("ogre hanya boleh di gunung: %+v", e)
+	}
+}
+
 func TestValidPosition(t *testing.T) {
 	ok := []struct {
 		m    string
 		x, y int
-	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 14, 19}, {MapPerbatasan, 7, 1}}
+	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 14, 19}, {MapPerbatasan, 7, 1}, {MapGunungBatu, 7, 1}}
 	for _, c := range ok {
 		if !ValidPosition(c.m, c.x, c.y) {
 			t.Errorf("%v harus valid", c)

@@ -10,7 +10,7 @@ Satu pemain; server menyimpan progress.
 | Bagian | Keadaan |
 |--------|---------|
 | Server (Go) | Berjalan: daftar pemain, simpan posisi, musuh, pertarungan bergiliran, toko, dan misi (otoritatif) |
-| Klien Android (Godot 4.7) | Layar masuk, peta grid, gerak, simpan otomatis, pertarungan di ladang, toko, NPC, misi, dan dua peta; sebagian gambar sudah ada |
+| Klien Android (Godot 4.7) | Layar masuk, peta grid, gerak, simpan otomatis, pertarungan di ladang, toko, NPC, misi, dan tiga peta; sebagian gambar sudah ada |
 | APK | Dibangun otomatis oleh GitHub Actions (lihat [`client/README.md`](client/README.md)) |
 | Aset gambar | Menunggu ilustrator |
 

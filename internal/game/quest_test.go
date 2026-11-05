@@ -217,3 +217,30 @@ func TestClaimWithFullInventoryChangesNothing(t *testing.T) {
 		t.Errorf("tidak boleh ada yang berubah: gold=%d status=%s inv=%d", st.Gold, st.Quests[i].Status, len(st.Inventory))
 	}
 }
+
+func TestOgreQuestChain(t *testing.T) {
+	st := NewState()
+	claimNenek(t, &st)
+	if v := st.QuestViews()[2]; v.ID != "usir_ogre" || v.Status != QuestLocked {
+		t.Fatalf("misi ogre harus terkunci sebelum petani selesai: %+v", v)
+	}
+	_ = st.AcceptQuest(petaniQuest)
+	for i := 0; i < 3; i++ {
+		st.RecordKill("goblin")
+	}
+	if _, err := st.ClaimQuest(petaniQuest); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.AcceptQuest("usir_ogre"); err != nil {
+		t.Fatal(err)
+	}
+	if log := st.RecordKill("goblin"); len(log) != 0 {
+		t.Errorf("hanya ogre yang dihitung: %v", log)
+	}
+	st.RecordKill("ogre_batu")
+	gold := st.Gold
+	def, err := st.ClaimQuest("usir_ogre")
+	if err != nil || st.Gold != gold+150 || qtyOf(st, "koin_kuno") != 2 {
+		t.Errorf("hadiah salah: err=%v gold=%d->%d koin=%d (%s)", err, gold, st.Gold, qtyOf(st, "koin_kuno"), def.RewardText())
+	}
+}

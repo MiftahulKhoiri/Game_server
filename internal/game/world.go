@@ -4,8 +4,9 @@ package game
 // posisi yang dikirim klien dan memilih musuh sesuai wilayah; bentuk petak
 // (tembok, air) masih milik klien (client/scripts/maps.gd).
 const (
-	MapDesaAwal   = SpawnMap     // "desa_awal"
-	MapPerbatasan = "perbatasan" // ladang di luar gerbang selatan desa
+	MapDesaAwal   = SpawnMap      // "desa_awal"
+	MapPerbatasan = "perbatasan"  // ladang di luar gerbang selatan desa
+	MapGunungBatu = "gunung_batu" // sarang Ogre Batu, di selatan Perbatasan
 )
 
 // MapInfo adalah ukuran sebuah peta dalam petak.
@@ -16,6 +17,7 @@ type MapInfo struct {
 var worldMaps = map[string]MapInfo{
 	MapDesaAwal:   {Width: 15, Height: 20},
 	MapPerbatasan: {Width: 15, Height: 20},
+	MapGunungBatu: {Width: 15, Height: 20},
 }
 
 // ValidPosition memeriksa peta dikenal dan (x, y) berada di dalamnya.

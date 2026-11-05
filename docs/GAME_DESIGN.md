@@ -70,6 +70,7 @@ dan gambar `client/assets/characters/<id npc>.png`.
 |------|---------|-------|--------|
 | Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 tikus sawah atau belalang raksasa | 40 emas |
 | Selamatkan Petani | Petani (11,6) | Kalahkan 3 goblin di Perbatasan. Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
+| Usir Ogre Batu | Nenek (3,6) | Kalahkan 1 Ogre Batu di Gunung Batu. Terkunci sampai hadiah Petani diambil | 150 emas + 2 Koin Kuno |
 
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
@@ -77,8 +78,8 @@ ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 ## Masih perlu diputuskan (pemilik proyek)
 
 1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
-2. **Misi berikutnya.** Setelah Petani: siapa lagi yang perlu diselamatkan, dan dari monster apa? Ogre batu menunggu gambar yang transparan.
-3. **Peta berikutnya.** Di mana Ogre Batu bersarang? Hutan, tambang, atau gerbang istana kerajaan?
+2. **Penduduk lain.** Siapa lagi yang perlu diselamatkan? Tiap NPC baru butuh gambar di `client/assets/characters/`.
+3. **Setelah Ogre.** Siapa dalang yang mengirim monster, dan di mana ia berada? Apa isi peta berikutnya (istana, hutan, gua)?
 
 ## Sistem yang sudah ada di server
 
@@ -114,19 +115,23 @@ separuh, kembali ke titik awal desa.
 | Ular Sawah | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
 | Babi Hutan | Desa | 34 | 8 | 3 | 22 | 9 | 3 | Ramuan 25% |
 | Goblin | Perbatasan | 26 | 7 | 2 | 15 | 7 | 1 | Taring Goblin 35% |
-| Serigala Hutan | Perbatasan | 32 | 9 | 2 | 20 | 9 | 3 | Ramuan 20% |
-| Ogre Batu | Perbatasan | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
+| Serigala Hutan | Perbatasan dan Gunung Batu | 32 | 9 | 2 | 20 | 9 | 3 | Ramuan 20% |
+| Kelelawar Gua | Gunung Batu | 28 | 8 | 1 | 18 | 8 | 3 | Ramuan 20% |
+| Golem Kerikil | Gunung Batu | 50 | 10 | 6 | 32 | 14 | 4 | Koin Kuno 25% |
+| Ogre Batu | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
 
 Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
 terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
-Hutan dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
+Hutan, Kelelawar Gua, Golem Kerikil, dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
+Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh terlemah di wilayah itu.
 
 ## Peta
 
 | Peta | Isi | Pintu |
 |------|-----|-------|
 | Desa Awal (`desa_awal`) | Rumah, alun-alun, sungai, ladang, Nenek dan Petani | Gerbang selatan (7,19) ke Perbatasan |
-| Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Gerbang utara (7,0) kembali ke desa; ujung selatan masih tertutup |
+| Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
+| Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) kembali ke Perbatasan |
 
 Server mengenal ukuran tiap peta (`internal/game/world.go`) dan menolak posisi di luar
 peta atau peta asing. Bentuk petak (tembok, air) masih milik klien (`client/scripts/maps.gd`);

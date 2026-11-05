@@ -5,18 +5,29 @@ extends Control
 const WORLD_SCENE := "res://scenes/world.tscn"
 const ART_DIR := "res://assets/characters/"
 const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur", "petani": "Petani"}
+## Kalimat per misi (kunci = id misi di server): tawaran, terkunci, ucapan terima kasih, sesudah selesai.
+const QUEST_TEXTS := {
+	"selamatkan_nenek": {
+		"offer": "Selamat datang, Nak. Desa ini sedang tidak aman...",
+		"thanks": "Terima kasih sudah menyelamatkanku, Nak! Ambil hadiah kecil ini:",
+		"done": "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu.",
+	},
+	"selamatkan_petani": {
+		"offer": "Hei, Ksatria! Ladangku sudah diinjak-injak makhluk-makhluk hijau itu...",
+		"locked": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi.",
+		"thanks": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
+		"done": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
+	},
+	"usir_ogre": {
+		"offer": "Ksatria... ada kabar buruk dari para pedagang. Sumber semua kekacauan ini ada di gunung.",
+		"locked": "Nenek sedang mengkhawatirkan banyak hal. Bantu Petani dulu, ya, Nak.",
+		"thanks": "Kamu mengalahkan Ogre Batu! Kerajaan berutang budi padamu. Ini untukmu:",
+		"done": "Gunung itu sunyi sekarang. Terima kasih, Pelindung Kerajaan.",
+	},
+}
 const GREETINGS := {
 	"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman...",
 	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak makhluk-makhluk hijau itu...",
-}
-const LOCKED := {"petani": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi."}
-const THANKS := {
-	"nenek_penjual": "Terima kasih sudah menyelamatkanku, Nak! Ambil hadiah kecil ini:",
-	"petani": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
-}
-const DONE := {
-	"nenek_penjual": "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu.",
-	"petani": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
 }
 
 var _npc := ""
@@ -46,10 +57,18 @@ func _load_quest() -> void:
 	if not res.ok:
 		_text.text = str(res.error)
 		return
+	# Misi NPC ini yang sedang relevan: yang pertama belum diambil hadiahnya,
+	# kalau semua sudah selesai tampilkan yang terakhir.
 	for q: Dictionary in res.data.get("quests", []):
-		if str(q.giver) == _npc:
-			_quest = q
+		if str(q.giver) != _npc:
+			continue
+		_quest = q
+		if str(q.status) != "claimed":
 			return
+
+
+func _text_for(key: String, fallback := "") -> String:
+	return str(QUEST_TEXTS.get(str(_quest.get("id", "")), {}).get(key, fallback))
 
 
 func _render() -> void:
@@ -62,17 +81,17 @@ func _render() -> void:
 	var target := int(_quest.target_count)
 	match status:
 		"locked":
-			_text.text = str(LOCKED.get(_npc, "Belum saatnya."))
+			_text.text = _text_for("locked", "Belum saatnya.")
 		"available":
-			_text.text = "%s\n\n%s\n\nHadiah: %s." % [GREETINGS.get(_npc, ""), _quest.description, _quest.reward_text]
+			_text.text = "%s\n\n%s\n\nHadiah: %s." % [_text_for("offer"), _quest.description, _quest.reward_text]
 			_set_action("Terima misi", "accept")
 		"active":
-			_text.text = "%s\n\nKemajuan: %d/%d. Hati-hati di ladang, ya." % [_quest.title, int(_quest.progress), target]
+			_text.text = "%s\n\nKemajuan: %d/%d. Hati-hati di luar sana, ya." % [_quest.title, int(_quest.progress), target]
 		"done":
-			_text.text = "%s %s." % [THANKS.get(_npc, "Terima kasih!"), _quest.reward_text]
+			_text.text = "%s %s." % [_text_for("thanks", "Terima kasih!"), _quest.reward_text]
 			_set_action("Ambil hadiah", "claim")
 		_:
-			_text.text = str(DONE.get(_npc, "Terima kasih."))
+			_text.text = _text_for("done", "Terima kasih.")
 
 
 func _set_action(label: String, kind: String) -> void:
