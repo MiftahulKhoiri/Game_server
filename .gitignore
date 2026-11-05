@@ -17,6 +17,8 @@ client/export/
 *.aab
 *.keystore
 *.jks
+# Kunci DEBUG publik (sandi 'android', hanya untuk APK uji; lihat deploy/android/README.md)
+!deploy/android/debug.keystore
 
 # Editor / OS
 .vscode/

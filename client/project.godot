@@ -1,0 +1,33 @@
+; Proyek Godot 4 - klien Android "Game Petualang".
+; Disunting terutama lewat editor Godot; hati-hati bila mengubah manual.
+
+config_version=5
+
+[application]
+
+config/name="Game Petualang"
+config/description="Klien RPG 2D untuk server Game_server"
+run/main_scene="res://scenes/login.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Api="*res://scripts/api.gd"
+Session="*res://scripts/session.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/window_width_override=360
+window/size/window_height_override=640
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=0

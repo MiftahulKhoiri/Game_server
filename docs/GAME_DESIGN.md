@@ -9,17 +9,19 @@
 - Mode: **satu pemain**; server menyimpan progress (bukan multiplayer).
 - Platform: **Android (APK)**; server berjalan di Raspberry Pi 5.
 
-## Yang perlu diputuskan (pemilik proyek)
+## Keputusan gameplay
+
+- Gerak: **per kotak (grid)**, tampak atas (top-down).
+- Pertarungan: **bergiliran (turn-based)**.
+
+Alasannya hemat tenaga: gambar lebih sedikit (tanpa animasi banyak arah), logika
+server mudah diuji, dan nyaman di layar sentuh.
+
+## Masih perlu diputuskan (pemilik proyek)
 
 1. **Tema dan cerita.** Dunia apa, siapa tokoh utama, apa tujuan akhirnya?
-2. **Gaya gerak.** Berjalan per kotak (grid, seperti RPG klasik) atau bebas?
-3. **Gaya pertarungan.** Bergiliran (turn-based) atau waktu nyata?
-4. **Sudut pandang.** Atas-bawah (top-down) atau samping?
-5. **Kelas karakter.** Satu karakter tetap atau boleh memilih kelas?
-
-Usulan paling hemat tenaga untuk memulai: **grid top-down + pertarungan bergiliran**.
-Gambar lebih sedikit (tidak perlu animasi banyak arah), logika server lebih mudah
-diuji, dan nyaman dimainkan di layar sentuh.
+2. **Kelas karakter.** Satu karakter tetap atau boleh memilih kelas?
+3. **Nuansa gambar.** Pixel art 32x32, atau gaya lain?
 
 ## Sistem yang sudah ada di server
 
@@ -36,8 +38,8 @@ Pemain baru mulai di peta `desa_awal` posisi (5,5) dengan 30 HP.
 ## Peta jalan
 
 1. Fondasi server + penyimpanan progress (selesai).
-2. Klien Godot minimal: daftar, masuk, tampilkan karakter di peta kosong.
-3. Gerak di grid + peta pertama dari ilustrator.
+2. Klien Godot minimal: daftar, masuk, gerak di peta grid, simpan otomatis (selesai, gambar placeholder).
+3. Peta pertama dan karakter dari ilustrator menggantikan placeholder.
 4. Musuh dan pertarungan bergiliran (logika di server).
 5. Inventori, toko, dan misi.
 6. Rilis APK pertama lewat GitHub Actions.

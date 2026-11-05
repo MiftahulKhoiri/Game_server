@@ -33,10 +33,11 @@ dan bisa diotomatisasi lewat GitHub Actions (Android SDK tidak perlu dipasang di
 | `internal/game/` | Aturan dan model game; tidak tahu HTTP/DB |
 | `internal/store/` | Penyimpanan SQLite |
 | `internal/api/` | Handler HTTP, autentikasi, validasi |
-| `client/` | Proyek Godot (belum dibuat) |
+| `client/` | Proyek Godot 4.7 (klien Android) |
 | `assets/` | Gambar mentah/sumber dari ilustrator |
 | `docs/` | Dokumen desain dan kontrak API |
-| `deploy/` | File untuk menjalankan di Pi (systemd) |
+| `deploy/` | Menjalankan di Pi (systemd) dan kunci debug APK |
+| `scripts/` | Skrip bantu (uji klien <-> server) |
 
 Aturan arah ketergantungan: `api` -> `store` -> `game`. Paket `game` tidak
 boleh mengimpor paket lain di proyek ini.

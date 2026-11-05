@@ -1,6 +1,7 @@
-.PHONY: build run test vet fmt check clean
+.PHONY: build run test vet fmt check client-test clean
 
 BIN := bin/gameserver
+GODOT ?= godot
 
 build:
 	go build -o $(BIN) ./cmd/gameserver
@@ -22,6 +23,10 @@ check:
 	@test -z "$$(gofmt -l .)" || (echo "Jalankan 'make fmt'"; gofmt -l .; exit 1)
 	go vet ./...
 	go test ./...
+
+# Uji klien Godot <-> server. Butuh Godot 4.7:  make client-test GODOT=/path/ke/godot
+client-test:
+	GODOT=$(GODOT) bash scripts/client-test.sh
 
 clean:
 	rm -rf bin

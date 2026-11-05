@@ -1,0 +1,85 @@
+extends SceneTree
+## Uji ujung-ke-ujung klien <-> server. Dijalankan lewat: make client-test
+## (butuh server Go yang hidup di GAME_URL, bawaan http://127.0.0.1:8099).
+
+const Maps = preload("res://scripts/maps.gd")
+
+var _failed := false
+var Api: Node  # autoload tidak dikenal saat skrip utama dikompilasi; ambil dari pohon
+var Session: Node
+
+
+func _initialize() -> void:
+	await _run()
+	quit(1 if _failed else 0)
+
+
+func _check(cond: bool, label: String) -> void:
+	print(("  ok   " if cond else "  GAGAL ") + label)
+	if not cond:
+		_failed = true
+
+
+func _run() -> void:
+	await process_frame  # tunggu pohon siap sebelum memakai node/HTTPRequest
+	Api = root.get_node("Api")
+	Session = root.get_node("Session")
+	print("== peta")
+	for y in Maps.height(Maps.DEFAULT_MAP):
+		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 15, "baris peta %d lebar 15" % y)
+	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 0, 0), "pohon di tepi tidak bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, -1, 3), "luar peta tidak bisa dilewati")
+
+	print("== api")
+	Api.base_url = OS.get_environment("GAME_URL") if OS.get_environment("GAME_URL") != "" else "http://127.0.0.1:8099"
+	var h: Dictionary = await Api.health()
+	_check(h.ok, "healthz")
+	if not h.ok:
+		print("  server tidak terjangkau: ", h.get("error"))
+		return
+
+	var name := "Uji%d" % (Time.get_ticks_usec() % 100000)
+	var reg: Dictionary = await Api.register(name)
+	_check(reg.ok, "daftar pemain " + name)
+	if not reg.ok:
+		return
+	Api.token = str(reg.data.token)
+	Session.set_player(reg.data.player)
+	_check(Session.player.state.x == 5 and typeof(Session.player.state.x) == TYPE_INT, "state memakai int")
+
+	var dup: Dictionary = await Api.register(name)
+	_check(not dup.ok and dup.status == 409, "nama kembar ditolak 409")
+
+	print("== world: gerak lalu simpan otomatis")
+	Session.offline = false
+	var world: Node2D = load("res://scenes/world.tscn").instantiate()
+	root.add_child(world)
+	await process_frame
+	world._try_move(Vector2i.RIGHT)  # (5,5) -> (6,5)
+	await create_timer(0.3).timeout
+	world._try_move(Vector2i.DOWN)  # (6,5) -> (6,6)
+	await create_timer(0.3).timeout
+	world._try_move(Vector2i.UP)
+	await create_timer(0.3).timeout
+	_check(Session.player.state.x == 6 and Session.player.state.y == 5, "posisi lokal (6,5)")
+
+	await create_timer(2.5).timeout  # tunggu simpan otomatis (jeda 1.5 dtk)
+	var me: Dictionary = await Api.get_me()
+	_check(me.ok, "ambil data setelah simpan")
+	_check(int(me.data.state.x) == 6 and int(me.data.state.y) == 5, "server menyimpan posisi (6,5)")
+	_check(int(me.data.version) >= 2, "versi di server naik")
+	_check(int(me.data.version) == Session.player.version, "versi lokal sinkron dengan server")
+
+	print("== tabrakan")
+	# Dari (6,5) jalan ke atas sampai mentok pohon/rumah tidak boleh tembus peta.
+	for i in 30:
+		world._try_move(Vector2i.UP)
+		await create_timer(0.12).timeout
+	var y: int = Session.player.state.y
+	_check(Maps.walkable(Maps.DEFAULT_MAP, Session.player.state.x, y), "pemain tetap di petak yang bisa dilewati (y=%d)" % y)
+
+	print("== token salah")
+	Api.token = "salah"
+	var bad: Dictionary = await Api.get_me()
+	_check(not bad.ok and bad.status == 401, "token salah ditolak 401")
