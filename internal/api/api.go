@@ -264,6 +264,7 @@ type questResponse struct {
 	Player     game.Player      `json:"player"`
 	Quests     []game.QuestView `json:"quests"`
 	RewardGold int              `json:"reward_gold,omitempty"`
+	RewardText string           `json:"reward_text,omitempty"`
 }
 
 // questAction membuat handler terima misi (claim=false) atau ambil hadiah (claim=true).
@@ -273,14 +274,14 @@ func (s *Server) questAction(claim bool) http.HandlerFunc {
 		if !decode(w, r, &req) {
 			return
 		}
-		reward := 0
+		var claimed game.QuestDef
 		sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
 			if sess.Battle != nil {
 				return errBattleActive
 			}
 			if claim {
 				def, err := sess.Player.State.ClaimQuest(req.Quest)
-				reward = def.RewardGold
+				claimed = def
 				return err
 			}
 			return sess.Player.State.AcceptQuest(req.Quest)
@@ -292,12 +293,13 @@ func (s *Server) questAction(claim bool) http.HandlerFunc {
 			writeError(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, game.ErrQuestTaken), errors.Is(err, game.ErrQuestClaimed):
 			writeError(w, http.StatusConflict, err.Error())
-		case errors.Is(err, game.ErrQuestNotReady), errors.Is(err, game.ErrTooManyQuests):
+		case errors.Is(err, game.ErrQuestNotReady), errors.Is(err, game.ErrTooManyQuests),
+			errors.Is(err, game.ErrQuestLocked), errors.Is(err, game.ErrInventoryFull):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		case err != nil:
 			s.fail(w, r, err)
 		default:
-			writeJSON(w, http.StatusOK, questResponse{Player: sess.Player, Quests: sess.Player.State.QuestViews(), RewardGold: reward})
+			writeJSON(w, http.StatusOK, questResponse{Player: sess.Player, Quests: sess.Player.State.QuestViews(), RewardGold: claimed.RewardGold, RewardText: claimed.RewardText()})
 		}
 	}
 }

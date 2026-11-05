@@ -452,6 +452,13 @@ func TestQuestEndToEnd(t *testing.T) {
 		t.Fatalf("daftar misi awal salah: %+v", qs)
 	}
 
+	if len(qs) < 2 || qs[1].ID != "selamatkan_petani" || qs[1].Status != game.QuestLocked {
+		t.Fatalf("misi petani harus terkunci: %+v", qs)
+	}
+	if code, _ := call("/v1/quests/accept", map[string]string{"quest": "selamatkan_petani"}); code != http.StatusUnprocessableEntity {
+		t.Errorf("menerima misi terkunci harus 422, dapat %d", code)
+	}
+
 	q := map[string]string{"quest": "selamatkan_nenek"}
 	if code, _ := call("/v1/quests/claim", q); code != http.StatusUnprocessableEntity {
 		t.Errorf("klaim sebelum terima harus 422, dapat %d", code)

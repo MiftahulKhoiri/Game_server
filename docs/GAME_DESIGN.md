@@ -69,6 +69,7 @@ dan gambar `client/assets/characters/<id npc>.png`.
 | Misi | Pemberi | Tugas | Hadiah |
 |------|---------|-------|--------|
 | Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 tikus sawah atau belalang raksasa | 40 emas |
+| Selamatkan Petani | Petani (11,6) | Kalahkan 3 goblin (muncul mulai level 2). Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
 
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
@@ -76,7 +77,7 @@ ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 ## Masih perlu diputuskan (pemilik proyek)
 
 1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
-2. **Misi berikutnya.** Petani? Hadiah barang (koin kuno, permata merah)? Musuh yang lebih kuat (goblin)?
+2. **Misi berikutnya.** Setelah Petani: siapa lagi yang perlu diselamatkan, dan dari monster apa? Ogre batu menunggu gambar yang transparan.
 3. **Peta.** Ganti Desa Awal menjadi desa kerajaan? Seperti apa gerbang kerajaannya?
 
 ## Sistem yang sudah ada di server

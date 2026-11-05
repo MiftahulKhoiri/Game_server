@@ -219,6 +219,15 @@ func _run() -> void:
 	await process_frame
 	_check(Maps.npc_at(Maps.DEFAULT_MAP, 3, 6) == "nenek_penjual", "nenek berdiri di (3,6)")
 	_check(Maps.npc_near(Maps.DEFAULT_MAP, 4, 6) == "nenek_penjual" and Maps.npc_near(Maps.DEFAULT_MAP, 5, 5) == "", "pemain hanya dekat nenek bila bersebelahan")
+	_check(q1.data.quests[1].status == "locked", "misi petani terkunci sebelum misi nenek selesai")
+	Session.talk_npc = "petani"
+	var dialog2: Control = load("res://scenes/dialog.tscn").instantiate()
+	root.add_child(dialog2)
+	await create_timer(0.8).timeout
+	_check(not dialog2._action.visible and dialog2._text.text.contains("Nenek"), "petani minta bantu nenek dulu")
+	dialog2.queue_free()
+	await process_frame
+	_check(Maps.npc_at(Maps.DEFAULT_MAP, 11, 6) == "petani", "petani berdiri di (11,6)")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 3, 6), "petak nenek tetap bagian peta (diblokir oleh gerak, bukan peta)")
 
 	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}

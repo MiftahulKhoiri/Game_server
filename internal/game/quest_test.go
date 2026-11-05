@@ -113,10 +113,107 @@ func TestQuestCatalogConsistent(t *testing.T) {
 		if q.ID == "" || q.Giver == "" || q.Count < 1 || q.RewardGold < 0 || len(q.TargetIDs) == 0 {
 			t.Errorf("misi tidak valid: %+v", q)
 		}
+		if q.Requires != "" {
+			if _, ok := QuestByID(q.Requires); !ok || q.Requires == q.ID {
+				t.Errorf("misi %s punya prasyarat tidak valid: %s", q.ID, q.Requires)
+			}
+		}
+		for _, it := range q.RewardItems {
+			if _, ok := ItemByID(it.ID); !ok || it.Qty < 1 {
+				t.Errorf("misi %s: hadiah barang tidak valid %+v", q.ID, it)
+			}
+		}
 		for _, id := range q.TargetIDs {
 			if _, ok := EnemyByID(id); !ok {
 				t.Errorf("misi %s menarget musuh yang tidak ada: %s", q.ID, id)
 			}
 		}
+	}
+}
+
+const petaniQuest = "selamatkan_petani"
+
+func claimNenek(t *testing.T, st *State) {
+	t.Helper()
+	if err := st.AcceptQuest(nenekQuest); err != nil {
+		t.Fatal(err)
+	}
+	def, _ := QuestByID(nenekQuest)
+	for i := 0; i < def.Count; i++ {
+		st.RecordKill("tikus_sawah")
+	}
+	if _, err := st.ClaimQuest(nenekQuest); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSecondQuestIsLockedUntilFirstClaimed(t *testing.T) {
+	st := NewState()
+	if v := st.QuestViews()[1]; v.ID != petaniQuest || v.Status != QuestLocked {
+		t.Fatalf("misi petani harus terkunci: %+v", v)
+	}
+	if err := st.AcceptQuest(petaniQuest); !errors.Is(err, ErrQuestLocked) {
+		t.Errorf("terima saat terkunci: %v", err)
+	}
+	// Selesai tapi hadiah belum diambil: masih terkunci.
+	_ = st.AcceptQuest(nenekQuest)
+	for i := 0; i < 5; i++ {
+		st.RecordKill("belalang_raksasa")
+	}
+	if err := st.AcceptQuest(petaniQuest); !errors.Is(err, ErrQuestLocked) {
+		t.Errorf("hadiah belum diambil, harus terkunci: %v", err)
+	}
+	if _, err := st.ClaimQuest(nenekQuest); err != nil {
+		t.Fatal(err)
+	}
+	if v := st.QuestViews()[1]; v.Status != QuestAvailable {
+		t.Errorf("harus tersedia: %+v", v)
+	}
+	if err := st.AcceptQuest(petaniQuest); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPetaniQuestRewardsItem(t *testing.T) {
+	st := NewState()
+	claimNenek(t, &st)
+	_ = st.AcceptQuest(petaniQuest)
+	if log := st.RecordKill("tikus_sawah"); len(log) != 0 {
+		t.Errorf("hanya goblin yang dihitung: %v", log)
+	}
+	for i := 0; i < 3; i++ {
+		st.RecordKill("goblin")
+	}
+	gold := st.Gold
+	def, err := st.ClaimQuest(petaniQuest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Gold != gold+25 || qtyOf(st, "permata_merah") != 1 {
+		t.Errorf("emas %d (dari %d), permata %d", st.Gold, gold, qtyOf(st, "permata_merah"))
+	}
+	if got := def.RewardText(); got != "25 emas, Permata Merah x1" {
+		t.Errorf("teks hadiah: %q", got)
+	}
+}
+
+func TestClaimWithFullInventoryChangesNothing(t *testing.T) {
+	st := NewState()
+	claimNenek(t, &st)
+	_ = st.AcceptQuest(petaniQuest)
+	for i := 0; i < 3; i++ {
+		st.RecordKill("goblin")
+	}
+	st.Inventory = nil
+	for i := 0; i < MaxInventory; i++ {
+		st.Inventory = append(st.Inventory, Item{ID: "x" + string(rune('a'+i%26)) + string(rune('a'+i/26)), Qty: 1})
+	}
+	gold := st.Gold
+	if _, err := st.ClaimQuest(petaniQuest); !errors.Is(err, ErrInventoryFull) {
+		t.Fatalf("mau ErrInventoryFull, dapat %v", err)
+	}
+	i := st.questIndex(petaniQuest)
+	if st.Gold != gold || st.Quests[i].Status != QuestDone || len(st.Inventory) != MaxInventory {
+		t.Errorf("tidak boleh ada yang berubah: gold=%d status=%s inv=%d", st.Gold, st.Quests[i].Status, len(st.Inventory))
 	}
 }

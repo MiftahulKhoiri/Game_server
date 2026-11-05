@@ -4,8 +4,20 @@ extends Control
 
 const WORLD_SCENE := "res://scenes/world.tscn"
 const ART_DIR := "res://assets/characters/"
-const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur"}
-const GREETINGS := {"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman..."}
+const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur", "petani": "Petani"}
+const GREETINGS := {
+	"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman...",
+	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak makhluk-makhluk hijau itu...",
+}
+const LOCKED := {"petani": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi."}
+const THANKS := {
+	"nenek_penjual": "Terima kasih sudah menyelamatkanku, Nak! Ambil hadiah kecil ini:",
+	"petani": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
+}
+const DONE := {
+	"nenek_penjual": "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu.",
+	"petani": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
+}
 
 var _npc := ""
 var _quest: Dictionary = {}  # misi milik NPC ini (tampilan dari server), {} bila tidak ada
@@ -49,16 +61,18 @@ func _render() -> void:
 	var status := str(_quest.status)
 	var target := int(_quest.target_count)
 	match status:
+		"locked":
+			_text.text = str(LOCKED.get(_npc, "Belum saatnya."))
 		"available":
-			_text.text = "%s\n\n%s\n\nHadiah: %d emas." % [GREETINGS.get(_npc, ""), _quest.description, int(_quest.reward_gold)]
+			_text.text = "%s\n\n%s\n\nHadiah: %s." % [GREETINGS.get(_npc, ""), _quest.description, _quest.reward_text]
 			_set_action("Terima misi", "accept")
 		"active":
 			_text.text = "%s\n\nKemajuan: %d/%d. Hati-hati di ladang, ya." % [_quest.title, int(_quest.progress), target]
 		"done":
-			_text.text = "Terima kasih sudah menyelamatkanku, Nak! Ambil hadiah kecil ini: %d emas." % int(_quest.reward_gold)
+			_text.text = "%s %s." % [THANKS.get(_npc, "Terima kasih!"), _quest.reward_text]
 			_set_action("Ambil hadiah", "claim")
 		_:
-			_text.text = "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu."
+			_text.text = str(DONE.get(_npc, "Terima kasih."))
 
 
 func _set_action(label: String, kind: String) -> void:
@@ -91,7 +105,7 @@ func _on_action(kind: String) -> void:
 			_quest = q
 	_render()
 	if kind == "claim":
-		_text.text += "\n\n(+%d emas)" % int(res.data.get("reward_gold", 0))
+		_text.text += "\n\nKamu menerima: %s" % str(res.data.get("reward_text", ""))
 
 
 func _on_back() -> void:

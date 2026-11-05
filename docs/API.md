@@ -138,17 +138,18 @@ misi. Kemajuan dan hadiah disimpan di `state.quests` (hanya server yang mengubah
 
 ### `GET /v1/quests`  (login)
 `200 {"quests": [{"id", "title", "giver", "description", "target_ids", "target_count",
-"reward_gold", "status", "progress"}]}`. `status`: `available`, `active`, `done`, `claimed`.
+"reward_gold", "reward_items", "reward_text", "requires", "status", "progress"}]}`.
+`status`: `locked` (misi prasyarat `requires` belum diambil hadiahnya), `available`, `active`, `done`, `claimed`.
 
 ### `POST /v1/quests/accept` dan `POST /v1/quests/claim`  (login)
 Body: `{"quest": "selamatkan_nenek"}`. `200 {"player": {...}, "quests": [...], "reward_gold": 40}`
-(`reward_gold` hanya pada klaim).
+(`reward_gold` dan `reward_text` hanya pada klaim).
 
 | Status | Arti |
 |--------|------|
 | 404 | Misi tidak dikenal |
 | 409 | Sudah diterima / hadiah sudah diambil / sedang bertarung |
-| 422 | Klaim padahal misi belum selesai |
+| 422 | Klaim padahal misi belum selesai, misi masih terkunci, atau tas penuh saat hadiah berisi barang (tidak ada yang berubah) |
 
 Saat menang, `log` pertarungan memuat baris kemajuan misi, mis. `Misi "Selamatkan Nenek": 2/5.`
 

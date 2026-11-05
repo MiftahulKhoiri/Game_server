@@ -44,6 +44,7 @@ const DESA_AWAL: Array[String] = [
 ## di assets/characters/). NPC menghalangi jalan; bicara dari petak yang bersebelahan.
 const NPCS := {
 	"nenek_penjual": {"map": "desa_awal", "pos": Vector2i(3, 6), "name": "Nenek"},
+	"petani": {"map": "desa_awal", "pos": Vector2i(11, 6), "name": "Petani"},
 }
 
 

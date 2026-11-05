@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 )
 
 // Status sebuah misi pada pemain. Misi yang belum diterima tidak ada di State.
 const (
+	QuestLocked    = "locked"    // belum bisa diterima: misi prasyarat belum selesai (hanya tampil di GET /v1/quests)
 	QuestAvailable = "available" // belum diterima (hanya tampil di GET /v1/quests)
 	QuestActive    = "active"    // sedang dikerjakan
 	QuestDone      = "done"      // target tercapai, hadiah belum diambil
@@ -27,6 +29,26 @@ type QuestDef struct {
 	TargetIDs   []string `json:"target_ids"` // id musuh yang dihitung
 	Count       int      `json:"target_count"`
 	RewardGold  int      `json:"reward_gold"`
+	// RewardItems adalah barang hadiah (id barang harus ada di item.go).
+	RewardItems []Item `json:"reward_items,omitempty"`
+	// Requires: id misi yang hadiahnya harus sudah diambil sebelum misi ini bisa diterima.
+	Requires string `json:"requires,omitempty"`
+}
+
+// RewardText menjelaskan hadiah untuk ditampilkan, mis. "25 emas, Permata Merah x1".
+func (q QuestDef) RewardText() string {
+	var parts []string
+	if q.RewardGold > 0 {
+		parts = append(parts, fmt.Sprintf("%d emas", q.RewardGold))
+	}
+	for _, it := range q.RewardItems {
+		name := it.ID
+		if def, ok := ItemByID(it.ID); ok {
+			name = def.Name
+		}
+		parts = append(parts, fmt.Sprintf("%s x%d", name, it.Qty))
+	}
+	return strings.Join(parts, ", ")
 }
 
 var quests = []QuestDef{
@@ -38,6 +60,17 @@ var quests = []QuestDef{
 		TargetIDs:   []string{"tikus_sawah", "belalang_raksasa"},
 		Count:       5,
 		RewardGold:  40,
+	},
+	{
+		ID:          "selamatkan_petani",
+		Title:       "Selamatkan Petani",
+		Giver:       "petani",
+		Description: "Goblin-goblin menyerbu ladang dan mengancam sang petani. Kalahkan 3 goblin. Goblin baru muncul bila kamu sudah level 2.",
+		TargetIDs:   []string{"goblin"},
+		Count:       3,
+		RewardGold:  25,
+		RewardItems: []Item{{ID: "permata_merah", Qty: 1}},
+		Requires:    "selamatkan_nenek",
 	},
 }
 
@@ -51,8 +84,9 @@ type QuestProgress struct {
 // QuestView adalah gabungan definisi dan kemajuan pemain, untuk klien.
 type QuestView struct {
 	QuestDef
-	Status   string `json:"status"`
-	Progress int    `json:"progress"`
+	Status     string `json:"status"`
+	Progress   int    `json:"progress"`
+	RewardText string `json:"reward_text"`
 }
 
 // Kesalahan misi.
@@ -62,6 +96,7 @@ var (
 	ErrQuestNotReady = errors.New("misi belum selesai")
 	ErrQuestClaimed  = errors.New("hadiah misi sudah diambil")
 	ErrTooManyQuests = errors.New("catatan misi terlalu banyak")
+	ErrQuestLocked   = errors.New("selesaikan misi sebelumnya dulu")
 )
 
 // Quests mengembalikan salinan semua definisi misi.
@@ -85,22 +120,37 @@ func (s *State) questIndex(id string) int {
 func (s State) QuestViews() []QuestView {
 	out := make([]QuestView, 0, len(quests))
 	for _, def := range quests {
-		v := QuestView{QuestDef: def, Status: QuestAvailable}
+		v := QuestView{QuestDef: def, Status: QuestAvailable, RewardText: def.RewardText()}
 		if i := s.questIndex(def.ID); i >= 0 {
 			v.Status, v.Progress = s.Quests[i].Status, s.Quests[i].Progress
+		} else if s.questLocked(def) {
+			v.Status = QuestLocked
 		}
 		out = append(out, v)
 	}
 	return out
 }
 
+// questLocked: prasyarat misi ini belum diselesaikan (hadiahnya belum diambil).
+func (s *State) questLocked(def QuestDef) bool {
+	if def.Requires == "" {
+		return false
+	}
+	i := s.questIndex(def.Requires)
+	return i < 0 || s.Quests[i].Status != QuestClaimed
+}
+
 // AcceptQuest menerima misi.
 func (s *State) AcceptQuest(id string) error {
-	if _, ok := QuestByID(id); !ok {
+	def, ok := QuestByID(id)
+	if !ok {
 		return ErrUnknownQuest
 	}
 	if s.questIndex(id) >= 0 {
 		return ErrQuestTaken
+	}
+	if s.questLocked(def) {
+		return ErrQuestLocked
 	}
 	if len(s.Quests) >= MaxQuests {
 		return ErrTooManyQuests
@@ -122,6 +172,14 @@ func (s *State) ClaimQuest(id string) (QuestDef, error) {
 	case s.Quests[i].Status == QuestClaimed:
 		return QuestDef{}, ErrQuestClaimed
 	}
+	// Barang masuk tas dulu; bila tas penuh, hadiah ditolak dan tidak ada yang berubah.
+	probe := State{Inventory: slices.Clone(s.Inventory)}
+	for _, it := range def.RewardItems {
+		if !probe.AddItem(it.ID, it.Qty) {
+			return QuestDef{}, ErrInventoryFull
+		}
+	}
+	s.Inventory = probe.Inventory
 	s.Quests[i].Status = QuestClaimed
 	s.Gold += def.RewardGold
 	return def, nil
