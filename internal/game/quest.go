@@ -83,6 +83,17 @@ var quests = []QuestDef{
 		RewardItems: []Item{{ID: "koin_kuno", Qty: 2}},
 		Requires:    "selamatkan_petani",
 	},
+	{
+		ID:          "hentikan_raja_goblin",
+		Title:       "Hentikan Raja Goblin",
+		Giver:       "petani",
+		Description: "Ternyata dalang semua serangan adalah Raja Goblin, yang bersembunyi di dalam Gua Batu di bawah Gunung Batu. Kalahkan dia di singgasananya.",
+		TargetIDs:   []string{"raja_goblin"},
+		Count:       1,
+		RewardGold:  500,
+		RewardItems: []Item{{ID: "permata_merah", Qty: 3}},
+		Requires:    "usir_ogre",
+	},
 }
 
 // QuestProgress adalah catatan misi pada pemain (disimpan di State).

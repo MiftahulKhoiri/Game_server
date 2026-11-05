@@ -562,3 +562,23 @@ func TestBattleEnemyDependsOnMap(t *testing.T) {
 		t.Errorf("level 1 di perbatasan harus bertemu goblin: %s", d)
 	}
 }
+
+func TestBossBattleOnlyAtBossSpot(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Penantang")
+	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]bool{"boss": true}); code != http.StatusUnprocessableEntity {
+		t.Errorf("minta bos jauh dari singgasana harus 422, dapat %d", code)
+	}
+	st := cr.Player.State
+	st.Map, st.X, st.Y = game.MapGuaBatu, 7, 14
+	if resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st}); resp.StatusCode != http.StatusOK {
+		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
+	}
+	code, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]bool{"boss": true})
+	if code != http.StatusCreated || start.Battle == nil || start.Battle.EnemyID != "raja_goblin" {
+		t.Fatalf("bos: %d %s", code, d)
+	}
+	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]bool{"boss": true}); code != http.StatusConflict {
+		t.Errorf("mulai dua kali harus 409, dapat %d", code)
+	}
+}

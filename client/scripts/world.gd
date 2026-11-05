@@ -116,6 +116,9 @@ func _on_move_done() -> void:
 		return
 	var st: Dictionary = Session.player.state
 	var tile := Maps.tile_at(_map_id, st.x, st.y)
+	if tile == Maps.BOSS_TILE:
+		_start_encounter(true)
+		return
 	if tile == "" or not Maps.ENCOUNTER_TILES.contains(tile):
 		return  # pertemuan hanya terjadi di ladang / kerikil
 	if Session.safe_steps > 0:
@@ -143,12 +146,12 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 
 # --- pertarungan ---
 
-func _start_encounter() -> void:
+func _start_encounter(boss := false) -> void:
 	_encountering = true
 	_held = Vector2i.ZERO
-	_set_status("Sesuatu bergerak di ladang...")
+	_set_status("Sesuatu menyambutmu di singgasana..." if boss else "Sesuatu bergerak di sekitarmu...")
 	await _flush_save()  # posisi harus tersimpan dulu; server tidak ikut gerak kita
-	var res: Dictionary = await Api.battle_start()
+	var res: Dictionary = await Api.battle_start(boss)
 	if res.ok:
 		_enter_battle(res.data)
 	elif res.status == 409:
@@ -403,6 +406,10 @@ func _draw_tile(tile: String, pos: Vector2) -> void:
 			draw_rect(rect, Color("8a7f72"))
 			draw_rect(Rect2(pos + Vector2(10, 12), Vector2(6, 4)), Color("756b5f"))
 			draw_rect(Rect2(pos + Vector2(30, 32), Vector2(8, 4)), Color("9a8f81"))
+		"K":
+			draw_rect(rect, Color("5a2a2a"))
+			draw_rect(Rect2(pos + Vector2(8, 8), Vector2(32, 32)), Color("8a1f1f"))
+			draw_rect(Rect2(pos + Vector2(14, 4), Vector2(20, 10)), Color("d4a72c"))
 		"G":
 			draw_rect(rect, Color("6e6258"))
 			for i in 6:

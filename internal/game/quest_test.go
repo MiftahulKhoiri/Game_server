@@ -244,3 +244,28 @@ func TestOgreQuestChain(t *testing.T) {
 		t.Errorf("hadiah salah: err=%v gold=%d->%d koin=%d (%s)", err, gold, st.Gold, qtyOf(st, "koin_kuno"), def.RewardText())
 	}
 }
+
+func TestRajaGoblinQuestEndsChain(t *testing.T) {
+	st := NewState()
+	claimNenek(t, &st)
+	_ = st.AcceptQuest(petaniQuest)
+	for i := 0; i < 3; i++ {
+		st.RecordKill("goblin")
+	}
+	_, _ = st.ClaimQuest(petaniQuest)
+	_ = st.AcceptQuest("usir_ogre")
+	st.RecordKill("ogre_batu")
+	_, _ = st.ClaimQuest("usir_ogre")
+	if v := st.QuestViews()[3]; v.ID != "hentikan_raja_goblin" || v.Status != QuestAvailable {
+		t.Fatalf("misi terakhir harus tersedia: %+v", v)
+	}
+	if err := st.AcceptQuest("hentikan_raja_goblin"); err != nil {
+		t.Fatal(err)
+	}
+	st.RecordKill("goblin_penjaga")
+	st.RecordKill("raja_goblin")
+	gold, gems := st.Gold, qtyOf(st, "permata_merah")
+	if _, err := st.ClaimQuest("hentikan_raja_goblin"); err != nil || st.Gold != gold+500 || qtyOf(st, "permata_merah") != gems+3 {
+		t.Errorf("hadiah salah: %v gold %d->%d permata %d->%d", err, gold, st.Gold, gems, qtyOf(st, "permata_merah"))
+	}
+}

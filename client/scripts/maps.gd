@@ -7,6 +7,7 @@ extends RefCounted
 ##   T  ladang          B  jembatan           D  pintu rumah (bisa dilewati)
 ##   #  pohon           ~  air                H  tembok/atap rumah
 ##   F  pagar           W  sumur              S  tembok batu (reruntuhan)
+##   K  singgasana bos (bisa dilewati; menginjaknya memanggil bos)
 ##   M  tanah gunung    G  kerikil (ladang monster, bisa dilewati)    R  batu besar
 ## Yang bisa dilewati: . = f T B D M G   (sisanya menghalangi)
 ## Pertemuan musuh terjadi di petak ENCOUNTER_TILES (T dan G).
@@ -14,9 +15,10 @@ extends RefCounted
 const DEFAULT_MAP := "desa_awal"
 const PERBATASAN := "perbatasan"
 const GUNUNG := "gunung_batu"
+const GUA := "gua_batu"
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu"}
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
@@ -26,10 +28,16 @@ const EXITS := {
 		{"pos": Vector2i(7, 0), "to": "desa_awal", "at": Vector2i(7, 18)},
 		{"pos": Vector2i(7, 19), "to": "gunung_batu", "at": Vector2i(7, 1)},
 	],
-	"gunung_batu": [{"pos": Vector2i(7, 0), "to": "perbatasan", "at": Vector2i(7, 18)}],
+	"gunung_batu": [
+		{"pos": Vector2i(7, 0), "to": "perbatasan", "at": Vector2i(7, 18)},
+		{"pos": Vector2i(7, 19), "to": "gua_batu", "at": Vector2i(7, 1)},
+	],
+	"gua_batu": [{"pos": Vector2i(7, 0), "to": "gunung_batu", "at": Vector2i(7, 18)}],
 }
 const SPAWN := Vector2i(5, 5)
-const WALKABLE := ".=fTBDMG"
+const WALKABLE := ".=fTBDMGK"
+## Petak bos: menginjaknya memulai pertarungan bos di server (posisi harus sama dengan BossSpot di internal/game/world.go).
+const BOSS_TILE := "K"
 const ENCOUNTER_TILES := "TG"
 
 ## Desa Awal (15x20): dua rumah di utara, alun-alun dengan sumur di tengah,
@@ -133,6 +141,31 @@ const GUNUNG_ROWS: Array[String] = [
 	"RRRRRMGGGMRRRRR",
 	"RRRRRMGGGMRRRRR",
 	"RRRRRMMMMMRRRRR",
+	"RRRRRRRMRRRRRRR",
+]
+
+## Gua Batu (15x20): sarang Raja Goblin, dalang serangan monster. Singgasananya (K)
+## ada di ujung lorong selatan.
+const GUA_ROWS: Array[String] = [
+	"RRRRRRRMRRRRRRR",
+	"RMMMMMMMMMMMMMR",
+	"RMGGGMMMMMGGGMR",
+	"RMGGGMRRRMGGGMR",
+	"RMMMMMRRRMMMMMR",
+	"RRMMMMMMMMMMMRR",
+	"RRMGGGMMMGGGMRR",
+	"RRMGGGMMMGGGMRR",
+	"RRMMMMMMMMMMMRR",
+	"RRRRMMMMMMMRRRR",
+	"RRRRRMGGGMRRRRR",
+	"RRRRRMGGGMRRRRR",
+	"RRRRRMMMMMRRRRR",
+	"RRRRRRMMMRRRRRR",
+	"RRRRRRMKMRRRRRR",
+	"RRRRRRMMMRRRRRR",
+	"RRRRRRRRRRRRRRR",
+	"RRRRRRRRRRRRRRR",
+	"RRRRRRRRRRRRRRR",
 	"RRRRRRRRRRRRRRR",
 ]
 
@@ -153,6 +186,8 @@ static func rows(map_id: String) -> Array[String]:
 			return PERBATASAN_ROWS
 		GUNUNG:
 			return GUNUNG_ROWS
+		GUA:
+			return GUA_ROWS
 	return []
 
 

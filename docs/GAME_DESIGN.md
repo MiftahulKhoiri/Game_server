@@ -71,6 +71,7 @@ dan gambar `client/assets/characters/<id npc>.png`.
 | Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 tikus sawah atau belalang raksasa | 40 emas |
 | Selamatkan Petani | Petani (11,6) | Kalahkan 3 goblin di Perbatasan. Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
 | Usir Ogre Batu | Nenek (3,6) | Kalahkan 1 Ogre Batu di Gunung Batu. Terkunci sampai hadiah Petani diambil | 150 emas + 2 Koin Kuno |
+| Hentikan Raja Goblin | Petani (11,6) | Kalahkan Raja Goblin di Gua Batu. Terkunci sampai hadiah Ogre diambil | 500 emas + 3 Permata Merah |
 
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
@@ -79,7 +80,7 @@ ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 
 1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
 2. **Penduduk lain.** Siapa lagi yang perlu diselamatkan? Tiap NPC baru butuh gambar di `client/assets/characters/`.
-3. **Setelah Ogre.** Siapa dalang yang mengirim monster, dan di mana ia berada? Apa isi peta berikutnya (istana, hutan, gua)?
+3. **Setelah Raja Goblin.** Cerita akhir atau lanjut ke ancaman baru? Gambar Raja Goblin dan musuh gua perlu dibuat.
 
 ## Sistem yang sudah ada di server
 
@@ -119,11 +120,20 @@ separuh, kembali ke titik awal desa.
 | Kelelawar Gua | Gunung Batu | 28 | 8 | 1 | 18 | 8 | 3 | Ramuan 20% |
 | Golem Kerikil | Gunung Batu | 50 | 10 | 6 | 32 | 14 | 4 | Koin Kuno 25% |
 | Ogre Batu | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
+| Goblin Penjaga | Gua Batu | 45 | 11 | 4 | 28 | 12 | 5 | Taring Goblin 50% |
+| **Raja Goblin (bos)** | Gua Batu, singgasana (7,14) | 120 | 14 | 6 | 100 | 60 | 7 | Permata Merah 100% |
 
 Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
 terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
 Hutan, Kelelawar Gua, Golem Kerikil, dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
 Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh terlemah di wilayah itu.
+
+## Bos
+
+Bos tidak muncul acak. Injak singgasana (petak `K`); klien meminta `POST /v1/battle/start`
+dengan `{"boss": true}` dan server memeriksa posisi tersimpan pemain. Bos bisa dilawan
+berulang (hadiahnya: XP, emas, dan drop). Raja Goblin sementara memakai gambar goblin
+berwarna merah sampai gambarnya sendiri ada (`ART_ALIAS` di `client/scripts/battle.gd`).
 
 ## Peta
 
@@ -131,7 +141,8 @@ Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh te
 |------|-----|-------|
 | Desa Awal (`desa_awal`) | Rumah, alun-alun, sungai, ladang, Nenek dan Petani | Gerbang selatan (7,19) ke Perbatasan |
 | Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
-| Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) kembali ke Perbatasan |
+| Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) ke Perbatasan; selatan (7,19) masuk Gua Batu |
+| Gua Batu (`gua_batu`) | Lorong gua, sarang Raja Goblin | Utara (7,0) kembali ke Gunung Batu |
 
 Server mengenal ukuran tiap peta (`internal/game/world.go`) dan menolak posisi di luar
 peta atau peta asing. Bentuk petak (tembok, air) masih milik klien (`client/scripts/maps.gd`);

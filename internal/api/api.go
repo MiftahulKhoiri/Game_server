@@ -191,16 +191,35 @@ func (s *Server) getBattle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, battleResponse{Battle: &b, Player: p, Status: game.StatusOngoing})
 }
 
+type startRequest struct {
+	// Boss meminta pertarungan dengan bos di petak pemain (bukan musuh acak).
+	Boss bool `json:"boss"`
+}
+
 func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
+	var req startRequest
+	if r.ContentLength != 0 && !decode(w, r, &req) { // body boleh kosong
+		return
+	}
 	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
 		if sess.Battle != nil {
 			return errBattleActive
 		}
-		b := game.StartBattle(&sess.Player, s.rng)
+		var b game.Battle
+		if req.Boss {
+			var err error
+			if b, err = game.StartBossBattle(&sess.Player); err != nil {
+				return err
+			}
+		} else {
+			b = game.StartBattle(&sess.Player, s.rng)
+		}
 		sess.Battle = &b
 		return nil
 	})
 	switch {
+	case errors.Is(err, game.ErrNoBoss):
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, errBattleActive):
 		writeError(w, http.StatusConflict, "masih ada pertarungan yang berjalan; lanjutkan lewat GET /v1/battle")
 	case err != nil:

@@ -66,7 +66,22 @@ type Result struct {
 
 // StartBattle memulai pertarungan melawan musuh acak yang cocok untuk level pemain.
 func StartBattle(p *Player, rng Rand) Battle {
-	e := PickEnemy(p.State.Level, p.State.Map, rng)
+	return newBattle(PickEnemy(p.State.Level, p.State.Map, rng))
+}
+
+// ErrNoBoss berarti tidak ada bos di petak tempat pemain berdiri.
+var ErrNoBoss = errors.New("tidak ada bos di sini")
+
+// StartBossBattle memulai pertarungan dengan bos di petak pemain (posisi tersimpan di server).
+func StartBossBattle(p *Player) (Battle, error) {
+	e, ok := BossAt(p.State.Map, p.State.X, p.State.Y)
+	if !ok {
+		return Battle{}, ErrNoBoss
+	}
+	return newBattle(e), nil
+}
+
+func newBattle(e Enemy) Battle {
 	return Battle{EnemyID: e.ID, EnemyName: e.Name, EnemyHP: e.HP, EnemyMaxHP: e.HP, Round: 1}
 }
 

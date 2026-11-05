@@ -58,6 +58,8 @@ func _run() -> void:
 	_check_map_connected(Maps.DEFAULT_MAP)
 	_check_map_connected(Maps.PERBATASAN)
 	_check_map_connected(Maps.GUNUNG)
+	_check_map_connected(Maps.GUA)
+	_check(Maps.tile_at(Maps.GUA, 7, 14) == Maps.BOSS_TILE and Maps.walkable(Maps.GUA, 7, 14), "singgasana bos ada di (7,14)")
 	for id: String in Maps.EXITS:
 		for e: Dictionary in Maps.EXITS[id]:
 			_check(Maps.walkable(id, e.pos.x, e.pos.y), "pintu %s %s berada di petak yang bisa dilewati" % [id, e.pos])
@@ -260,7 +262,31 @@ func _run() -> void:
 	var pb: Dictionary = await Api.battle_start()
 	_check(pb.ok and pb.data.battle.enemy_id == "goblin" or pb.ok and pb.data.battle.enemy_id == "serigala_hutan", "musuh di Perbatasan berbeda dari desa (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
 	if pb.ok:
-		await Api.battle_action("flee")
+		for i in 12:  # kabur dari pertarungan acak (peluang 60%) supaya tidak menggantung
+			var fl: Dictionary = await Api.battle_action("flee")
+			if not fl.ok or fl.data.status != "ongoing":
+				break
+	var away: Dictionary = await Api.battle_start(true)
+	_check(not away.ok and away.status == 422, "bos tidak bisa dipanggil jauh dari singgasana")
+	var cur: Dictionary = (await Api.get_me()).data
+	Session.set_player(cur)
+	var at_throne: Dictionary = Session.player.state.duplicate(true)
+	at_throne.map = Maps.GUA
+	at_throne.x = 7
+	at_throne.y = 14
+	var sv: Dictionary = await Api.save(Session.player.version, at_throne)
+	_check(sv.ok, "simpan posisi di singgasana")
+	var boss: Dictionary = await Api.battle_start(true)
+	_check(boss.ok and boss.data.battle.enemy_id == "raja_goblin", "singgasana memanggil Raja Goblin")
+	if boss.ok:
+		var bscene: Control = load("res://scenes/battle.tscn").instantiate()
+		Session.merge_server_player(boss.data.player)
+		Session.battle = boss.data.battle
+		root.add_child(bscene)
+		await process_frame
+		_check(bscene._enemy_tex != null, "Raja Goblin memakai gambar goblin berwarna")
+		bscene.queue_free()
+		await process_frame
 
 	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
 	Session.player.state.x = 8

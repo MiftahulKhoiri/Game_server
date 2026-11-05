@@ -191,7 +191,13 @@ func _build_ui() -> void:
 	box.add_child(_btn_continue)
 
 
+## Musuh yang belum punya gambar sendiri meminjam gambar musuh lain (dengan warna berbeda).
+const ART_ALIAS := {"raja_goblin": "goblin"}
+const ART_TINT := {"raja_goblin": Color(1.0, 0.65, 0.65)}
+
+
 func _load_enemy_art(id: String) -> Texture2D:
+	id = str(ART_ALIAS.get(id, id))
 	var path := ENEMY_ART_DIR + id + ".png"
 	if id != "" and ResourceLoader.exists(path):
 		return load(path) as Texture2D
@@ -204,7 +210,7 @@ func _draw_enemy() -> void:
 		var tex_size := _enemy_tex.get_size()
 		var scale := minf(size.x / tex_size.x, size.y / tex_size.y)
 		var draw_size := tex_size * scale
-		_enemy_view.draw_texture_rect(_enemy_tex, Rect2((size - draw_size) / 2.0, draw_size), false)
+		_enemy_view.draw_texture_rect(_enemy_tex, Rect2((size - draw_size) / 2.0, draw_size), false, ART_TINT.get(_enemy_id, Color.WHITE))
 		return
 	var center := size / 2.0
 	var color: Color = ENEMY_COLORS.get(_enemy_id, Color("b04a8a"))

@@ -18,6 +18,12 @@ const QUEST_TEXTS := {
 		"thanks": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
 		"done": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
 	},
+	"hentikan_raja_goblin": {
+		"offer": "Ksatria! Seekor ogre tertangkap dan ia mengaku disuruh seseorang di bawah gunung...",
+		"locked": "Aku punya kabar penting, tapi selesaikan urusan Nenek dengan Ogre dulu.",
+		"thanks": "Raja Goblin sudah tumbang! Kerajaan aman berkatmu. Terimalah ini:",
+		"done": "Desa ini dan seluruh kerajaan berutang padamu, Pelindung Kerajaan.",
+	},
 	"usir_ogre": {
 		"offer": "Ksatria... ada kabar buruk dari para pedagang. Sumber semua kekacauan ini ada di gunung.",
 		"locked": "Nenek sedang mengkhawatirkan banyak hal. Bantu Petani dulu, ya, Nak.",

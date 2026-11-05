@@ -182,11 +182,11 @@ func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 			t.Fatalf("level 1 di perbatasan bertemu %s", e.ID)
 		}
 	}
-	for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu} {
+	for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu, MapGuaBatu} {
 		seen := map[string]bool{}
 		want := 0
 		for _, e := range enemies {
-			if e.inZone(zone) {
+			if e.inZone(zone) && !e.Boss {
 				want++
 			}
 		}
@@ -218,7 +218,7 @@ func TestValidPosition(t *testing.T) {
 	ok := []struct {
 		m    string
 		x, y int
-	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 14, 19}, {MapPerbatasan, 7, 1}, {MapGunungBatu, 7, 1}}
+	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 14, 19}, {MapPerbatasan, 7, 1}, {MapGunungBatu, 7, 1}, {MapGuaBatu, 7, 14}}
 	for _, c := range ok {
 		if !ValidPosition(c.m, c.x, c.y) {
 			t.Errorf("%v harus valid", c)
@@ -280,4 +280,31 @@ func mustEnemy(id string) Enemy {
 		panic("musuh tidak ada: " + id)
 	}
 	return e
+}
+
+func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
+	for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu, MapGuaBatu, "tidak_ada"} {
+		for i := 0; i < 500; i++ {
+			if e := PickEnemy(100, zone, RandomSource{}); e.Boss {
+				t.Fatalf("bos %s muncul acak di %s", e.ID, zone)
+			}
+		}
+	}
+	if e := PickEnemy(1, MapGuaBatu, RandomSource{}); e.Boss || e.ID != "kelelawar_gua" && e.ID != "golem_kerikil" && e.ID != "goblin_penjaga" {
+		t.Errorf("level rendah di gua harus bertemu musuh terlemah gua non-bos, dapat %s", e.ID)
+	}
+
+	p := newPlayer()
+	if _, err := StartBossBattle(p); !errors.Is(err, ErrNoBoss) {
+		t.Errorf("jauh dari bos harus ErrNoBoss, dapat %v", err)
+	}
+	p.State.Map, p.State.X, p.State.Y = MapGuaBatu, 7, 14
+	b, err := StartBossBattle(p)
+	if err != nil || b.EnemyID != "raja_goblin" || b.EnemyHP != 120 {
+		t.Fatalf("bos: %+v %v", b, err)
+	}
+	p.State.X = 8
+	if _, err := StartBossBattle(p); !errors.Is(err, ErrNoBoss) {
+		t.Error("bergeser satu petak harus ErrNoBoss")
+	}
 }

@@ -12,6 +12,7 @@ type Enemy struct {
 	XP          int
 	Gold        int
 	Zones       []string // peta tempat muncul (kosong = di mana saja)
+	Boss        bool     // bos: tidak muncul acak, hanya lewat petak bos
 	MinLevel    int      // baru muncul bila level pemain >= ini
 	DropID      string   // barang yang mungkin dijatuhkan ("" = tidak ada)
 	DropPercent int      // peluang jatuh, 0-100
@@ -26,9 +27,12 @@ var enemies = []Enemy{
 	{ID: "goblin", Zones: []string{MapPerbatasan}, Name: "Goblin", HP: 26, Attack: 7, Defense: 2, XP: 15, Gold: 7, MinLevel: 1, DropID: "taring_goblin", DropPercent: 35},
 	{ID: "serigala_hutan", Zones: []string{MapPerbatasan, MapGunungBatu}, Name: "Serigala Hutan", HP: 32, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 20},
 	// Gunung Batu: sarang Ogre Batu, wilayah paling berbahaya saat ini.
-	{ID: "kelelawar_gua", Zones: []string{MapGunungBatu}, Name: "Kelelawar Gua", HP: 28, Attack: 8, Defense: 1, XP: 18, Gold: 8, MinLevel: 3, DropID: PotionID, DropPercent: 20},
-	{ID: "golem_kerikil", Zones: []string{MapGunungBatu}, Name: "Golem Kerikil", HP: 50, Attack: 10, Defense: 6, XP: 32, Gold: 14, MinLevel: 4, DropID: "koin_kuno", DropPercent: 25},
+	{ID: "kelelawar_gua", Zones: []string{MapGunungBatu, MapGuaBatu}, Name: "Kelelawar Gua", HP: 28, Attack: 8, Defense: 1, XP: 18, Gold: 8, MinLevel: 3, DropID: PotionID, DropPercent: 20},
+	{ID: "golem_kerikil", Zones: []string{MapGunungBatu, MapGuaBatu}, Name: "Golem Kerikil", HP: 50, Attack: 10, Defense: 6, XP: 32, Gold: 14, MinLevel: 4, DropID: "koin_kuno", DropPercent: 25},
 	{ID: "ogre_batu", Zones: []string{MapGunungBatu}, Name: "Ogre Batu", HP: 70, Attack: 12, Defense: 5, XP: 45, Gold: 25, MinLevel: 5, DropID: "permata_merah", DropPercent: 30},
+	// Gua Batu: sarang dalang serangan monster.
+	{ID: "goblin_penjaga", Zones: []string{MapGuaBatu}, Name: "Goblin Penjaga", HP: 45, Attack: 11, Defense: 4, XP: 28, Gold: 12, MinLevel: 5, DropID: "taring_goblin", DropPercent: 50},
+	{ID: "raja_goblin", Zones: []string{MapGuaBatu}, Boss: true, Name: "Raja Goblin", HP: 120, Attack: 14, Defense: 6, XP: 100, Gold: 60, MinLevel: 7, DropID: "permata_merah", DropPercent: 100},
 }
 
 // EnemyByID mencari musuh berdasarkan id.
@@ -52,7 +56,7 @@ func (e Enemy) inZone(mapID string) bool {
 func PickEnemy(level int, mapID string, rng Rand) Enemy {
 	var eligible, inMap []Enemy
 	for _, e := range enemies {
-		if !e.inZone(mapID) {
+		if e.Boss || !e.inZone(mapID) {
 			continue
 		}
 		inMap = append(inMap, e)
@@ -62,7 +66,11 @@ func PickEnemy(level int, mapID string, rng Rand) Enemy {
 	}
 	if len(eligible) == 0 {
 		if len(inMap) == 0 {
-			inMap = enemies // peta tak dikenal: semua musuh
+			for _, e := range enemies { // peta tak dikenal: semua musuh biasa
+				if !e.Boss {
+					inMap = append(inMap, e)
+				}
+			}
 		}
 		weakest := inMap[0]
 		for _, e := range inMap {

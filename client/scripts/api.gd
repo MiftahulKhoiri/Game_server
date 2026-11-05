@@ -42,8 +42,9 @@ func battle_get() -> Dictionary:
 
 
 ## Mulai pertarungan dengan musuh acak (409 bila sudah ada yang berjalan).
-func battle_start() -> Dictionary:
-	return await _call(HTTPClient.METHOD_POST, "/v1/battle/start", null, true)
+## boss = true: lawan bos di petak pemain (422 bila tidak ada bos di sana).
+func battle_start(boss := false) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/battle/start", {"boss": true} if boss else null, true)
 
 
 ## action: "attack" | "defend" | "potion" | "flee"

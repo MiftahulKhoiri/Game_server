@@ -83,7 +83,7 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 | 401 | Token tidak valid |
 | 409 | Versi tidak cocok |
 | 426 | Versi aplikasi di bawah `min_client` |
-| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `gunung_batu`, masing-masing 15x20) |
+| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `gunung_batu`, `gua_batu`, masing-masing 15x20) |
 
 ## Pertarungan (v0.3.0)
 
@@ -95,6 +95,7 @@ setelah aplikasi ditutup.
 Pertarungan yang sedang berjalan. `200` berisi respons pertarungan, `404` bila tidak ada.
 
 ### `POST /v1/battle/start`  (login)
+Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana.
 Mulai melawan musuh acak sesuai level pemain dan peta tempat ia berada (peta terakhir yang disimpan). `201` berisi respons pertarungan,
 `409` bila sudah ada pertarungan aktif.
 
