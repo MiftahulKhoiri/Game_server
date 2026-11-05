@@ -242,6 +242,41 @@ func _run() -> void:
 	bag_scene.queue_free()
 	await process_frame
 
+	print("== pembaruan dalam aplikasi")
+	const Updater = preload("res://scripts/updater.gd")
+	_check(Updater.api_url_for("https://github.com/MiftahulKhoiri/Game_server/releases/latest") == "https://api.github.com/repos/MiftahulKhoiri/Game_server/releases/latest", "alamat API rilis diturunkan dari update_url")
+	_check(Updater.api_url_for("https://contoh.com/unduh") == "", "alamat selain GitHub tidak dikenali")
+	var rel := {"tag_name": "v9.9.9", "assets": [
+		{"name": "catatan.txt", "browser_download_url": "https://x/c.txt"},
+		{"name": "GamePetualang-v9.9.9-build5.apk", "browser_download_url": "https://x/a.apk", "size": 4096, "digest": "sha256:abc123"}]}
+	var picked: Dictionary = Updater.pick_asset(rel)
+	_check(picked.name.ends_with(".apk") and picked.url == "https://x/a.apk" and picked.size == 4096 and picked.sha256 == "abc123" and picked.tag == "v9.9.9", "memilih berkas .apk dari rilis")
+	_check(Updater.pick_asset({"assets": [{"name": "a.txt", "browser_download_url": "https://x"}]}).is_empty(), "rilis tanpa APK -> kosong")
+	_check(not Updater.supported(), "pasang otomatis tidak aktif di luar Android")
+	var updater: Node = Updater.new()
+	root.add_child(updater)
+	var tmp := "user://uji_pembaruan.bin"
+	var url: String = str(Api.base_url) + "/healthz"
+	var got_progress := [false]
+	updater.progress.connect(func(_r: int, _t: int) -> void: got_progress[0] = true)
+	var dl_err: String = await updater.download({"url": url, "size": 0}, tmp)
+	_check(dl_err == "" and FileAccess.file_exists(tmp), "unduh berkas dari server (%s)" % dl_err)
+	var sz := FileAccess.open(tmp, FileAccess.READ).get_length()
+	_check(Updater.verify({"size": sz, "sha256": ""}, tmp) != "", "berkas di bawah 1 KB ditolak")
+	var big := FileAccess.open(tmp, FileAccess.WRITE)
+	big.store_buffer(PackedByteArray([1, 2, 3, 4]).duplicate())
+	for i in 300:
+		big.store_buffer(PackedByteArray([7, 7, 7, 7]))
+	big.close()
+	var real_size := FileAccess.open(tmp, FileAccess.READ).get_length()
+	var real_hash := FileAccess.get_sha256(tmp)
+	_check(Updater.verify({"size": real_size, "sha256": real_hash}, tmp) == "", "berkas utuh lolos pemeriksaan ukuran + sha256")
+	_check(Updater.verify({"size": real_size + 1, "sha256": ""}, tmp).contains("Ukuran"), "ukuran tidak cocok ditolak")
+	_check(Updater.verify({"size": real_size, "sha256": "0".repeat(64)}, tmp).contains("Sidik"), "sha256 tidak cocok ditolak")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+	updater.queue_free()
+	await process_frame
+
 	print("== misi")
 	var q0: Dictionary = await Api.quests_get()
 	_check(q0.ok and q0.data.quests.size() > 0 and q0.data.quests[0].status == "available", "misi awal tersedia")

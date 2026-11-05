@@ -48,6 +48,26 @@ Server dan klien tidak harus selalu sama nomornya; yang menentukan adalah
 Aplikasi sangat lama (sebelum 0.2.0) belum mengirim versi, jadi tidak bisa
 dipaksa update; mereka tetap dilayani.
 
+## Update dalam aplikasi (v0.12.0)
+
+Tombol "Unduh versi baru" / "Update sekarang" tidak lagi membuka web. Di Android,
+`client/scripts/updater.gd` bekerja sendiri:
+
+1. Meminta izin **Pasang aplikasi tak dikenal** untuk Game Petualang (sekali saja;
+   Android membukakan pengaturannya, pemain mengaktifkan lalu kembali dan menekan tombol lagi).
+2. Membaca rilis terbaru lewat API GitHub (alamatnya diturunkan dari `update_url`),
+   mengunduh APK dengan bilah kemajuan, lalu memeriksa ukuran dan sha256 dari GitHub.
+3. Menyalin APK ke folder Download lewat MediaStore dan membuka pemasang Android.
+   Pemain cukup menekan **Pasang**; aplikasi restart sendiri.
+
+Bila ada langkah yang gagal, atau bukan Android, tombol berubah menjadi "Buka halaman
+unduhan" (cara lama). Syarat agar APK baru diterima sebagai pembaruan: ditandatangani
+dengan kunci yang sama (`deploy/android/debug.keystore`) dan `version code` lebih tinggi
+(otomatis dari nomor build CI). Pasang otomatis butuh Android 10 ke atas.
+
+Versi yang memuat fitur ini sendiri harus dipasang manual sekali; setelah itu
+pembaruan berikutnya bisa lewat dalam aplikasi.
+
 ## Cara merilis versi baru
 
 1. Naikkan `config/version` di `client/project.godot` (mis. `0.3.0`).

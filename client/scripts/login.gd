@@ -3,6 +3,7 @@ extends Control
 ## Seluruh antarmuka dibuat lewat kode agar mudah ditinjau di Pull Request.
 
 const Version = preload("res://scripts/version.gd")
+const Updater = preload("res://scripts/updater.gd")
 const WORLD_SCENE := "res://scenes/world.tscn"
 
 var _url_edit: LineEdit
@@ -13,6 +14,10 @@ var _btn_continue: Button
 var _btn_update: Button
 var _version_label: Label
 var _update_url := ""
+var _updater: Node
+var _progress: ProgressBar
+var _updating := false
+var _open_web := false  # pasang otomatis gagal/tidak ada: tombol membuka halaman unduhan
 
 
 func _ready() -> void:
@@ -64,6 +69,17 @@ func _ready() -> void:
 	_btn_update.pressed.connect(_on_update)
 	box.add_child(_btn_update)
 
+	_progress = ProgressBar.new()
+	_progress.custom_minimum_size = Vector2(0, 28)
+	_progress.visible = false
+	box.add_child(_progress)
+
+	_updater = Updater.new()
+	add_child(_updater)
+	_updater.status.connect(func(text: String) -> void: _status.text = text)
+	_updater.progress.connect(_on_update_progress)
+	Updater.cleanup()  # sisa unduhan dari pembaruan sebelumnya
+
 	_version_label = _make_label("Aplikasi " + Version.app_label(), 20)
 	_version_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_version_label.modulate = Color(1, 1, 1, 0.6)
@@ -104,9 +120,34 @@ func _require_update(message: String) -> void:
 	_btn_update.visible = _update_url != ""
 
 
+## Tombol update: unduh dan pasang langsung di dalam aplikasi. Bila tidak bisa
+## (bukan Android / ada langkah gagal), tombol berubah menjadi pembuka halaman unduhan.
 func _on_update() -> void:
-	if _update_url != "":
+	if _updating or _update_url == "":
+		return
+	if _open_web or not Updater.supported():
 		OS.shell_open(_update_url)
+		return
+	_updating = true
+	_btn_update.disabled = true
+	_progress.value = 0
+	_progress.visible = true
+	_status.modulate = Color.WHITE
+	var res: Dictionary = await _updater.run(_update_url)
+	_updating = false
+	_btn_update.disabled = false
+	_progress.visible = false
+	_status.text = str(res.message)
+	_status.modulate = Color("8fe388") if res.ok else Color("ff6b6b")
+	if res.get("web", false):
+		_open_web = true
+		_btn_update.text = "Buka halaman unduhan"
+
+
+func _on_update_progress(received: int, total: int) -> void:
+	if total > 0:
+		_progress.value = 100.0 * received / total
+		_status.text = "Mengunduh... %.1f / %.1f MB" % [received / 1048576.0, total / 1048576.0]
 
 
 func _on_start() -> void:

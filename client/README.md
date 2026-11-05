@@ -16,6 +16,7 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
 - **Bicara dengan NPC** (`scenes/dialog.tscn`): tombol Bicara aktif bila berdiri di sebelah NPC; terima misi dan ambil hadiah.
 - **Toko** (`scenes/shop.tscn`): tombol Toko di peta; beli/jual barang, harga dari server.
 - **Tas** (`scenes/inventory.tscn`): tombol Tas di peta; lihat barang, pasang/lepas perlengkapan, minum ramuan, istirahat gratis di desa.
+- **Update dalam aplikasi** (`scripts/updater.gd`): unduh APK rilis terbaru dan buka pemasang Android tanpa membuka web (lihat `docs/VERSIONING.md`).
 - Token login disimpan di `user://settings.cfg` (di HP: penyimpanan aplikasi).
 
 ## Struktur
