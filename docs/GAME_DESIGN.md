@@ -39,7 +39,7 @@ Pemain baru mulai di peta `desa_awal` posisi (5,5) dengan 30 HP.
 
 1. Fondasi server + penyimpanan progress (selesai).
 2. Klien Godot minimal: daftar, masuk, gerak di peta grid, simpan otomatis (selesai, gambar placeholder).
-3. Peta pertama dan karakter dari ilustrator menggantikan placeholder.
+3. Peta pertama (Desa Awal: rumah, alun-alun, sungai, ladang) sudah ada dengan gambar placeholder; gambar ilustrator menggantikannya, lihat [MAP_REFERENCES](MAP_REFERENCES.md).
 4. Musuh dan pertarungan bergiliran (logika di server).
 5. Inventori, toko, dan misi.
 6. Rilis APK pertama lewat GitHub Actions.

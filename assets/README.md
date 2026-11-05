@@ -21,6 +21,29 @@ supaya semua gambar konsisten dan mudah dipakai klien. Ubah bila perlu.
 
 Satu gaya, satu palet: usahakan seluruh gambar terlihat berasal dari satu game.
 
+## Daftar gambar tile untuk "Desa Awal"
+
+Ukuran 32x32 px. Sementara ini peta digambar dengan bentuk sederhana lewat
+kode; setiap gambar di bawah akan menggantikan satu lambang di peta
+(lihat [`docs/MAP_REFERENCES.md`](../docs/MAP_REFERENCES.md)).
+
+| Berkas (di `tiles/`) | Lambang | Keterangan |
+|----------------------|---------|------------|
+| `rumput.png` | `.` | Dasar. Buat 2-3 variasi agar tidak monoton |
+| `jalan_tanah.png` | `=` | Harus menyambung mulus antar-petak |
+| `bunga.png` | `f` | Rumput dengan bunga kecil |
+| `ladang.png` | `T` | Tanah berpetak/bergaris |
+| `jembatan.png` | `B` | Papan kayu di atas air |
+| `pintu_rumah.png` | `D` | Dinding rumah dengan pintu |
+| `pohon.png` | `#` | Rumput di bawah, pohon di atas (latar transparan) |
+| `air.png` | `~` | Idealnya 2-4 bingkai agar beriak |
+| `rumah_dinding.png`, `rumah_atap.png` | `H` | Bangunan rumah per petak |
+| `pagar.png` | `F` | Pagar kayu |
+| `sumur.png` | `W` | Sumur batu |
+
+Pemain: `characters/pemain_{bawah,atas,kiri,kanan}_{1,2,3}.png` (jalan 3 bingkai per arah).
+Tidak perlu semuanya sekaligus; kirim satu per satu pun boleh, sisanya tetap placeholder.
+
 ## Struktur
 
 ```

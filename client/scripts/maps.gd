@@ -2,33 +2,41 @@ extends RefCounted
 ## Data peta. SEMENTARA ditulis di kode sebagai teks; nanti diganti TileMap dari
 ## gambar ilustrator. Saat server menjadi otoritatif, tabrakan dihitung di server.
 ##
-## Lambang:  .  rumput   #  pohon (halangan)   ~  air (halangan)
-##           =  jalan    H  rumah (halangan)
+## Lambang (daftar gambar yang perlu dibuat ada di assets/README.md):
+##   .  rumput          =  jalan tanah        f  bunga (bisa dilewati)
+##   T  ladang          B  jembatan           D  pintu rumah (bisa dilewati)
+##   #  pohon           ~  air                H  tembok/atap rumah
+##   F  pagar           W  sumur
+## Yang bisa dilewati: . = f T B D   (sisanya menghalangi)
 
 const DEFAULT_MAP := "desa_awal"
 const SPAWN := Vector2i(5, 5)
+const WALKABLE := ".=fTBD"
 
+## Desa Awal (15x20): dua rumah di utara, alun-alun dengan sumur di tengah,
+## sungai dengan jembatan, ladang di selatan, dan gerbang keluar di bawah
+## (gerbang belum tersambung ke peta lain).
 const DESA_AWAL: Array[String] = [
 	"###############",
-	"#.............#",
-	"#..HHH....~~..#",
-	"#..HHH....~~..#",
-	"#..H=H........#",
-	"#...=.........#",
-	"#...=====.....#",
-	"#.........#...#",
-	"#.........#...#",
-	"#..~~.....#...#",
-	"#..~~.........#",
-	"#.............#",
-	"#....###......#",
-	"#....###......#",
-	"#.............#",
-	"#.......~~~...#",
-	"#.......~~~...#",
-	"#.............#",
-	"#.............#",
-	"###############",
+	"#..HHH...HHH..#",
+	"#..HDH...HDH..#",
+	"#..f=f...f=f..#",
+	"#.#.=.....=.#.#",
+	"#...=.....=...#",
+	"#...=======...#",
+	"#.....===.....#",
+	"#.....=W=.....#",
+	"#.#...===...#.#",
+	"#......=......#",
+	"#......=......#",
+	"~~~~~~~B~~~~~~~",
+	"~~~~~~~B~~~~~~~",
+	"#......=......#",
+	"#.TTT..=..TTT.#",
+	"#.TTT..=..TTT.#",
+	"#.FFF..=..FFF.#",
+	"#......=......#",
+	"#######=#######",
 ]
 
 
@@ -57,4 +65,4 @@ static func tile_at(map_id: String, x: int, y: int) -> String:
 
 static func walkable(map_id: String, x: int, y: int) -> bool:
 	var t := tile_at(map_id, x, y)
-	return t == "." or t == "="
+	return t != "" and WALKABLE.contains(t)

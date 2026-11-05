@@ -199,16 +199,47 @@ func _draw_tile(tile: String, pos: Vector2) -> void:
 		"~":
 			draw_rect(rect, Color("3a7bd5"))
 			draw_rect(Rect2(pos + Vector2(8, 14), Vector2(24, 3)), Color("6fa3ec"))
+		"B":
+			draw_rect(rect, Color("3a7bd5"))
+			draw_rect(Rect2(pos + Vector2(6, 0), Vector2(TILE - 12, TILE)), Color("9a6b3c"))
+			for i in 4:
+				draw_rect(Rect2(pos + Vector2(6, 10 + i * 12), Vector2(TILE - 12, 2)), Color("6e4a28"))
 		"=":
 			draw_rect(rect, Color("c9a96e"))
 		"H":
 			draw_rect(rect, Color("8a5a3c"))
 			draw_rect(Rect2(pos, Vector2(TILE, 18)), Color("a33a3a"))
+		"D":
+			draw_rect(rect, Color("8a5a3c"))
+			draw_rect(Rect2(pos + Vector2(12, 8), Vector2(24, 40)), Color("4a2f1a"))
+			draw_circle(pos + Vector2(32, 30), 2, Color("e0c060"))
+		"F":
+			_draw_grass(pos)
+			draw_rect(Rect2(pos + Vector2(0, 20), Vector2(TILE, 4)), Color("7a5530"))
+			for i in 3:
+				draw_rect(Rect2(pos + Vector2(4 + i * 18, 12), Vector2(6, 26)), Color("5b3b1e"))
+		"W":
+			_draw_grass(pos)
+			draw_circle(pos + Vector2(24, 24), 18, Color("7d7d85"))
+			draw_circle(pos + Vector2(24, 24), 11, Color("2a4f8a"))
+		"T":
+			draw_rect(rect, Color("7a5a38"))
+			for i in 4:
+				draw_rect(Rect2(pos + Vector2(0, 6 + i * 12), Vector2(TILE, 4)), Color("5e4326"))
+		"f":
+			_draw_grass(pos)
+			draw_circle(pos + Vector2(14, 16), 4, Color("f0d040"))
+			draw_circle(pos + Vector2(32, 30), 4, Color("e86a9a"))
+			draw_circle(pos + Vector2(30, 12), 3, Color("ffffff"))
 		"#":
 			draw_rect(rect, Color("2f6b2f"))
 			draw_rect(Rect2(pos + Vector2(20, 28), Vector2(8, 16)), Color("5b3b1e"))
 			draw_circle(pos + Vector2(24, 22), 17, Color("1f4d1f"))
 		_:
-			draw_rect(rect, Color("4c9a4c"))
-			if int(pos.x * 7 + pos.y * 13) % 5 == 0:
-				draw_rect(Rect2(pos + Vector2(14, 20), Vector2(4, 4)), Color("3f853f"))
+			_draw_grass(pos)
+
+
+func _draw_grass(pos: Vector2) -> void:
+	draw_rect(Rect2(pos, Vector2(TILE, TILE)), Color("4c9a4c"))
+	if int(pos.x * 7 + pos.y * 13) % 5 == 0:
+		draw_rect(Rect2(pos + Vector2(14, 20), Vector2(4, 4)), Color("3f853f"))

@@ -45,6 +45,7 @@ Menjalankan sebagai layanan di Pi: lihat [`deploy/gameserver.service`](deploy/ga
 - [Klien Android](client/README.md)
 - [Kontrak API](docs/API.md)
 - [Desain game (draf)](docs/GAME_DESIGN.md)
+- [Referensi desain peta dan sumber aset gratis](docs/MAP_REFERENCES.md)
 - [Panduan aset gambar](assets/README.md)
 - [Cara berkontribusi](CONTRIBUTING.md)
 

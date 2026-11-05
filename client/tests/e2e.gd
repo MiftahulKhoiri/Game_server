@@ -20,6 +20,26 @@ func _check(cond: bool, label: String) -> void:
 		_failed = true
 
 
+## Semua petak yang bisa dilewati harus tersambung dari titik awal
+## (tidak boleh ada ladang/halaman yang terkurung).
+func _check_map_connected(map_id: String) -> void:
+	var total := 0
+	for y in Maps.height(map_id):
+		for x in Maps.width(map_id):
+			if Maps.walkable(map_id, x, y):
+				total += 1
+	var seen := {Maps.SPAWN: true}
+	var queue: Array[Vector2i] = [Maps.SPAWN]
+	while not queue.is_empty():
+		var cur: Vector2i = queue.pop_front()
+		for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var n: Vector2i = cur + d
+			if not seen.has(n) and Maps.walkable(map_id, n.x, n.y):
+				seen[n] = true
+				queue.append(n)
+	_check(seen.size() == total, "semua petak bisa dilewati tersambung (%d dari %d)" % [seen.size(), total])
+
+
 func _run() -> void:
 	await process_frame  # tunggu pohon siap sebelum memakai node/HTTPRequest
 	Api = root.get_node("Api")
@@ -30,6 +50,11 @@ func _run() -> void:
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 0, 0), "pohon di tepi tidak bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, -1, 3), "luar peta tidak bisa dilewati")
+	_check(Maps.walkable(Maps.DEFAULT_MAP, 7, 12), "jembatan bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 12), "sungai tidak bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 7, 8), "sumur menghalangi")
+	_check(Maps.walkable(Maps.DEFAULT_MAP, 4, 2), "pintu rumah bisa dilewati")
+	_check_map_connected(Maps.DEFAULT_MAP)
 
 	print("== api")
 	Api.base_url = OS.get_environment("GAME_URL") if OS.get_environment("GAME_URL") != "" else "http://127.0.0.1:8099"
