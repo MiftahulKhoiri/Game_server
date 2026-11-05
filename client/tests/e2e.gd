@@ -402,7 +402,7 @@ func _run() -> void:
 		if node != null:
 			node.free()
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
-	for mdl in ["golem_lava", "golem_kerikil", "goblin", "goblin_penjaga", "nenek_penjual", "petani"]:
+	for mdl in ["golem_lava", "golem_kerikil", "goblin", "goblin_penjaga", "nenek_penjual", "petani", "babi_hutan", "tikus_sawah", "raja_goblin"]:
 		var gm: Node3D = Models.create(mdl)
 		_check(Models.has_glb(mdl) and gm.kind == "static" and gm.pivots.has("body"), "model GLB hasil AI '%s' terpasang (tanpa rangka)" % mdl)
 		gm.play_attack()

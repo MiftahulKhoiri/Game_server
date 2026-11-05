@@ -29,6 +29,13 @@ cp out/golem_lava.glb ../../client/assets/models/golem_lava.glb
 ```
 
 Argumen ketiga = resolusi marching cubes (192 cukup; 256 lebih detail tapi lebih lambat).
+Argumen keempat (opsional) = putaran tambahan sumbu Y dalam derajat: hewan yang menghadap
+kanan di gambar perlu `-90` supaya depannya menjadi +Z. Argumen kelima = gamma warna
+(bawaan 2,2; turunkan ke 1,5 untuk gambar yang hasilnya terlalu gelap).
+
+Gambar yang masih berlatar (bukan PNG bertransparan) dipotong dulu dengan `cut.py`
+(`pip install rembg onnxruntime`; model u2net, atau `isnet` bila badan gelap ikut terhapus):
+`python cut.py gambar.png potong.png [potong_bawah_px] [isnet]`.
 Klien mengukur ulang tinggi model (`HEIGHTS` di `client/scripts/models.gd`), jadi ukuran
 asli GLB tidak penting. Hasil mengikuti gambar sumber: gambar berwatermark menghasilkan
 model berwatermark; ganti gambar sumber dengan karya sendiri sebelum rilis resmi.
