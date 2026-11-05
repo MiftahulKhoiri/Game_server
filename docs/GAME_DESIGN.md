@@ -133,11 +133,14 @@ separuh, kembali ke titik awal desa.
 | Golem Kerikil | Gunung Batu | 50 | 10 | 6 | 32 | 14 | 4 | Koin Kuno 25% |
 | Ogre Batu | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
 | Goblin Penjaga | Gua Batu | 45 | 11 | 4 | 28 | 12 | 5 | Taring Goblin 50% |
+| Golem Lava | Gua Batu | 62 | 13 | 6 | 40 | 18 | 6 | Permata Merah 20% |
 | **Raja Goblin (bos)** | Gua Batu, singgasana (7,14) | 120 | 14 | 6 | 100 | 60 | 7 | Permata Merah 100% |
 
 Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
 terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
-Hutan, Kelelawar Gua, Golem Kerikil, dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
+Hutan, Kelelawar Gua, dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
+Gambar yang sudah ada: Goblin, Golem Kerikil, Golem Lava, Goblin Penjaga (render 3D, masih
+bermark air "pngtree": ganti dengan gambar berlisensi sebelum rilis resmi).
 Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh terlemah di wilayah itu.
 
 ## Bos

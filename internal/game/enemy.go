@@ -32,6 +32,7 @@ var enemies = []Enemy{
 	{ID: "ogre_batu", Zones: []string{MapGunungBatu}, Name: "Ogre Batu", HP: 70, Attack: 12, Defense: 5, XP: 45, Gold: 25, MinLevel: 5, DropID: "permata_merah", DropPercent: 30},
 	// Gua Batu: sarang dalang serangan monster.
 	{ID: "goblin_penjaga", Zones: []string{MapGuaBatu}, Name: "Goblin Penjaga", HP: 45, Attack: 11, Defense: 4, XP: 28, Gold: 12, MinLevel: 5, DropID: "taring_goblin", DropPercent: 50},
+	{ID: "golem_lava", Zones: []string{MapGuaBatu}, Name: "Golem Lava", HP: 62, Attack: 13, Defense: 6, XP: 40, Gold: 18, MinLevel: 6, DropID: "permata_merah", DropPercent: 20},
 	{ID: "raja_goblin", Zones: []string{MapGuaBatu}, Boss: true, Name: "Raja Goblin", HP: 120, Attack: 14, Defense: 6, XP: 100, Gold: 60, MinLevel: 7, DropID: "permata_merah", DropPercent: 100},
 }
 
