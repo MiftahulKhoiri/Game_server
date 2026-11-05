@@ -2,6 +2,7 @@ extends Control
 ## Layar awal: atur alamat server, daftar pemain baru, atau lanjutkan.
 ## Seluruh antarmuka dibuat lewat kode agar mudah ditinjau di Pull Request.
 
+const Version = preload("res://scripts/version.gd")
 const WORLD_SCENE := "res://scenes/world.tscn"
 
 var _url_edit: LineEdit
@@ -9,6 +10,9 @@ var _name_edit: LineEdit
 var _status: Label
 var _btn_start: Button
 var _btn_continue: Button
+var _btn_update: Button
+var _version_label: Label
+var _update_url := ""
 
 
 func _ready() -> void:
@@ -55,6 +59,55 @@ func _ready() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_status)
 
+	_btn_update = _make_button("Buka halaman unduhan")
+	_btn_update.visible = false
+	_btn_update.pressed.connect(_on_update)
+	box.add_child(_btn_update)
+
+	_version_label = _make_label("Aplikasi " + Version.app_label(), 20)
+	_version_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_version_label.modulate = Color(1, 1, 1, 0.6)
+	box.add_child(_version_label)
+
+	_check_version()
+
+
+## Menanyakan versi ke server: tampilkan versi server, ajak update bila ada versi
+## baru, dan kunci tombol bila versi aplikasi di bawah batas minimum.
+func _check_version() -> void:
+	Api.base_url = _clean_url(_url_edit.text)
+	var res: Dictionary = await Api.version_info()
+	if not res.ok:
+		return  # server belum terjangkau; kesalahan akan terlihat saat masuk
+	var info: Dictionary = res.data
+	_version_label.text = "Aplikasi %s  |  Server v%s" % [Version.app_label(), str(info.get("server", "?"))]
+	_update_url = str(info.get("update_url", ""))
+
+	var mine := Version.app_version()
+	var min_client := str(info.get("min_client", "0.0.0"))
+	var latest := str(info.get("latest_client", "0.0.0"))
+	if Version.compare(mine, min_client) < 0:
+		_require_update("Aplikasimu v%s terlalu lama. Wajib update ke v%s atau lebih baru." % [mine, latest])
+	elif Version.compare(mine, latest) < 0:
+		_status.text = "Versi baru tersedia: v%s (kamu v%s)." % [latest, mine]
+		_status.modulate = Color("f0d040")
+		_btn_update.text = "Unduh versi baru"
+		_btn_update.visible = _update_url != ""
+
+
+func _require_update(message: String) -> void:
+	_status.text = message
+	_status.modulate = Color("ff6b6b")
+	_btn_start.disabled = true
+	_btn_continue.disabled = true
+	_btn_update.text = "Update sekarang"
+	_btn_update.visible = _update_url != ""
+
+
+func _on_update() -> void:
+	if _update_url != "":
+		OS.shell_open(_update_url)
+
 
 func _on_start() -> void:
 	var player_name := _name_edit.text.strip_edges()
@@ -66,6 +119,7 @@ func _on_start() -> void:
 	var res: Dictionary = await Api.register(player_name)
 	if not res.ok:
 		_set_busy(false, str(res.error))
+		_handle_upgrade_required(res)
 		return
 	Api.token = str(res.data.token)
 	Session.offline = false
@@ -79,7 +133,10 @@ func _on_continue() -> void:
 	Api.base_url = _clean_url(_url_edit.text)
 	var res: Dictionary = await Api.get_me()
 	if not res.ok:
-		if res.status == 401:
+		if res.status == 426:
+			_set_busy(false, str(res.error))
+			_handle_upgrade_required(res)
+		elif res.status == 401:
 			Api.token = ""
 			Session.save_config()
 			_btn_continue.visible = false
@@ -93,10 +150,19 @@ func _on_continue() -> void:
 	get_tree().change_scene_to_file(WORLD_SCENE)
 
 
+## Server menolak versi aplikasi ini (426): kunci tombol dan tawarkan update.
+func _handle_upgrade_required(res: Dictionary) -> void:
+	if res.status != 426:
+		return
+	_update_url = str(res.data.get("update_url", _update_url))
+	_require_update(str(res.error))
+
+
 func _set_busy(busy: bool, message: String) -> void:
 	_btn_start.disabled = busy
 	_btn_continue.disabled = busy
 	_status.text = message
+	_status.modulate = Color.WHITE
 
 
 func _clean_url(text: String) -> String:

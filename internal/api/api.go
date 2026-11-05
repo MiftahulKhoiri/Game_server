@@ -18,6 +18,7 @@ import (
 
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
 	"github.com/MiftahulKhoiri/Game_server/internal/store"
+	"github.com/MiftahulKhoiri/Game_server/internal/version"
 )
 
 const maxBodyBytes = 64 << 10 // 64 KiB
@@ -30,17 +31,19 @@ type ctxKey struct{}
 type Server struct {
 	store *store.Store
 	log   *slog.Logger
+	info  version.Info
 }
 
 // New membuat http.Handler lengkap dengan routing.
-func New(st *store.Store, log *slog.Logger) http.Handler {
-	s := &Server{store: st, log: log}
+func New(st *store.Store, log *slog.Logger, info version.Info) http.Handler {
+	s := &Server{store: st, log: log, info: info}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
+	mux.HandleFunc("GET /v1/version", s.versionInfo)
 	mux.HandleFunc("POST /v1/players", s.createPlayer)
 	mux.Handle("GET /v1/players/me", s.auth(http.HandlerFunc(s.getMe)))
 	mux.Handle("PUT /v1/players/me/save", s.auth(http.HandlerFunc(s.saveMe)))
-	return s.logRequests(mux)
+	return s.logRequests(s.clientGate(mux))
 }
 
 // --- handler ---
@@ -52,7 +55,11 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "database tidak tersedia")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": s.info.Server})
+}
+
+func (s *Server) versionInfo(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.info)
 }
 
 type createRequest struct {
@@ -146,6 +153,27 @@ func (s *Server) auth(next http.Handler) http.Handler {
 		default:
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, p)))
 		}
+	})
+}
+
+// clientGate menolak klien yang versinya di bawah MinClient (426 Upgrade Required).
+// Klien mengirim versinya lewat header X-Client-Version. Klien lama yang belum
+// mengirim header tidak dapat dipaksa update.
+func (s *Server) clientGate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		v := r.Header.Get("X-Client-Version")
+		exempt := r.URL.Path == "/healthz" || r.URL.Path == "/v1/version"
+		if v != "" && !exempt {
+			if c, err := version.Compare(v, s.info.MinClient); err == nil && c < 0 {
+				writeJSON(w, http.StatusUpgradeRequired, map[string]any{
+					"error":      "Versi aplikasi " + v + " sudah terlalu lama (minimal " + s.info.MinClient + "). Silakan update.",
+					"min_client": s.info.MinClient,
+					"update_url": s.info.UpdateURL,
+				})
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

@@ -1,0 +1,73 @@
+# Versi dan update
+
+Dua hal yang dijawab sistem ini: **aplikasi di HP sekarang versi berapa**, dan
+**apakah perlu update**.
+
+## Format
+
+`MAJOR.MINOR.PATCH`, contoh `0.2.0`.
+
+| Bagian | Naik bila |
+|--------|-----------|
+| MAJOR | Perubahan besar yang memutus data/permainan lama |
+| MINOR | Fitur baru (peta baru, musuh, sistem baru) |
+| PATCH | Perbaikan bug kecil |
+
+Selain itu tiap APK punya **nomor build** (urutan build di GitHub Actions) dan
+kode commit. Contoh tampilan: `v0.2.0 (build 12)`. Build lokal/editor tampil
+sebagai `v0.2.0 (dev)`.
+
+## Di mana versi disimpan
+
+| Apa | Lokasi | Siapa yang mengubah |
+|-----|--------|---------------------|
+| Versi aplikasi | `config/version` di `client/project.godot` | Manusia/Claude saat merilis |
+| Nomor build, commit | `client/scripts/build_info.gd` | CI otomatis |
+| Versi server | `Server` di `internal/version/version.go` | Manusia/Claude saat merilis |
+| Versi klien minimum / terbaru | `DefaultMinClient`, `DefaultLatestClient` di `internal/version/version.go`, atau env `GAME_MIN_CLIENT`, `GAME_LATEST_CLIENT` | Pemilik server |
+
+Server dan klien tidak harus selalu sama nomornya; yang menentukan adalah
+`min_client` dan `latest_client`.
+
+## Cara kerja di HP
+
+1. Saat layar masuk dibuka, aplikasi menanyakan `GET /v1/version` ke server.
+2. Di bawah layar tampil `Aplikasi v0.2.0 (build 12) | Server v0.2.0`.
+3. Hasil perbandingan:
+
+| Keadaan | Yang terjadi |
+|---------|--------------|
+| Versi aplikasi >= `latest_client` | Tidak ada pemberitahuan |
+| `min_client` <= versi < `latest_client` | Tulisan kuning "Versi baru tersedia" + tombol unduh; tetap boleh main |
+| Versi < `min_client` | Tulisan merah "Wajib update"; tombol mulai dikunci; hanya tombol unduh yang aktif |
+
+4. Setiap permintaan membawa header `X-Client-Version`. Jika server dinaikkan
+   `min_client`-nya saat pemain sedang main, server menjawab `426` dan aplikasi
+   menampilkan pesan update. Jadi aplikasi lama tidak bisa merusak data.
+
+Aplikasi sangat lama (sebelum 0.2.0) belum mengirim versi, jadi tidak bisa
+dipaksa update; mereka tetap dilayani.
+
+## Cara merilis versi baru
+
+1. Naikkan `config/version` di `client/project.godot` (mis. `0.3.0`).
+2. Jika server ikut berubah, naikkan `Server` di `internal/version/version.go`.
+3. Naikkan `DefaultLatestClient` ke versi yang sama (atau set `GAME_LATEST_CLIENT`
+   di server). Pemain akan melihat ajakan update.
+4. Naikkan `DefaultMinClient` (atau `GAME_MIN_CLIENT`) **hanya** jika versi lama
+   tidak boleh dipakai lagi, misalnya format simpanan berubah.
+5. Commit dan push ke `main`. CI menguji dan membangun APK.
+6. Beri tag yang sama dengan versi: `git tag v0.3.0 && git push origin v0.3.0`.
+   CI membuat **Release** berisi APK bernama `GamePetualang-v0.3.0-buildN.apk`.
+   CI menolak tag yang berbeda dengan `config/version`.
+7. Mulai ulang server di Pi (`make build` lalu restart layanan).
+
+`DefaultUpdateURL` (atau `GAME_UPDATE_URL`) menentukan ke mana tombol unduh
+membawa pemain; bawaannya halaman Releases terbaru.
+
+## Catatan
+
+- APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
+  menghapus aplikasi menghapus token login.
+- `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
+  sebagai pembaruan.

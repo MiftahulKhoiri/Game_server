@@ -44,6 +44,7 @@ Menjalankan sebagai layanan di Pi: lihat [`deploy/gameserver.service`](deploy/ga
 - [Arsitektur dan pilihan teknologi](docs/ARCHITECTURE.md)
 - [Klien Android](client/README.md)
 - [Kontrak API](docs/API.md)
+- [Versi dan update APK](docs/VERSIONING.md)
 - [Desain game (draf)](docs/GAME_DESIGN.md)
 - [Referensi desain peta dan sumber aset gratis](docs/MAP_REFERENCES.md)
 - [Panduan aset gambar](assets/README.md)

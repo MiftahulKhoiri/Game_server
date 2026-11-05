@@ -3,6 +3,7 @@
 #
 # Memulai server dengan database sementara, lalu menjalankan client/tests/e2e.gd.
 # Pakai:  GODOT=/path/ke/godot scripts/client-test.sh      (atau: make client-test)
+# Opsional: LOG_DIR=/folder  -> log server disalin ke LOG_DIR/client-test-server.log
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -13,6 +14,9 @@ TMP="$(mktemp -d)"
 SERVER_PID=""
 cleanup() {
 	[ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
+	if [ -n "${LOG_DIR:-}" ]; then
+		mkdir -p "$LOG_DIR" && cp "$TMP/server.log" "$LOG_DIR/client-test-server.log" 2>/dev/null || true
+	fi
 	rm -rf "$TMP"
 }
 trap cleanup EXIT

@@ -3,15 +3,24 @@ extends Node
 ##
 ## Semua fungsi mengembalikan Dictionary:
 ##   sukses: {"ok": true,  "status": 200, "data": {...}}
-##   gagal:  {"ok": false, "status": 409, "error": "pesan"}  (status 0 = tidak terhubung)
+##   gagal:  {"ok": false, "status": 409, "error": "pesan", "data": {...}}  (status 0 = tidak terhubung)
 ## Pemakaian: var res: Dictionary = await Api.get_me()
+
+const Version = preload("res://scripts/version.gd")
 
 var base_url: String = "http://192.168.225.3:8090"
 var token: String = ""
+## Dikirim ke server di setiap permintaan; server menolak (426) bila di bawah batas minimum.
+var client_version: String = Version.app_version()
 
 
 func health() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/healthz", null, false)
+
+
+## Info versi server: {"server", "commit", "api", "min_client", "latest_client", "update_url"}
+func version_info() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/version", null, false)
 
 
 func register(player_name: String) -> Dictionary:
@@ -32,7 +41,10 @@ func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -
 	req.timeout = 10.0
 	add_child(req)
 
-	var headers := PackedStringArray(["Content-Type: application/json"])
+	var headers := PackedStringArray([
+		"Content-Type: application/json",
+		"X-Client-Version: " + client_version,
+	])
 	if auth and token != "":
 		headers.append("Authorization: Bearer " + token)
 	var payload := "" if body == null else JSON.stringify(body)
@@ -55,4 +67,6 @@ func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -
 	var data: Dictionary = parsed if parsed is Dictionary else {}
 	if status >= 200 and status < 300:
 		return {"ok": true, "status": status, "data": data}
-	return {"ok": false, "status": status, "error": str(data.get("error", "Kesalahan %d" % status))}
+	# "data" ikut dikembalikan: pada 426 berisi min_client dan update_url.
+	return {"ok": false, "status": status, "data": data,
+			"error": str(data.get("error", "Kesalahan %d" % status))}

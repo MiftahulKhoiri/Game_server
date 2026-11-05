@@ -18,10 +18,37 @@ Authorization: Bearer <token>
 Server hanya menyimpan hash token. Token hilang = akun tidak bisa dipulihkan
 (untuk saat ini).
 
+## Versi klien
+
+Klien mengirim versinya di setiap permintaan:
+
+```
+X-Client-Version: 0.2.0
+```
+
+Jika versinya di bawah `min_client` server, semua endpoint (kecuali `/healthz`
+dan `/v1/version`) menjawab `426 Upgrade Required`:
+
+```json
+{"error": "Versi aplikasi 0.1.0 sudah terlalu lama (minimal 0.2.0). Silakan update.",
+ "min_client": "0.2.0", "update_url": "https://github.com/.../releases/latest"}
+```
+
+Header yang tidak ada diabaikan (klien lama). Aturan lengkap: [VERSIONING.md](VERSIONING.md).
+
 ## Endpoint
 
 ### `GET /healthz`
-Cek server dan database hidup. `200 {"status":"ok"}`, atau `503`.
+Cek server dan database hidup. `200 {"status":"ok","version":"0.2.0"}`, atau `503`.
+
+### `GET /v1/version`
+Info versi, tanpa login. Selalu terbuka, juga untuk klien yang terlalu lama.
+
+```json
+{"server": "0.2.0", "commit": "d8f256d", "api": 1,
+ "min_client": "0.1.0", "latest_client": "0.2.0",
+ "update_url": "https://github.com/MiftahulKhoiri/Game_server/releases/latest"}
+```
 
 ### `POST /v1/players`
 Daftar pemain baru.
@@ -53,6 +80,7 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 | 200 | Tersimpan; respons berisi pemain dengan `version` naik 1 |
 | 401 | Token tidak valid |
 | 409 | Versi tidak cocok |
+| 426 | Versi aplikasi di bawah `min_client` |
 | 422 | State tidak masuk akal (mis. HP melebihi max_hp) |
 
 ## Objek

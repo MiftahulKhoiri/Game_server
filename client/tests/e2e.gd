@@ -3,6 +3,7 @@ extends SceneTree
 ## (butuh server Go yang hidup di GAME_URL, bawaan http://127.0.0.1:8099).
 
 const Maps = preload("res://scripts/maps.gd")
+const Version = preload("res://scripts/version.gd")
 
 var _failed := false
 var Api: Node  # autoload tidak dikenal saat skrip utama dikompilasi; ambil dari pohon
@@ -63,6 +64,30 @@ func _run() -> void:
 	if not h.ok:
 		print("  server tidak terjangkau: ", h.get("error"))
 		return
+
+	print("== versi")
+	_check(Version.compare("0.1.0", "0.2.0") < 0, "0.1.0 < 0.2.0")
+	_check(Version.compare("0.10.0", "0.9.0") > 0, "0.10.0 > 0.9.0 (angka, bukan teks)")
+	_check(Version.compare("v1.0.0", "1.0.0") == 0, "awalan v diabaikan")
+	_check(Version.app_version().split(".").size() == 3, "versi aplikasi berbentuk MAJOR.MINOR.PATCH (%s)" % Version.app_version())
+	var vi: Dictionary = await Api.version_info()
+	_check(vi.ok and str(vi.data.get("server", "")) != "", "GET /v1/version")
+	if vi.ok:
+		_check(Version.compare(Version.app_version(), str(vi.data.min_client)) >= 0, "aplikasi memenuhi versi minimum server")
+	Api.client_version = "0.0.1"
+	var old_try: Dictionary = await Api.register("VersiLawas")
+	_check(not old_try.ok and old_try.status == 426, "versi terlalu lama ditolak 426")
+	_check(old_try.get("data", {}).has("update_url"), "426 membawa update_url")
+	Api.client_version = Version.app_version()
+
+	print("== layar masuk")
+	var login: Control = load("res://scenes/login.tscn").instantiate()
+	root.add_child(login)
+	await create_timer(0.6).timeout
+	_check(login._version_label.text.contains("Server v"), "layar masuk menampilkan versi server")
+	_check(not login._btn_update.visible, "tidak ada ajakan update bila versi sudah terbaru")
+	_check(not login._btn_start.disabled, "tombol aktif bila versi memenuhi syarat")
+	login.queue_free()
 
 	var name := "Uji%d" % (Time.get_ticks_usec() % 100000)
 	var reg: Dictionary = await Api.register(name)

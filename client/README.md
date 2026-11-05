@@ -18,6 +18,7 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
 |--------|--------|
 | `scripts/api.gd` | Autoload `Api`: panggilan HTTP sesuai [`docs/API.md`](../docs/API.md) |
 | `scripts/session.gd` | Autoload `Session`: pemain aktif dan pengaturan tersimpan |
+| `scripts/version.gd`, `scripts/build_info.gd` | Versi aplikasi dan pembanding versi; `build_info.gd` diisi CI |
 | `scripts/maps.gd` | Data peta sementara (teks) dan aturan tabrakan |
 | `scripts/login.gd`, `scripts/world.gd` | Dua layar |
 | `tests/e2e.gd` | Uji ujung-ke-ujung terhadap server Go asli |
@@ -41,11 +42,18 @@ make client-test GODOT=/path/ke/godot
 Memulai server dengan database sementara lalu menjalankan `tests/e2e.gd`
 (daftar, gerak, simpan otomatis, tabrakan, token salah).
 
+## Versi
+
+Aplikasi menampilkan versinya di layar masuk (`v0.2.0 (build 12)`) dan memberi tahu
+bila ada versi baru atau wajib update. Aturan dan cara merilis: [`docs/VERSIONING.md`](../docs/VERSIONING.md).
+Versi aplikasi = `config/version` di `project.godot`.
+
 ## Membangun APK
 
 Otomatis lewat GitHub Actions (`.github/workflows/client.yml`): setiap push ke
 `main` menjalankan uji lalu membangun APK debug. Unduh dari tab **Actions**
-(run terbaru -> Artifacts). Untuk tag `v*`, APK juga masuk **Releases**.
+(run terbaru -> Artifacts); nama berkas memuat versi dan build, mis.
+`GamePetualang-v0.2.0-build12.apk`. Untuk tag `v*`, APK juga masuk **Releases**.
 
 Memasang di HP: izinkan "pasang dari sumber tidak dikenal", buka berkas APK.
 APK baru menimpa yang lama tanpa menghapus data, karena ditandatangani kunci

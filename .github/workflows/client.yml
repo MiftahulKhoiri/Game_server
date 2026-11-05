@@ -88,8 +88,27 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME"
           export/android/android_sdk_path = "$ANDROID_HOME"
           EOF
-          # Nomor versi naik tiap build agar APK baru bisa menimpa yang lama.
+
+      - name: Tentukan versi
+        id: ver
+        run: |
+          ver="$(grep '^config/version=' client/project.godot | cut -d'"' -f2)"
+          if ! [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::config/version di client/project.godot tidak valid: '$ver'"; exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$ver" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME tidak sama dengan versi proyek v$ver. Samakan dulu."; exit 1
+          fi
+          apk="GamePetualang-v${ver}-build${GITHUB_RUN_NUMBER}.apk"
+          # Versi tampilan + nomor build (versionCode naik tiap build agar APK baru bisa menimpa).
+          sed -i "s/^version\/name=.*/version\/name=\"${ver}\"/" client/export_presets.cfg
           sed -i "s/^version\/code=.*/version\/code=${GITHUB_RUN_NUMBER}/" client/export_presets.cfg
+          # Nomor build dan commit dibaca aplikasi untuk ditampilkan.
+          printf 'extends RefCounted\n\nconst BUILD := %s\nconst COMMIT := "%s"\n' \
+            "$GITHUB_RUN_NUMBER" "${GITHUB_SHA::7}" > client/scripts/build_info.gd
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "APK: $apk"
 
       - name: Ekspor APK
         env:
@@ -100,11 +119,11 @@ jobs:
           mkdir -p build
           "$GODOT" --headless --path client --import || true
           set +e
-          "$GODOT" --headless --path client --export-debug "Android" "$GITHUB_WORKSPACE/build/GamePetualang-debug.apk" 2>&1 | tee export.log
+          "$GODOT" --headless --path client --export-debug "Android" "$GITHUB_WORKSPACE/build/${{ steps.ver.outputs.apk }}" 2>&1 | tee export.log
           status=${PIPESTATUS[0]}
           set -e
           ls -lh build
-          if [ "$status" != 0 ] || [ ! -f build/GamePetualang-debug.apk ]; then
+          if [ "$status" != 0 ] || [ ! -f "build/${{ steps.ver.outputs.apk }}" ]; then
             # Tampilkan ekor log sebagai anotasi supaya terbaca tanpa membuka log penuh.
             tail_log="$(sed 's/\x1b\[[0-9;]*m//g' export.log | grep -v '^$' | tail -n 25 | tr '\n' '|' | head -c 3000)"
             sdk_info="build-tools=$(ls "$ANDROID_HOME/build-tools" | tr '\n' ' ') platforms=$(ls "$ANDROID_HOME/platforms" | tr '\n' ' ') java=$JAVA_HOME"
@@ -114,12 +133,14 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: GamePetualang-debug-apk
-          path: build/GamePetualang-debug.apk
+          name: GamePetualang-v${{ steps.ver.outputs.version }}-build${{ github.run_number }}
+          path: build/${{ steps.ver.outputs.apk }}
           if-no-files-found: error
 
       - name: Lampirkan ke Release (tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/GamePetualang-debug.apk
+          files: build/${{ steps.ver.outputs.apk }}
+          name: Game Petualang v${{ steps.ver.outputs.version }}
+          generate_release_notes: true

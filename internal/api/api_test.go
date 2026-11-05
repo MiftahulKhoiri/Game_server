@@ -12,7 +12,14 @@ import (
 
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
 	"github.com/MiftahulKhoiri/Game_server/internal/store"
+	"github.com/MiftahulKhoiri/Game_server/internal/version"
 )
+
+var testInfo = version.Info{
+	Server: "0.2.0", Commit: "test", API: 1,
+	MinClient: "0.2.0", LatestClient: "0.3.0",
+	UpdateURL: "https://example.test/unduh",
+}
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -22,7 +29,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	}
 	t.Cleanup(func() { st.Close() })
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	ts := httptest.NewServer(New(st, log))
+	ts := httptest.NewServer(New(st, log, testInfo))
 	t.Cleanup(ts.Close)
 	return ts
 }
@@ -162,5 +169,74 @@ func TestTokensAreIsolated(t *testing.T) {
 	_ = json.Unmarshal(data, &p)
 	if p.ID == a.Player.ID || p.Name != "Pemain_B" {
 		t.Fatalf("token B harus mengembalikan pemain B, dapat %+v", p)
+	}
+}
+
+func TestVersionEndpoint(t *testing.T) {
+	ts := newTestServer(t)
+	resp, data := do(t, "GET", ts.URL+"/v1/version", "", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	var info version.Info
+	if err := json.Unmarshal(data, &info); err != nil {
+		t.Fatal(err)
+	}
+	if info != testInfo {
+		t.Fatalf("info = %+v; mau %+v", info, testInfo)
+	}
+}
+
+func doWithVersion(t *testing.T, method, url, clientVersion string, body any) (*http.Response, []byte) {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequest(method, url, bytes.NewReader(b))
+	if clientVersion != "" {
+		req.Header.Set("X-Client-Version", clientVersion)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	return resp, data
+}
+
+func TestOldClientMustUpdate(t *testing.T) {
+	ts := newTestServer(t)
+
+	// Di bawah MinClient (0.2.0): ditolak 426 beserta alamat update.
+	resp, data := doWithVersion(t, "POST", ts.URL+"/v1/players", "0.1.0", map[string]string{"name": "Lawas"})
+	if resp.StatusCode != http.StatusUpgradeRequired {
+		t.Fatalf("klien lama harus 426, dapat %d: %s", resp.StatusCode, data)
+	}
+	var e struct {
+		MinClient string `json:"min_client"`
+		UpdateURL string `json:"update_url"`
+	}
+	_ = json.Unmarshal(data, &e)
+	if e.MinClient != "0.2.0" || e.UpdateURL != testInfo.UpdateURL {
+		t.Errorf("isi 426 salah: %s", data)
+	}
+
+	// Tepat di MinClient atau lebih baru: boleh.
+	for _, v := range []string{"0.2.0", "0.3.0", "1.0.0"} {
+		resp, data = doWithVersion(t, "POST", ts.URL+"/v1/players", v, map[string]string{"name": "Baru" + v[:1] + v[2:3]})
+		if resp.StatusCode != http.StatusCreated {
+			t.Errorf("klien %s harus boleh, dapat %d: %s", v, resp.StatusCode, data)
+		}
+	}
+
+	// Tanpa header (klien sangat lama) tidak bisa dipaksa, tetap dilayani.
+	resp, _ = doWithVersion(t, "POST", ts.URL+"/v1/players", "", map[string]string{"name": "TanpaHeader"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("tanpa header harus lolos, dapat %d", resp.StatusCode)
+	}
+
+	// /v1/version dan /healthz selalu terbuka agar klien lama bisa tahu harus update.
+	resp, _ = doWithVersion(t, "GET", ts.URL+"/v1/version", "0.0.1", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("/v1/version harus terbuka untuk klien lama, dapat %d", resp.StatusCode)
 	}
 }

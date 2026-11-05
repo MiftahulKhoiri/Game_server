@@ -123,6 +123,10 @@ func _save() -> void:
 		_set_status("Tersimpan")
 		if _unsaved:  # ada gerakan baru saat menyimpan
 			_save_timer.start(SAVE_DELAY)
+	elif res.status == 426:
+		# Aplikasi terlalu lama untuk server: percuma mengulang, pemain harus update.
+		_unsaved = true
+		_set_status(str(res.error))
 	else:
 		_unsaved = true
 		_set_status("Gagal menyimpan: %s (coba lagi...)" % res.error)

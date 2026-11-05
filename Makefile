@@ -2,9 +2,11 @@
 
 BIN := bin/gameserver
 GODOT ?= godot
+COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
+LDFLAGS := -X github.com/MiftahulKhoiri/Game_server/internal/version.Commit=$(COMMIT)
 
 build:
-	go build -o $(BIN) ./cmd/gameserver
+	go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/gameserver
 
 run: build
 	./$(BIN)
