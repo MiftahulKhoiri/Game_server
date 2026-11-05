@@ -130,6 +130,28 @@ ikut server, sedangkan posisi tetap milik klien (kecuali setelah kalah).
 
 Daftar musuh dan rumusnya ada di [GAME_DESIGN](GAME_DESIGN.md).
 
+## Misi (v0.6.0)
+
+Misi "kalahkan N musuh". Kemajuan dihitung server setiap pemain **menang** dalam
+pertarungan (kalah atau kabur tidak dihitung), lalu hadiah diambil dari NPC pemberi
+misi. Kemajuan dan hadiah disimpan di `state.quests` (hanya server yang mengubahnya).
+
+### `GET /v1/quests`  (login)
+`200 {"quests": [{"id", "title", "giver", "description", "target_ids", "target_count",
+"reward_gold", "status", "progress"}]}`. `status`: `available`, `active`, `done`, `claimed`.
+
+### `POST /v1/quests/accept` dan `POST /v1/quests/claim`  (login)
+Body: `{"quest": "selamatkan_nenek"}`. `200 {"player": {...}, "quests": [...], "reward_gold": 40}`
+(`reward_gold` hanya pada klaim).
+
+| Status | Arti |
+|--------|------|
+| 404 | Misi tidak dikenal |
+| 409 | Sudah diterima / hadiah sudah diambil / sedang bertarung |
+| 422 | Klaim padahal misi belum selesai |
+
+Saat menang, `log` pertarungan memuat baris kemajuan misi, mis. `Misi "Selamatkan Nenek": 2/5.`
+
 ## Toko (v0.5.0)
 
 Semua harga ditentukan server. Transaksi atomik: bila gagal, emas dan tas tidak berubah.

@@ -198,6 +198,29 @@ func _run() -> void:
 	var bad_buy: Dictionary = await Api.shop_buy("naga", 1)
 	_check(not bad_buy.ok and bad_buy.status == 404, "barang asing 404")
 
+	print("== misi")
+	var q0: Dictionary = await Api.quests_get()
+	_check(q0.ok and q0.data.quests.size() > 0 and q0.data.quests[0].status == "available", "misi awal tersedia")
+	var early: Dictionary = await Api.quest_claim("selamatkan_nenek")
+	_check(not early.ok and early.status == 422, "klaim sebelum terima ditolak 422")
+	Session.talk_npc = "nenek_penjual"
+	var dialog: Control = load("res://scenes/dialog.tscn").instantiate()
+	root.add_child(dialog)
+	await create_timer(0.8).timeout
+	_check(dialog._action.visible and dialog._action.text == "Terima misi", "dialog menawarkan misi")
+	dialog._on_action("accept")
+	while dialog._busy:
+		await process_frame
+	_check(not dialog._action.visible and dialog._text.text.contains("0/5"), "misi diterima, kemajuan 0/5")
+	var q1: Dictionary = await Api.quests_get()
+	_check(q1.data.quests[0].status == "active", "server mencatat misi aktif")
+	_check(Session.player.version == int((await Api.get_me()).data.version), "versi lokal sinkron setelah terima misi")
+	dialog.queue_free()
+	await process_frame
+	_check(Maps.npc_at(Maps.DEFAULT_MAP, 3, 6) == "nenek_penjual", "nenek berdiri di (3,6)")
+	_check(Maps.npc_near(Maps.DEFAULT_MAP, 4, 6) == "nenek_penjual" and Maps.npc_near(Maps.DEFAULT_MAP, 5, 5) == "", "pemain hanya dekat nenek bila bersebelahan")
+	_check(Maps.walkable(Maps.DEFAULT_MAP, 3, 6), "petak nenek tetap bagian peta (diblokir oleh gerak, bukan peta)")
+
 	var merged := {"state": {"level": 3, "xp": 4, "hp": 10, "max_hp": 46, "gold": 9, "map": "desa_awal", "x": 1, "y": 1, "inventory": [{"id": "ramuan", "qty": 2.0}]}, "version": 9.0}
 	Session.player.state.x = 8
 	Session.merge_server_player(merged)

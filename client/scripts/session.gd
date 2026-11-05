@@ -7,6 +7,8 @@ const CONFIG_PATH := "user://settings.cfg"
 var player: Dictionary = {}
 ## Pertarungan yang sedang berjalan (jawaban server: enemy_id, enemy_name, enemy_hp, ...), {} bila tidak ada.
 var battle: Dictionary = {}
+## NPC yang sedang diajak bicara (untuk layar dialog).
+var talk_npc := ""
 ## Sisa langkah aman di ladang setelah pertarungan (tidak ada pertemuan baru).
 var safe_steps := 0
 ## true = tidak terhubung ke server (mis. menguji peta langsung dari editor); tidak disimpan.

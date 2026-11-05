@@ -52,6 +52,9 @@ func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.
 	mux.Handle("GET /v1/battle", s.auth(http.HandlerFunc(s.getBattle)))
 	mux.Handle("POST /v1/battle/start", s.auth(http.HandlerFunc(s.startBattle)))
 	mux.Handle("POST /v1/battle/action", s.auth(http.HandlerFunc(s.battleAction)))
+	mux.Handle("GET /v1/quests", s.auth(http.HandlerFunc(s.getQuests)))
+	mux.Handle("POST /v1/quests/accept", s.auth(http.HandlerFunc(s.questAction(false))))
+	mux.Handle("POST /v1/quests/claim", s.auth(http.HandlerFunc(s.questAction(true))))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.Buy))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.Sell))))
@@ -239,6 +242,63 @@ func (s *Server) battleAction(w http.ResponseWriter, r *http.Request) {
 			Battle: sess.Battle, Player: sess.Player,
 			Status: result.Status, Log: result.Log, Rewards: result.Rewards,
 		})
+	}
+}
+
+// --- misi ---
+
+func (s *Server) getQuests(w http.ResponseWriter, r *http.Request) {
+	p, err := s.store.PlayerByID(r.Context(), playerFrom(r).ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"quests": p.State.QuestViews()})
+}
+
+type questRequest struct {
+	Quest string `json:"quest"`
+}
+
+type questResponse struct {
+	Player     game.Player      `json:"player"`
+	Quests     []game.QuestView `json:"quests"`
+	RewardGold int              `json:"reward_gold,omitempty"`
+}
+
+// questAction membuat handler terima misi (claim=false) atau ambil hadiah (claim=true).
+func (s *Server) questAction(claim bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req questRequest
+		if !decode(w, r, &req) {
+			return
+		}
+		reward := 0
+		sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
+			if sess.Battle != nil {
+				return errBattleActive
+			}
+			if claim {
+				def, err := sess.Player.State.ClaimQuest(req.Quest)
+				reward = def.RewardGold
+				return err
+			}
+			return sess.Player.State.AcceptQuest(req.Quest)
+		})
+		switch {
+		case errors.Is(err, errBattleActive):
+			writeError(w, http.StatusConflict, "tidak bisa mengurus misi saat bertarung")
+		case errors.Is(err, game.ErrUnknownQuest):
+			writeError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, game.ErrQuestTaken), errors.Is(err, game.ErrQuestClaimed):
+			writeError(w, http.StatusConflict, err.Error())
+		case errors.Is(err, game.ErrQuestNotReady), errors.Is(err, game.ErrTooManyQuests):
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+		case err != nil:
+			s.fail(w, r, err)
+		default:
+			writeJSON(w, http.StatusOK, questResponse{Player: sess.Player, Quests: sess.Player.State.QuestViews(), RewardGold: reward})
+		}
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
@@ -22,6 +23,11 @@ var testInfo = version.Info{
 }
 
 func newTestServer(t *testing.T) *httptest.Server {
+	ts, _ := newTestServerWithStore(t)
+	return ts
+}
+
+func newTestServerWithStore(t *testing.T) (*httptest.Server, *store.Store) {
 	t.Helper()
 	st, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -31,7 +37,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ts := httptest.NewServer(NewWithRand(st, log, testInfo, game.RandFunc(func(n int) int { return 99 % n })))
 	t.Cleanup(ts.Close)
-	return ts
+	return ts, st
 }
 
 func do(t *testing.T, method, url, token string, body any) (*http.Response, []byte) {
@@ -407,5 +413,108 @@ func TestShop(t *testing.T) {
 	battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
 	if code, _ := call("/v1/shop/sell", map[string]any{"item": "ramuan", "qty": 1}); code != http.StatusConflict {
 		t.Errorf("berdagang saat bertarung harus 409, dapat %d", code)
+	}
+}
+
+// --- misi ---
+
+func TestQuestEndToEnd(t *testing.T) {
+	ts, st := newTestServerWithStore(t)
+	cr := register(t, ts, "Penolong")
+
+	type qresp struct {
+		Player     game.Player      `json:"player"`
+		Quests     []game.QuestView `json:"quests"`
+		RewardGold int              `json:"reward_gold"`
+	}
+	call := func(path string, body any) (int, qresp) {
+		resp, data := do(t, "POST", ts.URL+path, cr.Token, body)
+		var q qresp
+		_ = json.Unmarshal(data, &q)
+		return resp.StatusCode, q
+	}
+	list := func() []game.QuestView {
+		resp, data := do(t, "GET", ts.URL+"/v1/quests", cr.Token, nil)
+		var out struct {
+			Quests []game.QuestView `json:"quests"`
+		}
+		if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &out) != nil {
+			t.Fatalf("GET /v1/quests: %d %s", resp.StatusCode, data)
+		}
+		return out.Quests
+	}
+
+	if resp, _ := do(t, "GET", ts.URL+"/v1/quests", "", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
+	qs := list()
+	if len(qs) == 0 || qs[0].ID != "selamatkan_nenek" || qs[0].Status != game.QuestAvailable {
+		t.Fatalf("daftar misi awal salah: %+v", qs)
+	}
+
+	q := map[string]string{"quest": "selamatkan_nenek"}
+	if code, _ := call("/v1/quests/claim", q); code != http.StatusUnprocessableEntity {
+		t.Errorf("klaim sebelum terima harus 422, dapat %d", code)
+	}
+	if code, _ := call("/v1/quests/accept", map[string]string{"quest": "naga"}); code != http.StatusNotFound {
+		t.Errorf("misi asing harus 404, dapat %d", code)
+	}
+	if code, r := call("/v1/quests/accept", q); code != http.StatusOK || r.Quests[0].Status != game.QuestActive {
+		t.Fatalf("terima: %d %+v", code, r.Quests)
+	}
+	if code, _ := call("/v1/quests/accept", q); code != http.StatusConflict {
+		t.Errorf("terima dua kali harus 409, dapat %d", code)
+	}
+	if code, _ := call("/v1/quests/claim", q); code != http.StatusUnprocessableEntity {
+		t.Errorf("klaim saat belum selesai harus 422, dapat %d", code)
+	}
+
+	// Satu kemenangan atas musuh target menaikkan kemajuan (musuh level 1 hanya tikus/belalang).
+	if code, _, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil); code != http.StatusCreated {
+		t.Fatalf("mulai: %d %s", code, d)
+	}
+	var last battleResponse
+	for j := 0; j < 60; j++ {
+		code, resp, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "attack"})
+		if code != http.StatusOK {
+			t.Fatalf("aksi: %d %s", code, d)
+		}
+		last = resp
+		if last.Status != game.StatusOngoing {
+			break
+		}
+	}
+	if last.Status != game.StatusWon || list()[0].Progress != 1 {
+		t.Fatalf("menang harus menaikkan kemajuan: status=%s %+v", last.Status, list()[0])
+	}
+	if !strings.Contains(strings.Join(last.Log, "|"), "Selamatkan Nenek") {
+		t.Errorf("log pertarungan harus menyebut misi: %v", last.Log)
+	}
+
+	// Selesaikan misi langsung lewat store (pertarungan ke-5 tergantung level musuh), lalu klaim.
+	if _, err := st.Update(t.Context(), cr.Player.ID, func(sess *store.Session) error {
+		sess.Player.State.Quests[0].Status = game.QuestDone
+		sess.Player.State.Quests[0].Progress = sess.Player.State.Quests[0].Progress + 4
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	done := list()[0]
+	if done.Status != game.QuestDone {
+		t.Fatalf("misi harus selesai: %+v", done)
+	}
+
+	_, me := do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
+	var before game.Player
+	_ = json.Unmarshal(me, &before)
+	code, r := call("/v1/quests/claim", q)
+	if code != http.StatusOK || r.RewardGold != done.RewardGold || r.Player.State.Gold != before.State.Gold+done.RewardGold {
+		t.Fatalf("klaim: %d reward=%d gold %d -> %d", code, r.RewardGold, before.State.Gold, r.Player.State.Gold)
+	}
+	if code, _ := call("/v1/quests/claim", q); code != http.StatusConflict {
+		t.Errorf("klaim dua kali harus 409, dapat %d", code)
+	}
+	if list()[0].Status != game.QuestClaimed {
+		t.Error("status akhir harus claimed")
 	}
 }

@@ -40,6 +40,31 @@ const DESA_AWAL: Array[String] = [
 ]
 
 
+## NPC di peta. Kunci = id NPC (sama dengan id pemberi misi di server dan nama gambar
+## di assets/characters/). NPC menghalangi jalan; bicara dari petak yang bersebelahan.
+const NPCS := {
+	"nenek_penjual": {"map": "desa_awal", "pos": Vector2i(3, 6), "name": "Nenek"},
+}
+
+
+## id NPC di petak (x, y), atau "" bila tidak ada.
+static func npc_at(map_id: String, x: int, y: int) -> String:
+	for id: String in NPCS:
+		var n: Dictionary = NPCS[id]
+		if n.map == map_id and n.pos == Vector2i(x, y):
+			return id
+	return ""
+
+
+## id NPC yang bersebelahan dengan (x, y) (atas/bawah/kiri/kanan), atau "".
+static func npc_near(map_id: String, x: int, y: int) -> String:
+	for d: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var id := npc_at(map_id, x + d.x, y + d.y)
+		if id != "":
+			return id
+	return ""
+
+
 static func rows(map_id: String) -> Array[String]:
 	if map_id == DEFAULT_MAP:
 		return DESA_AWAL

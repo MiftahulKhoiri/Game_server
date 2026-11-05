@@ -13,6 +13,7 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
 - **Pertarungan** (`scenes/battle.tscn`): muncul acak di ladang, tombol Serang /
   Bertahan / Ramuan / Kabur. Hasil dihitung server; bila aplikasi ditutup di
   tengah pertarungan, pertarungan dilanjutkan saat masuk lagi.
+- **Bicara dengan NPC** (`scenes/dialog.tscn`): tombol Bicara aktif bila berdiri di sebelah NPC; terima misi dan ambil hadiah.
 - **Toko** (`scenes/shop.tscn`): tombol Toko di peta; beli/jual barang, harga dari server.
 - Token login disimpan di `user://settings.cfg` (di HP: penyimpanan aplikasi).
 
@@ -24,7 +25,7 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
 | `scripts/session.gd` | Autoload `Session`: pemain aktif dan pengaturan tersimpan |
 | `scripts/version.gd`, `scripts/build_info.gd` | Versi aplikasi dan pembanding versi; `build_info.gd` diisi CI |
 | `scripts/maps.gd` | Data peta sementara (teks) dan aturan tabrakan |
-| `scripts/login.gd`, `scripts/world.gd`, `scripts/battle.gd`, `scripts/shop.gd` | Layar-layar game |
+| `scripts/login.gd`, `scripts/world.gd`, `scripts/battle.gd`, `scripts/shop.gd`, `scripts/dialog.gd` | Layar-layar game |
 | `tests/e2e.gd` | Uji ujung-ke-ujung terhadap server Go asli |
 | `export_presets.cfg` | Pengaturan ekspor APK |
 

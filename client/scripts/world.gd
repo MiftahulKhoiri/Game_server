@@ -12,6 +12,8 @@ const HUD_TOP := 960
 const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap langkah di ladang
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const SHOP_SCENE := "res://scenes/shop.tscn"
+const DIALOG_SCENE := "res://scenes/dialog.tscn"
+const NPC_ART_DIR := "res://assets/characters/"
 
 var _map_id := Maps.DEFAULT_MAP
 var _vis := Vector2.ZERO  # posisi gambar pemain (piksel), digeser halus oleh tween
@@ -19,6 +21,8 @@ var _moving := false
 var _held := Vector2i.ZERO  # arah tombol layar yang sedang ditekan
 var _unsaved := false
 var _saving := false
+var _talk_button: Button
+var _npc_tex: Dictionary = {}  # id NPC -> Texture2D (atau null)
 var _encountering := false  # sedang menuju pertarungan: gerak dikunci
 var _save_timer: Timer
 var _hud: Label
@@ -87,7 +91,7 @@ func _try_move(dir: Vector2i) -> void:
 	var st: Dictionary = Session.player.state
 	var nx: int = st.x + dir.x
 	var ny: int = st.y + dir.y
-	if not Maps.walkable(_map_id, nx, ny):
+	if not Maps.walkable(_map_id, nx, ny) or Maps.npc_at(_map_id, nx, ny) != "":
 		return
 	st.x = nx
 	st.y = ny
@@ -102,6 +106,7 @@ func _try_move(dir: Vector2i) -> void:
 func _on_move_done() -> void:
 	_moving = false
 	queue_redraw()
+	_update_talk_button()
 	if Session.offline or _encountering:
 		return
 	var st: Dictionary = Session.player.state
@@ -148,6 +153,25 @@ func _enter_battle(data: Dictionary) -> void:
 	var battle: Variant = data.get("battle")
 	Session.battle = battle if battle is Dictionary else {}
 	get_tree().change_scene_to_file(BATTLE_SCENE)
+
+
+func _update_talk_button() -> void:
+	if _talk_button == null:
+		return
+	var st: Dictionary = Session.player.state
+	_talk_button.disabled = Session.offline or Maps.npc_near(_map_id, st.x, st.y) == ""
+
+
+func _talk() -> void:
+	var st: Dictionary = Session.player.state
+	var npc := Maps.npc_near(_map_id, st.x, st.y)
+	if npc == "" or _encountering:
+		return
+	_encountering = true
+	_held = Vector2i.ZERO
+	Session.talk_npc = npc
+	await _flush_save()  # versi pemain harus sinkron sebelum hadiah diambil
+	get_tree().change_scene_to_file(DIALOG_SCENE)
 
 
 func _open_shop() -> void:
@@ -215,6 +239,16 @@ func _build_ui() -> void:
 	_hud.add_theme_font_size_override("font_size", 30)
 	layer.add_child(_hud)
 
+	_talk_button = Button.new()
+	_talk_button.text = "Bicara"
+	_talk_button.position = Vector2(240, 1110)
+	_talk_button.size = Vector2(200, 70)
+	_talk_button.focus_mode = Control.FOCUS_NONE
+	_talk_button.add_theme_font_size_override("font_size", 28)
+	_talk_button.pressed.connect(_talk)
+	layer.add_child(_talk_button)
+	_update_talk_button()
+
 	var shop := Button.new()
 	shop.text = "Toko"
 	shop.position = Vector2(24, 1110)
@@ -277,10 +311,32 @@ func _draw() -> void:
 
 	draw_rect(Rect2(0, HUD_TOP, 720, 320), Color("14201a"))
 
+	for id: String in Maps.NPCS:
+		var n: Dictionary = Maps.NPCS[id]
+		if n.map == _map_id:
+			_draw_npc(id, Vector2(n.pos) * TILE)
+
 	# Pemain (placeholder)
 	draw_circle(_vis + Vector2(24, 40), 14, Color(0, 0, 0, 0.25))
 	draw_rect(Rect2(_vis + Vector2(12, 14), Vector2(24, 26)), Color("d9534f"))
 	draw_circle(_vis + Vector2(24, 12), 10, Color("f1c9a5"))
+
+
+## Gambar NPC: ilustrasi dari assets/characters/<id>.png bila ada (dikecilkan ke
+## satu petak lebar dan 1,5 petak tinggi), kalau tidak bentuk placeholder.
+func _draw_npc(id: String, pos: Vector2) -> void:
+	if not _npc_tex.has(id):
+		var path := NPC_ART_DIR + id + ".png"
+		_npc_tex[id] = load(path) as Texture2D if ResourceLoader.exists(path) else null
+	var tex: Texture2D = _npc_tex[id]
+	draw_circle(pos + Vector2(24, 42), 16, Color(0, 0, 0, 0.25))
+	if tex == null:
+		draw_rect(Rect2(pos + Vector2(12, 14), Vector2(24, 26)), Color("c8a040"))
+		draw_circle(pos + Vector2(24, 12), 10, Color("e8c9a5"))
+		return
+	var h := TILE * 1.6
+	var w := h * tex.get_width() / tex.get_height()
+	draw_texture_rect(tex, Rect2(pos + Vector2((TILE - w) / 2.0, TILE - h + 4), Vector2(w, h)), false)
 
 
 func _draw_tile(tile: String, pos: Vector2) -> void:

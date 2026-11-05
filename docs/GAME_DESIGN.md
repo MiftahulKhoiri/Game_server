@@ -59,18 +59,24 @@ gambar `client/assets/items/<id>.png`; tanpa gambar klien memakai kotak berwarna
 
 Harga jual selalu lebih murah dari harga beli agar tidak bisa untung tanpa batas.
 
-## Rencana misi
+## Misi (v0.6.0)
 
-- Misi bertipe "kalahkan N musuh X": server menghitung kemenangan dalam
-  pertarungan (klien tidak bisa memalsukan).
-- NPC memberi misi; saat selesai pemain menerima hadiah dari NPC itu lewat
-  endpoint klaim (satu kali per misi, atomik di server).
-- Butuh peta dengan NPC dan layar dialog; menunggu peta bernuansa kerajaan.
+Misi bertipe "kalahkan N musuh". Server menghitung kemenangan (klien tidak bisa
+memalsukan) dan hadiah diambil satu kali dari NPC pemberi misi. Misi baru = satu
+baris di `internal/game/quest.go`; NPC baru = satu entri di `client/scripts/maps.gd`
+dan gambar `client/assets/characters/<id npc>.png`.
+
+| Misi | Pemberi | Tugas | Hadiah |
+|------|---------|-------|--------|
+| Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 tikus sawah atau belalang raksasa | 40 emas |
+
+Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
+ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 
 ## Masih perlu diputuskan (pemilik proyek)
 
 1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
-2. **Misi pertama.** Siapa yang diselamatkan lebih dulu, dari musuh apa, hadiahnya apa?
+2. **Misi berikutnya.** Petani? Hadiah barang (koin kuno, permata merah)? Musuh yang lebih kuat (goblin)?
 3. **Peta.** Ganti Desa Awal menjadi desa kerajaan? Seperti apa gerbang kerajaannya?
 
 ## Sistem yang sudah ada di server
@@ -117,5 +123,5 @@ Di klien, tiap langkah di petak ladang punya peluang 18% bertemu musuh
 2. Klien Godot minimal: daftar, masuk, gerak di peta grid, simpan otomatis (selesai, gambar placeholder).
 3. Peta pertama (Desa Awal: rumah, alun-alun, sungai, ladang) sudah ada dengan gambar placeholder; gambar ilustrator menggantikannya, lihat [MAP_REFERENCES](MAP_REFERENCES.md).
 4. Musuh dan pertarungan bergiliran (logika di server) (selesai di v0.3.0, gambar placeholder).
-5. Toko dan barang (selesai di v0.5.0, ikon placeholder); inventori dan misi menyusul.
+5. Toko dan barang (selesai di v0.5.0, ikon placeholder); inventori menyusul. Misi pertama selesai di v0.6.0.
 6. Rilis APK lewat GitHub Actions (selesai sejak v0.2.0).

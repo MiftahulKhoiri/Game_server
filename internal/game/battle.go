@@ -159,6 +159,7 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 		rw.Drop = e.DropID
 		res.Log = append(res.Log, fmt.Sprintf("%s menjatuhkan: %s.", b.EnemyName, e.DropID))
 	}
+	res.Log = append(res.Log, st.RecordKill(e.ID)...)
 }
 
 // lose: pemain pingsan, kehilangan separuh emas, dibawa pulang ke desa dengan separuh HP.

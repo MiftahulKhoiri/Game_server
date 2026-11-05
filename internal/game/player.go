@@ -35,6 +35,8 @@ type State struct {
 	X         int    `json:"x"`
 	Y         int    `json:"y"`
 	Inventory []Item `json:"inventory"`
+	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
+	Quests []QuestProgress `json:"quests,omitempty"`
 }
 
 // Player adalah pemain lengkap beserta metadata penyimpanannya.
@@ -113,6 +115,9 @@ func (s State) Validate() error {
 		return errors.New("posisi tidak boleh negatif")
 	case len(s.Inventory) > MaxInventory:
 		return fmt.Errorf("inventori maksimal %d tumpukan", MaxInventory)
+	}
+	if err := validateQuests(s.Quests); err != nil {
+		return err
 	}
 	for _, it := range s.Inventory {
 		if it.ID == "" || len(it.ID) > 64 {

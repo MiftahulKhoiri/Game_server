@@ -51,6 +51,20 @@ func battle_action(action: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/action", {"action": action}, true)
 
 
+## Semua misi beserta kemajuan pemain (status: available/active/done/claimed).
+func quests_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/quests", null, true)
+
+
+func quest_accept(quest: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/quests/accept", {"quest": quest}, true)
+
+
+## Mengambil hadiah misi yang sudah selesai (emas langsung masuk).
+func quest_claim(quest: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/quests/claim", {"quest": quest}, true)
+
+
 ## Daftar barang dan harga toko.
 func shop_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/shop", null, true)
