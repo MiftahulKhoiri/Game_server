@@ -10,6 +10,11 @@ const WB = preload("res://scripts/world_build.gd")
 
 const MODEL_DIR := "res://assets/models/"
 
+## Tinggi akhir (satuan petak) untuk model GLB buatan AI/unduhan selain ksatria. Ukuran asli
+## GLB tidak dipercaya: model diukur lalu diskalakan ke tinggi ini, kaki di tanah, di tengah.
+const HEIGHTS := {"golem_lava": 1.5, "golem_kerikil": 1.45, "ogre_batu": 1.6, "raja_goblin": 1.1, "goblin": 0.9, "goblin_penjaga": 1.0, "nenek_penjual": 0.85, "petani": 0.95}
+const DEFAULT_HEIGHT := 1.0
+
 ## Skala akhir model terhadap petak (disetel supaya tinggi mendekati 1 petak).
 const SCALES := {
 	"ksatria": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
@@ -24,11 +29,16 @@ const SCALES := {
 static func create(id: String) -> Node3D:
 	var path := MODEL_DIR + id + ".glb"
 	var node: Node3D = null
+	var from_glb := false
 	if ResourceLoader.exists(path):
 		node = _from_glb(id, path)
+		from_glb = node != null
 	if node == null:
 		node = build_placeholder(id)
-	node.scale = Vector3.ONE * float(SCALES.get(id, 0.7))
+	if from_glb and id != "ksatria":
+		node.scale = Vector3.ONE  # sudah dinormalkan di _from_glb
+	else:
+		node.scale = Vector3.ONE * float(SCALES.get(id, 0.7))
 	node.name = id
 	return node
 
@@ -46,8 +56,17 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	var inst := scene.instantiate() as Node3D
 	if inst == null:
 		return null
+	if id != "ksatria":
+		_fix_materials(inst)
+		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
 	var rig := Rig.new()
-	rig.add_child(inst)
+	var holder := Node3D.new()  # badan utuh: digerakkan rig untuk model tanpa rangka
+	holder.name = "body"
+	if id == "ksatria":
+		rig.add_child(inst)
+	else:
+		holder.add_child(inst)
+		rig.add_child(holder)
 	var ap := _find_animation_player(inst)
 	if ap != null and not ap.get_animation_list().is_empty():
 		rig.setup("biped", {})
@@ -55,8 +74,51 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	elif id == "ksatria":
 		rig.setup("biped", _paladin_pivots(inst))
 	else:
-		rig.setup("golem", {})  # tanpa sendi: hanya diam
+		rig.setup("static", {"body": holder})  # tanpa sendi: badan utuh bergoyang
 	return rig
+
+
+## Warna per titik (hasil gambar-ke-3D) dipakai sebagai warna dasar; dua sisi terlihat.
+static func _fix_materials(n: Node) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(i)
+			var sm: StandardMaterial3D = (m.duplicate() as StandardMaterial3D) if m is StandardMaterial3D else StandardMaterial3D.new()
+			if sm.albedo_texture == null:
+				sm.vertex_color_use_as_albedo = true
+			sm.cull_mode = BaseMaterial3D.CULL_DISABLED
+			sm.roughness = 0.9
+			sm.metallic = 0.0
+			mi.set_surface_override_material(i, sm)
+	for c in n.get_children():
+		_fix_materials(c)
+
+
+static func _aabb_of(n: Node, xf: Transform3D) -> AABB:
+	var box := AABB()
+	var has := false
+	if n is MeshInstance3D:
+		box = xf * (n as MeshInstance3D).get_aabb()
+		has = true
+	for c in n.get_children():
+		if c is Node3D:
+			var sub := _aabb_of(c, xf * (c as Node3D).transform)
+			if sub.size != Vector3.ZERO:
+				box = sub if not has else box.merge(sub)
+				has = true
+	return box
+
+
+## Skala ke tinggi h, kaki di y=0, pusat di x=z=0.
+static func _normalize(inst: Node3D, h: float) -> void:
+	var box := _aabb_of(inst, Transform3D.IDENTITY)
+	if box.size.y <= 0.0001:
+		return
+	var k := h / box.size.y
+	inst.scale = Vector3.ONE * k
+	var c := box.get_center()
+	inst.position = Vector3(-c.x * k, -box.position.y * k, -c.z * k)
 
 
 static func _find_animation_player(n: Node) -> AnimationPlayer:

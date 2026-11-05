@@ -84,7 +84,7 @@ func _process(delta: float) -> void:
 		_drive_animation_player()
 		return
 	var amount := 1.0 if moving else 0.0
-	var ph := _t * (9.0 if kind != "golem" else 5.0)
+	var ph := _t * (9.0 if kind != "golem" and kind != "static" else 5.0)
 	var swing := sin(ph) * 0.55 * amount
 	var idle := sin(_t * 2.0) * 0.03
 	var atk := 0.0
@@ -92,6 +92,11 @@ func _process(delta: float) -> void:
 		atk = sin((1.0 - _attack / ATTACK_TIME) * PI)
 
 	match kind:
+		"static":
+			# Model tanpa rangka (hasil gambar-ke-3D): badan utuh bergoyang, maju saat serang.
+			_rot("body", 0.0, 0.0, sin(ph) * 0.05 * amount)
+			if pivots.has("body"):
+				(pivots["body"] as Node3D).position.y = absf(sin(ph)) * 0.06 * amount + sin(_t * 2.0) * 0.015
 		"biped", "golem":
 			_rot("leg_l", swing)
 			_rot("leg_r", -swing)

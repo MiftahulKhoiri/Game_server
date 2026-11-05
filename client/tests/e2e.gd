@@ -402,6 +402,12 @@ func _run() -> void:
 		if node != null:
 			node.free()
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
+	for mdl in ["golem_lava", "golem_kerikil", "goblin", "goblin_penjaga", "nenek_penjual", "petani"]:
+		var gm: Node3D = Models.create(mdl)
+		_check(Models.has_glb(mdl) and gm.kind == "static" and gm.pivots.has("body"), "model GLB hasil AI '%s' terpasang (tanpa rangka)" % mdl)
+		gm.play_attack()
+		gm.play_hurt()
+		gm.free()
 
 	Session.offline = true
 	Session.player = {"name": "Uji", "state": {"map": Maps.DEFAULT_MAP, "x": 5, "y": 5, "fx": 5.5, "fz": 5.5, "yaw": 0.0, "hp": 30, "max_hp": 30, "level": 1, "xp": 0, "gold": 0, "inventory": [], "equipment": {"weapon": "", "armor": ""}}, "version": 1}
