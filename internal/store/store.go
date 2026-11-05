@@ -120,12 +120,14 @@ func (s *Store) Battle(ctx context.Context, playerID string) (game.Battle, error
 	return *b, nil
 }
 
-// SavePosition menyimpan posisi pemain (peta, x, y) dari klien. Hanya posisi yang
+// SavePosition menyimpan posisi pemain (peta, petak, posisi halus, arah) dari klien. Hanya posisi yang
 // diterima: HP, XP, emas, level, dan tas dihitung server dan tidak bisa diubah klien.
 // expectedVersion harus sama dengan versi tersimpan, jika tidak ErrConflict.
-func (s *Store) SavePosition(ctx context.Context, id, mapID string, x, y, expectedVersion int) (game.Player, error) {
+func (s *Store) SavePosition(ctx context.Context, id string, pose game.Pose, expectedVersion int) (game.Player, error) {
 	sess, err := s.mutate(ctx, id, expectedVersion, func(sess *Session) error {
-		sess.Player.State.Map, sess.Player.State.X, sess.Player.State.Y = mapID, x, y
+		st := &sess.Player.State
+		st.Map, st.X, st.Y = pose.Map, pose.X, pose.Y
+		st.FX, st.FZ, st.Yaw = pose.FX, pose.FZ, pose.Yaw
 		return nil
 	})
 	return sess.Player, err

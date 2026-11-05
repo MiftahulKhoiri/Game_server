@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"math"
 	"testing"
 )
 
@@ -306,5 +307,46 @@ func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
 	p.State.X = 8
 	if _, err := StartBossBattle(p); !errors.Is(err, ErrNoBoss) {
 		t.Error("bergeser satu petak harus ErrNoBoss")
+	}
+}
+
+func TestNormalizePose(t *testing.T) {
+	ok, valid := NormalizePose(Pose{Map: MapDesaAwal, X: 3, Y: 4, FX: 3.25, FZ: 4.75, Yaw: 1})
+	if !valid || ok.FX != 3.25 || ok.FZ != 4.75 || ok.Yaw != 1 {
+		t.Errorf("pose sah berubah: %+v valid=%v", ok, valid)
+	}
+	// Klien lama: tanpa posisi halus -> tengah petak.
+	old, valid := NormalizePose(Pose{Map: MapDesaAwal, X: 3, Y: 4})
+	if !valid || old.FX != 3.5 || old.FZ != 4.5 {
+		t.Errorf("klien lama harus di tengah petak: %+v", old)
+	}
+	// Posisi halus di luar petak -> tengah petak (petak yang jadi acuan).
+	off, _ := NormalizePose(Pose{Map: MapDesaAwal, X: 3, Y: 4, FX: 9.9, FZ: 0.1})
+	if off.FX != 3.5 || off.FZ != 4.5 {
+		t.Errorf("posisi tidak cocok petak harus diperbaiki: %+v", off)
+	}
+	// Batas atas petak (FX == X+1) bukan bagian petak itu.
+	edge, _ := NormalizePose(Pose{Map: MapDesaAwal, X: 3, Y: 4, FX: 4.0, FZ: 4.5})
+	if edge.FX != 3.5 {
+		t.Errorf("FX == X+1 harus dianggap di luar petak: %+v", edge)
+	}
+	// Arah dibulatkan ke -pi..pi.
+	spin, _ := NormalizePose(Pose{Map: MapDesaAwal, X: 3, Y: 4, FX: 3.5, FZ: 4.5, Yaw: 7})
+	if spin.Yaw < -3.1416 || spin.Yaw > 3.1416 {
+		t.Errorf("yaw di luar -pi..pi: %v", spin.Yaw)
+	}
+	for name, p := range map[string]Pose{
+		"peta asing":  {Map: "neraka", X: 1, Y: 1},
+		"luar peta":   {Map: MapDesaAwal, X: 15, Y: 1},
+		"NaN":         {Map: MapDesaAwal, X: 1, Y: 1, FX: math.NaN()},
+		"tak hingga":  {Map: MapDesaAwal, X: 1, Y: 1, FZ: math.Inf(1)},
+		"yaw tak sah": {Map: MapDesaAwal, X: 1, Y: 1, Yaw: math.Inf(-1)},
+	} {
+		if _, valid := NormalizePose(p); valid {
+			t.Errorf("%s harus ditolak", name)
+		}
+	}
+	if s := NewState(); s.FX != float64(SpawnX)+0.5 || s.FZ != float64(SpawnY)+0.5 {
+		t.Errorf("pemain baru harus di tengah petak awal: %+v", s)
 	}
 }

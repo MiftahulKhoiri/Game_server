@@ -46,7 +46,7 @@ func set_player(p: Dictionary) -> void:
 
 
 ## Menggabungkan data pemain dari server (mis. hasil pertarungan) ke data lokal.
-## Statistik dan tas SELALU ikut server. Posisi (peta, x, y) tetap milik klien,
+## Statistik dan tas SELALU ikut server. Posisi (peta, x, y, fx, fz, yaw) tetap milik klien,
 ## kecuali adopt_position (mis. pemain kalah dan dipulangkan ke desa).
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
@@ -54,7 +54,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment"]:
 		st[key] = incoming[key]
 	if adopt_position:
-		for key: String in ["map", "x", "y"]:
+		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
 			st[key] = incoming[key]
 	player.version = int(p.get("version", player.version))
 
@@ -65,7 +65,7 @@ func use_offline_player() -> void:
 	set_player({
 		"name": "Penguji",
 		"version": 1,
-		"state": {"level": 1, "hp": 30, "max_hp": 30, "map": "desa_awal", "x": 5, "y": 5},
+		"state": {"level": 1, "hp": 30, "max_hp": 30, "map": "desa_awal", "x": 5, "y": 5, "fx": 5.5, "fz": 5.5},
 	})
 
 
@@ -84,5 +84,9 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"map": str(s.get("map", "desa_awal")),
 		"x": int(s.get("x", 5)),
 		"y": int(s.get("y", 5)),
+		# Posisi halus dunia 3D (satuan = petak). 0,0 berarti belum ada: pakai tengah petak.
+		"fx": float(s.get("fx", 0.0)),
+		"fz": float(s.get("fz", 0.0)),
+		"yaw": float(s.get("yaw", 0.0)),
 		"inventory": inventory,
 	}

@@ -2,7 +2,7 @@ extends Control
 ## Layar bicara dengan NPC. Misi, kemajuan, dan hadiah semuanya diurus SERVER
 ## (docs/API.md); layar ini hanya menampilkan dan mengirim "terima" / "ambil hadiah".
 
-const WORLD_SCENE := "res://scenes/world.tscn"
+const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ART_DIR := "res://assets/characters/"
 const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur", "petani": "Petani"}
 ## Kalimat per misi (kunci = id misi di server): tawaran, terkunci, ucapan terima kasih, sesudah selesai.

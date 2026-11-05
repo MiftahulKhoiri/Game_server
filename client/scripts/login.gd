@@ -4,7 +4,7 @@ extends Control
 
 const Version = preload("res://scripts/version.gd")
 const Updater = preload("res://scripts/updater.gd")
-const WORLD_SCENE := "res://scenes/world.tscn"
+const WORLD_SCENE := "res://scenes/world3d.tscn"
 
 var _url_edit: LineEdit
 var _name_edit: LineEdit

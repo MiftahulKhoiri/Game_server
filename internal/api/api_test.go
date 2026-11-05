@@ -657,3 +657,34 @@ func TestRestRefusedOutsideVillage(t *testing.T) {
 		t.Errorf("istirahat di perbatasan harus 422, dapat %d", resp.StatusCode)
 	}
 }
+
+func TestSaveFinePosition(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pejalan3D")
+	if cr.Player.State.FX != float64(game.SpawnX)+0.5 || cr.Player.State.FZ != float64(game.SpawnY)+0.5 {
+		t.Fatalf("pemain baru harus di tengah petak awal: %+v", cr.Player.State)
+	}
+	st := cr.Player.State
+	st.Map, st.X, st.Y, st.FX, st.FZ, st.Yaw = game.MapPerbatasan, 7, 2, 7.3, 2.8, 1.2
+	resp, data := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("simpan pose: %d %s", resp.StatusCode, data)
+	}
+	var saved game.Player
+	if err := json.Unmarshal(data, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.State.FX != 7.3 || saved.State.FZ != 2.8 || saved.State.Yaw != 1.2 {
+		t.Errorf("posisi halus tidak tersimpan: %+v", saved.State)
+	}
+	// Posisi halus yang tidak cocok dengan petak diperbaiki ke tengah petak.
+	st.FX, st.FZ = 1.1, 1.1
+	_, data = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 2, State: st})
+	var fixed game.Player
+	if err := json.Unmarshal(data, &fixed); err != nil {
+		t.Fatal(err)
+	}
+	if fixed.State.FX != 7.5 || fixed.State.FZ != 2.5 {
+		t.Errorf("harus di tengah petak: %+v", fixed.State)
+	}
+}

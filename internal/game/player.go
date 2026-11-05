@@ -7,6 +7,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -26,15 +27,21 @@ type Item struct {
 
 // State adalah kemajuan permainan yang disimpan server untuk satu pemain.
 type State struct {
-	Level     int    `json:"level"`
-	XP        int    `json:"xp"`
-	HP        int    `json:"hp"`
-	MaxHP     int    `json:"max_hp"`
-	Gold      int    `json:"gold"`
-	Map       string `json:"map"`
-	X         int    `json:"x"`
-	Y         int    `json:"y"`
-	Inventory []Item `json:"inventory"`
+	Level int    `json:"level"`
+	XP    int    `json:"xp"`
+	HP    int    `json:"hp"`
+	MaxHP int    `json:"max_hp"`
+	Gold  int    `json:"gold"`
+	Map   string `json:"map"`
+	X     int    `json:"x"`
+	Y     int    `json:"y"`
+	// FX, FZ, Yaw adalah posisi halus untuk dunia 3D: satuan dunia = 1 petak, jadi
+	// petak (X, Y) mencakup FX di [X, X+1) dan FZ di [Y, Y+1). Yaw = arah hadap (radian).
+	// Petak (X, Y) tetap yang dipakai aturan server; lihat NormalizePose.
+	FX        float64 `json:"fx"`
+	FZ        float64 `json:"fz"`
+	Yaw       float64 `json:"yaw"`
+	Inventory []Item  `json:"inventory"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
@@ -60,8 +67,15 @@ func NewState() State {
 		Map:       SpawnMap,
 		X:         SpawnX,
 		Y:         SpawnY,
+		FX:        SpawnX + 0.5,
+		FZ:        SpawnY + 0.5,
 		Inventory: []Item{{ID: PotionID, Qty: 2}},
 	}
+}
+
+// PlaceAtTileCenter menaruh pemain di tengah petak (X, Y), menghadap ke bawah layar.
+func (s *State) PlaceAtTileCenter() {
+	s.FX, s.FZ, s.Yaw = float64(s.X)+0.5, float64(s.Y)+0.5, 0
 }
 
 // AddItem menambah qty barang ke tas. Mengembalikan false bila tas penuh.
@@ -115,6 +129,8 @@ func (s State) Validate() error {
 		return errors.New("map wajib diisi (maksimal 64 karakter)")
 	case s.X < 0 || s.Y < 0:
 		return errors.New("posisi tidak boleh negatif")
+	case !finite(s.FX) || !finite(s.FZ) || !finite(s.Yaw):
+		return errors.New("posisi halus harus bilangan biasa")
 	case len(s.Inventory) > MaxInventory:
 		return fmt.Errorf("inventori maksimal %d tumpukan", MaxInventory)
 	}
@@ -134,3 +150,5 @@ func (s State) Validate() error {
 	}
 	return nil
 }
+
+func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }

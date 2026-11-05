@@ -1,27 +1,22 @@
 extends Control
 ## Layar pertarungan bergiliran. Semua hasil dihitung SERVER; layar ini hanya
 ## mengirim aksi pemain dan menampilkan jawaban server (docs/API.md).
-## Gambar musuh dimuat dari res://assets/enemies/<id musuh>.png bila ada;
-## musuh yang gambarnya belum dibuat tetap memakai bulatan placeholder.
+## Arena 3D: ksatria dan musuh (model dari scripts/models.gd) saling berhadapan.
 
-const WORLD_SCENE := "res://scenes/world.tscn"
-const ENEMY_ART_DIR := "res://assets/enemies/"
+const WORLD_SCENE := "res://scenes/world3d.tscn"
+const Models = preload("res://scripts/models.gd")
 const POTION_ID := "ramuan"
 const MAX_LOG_LINES := 6
 const SAFE_STEPS_AFTER_BATTLE := 3
 
-const ENEMY_COLORS := {
-	"tikus_sawah": Color("8d8d93"),
-	"belalang_raksasa": Color("7ccf4a"),
-	"ular_sawah": Color("8a9a3a"),
-	"babi_hutan": Color("8a5a3c"),
-}
-
 var _enemy_id := ""
-var _enemy_tex: Texture2D
+var _hero_rig: Node3D
+var _enemy_rig: Node3D
+var _last_enemy_hp := -1
+var _last_hero_hp := -1
 var _enemy_name: Label
 var _enemy_bar: ProgressBar
-var _enemy_view: Control
+var _enemy_view: SubViewportContainer
 var _log: Label
 var _player_label: Label
 var _player_bar: ProgressBar
@@ -40,7 +35,6 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred(WORLD_SCENE)
 		return
 	_enemy_id = str(Session.battle.get("enemy_id", ""))
-	_enemy_tex = _load_enemy_art(_enemy_id)
 	_build_ui()
 	_add_lines(["%s muncul!" % str(Session.battle.get("enemy_name", "Musuh"))])
 	_refresh()
@@ -53,6 +47,10 @@ func _on_action(action: String) -> void:
 		return
 	_busy = true
 	_refresh()
+	_last_enemy_hp = int(Session.battle.get("enemy_hp", -1))
+	_last_hero_hp = int(Session.player.state.hp)
+	if action == "attack":
+		_play(_hero_rig, "play_attack")
 	var res: Dictionary = await Api.battle_action(action)
 	_busy = false
 	if not res.ok:
@@ -70,9 +68,29 @@ func _on_action(action: String) -> void:
 	for line in data.get("log", []):
 		lines.append(str(line))
 	_add_lines(lines)
+	_animate_result(status)
 	if status != "ongoing":
 		_finish(status)
 	_refresh()
+
+
+func _play(rig: Node3D, method: String) -> void:
+	if rig != null and is_instance_valid(rig) and rig.has_method(method):
+		rig.call(method)
+
+
+## Animasi mengikuti hasil dari server: siapa yang terkena, siapa yang menyerang.
+func _animate_result(status: String) -> void:
+	var enemy_hp := int(Session.battle.get("enemy_hp", 0)) if status == "ongoing" else 0
+	if _last_enemy_hp >= 0 and enemy_hp < _last_enemy_hp:
+		_play(_enemy_rig, "play_hurt")
+	if int(Session.player.state.hp) < _last_hero_hp:
+		_play(_enemy_rig, "play_attack")
+		_play(_hero_rig, "play_hurt")
+	if status == "won":
+		_play(_enemy_rig, "play_die")
+	elif status == "lost":
+		_play(_hero_rig, "play_die")
 
 
 func _finish(status: String) -> void:
@@ -82,9 +100,6 @@ func _finish(status: String) -> void:
 	_grid.visible = false
 	_btn_continue.visible = true
 	_btn_continue.text = "Kembali ke desa" if status == "lost" else "Lanjut"
-	if status == "won":
-		_enemy_view.modulate = Color(1, 1, 1, 0.25)
-	_enemy_view.queue_redraw()
 
 
 func _on_continue() -> void:
@@ -157,9 +172,7 @@ func _build_ui() -> void:
 	_enemy_bar = _make_bar(Color("d9534f"))
 	box.add_child(_enemy_bar)
 
-	_enemy_view = Control.new()
-	_enemy_view.custom_minimum_size = Vector2(0, 380)
-	_enemy_view.draw.connect(_draw_enemy)
+	_enemy_view = _build_arena()
 	box.add_child(_enemy_view)
 
 	_log = _make_label("", 28)
@@ -191,35 +204,60 @@ func _build_ui() -> void:
 	box.add_child(_btn_continue)
 
 
-## Musuh yang belum punya gambar sendiri meminjam gambar musuh lain (dengan warna berbeda).
-const ART_ALIAS := {"raja_goblin": "goblin"}
-const ART_TINT := {"raja_goblin": Color(1.0, 0.65, 0.65)}
+## Arena 3D di dalam SubViewport: ksatria di kiri, musuh di kanan.
+func _build_arena() -> SubViewportContainer:
+	var holder := SubViewportContainer.new()
+	holder.custom_minimum_size = Vector2(0, 420)
+	holder.stretch = true
+	var vp := SubViewport.new()
+	vp.own_world_3d = true
+	vp.size = Vector2i(648, 420)
+	vp.msaa_3d = Viewport.MSAA_2X
+	holder.add_child(vp)
 
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color("2b3a33")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("aab8b0")
+	env.ambient_light_energy = 0.7
+	var we := WorldEnvironment.new()
+	we.environment = env
+	vp.add_child(we)
 
-func _load_enemy_art(id: String) -> Texture2D:
-	id = str(ART_ALIAS.get(id, id))
-	var path := ENEMY_ART_DIR + id + ".png"
-	if id != "" and ResourceLoader.exists(path):
-		return load(path) as Texture2D
-	return null
+	var sun := DirectionalLight3D.new()
+	sun.rotation = Vector3(deg_to_rad(-45), deg_to_rad(-25), 0)
+	sun.light_energy = 1.1
+	vp.add_child(sun)
 
+	var floor_mesh := CylinderMesh.new()
+	floor_mesh.top_radius = 3.4
+	floor_mesh.bottom_radius = 3.4
+	floor_mesh.height = 0.2
+	var floor_node := MeshInstance3D.new()
+	floor_node.mesh = floor_mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("5b7a4a")
+	mat.roughness = 1.0
+	floor_node.material_override = mat
+	floor_node.position = Vector3(0, -0.1, 0)
+	vp.add_child(floor_node)
 
-func _draw_enemy() -> void:
-	var size := _enemy_view.size
-	if _enemy_tex:
-		var tex_size := _enemy_tex.get_size()
-		var scale := minf(size.x / tex_size.x, size.y / tex_size.y)
-		var draw_size := tex_size * scale
-		_enemy_view.draw_texture_rect(_enemy_tex, Rect2((size - draw_size) / 2.0, draw_size), false, ART_TINT.get(_enemy_id, Color.WHITE))
-		return
-	var center := size / 2.0
-	var color: Color = ENEMY_COLORS.get(_enemy_id, Color("b04a8a"))
-	_enemy_view.draw_circle(center + Vector2(0, 120), 90, Color(0, 0, 0, 0.25))  # bayangan
-	_enemy_view.draw_circle(center, 110, color)
-	_enemy_view.draw_circle(center + Vector2(-38, -20), 18, Color.WHITE)
-	_enemy_view.draw_circle(center + Vector2(38, -20), 18, Color.WHITE)
-	_enemy_view.draw_circle(center + Vector2(-34, -18), 8, Color.BLACK)
-	_enemy_view.draw_circle(center + Vector2(34, -18), 8, Color.BLACK)
+	var cam := Camera3D.new()
+	cam.fov = 40.0
+	vp.add_child(cam)
+	cam.look_at_from_position(Vector3(0, 1.25, 3.7), Vector3(0, 0.75, 0))
+	cam.current = true
+
+	_hero_rig = Models.create("ksatria")
+	_hero_rig.position = Vector3(-1.0, 0, 0)
+	_hero_rig.rotation.y = PI / 2.0  # menghadap +x
+	vp.add_child(_hero_rig)
+	_enemy_rig = Models.create(_enemy_id)
+	_enemy_rig.position = Vector3(1.0, 0, 0)
+	_enemy_rig.rotation.y = -PI / 2.0  # menghadap -x
+	vp.add_child(_enemy_rig)
+	return holder
 
 
 func _make_label(text: String, font_size: int) -> Label:

@@ -1,16 +1,21 @@
 # Klien Android (Godot 4.7)
 
-Klien RPG 2D untuk server di folder induk. Gambar masih **placeholder** (bentuk
-sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
+Klien RPG 3D untuk server di folder induk (sejak v0.13.0). Model karakter/musuh
+masih **placeholder** buatan kode (`scripts/models.gd`); ksatria memakai
+`assets/models/ksatria.glb`. Model lain diganti dengan menaruh `assets/models/<id>.glb`
+(id = id musuh/NPC) tanpa mengubah kode.
 
 ## Yang sudah ada
 
 - **Layar masuk** (`scenes/login.tscn`): isi alamat server, daftar nama baru, atau lanjutkan.
-- **Peta** (`scenes/world.tscn`): gerak per kotak, tampak atas, dengan tombol arah
-  layar (atau tombol panah di komputer). Pohon, air, dan rumah menghalangi.
+- **Dunia 3D** (`scenes/world3d.tscn`): gerak bebas, kamera di belakang karakter;
+  joystick melayang (sentuh kiri), geser di kanan untuk memutar kamera (di komputer:
+  WASD/panah, Q/E). Pohon, air, dan rumah menghalangi. Peta diubah dari teks petak
+  (`maps.gd`) menjadi 3D oleh `scripts/world_build.gd`. `scenes/world.tscn` (2D lama)
+  masih ada untuk uji.
 - **Simpan otomatis**: 1,5 detik setelah berhenti bergerak, juga saat aplikasi dijeda.
   Bila versi di server berbeda (409), klien mengikuti versi server lalu menyimpan ulang.
-- **Pertarungan** (`scenes/battle.tscn`): muncul acak di ladang, tombol Serang /
+- **Pertarungan** (`scenes/battle.tscn`, arena 3D): muncul acak di ladang, tombol Serang /
   Bertahan / Ramuan / Kabur. Hasil dihitung server; bila aplikasi ditutup di
   tengah pertarungan, pertarungan dilanjutkan saat masuk lagi.
 - **Bicara dengan NPC** (`scenes/dialog.tscn`): tombol Bicara aktif bila berdiri di sebelah NPC; terima misi dan ambil hadiah.
@@ -27,6 +32,9 @@ sederhana digambar lewat kode) sampai aset ilustrator masuk ke `../assets/`.
 | `scripts/session.gd` | Autoload `Session`: pemain aktif dan pengaturan tersimpan |
 | `scripts/version.gd`, `scripts/build_info.gd` | Versi aplikasi dan pembanding versi; `build_info.gd` diisi CI |
 | `scripts/maps.gd` | Data peta sementara (teks) dan aturan tabrakan |
+| `scripts/world3d.gd`, `movement.gd`, `world_build.gd`, `joystick.gd` | Dunia 3D: adegan, gerak + tabrakan, pembangun peta 3D, joystick |
+| `scripts/models.gd`, `model_rig.gd` | Model 3D (GLB atau placeholder) dan animasinya |
+| `tests/shot.gd` | Alat pengembang: tangkapan layar 3D (tidak ikut APK) |
 | `scripts/login.gd`, `scripts/world.gd`, `scripts/battle.gd`, `scripts/shop.gd`, `scripts/dialog.gd` | Layar-layar game |
 | `tests/e2e.gd` | Uji ujung-ke-ujung terhadap server Go asli |
 | `export_presets.cfg` | Pengaturan ekspor APK |

@@ -184,6 +184,7 @@ func (b *Battle) lose(p *Player, res *Result) {
 	st.Gold -= lost
 	st.HP = max(1, st.MaxHP/2)
 	st.Map, st.X, st.Y = SpawnMap, SpawnX, SpawnY
+	st.PlaceAtTileCenter()
 	res.Status = StatusLost
 	res.Log = append(res.Log, fmt.Sprintf("Kamu pingsan... dibawa pulang ke desa (emas hilang: %d).", lost))
 }

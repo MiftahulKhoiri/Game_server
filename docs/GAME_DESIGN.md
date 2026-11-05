@@ -22,7 +22,13 @@ server mudah diuji, dan nyaman di layar sentuh.
 - **Tema:** desa di sebuah kerajaan yang diserang monster. Pemain adalah
   ksatria kerajaan (zirah perak, perisai singa, pedang berhuruf rune) yang
   melindungi penduduk desa.
-- **Gaya gambar:** ilustrasi berwarna bergaya komik/lukisan dengan garis tepi
+- **Dunia 3D (v0.13.0, diputuskan pemilik proyek 6 Nov 2026):** gerak bebas dengan
+  kamera di belakang karakter (joystick melayang di layar kiri, geser di kanan untuk
+  memutar kamera). Semua karakter, NPC, dan musuh berupa model 3D; yang belum punya
+  model memakai model sederhana buatan kode, dan dapat diganti dengan menaruh
+  `client/assets/models/<id>.glb`. Server tetap pakai petak (tabrakan di klien).
+  Pertarungan tetap bergiliran, kini di arena 3D.
+- **Gaya gambar (2D lama, dipakai di dialog/toko):** ilustrasi berwarna bergaya komik/lukisan dengan garis tepi
   tebal, bukan pixel art. Karakter, NPC, dan musuh digambar utuh (potret/badan
   penuh) dan dipakai di layar pertarungan dan dialog. Tile peta tetap kecil.
 - **Gambar karakter yang sudah ada** (`client/assets/`): ksatria (pemain),

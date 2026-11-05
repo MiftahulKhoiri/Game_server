@@ -161,6 +161,7 @@ func _run() -> void:
 		root.add_child(scene)
 		await process_frame
 		_check(scene._enemy_name.text == str(Session.battle.enemy_name), "layar pertarungan menampilkan nama musuh")
+		_check(scene._enemy_rig != null and scene._hero_rig != null, "arena 3D memuat model ksatria dan musuh")
 		_check((scene._buttons["potion"] as Button).disabled, "ramuan nonaktif saat HP penuh")
 		var guard := 0
 		while not scene._finished and guard < 60:
@@ -352,7 +353,7 @@ func _run() -> void:
 		Session.battle = boss.data.battle
 		root.add_child(bscene)
 		await process_frame
-		_check(bscene._enemy_tex != null, "Raja Goblin memakai gambar goblin berwarna")
+		_check(bscene._enemy_rig != null and bscene._enemy_rig.name == "raja_goblin" and bscene._hero_rig != null, "arena 3D memuat ksatria dan Raja Goblin")
 		bscene.queue_free()
 		await process_frame
 
@@ -364,6 +365,57 @@ func _run() -> void:
 	_check(typeof(Session.player.state.inventory[0].qty) == TYPE_INT and Session.player.version == 9, "merge: angka menjadi int")
 	Session.merge_server_player(merged, true)
 	_check(Session.player.state.x == 1, "merge dengan adopt_position memakai posisi server")
+
+	print("== dunia 3D: gerak, tabrakan, model")
+	var Movement = load("res://scripts/movement.gd")
+	var WorldBuild = load("res://scripts/world_build.gd")
+	var Models = load("res://scripts/models.gd")
+	# Titik tengah petak awal bebas tabrakan; tembok/air memblokir.
+	_check(not Movement.collides(Maps.DEFAULT_MAP, Vector2(5.5, 5.5)), "tengah petak awal bebas tabrakan")
+	_check(Movement.collides(Maps.DEFAULT_MAP, Vector2(-0.5, 5.5)), "di luar peta menabrak")
+	var slid: Vector2 = Movement.move(Maps.DEFAULT_MAP, Vector2(5.5, 5.5), Vector2(0.4, 0.0))
+	_check(slid.x > 5.5 and not Movement.collides(Maps.DEFAULT_MAP, slid), "bergerak bebas di tanah lapang")
+	var far: Vector2 = Vector2(5.5, 5.5)
+	for i in 400:  # jalan lurus ke atas sampai mentok: tidak boleh keluar dari peta
+		far = Movement.move(Maps.DEFAULT_MAP, far, Vector2(0.0, -0.15))
+	_check(not Movement.collides(Maps.DEFAULT_MAP, far) and far.y >= 0.0, "tidak menembus batas peta (z=%.2f)" % far.y)
+	var npc_tile := Vector2i(3, 6)
+	_check(Maps.npc_at(Maps.DEFAULT_MAP, npc_tile.x, npc_tile.y) != "", "ada NPC di (3,6)")
+	var spot: Vector2 = Movement.safe_spot(Maps.DEFAULT_MAP, npc_tile)
+	_check(not Movement.collides(Maps.DEFAULT_MAP, spot), "safe_spot menghindari petak NPC")
+	_check(Movement.tile_of(Vector2(6.99, 5.01)) == Vector2i(6, 5), "tile_of memakai floor")
+
+	for mid in [Maps.DEFAULT_MAP, Maps.PERBATASAN, Maps.GUNUNG, Maps.GUA]:
+		var built: Node3D = WorldBuild.build(mid)
+		_check(built != null and built.get_child_count() > 3, "peta 3D '%s' terbangun (%d simpul)" % [mid, built.get_child_count() if built != null else 0])
+		built.free()
+	for mid in [Maps.DEFAULT_MAP, Maps.PERBATASAN, Maps.GUNUNG, Maps.GUA]:
+		_check(WorldBuild.environment_for(mid) != null, "lingkungan 3D '%s'" % mid)
+
+	var model_ids := ["ksatria", "nenek_penjual", "petani", "goblin", "goblin_penjaga", "raja_goblin", "ogre_batu",
+		"golem_kerikil", "golem_lava", "tikus_sawah", "babi_hutan", "serigala_hutan", "ular_sawah", "belalang_raksasa", "kelelawar_gua"]
+	var bad_models: Array[String] = []
+	for mdl in model_ids:
+		var node: Node3D = Models.create(mdl)
+		if node == null or node.get_child_count() == 0:
+			bad_models.append(mdl)
+		if node != null:
+			node.free()
+	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
+
+	Session.offline = true
+	Session.player = {"name": "Uji", "state": {"map": Maps.DEFAULT_MAP, "x": 5, "y": 5, "fx": 5.5, "fz": 5.5, "yaw": 0.0, "hp": 30, "max_hp": 30, "level": 1, "xp": 0, "gold": 0, "inventory": [], "equipment": {"weapon": "", "armor": ""}}, "version": 1}
+	var w3: Node = load("res://scenes/world3d.tscn").instantiate()
+	root.add_child(w3)
+	await process_frame
+	await process_frame
+	_check(w3._player != null and w3._camera != null, "adegan dunia 3D termuat")
+	w3._pos = Vector2(7.5, 5.5)
+	w3._sync_state()
+	_check(Session.player.state.x == 7 and absf(float(Session.player.state.fx) - 7.5) < 0.001, "posisi 3D tersalin ke data pemain (petak 7, fx 7.5)")
+	w3.queue_free()
+	await process_frame
+	Session.offline = false
 
 	print("== token salah")
 	Api.token = "salah"

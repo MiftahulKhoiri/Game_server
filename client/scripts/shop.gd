@@ -4,7 +4,7 @@ extends Control
 ## Ikon barang dimuat dari res://assets/items/<id>.png bila ada, kalau tidak
 ## dipakai kotak berwarna sesuai jenis barang.
 
-const WORLD_SCENE := "res://scenes/world.tscn"
+const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ITEM_ART_DIR := "res://assets/items/"
 const KIND_COLORS := {
 	"consumable": Color("c0504d"),

@@ -2,7 +2,7 @@ extends Control
 ## Tas: lihat barang, pakai ramuan, pasang/lepas perlengkapan, dan istirahat di desa.
 ## Semua aturan dijalankan SERVER (docs/API.md); layar ini hanya mengirim permintaan.
 
-const WORLD_SCENE := "res://scenes/world.tscn"
+const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ITEM_ART_DIR := "res://assets/items/"
 const KIND_COLORS := {
 	"consumable": Color("c0504d"),

@@ -68,7 +68,11 @@ Mengambil data pemain beserta progress. `200` berisi objek pemain, `401` jika to
 
 ### `PUT /v1/players/me/save`  (login)
 Menyimpan **posisi** pemain. Sejak v0.3.0 server otoritatif: hanya `map`, `x`,
-`y` yang diterapkan. Level, XP, HP, emas, dan tas hanya berubah lewat aksi
+`y` yang diterapkan; sejak v0.13.0 juga posisi halus dunia 3D `fx`, `fz` (satuan
+petak, `x <= fx < x+1`, `y <= fz < y+1`) dan arah hadap `yaw` (radian). Posisi halus
+di luar petak `x,y` (atau klien lama yang tidak mengirimnya) diganti tengah petak;
+nilai bukan angka (NaN/Inf) ditolak `422`. Kalah bertarung memulangkan pemain ke
+tengah petak awal. Level, XP, HP, emas, dan tas hanya berubah lewat aksi
 server (pertarungan) dan nilai kiriman klien untuk field itu diabaikan.
 
 Body: `{"version": 1, "state": { ... }}`
@@ -200,7 +204,7 @@ Bonus perlengkapan ditambahkan ke serang/tahan dari level, dan dipakai dalam per
   "updated_at": "2026-11-05T12:11:01Z",
   "state": {
     "level": 1, "xp": 0, "hp": 30, "max_hp": 30, "gold": 0,
-    "map": "desa_awal", "x": 5, "y": 5,
+    "map": "desa_awal", "x": 5, "y": 5, "fx": 5.5, "fz": 5.5, "yaw": 0,
     "inventory": [{"id": "ramuan", "qty": 3}],
     "equipment": {"weapon": "", "armor": ""}
   }
