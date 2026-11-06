@@ -101,6 +101,11 @@ Murni tampilan di klien (`client/scripts/atmosphere.gd`), tidak memengaruhi serv
 - **Arena pertarungan** memakai waktu dan cuaca yang sama. **Gua Batu** tidak terpengaruh.
 - **NPC** menoleh ke pemain yang dekat dan berjalan pelan di dalam petaknya sendiri, jadi petak NPC
   tetap terblokir dan jangkauan bicara tidak berubah.
+- **Warga desa** (`Maps.WARGA`, logika di `client/scripts/warga.gd`): 10 warga pemanis di Desa Awal
+  (ibu, bapak, dua anak, penjaga, tiga ayam di kandang) berjalan bebas ke titik acak dalam jari-jari
+  masing-masing, lewat petak jalan/rumput/bunga saja (tidak menembus pagar, air, atau rumah), berhenti
+  sebentar, lalu lanjut. Mereka menghindari pemain dan sesama warga, tidak menghalangi, dan belum
+  bisa diajak bicara. Model KayKit hasil `tools/blender/kaykit_npc.py` (mode ibu, ibu2, bapak, bapak2, anak).
 
 ### Misi sampingan (v0.20.0)
 
@@ -187,7 +192,7 @@ berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai 
 
 | Peta | Isi | Pintu |
 |------|-----|-------|
-| Desa Awal (`desa_awal`) | Rumah, alun-alun, sungai, ladang, Nenek dan Petani | Gerbang selatan (7,19) ke Perbatasan |
+| Desa Awal (`desa_awal`, 25x30) | Empat rumah, alun-alun, dua kandang berpagar, sungai, ladang, Nenek dan Petani, serta 10 warga yang berjalan bebas (ibu, bapak, anak, penjaga, ayam) | Gerbang selatan (12,29) ke Perbatasan |
 | Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
 | Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) ke Perbatasan; selatan (7,19) masuk Gua Batu |
 | Gua Batu (`gua_batu`) | Lorong gua, sarang Raja Goblin | Utara (7,0) kembali ke Gunung Batu |

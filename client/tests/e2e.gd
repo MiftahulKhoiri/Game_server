@@ -47,13 +47,14 @@ func _run() -> void:
 	Session = root.get_node("Session")
 	print("== peta")
 	for y in Maps.height(Maps.DEFAULT_MAP):
-		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 15, "baris peta %d lebar 15" % y)
+		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 25, "baris peta %d lebar 25" % y)
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 0, 0), "pohon di tepi tidak bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, -1, 3), "luar peta tidak bisa dilewati")
-	_check(Maps.walkable(Maps.DEFAULT_MAP, 7, 12), "jembatan bisa dilewati")
-	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 12), "sungai tidak bisa dilewati")
-	_check(not Maps.walkable(Maps.DEFAULT_MAP, 7, 8), "sumur menghalangi")
+	_check(Maps.walkable(Maps.DEFAULT_MAP, 12, 16), "jembatan bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 16), "sungai tidak bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 12, 10), "sumur menghalangi")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 9) and Maps.walkable(Maps.DEFAULT_MAP, 7, 11), "pagar kandang menghalangi, gerbang kandang terbuka")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 4, 2), "pintu rumah bisa dilewati")
 	_check_map_connected(Maps.DEFAULT_MAP)
 	_check_map_connected(Maps.PERBATASAN)
@@ -386,13 +387,13 @@ func _run() -> void:
 	var bm: Dictionary = (await Api.get_me()).data
 	Session.set_player(bm)
 	Session.player.state.map = Maps.DEFAULT_MAP
-	Session.player.state.x = 7
-	Session.player.state.y = 18
+	Session.player.state.x = 12
+	Session.player.state.y = 28
 	Session.safe_steps = 100000
 	var world2: Node2D = load("res://scenes/world.tscn").instantiate()
 	root.add_child(world2)
 	await process_frame
-	world2._try_move(Vector2i.DOWN)  # (7,18) -> (7,19) = pintu ke perbatasan
+	world2._try_move(Vector2i.DOWN)  # (12,28) -> (12,29) = pintu ke perbatasan
 	await create_timer(0.5).timeout
 	_check(Session.player.state.map == Maps.PERBATASAN and Session.player.state.y == 1, "melewati gerbang selatan masuk Perbatasan (7,1)")
 	await create_timer(2.5).timeout
@@ -558,6 +559,51 @@ func _run() -> void:
 		var p2 := Vector2(nenek.position.x, nenek.position.z)
 		max_off = maxf(max_off, p2.distance_to(home))
 	_check(max_off > 0.05 and max_off <= 0.36, "NPC berjalan pelan tapi tetap di dalam petaknya (geser %.2f)" % max_off)
+	# Warga desa: berjalan bebas, hanya di petak jalan/rumput/bunga, dan tidak menabrak pemain.
+	var wcount := 0
+	for d: Dictionary in Maps.WARGA:
+		if d.map == Maps.DEFAULT_MAP:
+			wcount += 1
+			_check(Maps.warga_free(Maps.DEFAULT_MAP, d.pos), "titik asal warga %s berada di petak bebas" % d.name)
+	_check(wcount >= 8 and w3._warga.size() == wcount, "%d warga desa muncul di dunia 3D" % w3._warga.size())
+	w3._pos = Vector2(24.0, 28.0)  # jauh dari semua warga
+	var start_pos: Array[Vector2] = []
+	var best_move: Array[float] = []
+	for w in w3._warga:
+		start_pos.append(w.pos)
+		best_move.append(0.0)
+	var warga_ok := true
+	var model_walked := false
+	var min_gap := 99.0
+	for i in 1800:  # 90 detik
+		w3._update_npcs(0.05)
+		for k in w3._warga.size():
+			var w = w3._warga[k]
+			if not Maps.warga_free(Maps.DEFAULT_MAP, w.pos):
+				warga_ok = false
+			if w.walking and "moving" in w.model and w.model.moving:
+				model_walked = true
+			best_move[k] = maxf(best_move[k], w.pos.distance_to(start_pos[k]))
+			if w.pos.distance_to(w.home) > w.radius + 0.5:
+				warga_ok = false
+			for j in range(k + 1, w3._warga.size()):
+				min_gap = minf(min_gap, w.pos.distance_to(w3._warga[j].pos))
+	var movers := 0
+	for m in best_move:
+		if m > 1.5:
+			movers += 1
+	_check(warga_ok, "warga tidak pernah masuk pagar/air/rumah atau keluar dari jari-jarinya")
+	_check(movers >= w3._warga.size() - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, w3._warga.size()])
+	_check(min_gap > 0.35, "warga tidak menumpuk satu sama lain (jarak terdekat %.2f)" % min_gap)
+	# Pemain berdiri di tengah alun-alun: warga tidak menembus pemain.
+	w3._pos = Vector2(12.5, 8.5)
+	var near_player := 99.0
+	for i in 1200:
+		w3._update_npcs(0.05)
+		for w in w3._warga:
+			near_player = minf(near_player, w.pos.distance_to(w3._pos))
+	_check(near_player > 0.6, "warga menjaga jarak dari pemain (terdekat %.2f)" % near_player)
+	_check(model_walked, "model warga memakai animasi jalan saat bergerak")
 	w3._pos = Vector2(7.5, 5.5)
 	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")
 	w3._toggle_menu()

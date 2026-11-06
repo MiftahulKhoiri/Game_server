@@ -364,7 +364,7 @@ func TestValidPosition(t *testing.T) {
 	ok := []struct {
 		m    string
 		x, y int
-	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 14, 19}, {MapPerbatasan, 7, 1}, {MapGunungBatu, 7, 1}, {MapGuaBatu, 7, 14}}
+	}{{MapDesaAwal, 0, 0}, {MapDesaAwal, 24, 29}, {MapPerbatasan, 7, 1}, {MapGunungBatu, 7, 1}, {MapGuaBatu, 7, 14}}
 	for _, c := range ok {
 		if !ValidPosition(c.m, c.x, c.y) {
 			t.Errorf("%v harus valid", c)
@@ -373,7 +373,7 @@ func TestValidPosition(t *testing.T) {
 	bad := []struct {
 		m    string
 		x, y int
-	}{{MapDesaAwal, 15, 0}, {MapDesaAwal, 0, 20}, {MapDesaAwal, -1, 0}, {"neraka", 1, 1}, {"", 0, 0}}
+	}{{MapDesaAwal, 25, 0}, {MapDesaAwal, 0, 30}, {MapDesaAwal, -1, 0}, {"neraka", 1, 1}, {"", 0, 0}}
 	for _, c := range bad {
 		if ValidPosition(c.m, c.x, c.y) {
 			t.Errorf("%v harus ditolak", c)
@@ -482,7 +482,7 @@ func TestNormalizePose(t *testing.T) {
 	}
 	for name, p := range map[string]Pose{
 		"peta asing":  {Map: "neraka", X: 1, Y: 1},
-		"luar peta":   {Map: MapDesaAwal, X: 15, Y: 1},
+		"luar peta":   {Map: MapDesaAwal, X: 25, Y: 1},
 		"NaN":         {Map: MapDesaAwal, X: 1, Y: 1, FX: math.NaN()},
 		"tak hingga":  {Map: MapDesaAwal, X: 1, Y: 1, FZ: math.Inf(1)},
 		"yaw tak sah": {Map: MapDesaAwal, X: 1, Y: 1, Yaw: math.Inf(-1)},

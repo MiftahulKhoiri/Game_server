@@ -23,9 +23,9 @@ const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
 const EXITS := {
-	"desa_awal": [{"pos": Vector2i(7, 19), "to": "perbatasan", "at": Vector2i(7, 1)}],
+	"desa_awal": [{"pos": Vector2i(12, 29), "to": "perbatasan", "at": Vector2i(7, 1)}],
 	"perbatasan": [
-		{"pos": Vector2i(7, 0), "to": "desa_awal", "at": Vector2i(7, 18)},
+		{"pos": Vector2i(7, 0), "to": "desa_awal", "at": Vector2i(12, 28)},
 		{"pos": Vector2i(7, 19), "to": "gunung_batu", "at": Vector2i(7, 1)},
 	],
 	"gunung_batu": [
@@ -40,30 +40,40 @@ const WALKABLE := ".=fTBDMGK"
 const BOSS_TILE := "K"
 const ENCOUNTER_TILES := "TG"
 
-## Desa Awal (15x20): dua rumah di utara, alun-alun dengan sumur di tengah,
-## sungai dengan jembatan, ladang di selatan, dan gerbang keluar di bawah
-## (gerbang belum tersambung ke peta lain).
+## Desa Awal (25x30): empat rumah di utara, jalan raya timur-barat, alun-alun dengan sumur
+## di tengah, dua kandang berpagar di kiri-kanan alun-alun, sungai dengan jembatan, ladang
+## di selatan, dan gerbang keluar di bawah (menuju Perbatasan).
 const DESA_AWAL: Array[String] = [
-	"###############",
-	"#..HHH...HHH..#",
-	"#..HDH...HDH..#",
-	"#..f=f...f=f..#",
-	"#.#.=.....=.#.#",
-	"#...=.....=...#",
-	"#...=======...#",
-	"#.....===.....#",
-	"#.....=W=.....#",
-	"#.#...===...#.#",
-	"#......=......#",
-	"#......=......#",
-	"~~~~~~~B~~~~~~~",
-	"~~~~~~~B~~~~~~~",
-	"#......=......#",
-	"#.TTT..=..TTT.#",
-	"#.TTT..=..TTT.#",
-	"#.FFF..=..FFF.#",
-	"#......=......#",
-	"#######=#######",
+	"#########################",
+	"#..HHH..HHH...HHH..HHH..#",
+	"#..HDH..HDH...HDH..HDH..#",
+	"#..f=f..f=f...f=f..f=f..#",
+	"#...=..#.=.....=.#..=...#",
+	"#.#.=....=.....=....=.#.#",
+	"#..===================..#",
+	"#..===================..#",
+	"#........=======........#",
+	"#.FFFFFF.=======.FFFFFF.#",
+	"#.Ff..fF.===W===.F...fF.#",
+	"#.F......=======......F.#",
+	"#.F....F.=======.Ff...F.#",
+	"#.F..f.F....=....F.f..F.#",
+	"#.FFFFFF....=....FFFFFF.#",
+	"#...........=...........#",
+	"~~~~~~~~~~~~B~~~~~~~~~~~~",
+	"~~~~~~~~~~~~B~~~~~~~~~~~~",
+	"#...........=...........#",
+	"#.TTTTT.....=..#..TTTTT.#",
+	"#.TTTTT..#..=.....TTTTT.#",
+	"#.TTTTT.....=.....TTTTT.#",
+	"#.FFFFF.....=.....FFFFF.#",
+	"#....#......=...........#",
+	"#.#......#..=..#...#....#",
+	"#...........=.........#.#",
+	"#....f.#....=.........f.#",
+	"#...........=.....#.....#",
+	"#...........=.........f.#",
+	"############=############",
 ]
 
 
@@ -73,6 +83,48 @@ const NPCS := {
 	"nenek_penjual": {"map": "desa_awal", "pos": Vector2i(3, 6), "name": "Nenek"},
 	"petani": {"map": "desa_awal", "pos": Vector2i(11, 6), "name": "Petani"},
 }
+
+
+## Warga desa: pemanis tanpa misi, berjalan bebas di sekitar titik asalnya (`pos`, petak) dalam
+## jari-jari `radius` petak, hanya di petak jalan/rumput/bunga. `model` = id model 3D;
+## `speed` = petak per detik. Tidak menghalangi pemain dan tidak bisa diajak bicara.
+const WARGA := [
+	{"model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(8.5, 8.5), "radius": 5.0, "speed": 0.7},
+	{"model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(16.5, 8.5), "radius": 5.0, "speed": 0.75},
+	{"model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(14.5, 12.5), "radius": 5.0, "speed": 0.7},
+	{"model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(10.5, 21.5), "radius": 6.0, "speed": 0.8},
+	{"model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(11.5, 9.5), "radius": 4.5, "speed": 1.1},
+	{"model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(13.5, 11.5), "radius": 4.5, "speed": 1.2},
+	{"model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(12.5, 25.5), "radius": 3.5, "speed": 0.6},
+	{"model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(4.5, 12.5), "radius": 2.2, "speed": 0.6},
+	{"model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 10.5), "radius": 2.2, "speed": 0.7},
+	{"model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 2.2, "speed": 0.6},
+]
+
+## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).
+const WARGA_TILES := ".=f"
+
+
+## Apakah titik (x, z) bebas dilalui warga: petaknya jalan/rumput/bunga, bukan petak NPC
+## misi, dan keempat sudut badan (jari-jari 0,22) juga begitu.
+static func warga_free(map_id: String, p: Vector2) -> bool:
+	for o: Vector2 in [Vector2.ZERO, Vector2(0.22, 0.22), Vector2(-0.22, 0.22), Vector2(0.22, -0.22), Vector2(-0.22, -0.22)]:
+		var q := p + o
+		var tx := int(floor(q.x))
+		var ty := int(floor(q.y))
+		var t := tile_at(map_id, tx, ty)
+		if t == "" or not WARGA_TILES.contains(t) or npc_at(map_id, tx, ty) != "":
+			return false
+	return true
+
+
+## Apakah ruas lurus a -> b bebas dilalui warga (diperiksa tiap 0,2 petak).
+static func warga_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
+	var n := maxi(1, int(ceil(a.distance_to(b) / 0.2)))
+	for i in range(1, n + 1):
+		if not warga_free(map_id, a.lerp(b, float(i) / float(n))):
+			return false
+	return true
 
 
 ## id NPC di petak (x, y), atau "" bila tidak ada.

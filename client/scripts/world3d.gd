@@ -12,6 +12,7 @@ const GameMenu = preload("res://scripts/game_menu.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
+const Warga = preload("res://scripts/warga.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -54,6 +55,7 @@ var _rain: CPUParticles3D
 var _clock: Label
 var _npc_models: Dictionary = {}  # id NPC -> model 3D
 var _npc_time := 0.0
+var _warga: Array[Warga] = []        # warga desa yang berjalan bebas
 
 var _joy: Control
 var _cam_finger := -1
@@ -161,6 +163,7 @@ func _load_map(map_id: String) -> void:
 		label.outline_size = 10
 		label.position = model.position + Vector3(0, 1.25, 0)
 		_npc_root.add_child(label)
+	_spawn_warga(map_id)
 	_env.environment = WorldBuild.environment_for(map_id)
 	_sun.light_energy = WorldBuild.light_energy_for(map_id)
 	_sun.light_color = WorldBuild.light_color_for(map_id)
@@ -168,6 +171,35 @@ func _load_map(map_id: String) -> void:
 	_atmo_base = Atmosphere.capture(_env.environment, _sun)
 	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
 	Atmosphere.set_rain(_rain, map_id)
+
+
+## Warga desa: wadah Node3D (bergerak) berisi model (berputar), bayangan, dan nama.
+func _spawn_warga(map_id: String) -> void:
+	_warga = []
+	for def: Dictionary in Maps.WARGA:
+		if def.map != map_id:
+			continue
+		var w := Warga.new(def, _warga.size() * 7919 + str(def.name).hash())
+		var holder := Node3D.new()
+		holder.name = "Warga_%s_%d" % [def.model, _warga.size()]
+		var model := Models.create(str(def.model))
+		holder.add_child(model)
+		_add_shadow(holder, 0.28)
+		var label := Label3D.new()
+		label.text = str(def.name)
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.no_depth_test = true
+		label.pixel_size = 0.005
+		label.font_size = 36
+		label.outline_size = 8
+		label.modulate = Color("e8e8d0")
+		label.position = Vector3(0, 1.15, 0)
+		holder.add_child(label)
+		_npc_root.add_child(holder)
+		w.node = holder
+		w.model = model
+		w.apply()
+		_warga.append(w)
 
 
 func _add_shadow(parent: Node3D, radius: float) -> void:
@@ -253,6 +285,7 @@ func _update_world_life(delta: float) -> void:
 ## Petak NPC tetap terblokir di Maps, jadi tabrakan dan jangkauan bicara tidak berubah.
 func _update_npcs(delta: float) -> void:
 	_npc_time += delta
+	_update_warga(delta)
 	for id: String in _npc_models:
 		var model := _npc_models[id] as Node3D
 		if model == null or not is_instance_valid(model):
@@ -274,6 +307,17 @@ func _update_npcs(delta: float) -> void:
 			model.rotation.y = lerp_angle(model.rotation.y, atan2(face_dir.x, face_dir.y), minf(1.0, delta * 6.0))
 		if "moving" in model:
 			model.moving = walking and not near
+
+
+## Warga desa berjalan bebas, saling menghindar, dan menjauh dari pemain.
+func _update_warga(delta: float) -> void:
+	for w in _warga:
+		var others: Array[Vector2] = []
+		for o in _warga:
+			if o != w:
+				others.append(o.pos)
+		w.step(delta, _pos, others)
+		w.apply()
 
 
 func _set_moving(v: bool) -> void:

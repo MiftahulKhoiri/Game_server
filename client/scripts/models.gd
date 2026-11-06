@@ -12,7 +12,7 @@ const MODEL_DIR := "res://assets/models/"
 
 ## Tinggi akhir (satuan petak) untuk model GLB buatan AI/unduhan selain ksatria. Ukuran asli
 ## GLB tidak dipercaya: model diukur lalu diskalakan ke tinggi ini, kaki di tanah, di tengah.
-const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "babi_hutan": 0.75, "tikus_sawah": 0.5,
+const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "warga_ibu": 0.88, "warga_ibu2": 0.86, "warga_bapak": 0.98, "warga_bapak2": 0.96, "anak_desa": 0.62, "babi_hutan": 0.75, "tikus_sawah": 0.5,
 	"serigala_hutan": 0.8, "kelelawar_gua": 0.95, "ular_sawah": 0.6, "belalang_raksasa": 0.55}
 const DEFAULT_HEIGHT := 1.0
 
