@@ -91,6 +91,33 @@ dan gambar `client/assets/characters/<id npc>.png`.
 | Usir Monster Batu | Nenek (3,6) | Kalahkan 1 Monster Batu di Gunung Batu. Terkunci sampai hadiah Petani diambil | 150 emas + 2 Koin Kuno |
 | Hentikan Raja Iblis | Petani (11,6) | Kalahkan Raja Iblis di Gua Batu. Terkunci sampai hadiah Ogre diambil | 500 emas + 3 Permata Merah |
 
+### Dunia hidup (v0.20.0)
+
+Murni tampilan di klien (`client/scripts/atmosphere.gd`), tidak memengaruhi server atau data pemain.
+- **Siang-malam:** satu hari permainan = 12 menit nyata, mulai pagi. Langit, cahaya, kabut, dan arah
+  matahari berubah; malam bercahaya bulan kebiruan dan tetap terang cukup untuk bermain. Jam tampil di layar.
+- **Hujan:** tiap 150 detik diundi hujan atau cerah (30%, blok pertama selalu cerah); langit kelabu, kabut
+  menebal, tetesan turun mengikuti pemain. Jumlah tetesan mengikuti kualitas grafis.
+- **Arena pertarungan** memakai waktu dan cuaca yang sama. **Gua Batu** tidak terpengaruh.
+- **NPC** menoleh ke pemain yang dekat dan berjalan pelan di dalam petaknya sendiri, jadi petak NPC
+  tetap terblokir dan jangkauan bicara tidak berubah.
+
+### Misi sampingan (v0.20.0)
+
+Tidak perlu gambar baru: pemberinya Nenek dan Petani. Dialog menampilkan misi yang paling relevan
+(siap diklaim, lalu baru ditawarkan, lalu sedang dikerjakan), jadi misi utama tidak tertutup misi sampingan.
+
+| Misi | Pemberi | Jenis | Tugas | Hadiah | Terbuka setelah |
+|------|---------|-------|-------|--------|-----------------|
+| Kebun yang Dirusak | Nenek | kalahkan | 3 Babi Hutan | 35 emas + Baju Kulit | Selamatkan Nenek |
+| Obat untuk Pengungsi | Nenek | antar barang | 3 Taring Orc | 30 emas + 3 Ramuan | Selamatkan Nenek |
+| Serigala di Jalan Raja | Petani | kalahkan | 4 Serigala Hutan | 70 emas + 2 Ramuan | Selamatkan Petani |
+| Sisa Pasukan Iblis | Petani | kalahkan | 5 kerangka (gua, pejuang, penjaga) | 300 emas + Zirah Besi | Hentikan Raja Iblis |
+| Permata Sumber Kekuatan | Nenek | antar barang | 3 Permata Merah | 120 emas + Pedang Baja | Hentikan Raja Iblis |
+
+Misi antar barang: barang yang diminta diambil dari tas saat hadiah diklaim. Misi baru jenis ini =
+satu baris di `internal/game/quest.go` dengan `CollectID` (tanpa `TargetIDs`).
+
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 

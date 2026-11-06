@@ -10,6 +10,7 @@ const WORLD_SCENE := "res://scenes/world3d.tscn"
 const Models = preload("res://scripts/models.gd")
 const WorldBuild = preload("res://scripts/world_build.gd")
 const Heroes = preload("res://scripts/heroes.gd")
+const Atmosphere = preload("res://scripts/atmosphere.gd")
 const POTION_ID := "ramuan"
 const MAX_LOG_LINES := 4
 const SAFE_STEPS_AFTER_BATTLE := 3
@@ -17,6 +18,10 @@ const SYNC_LATE_MS := 80      # lewat sekian ms dari jadwal serangan musuh -> mi
 const POLL_MS := 4000         # sinkron berkala bila tidak ada kabar
 const EVENT_STAGGER := 0.32   # jeda animasi antar kejadian dalam satu jawaban
 const READY_SLACK_MS := 150   # toleransi tombol ditekan sedikit sebelum cooldown habis
+const HERO_X := -1.0          # posisi dasar ksatria dan musuh di arena (sumbu x)
+const ENEMY_X := 1.0
+const CHEST_Y := 0.9          # tinggi dada: tempat percikan muncul
+const LUNGE_MS := 0.12        # waktu penyerang maju sampai kena; efek kena menunggu sebentar
 
 ## Tombol utama: aksi -> [judul, subjudul].
 const MAIN_ACTIONS := [
@@ -34,6 +39,9 @@ var _enemy_bar: ProgressBar
 var _telegraph: ProgressBar
 var _enemy_view: SubViewportContainer
 var _fx: Control
+var _flash: ColorRect          # kilat layar (merah saat pemain kena)
+var _vp: SubViewport           # dunia 3D arena (tempat percikan ditambahkan)
+var _cam: Camera3D             # kamera arena (digetarkan saat kena)
 var _log: Label
 var _player_label: Label
 var _player_bar: ProgressBar
@@ -192,7 +200,24 @@ func _play_event(e: Dictionary) -> void:
 		match kind:
 			"attack", "crit", "skill1":
 				_play(_hero_rig, "play_attack")
-				get_tree().create_timer(0.18).timeout.connect(func() -> void: _play(_enemy_rig, "play_hurt"))
+				_lunge(_hero_rig, HERO_X, 0.55)
+				# Efek kena muncul saat pukulan mendarat: kilatan, percikan, getar.
+				var hit_color := Color("ffffff")
+				var burst := 10
+				var power := 0.03
+				if kind == "skill1":
+					hit_color = Color("ff9a3c")
+					burst = 28
+					power = 0.08
+				elif kind == "crit":
+					hit_color = Color("ffd23c")
+					burst = 22
+					power = 0.09
+				_after(LUNGE_MS, func() -> void:
+					_play(_enemy_rig, "play_hurt")
+					_flash_rig(_enemy_rig, hit_color)
+					_burst(_enemy_pos(), hit_color, burst, 3.5)
+					_shake(power))
 				if kind == "skill1":
 					_pop("%s! -%d" % [_skill_name("skill1"), dmg], Color("ff9a3c"), false, 44)
 				elif kind == "crit":
@@ -200,25 +225,145 @@ func _play_event(e: Dictionary) -> void:
 				else:
 					_pop("-%d" % dmg, Color("ffffff"), false, 38)
 			"guard":
+				_burst(_hero_pos(), Color("6ec6ff"), 8, 2.0)
 				_pop("Bertahan", Color("6ec6ff"), true, 36)
 			"skill2":
+				_burst(_hero_pos(), Color("7be06b"), 18, 2.5)
 				_pop("+%d HP" % heal, Color("7be06b"), true, 40)
 			"potion":
+				_burst(_hero_pos(), Color("7be06b"), 14, 2.2)
 				_pop("+%d HP" % heal, Color("7be06b"), true, 38)
 	else:
 		_play(_enemy_rig, "play_attack")
+		_lunge(_enemy_rig, ENEMY_X, -0.55)
 		match kind:
 			"perfect":
+				_after(LUNGE_MS, func() -> void:
+					_burst(_hero_pos(), Color("6ef0ff"), 24, 4.0)
+					_screen_flash(Color(0.43, 0.94, 1.0, 0.2))
+					_shake(0.04))
 				_pop("TANGKIS!", Color("6ef0ff"), true, 48)
 			"guard":
 				_play(_hero_rig, "play_hurt")
+				_after(LUNGE_MS, func() -> void:
+					_flash_rig(_hero_rig, Color("6ec6ff"))
+					_burst(_hero_pos(), Color("6ec6ff"), 12, 2.5)
+					_shake(0.03))
 				_pop("Ditahan -%d" % dmg, Color("6ec6ff"), true, 38)
 			"shield":
 				_play(_hero_rig, "play_hurt")
+				_after(LUNGE_MS, func() -> void:
+					_flash_rig(_hero_rig, Color("ffe08a"))
+					_burst(_hero_pos(), Color("ffe08a"), 12, 2.5)
+					_shake(0.03))
 				_pop("Perisai -%d" % dmg, Color("ffe08a"), true, 38)
 			_:
 				_play(_hero_rig, "play_hurt")
+				# Makin besar kerusakan (dibanding HP maksimum), makin kuat getarannya.
+				var share := clampf(float(dmg) / maxf(1.0, float(Session.player.state.max_hp)), 0.0, 1.0)
+				_after(LUNGE_MS, func() -> void:
+					_flash_rig(_hero_rig, Color("ff3030"))
+					_burst(_hero_pos(), Color("ff5c5c"), 12 + int(share * 24.0), 3.5)
+					_screen_flash(Color(1.0, 0.1, 0.1, 0.12 + share * 0.3))
+					_shake(0.04 + share * 0.12))
 				_pop("-%d" % dmg, Color("ff5c5c"), true, 44)
+
+
+# --- efek kena ---
+
+func _hero_pos() -> Vector3:
+	return Vector3(HERO_X, CHEST_Y, 0)
+
+
+func _enemy_pos() -> Vector3:
+	return Vector3(ENEMY_X, CHEST_Y, 0)
+
+
+## Jalankan fn setelah detik `seconds` (aman bila layar sudah ditutup).
+func _after(seconds: float, fn: Callable) -> void:
+	get_tree().create_timer(seconds).timeout.connect(func() -> void:
+		if is_inside_tree():
+			fn.call())
+
+
+## Penyerang maju sebentar lalu kembali ke tempat semula.
+func _lunge(rig: Node3D, base_x: float, toward: float) -> void:
+	if rig == null or not is_instance_valid(rig):
+		return
+	var tween := create_tween()
+	tween.tween_property(rig, "position:x", base_x + toward, LUNGE_MS).set_ease(Tween.EASE_OUT)
+	tween.tween_property(rig, "position:x", base_x, 0.22).set_ease(Tween.EASE_IN_OUT)
+
+
+## Kilatan warna sesaat pada seluruh model (lapisan transparan di atas bahan aslinya).
+func _flash_rig(rig: Node3D, color: Color) -> void:
+	if rig == null or not is_instance_valid(rig):
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(color, 0.55)
+	var meshes := rig.find_children("*", "MeshInstance3D", true, false)
+	for m: Node in meshes:
+		(m as MeshInstance3D).material_overlay = mat
+	_after(0.13, func() -> void:
+		for m: Node in meshes:
+			if is_instance_valid(m):
+				(m as MeshInstance3D).material_overlay = null)
+
+
+## Percikan kecil sekali ledak di titik `at` (dunia arena).
+func _burst(at: Vector3, color: Color, amount: int, speed: float) -> void:
+	if _vp == null or not is_instance_valid(_vp):
+		return
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.05
+	mesh.height = 0.1
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	mesh.material = mat
+	var p := CPUParticles3D.new()
+	p.mesh = mesh
+	p.amount = amount
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.lifetime = 0.55
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = speed * 0.5
+	p.initial_velocity_max = speed
+	p.gravity = Vector3(0, -6.0, 0)
+	p.position = at
+	_vp.add_child(p)
+	p.emitting = true
+	_after(1.2, func() -> void:
+		if is_instance_valid(p):
+			p.queue_free())
+
+
+## Getar kamera arena; power 0.03 ringan, 0.12 kuat.
+func _shake(power: float) -> void:
+	if _cam == null or not is_instance_valid(_cam):
+		return
+	var tween := create_tween()
+	for i in 6:
+		var k := power * (1.0 - float(i) / 6.0)
+		tween.tween_property(_cam, "h_offset", randf_range(-k, k), 0.035)
+		tween.parallel().tween_property(_cam, "v_offset", randf_range(-k, k), 0.035)
+	tween.tween_property(_cam, "h_offset", 0.0, 0.04)
+	tween.parallel().tween_property(_cam, "v_offset", 0.0, 0.04)
+
+
+## Kilat warna di seluruh layar yang memudar.
+func _screen_flash(color: Color) -> void:
+	if _flash == null:
+		return
+	_flash.color = color
+	var tween := _flash.create_tween()
+	tween.tween_property(_flash, "color:a", 0.0, 0.3)
 
 
 ## Teks melayang di atas arena. hero=true di sisi ksatria (kiri), selain itu di sisi musuh (kanan).
@@ -252,8 +397,12 @@ func _finish(status: String) -> void:
 	_btn_continue.text = "Kembali ke desa" if status == "lost" else "Lanjut"
 	if status == "won":
 		_play(_enemy_rig, "play_die")
+		_burst(_enemy_pos(), Color("ffd23c"), 36, 4.5)
+		_shake(0.1)
 	elif status == "lost":
 		_play(_hero_rig, "play_die")
+		_burst(_hero_pos(), Color("ff5c5c"), 30, 4.0)
+		_screen_flash(Color(0.6, 0.0, 0.0, 0.35))
 
 
 func _on_continue() -> void:
@@ -405,6 +554,11 @@ func _build_ui() -> void:
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fx)
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_flash = ColorRect.new()
+	_flash.color = Color(1, 0, 0, 0)
+	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.add_child(_flash)
+	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## Arena 3D di dalam SubViewport: ksatria di kiri, musuh di kanan.
@@ -432,6 +586,12 @@ func _build_arena() -> SubViewportContainer:
 	sun.shadow_enabled = Session.quality >= 1
 	sun.directional_shadow_max_distance = 14.0
 	vp.add_child(sun)
+	# Waktu dan cuaca dunia berlaku juga di arena (kecuali gua).
+	Atmosphere.apply(we.environment, sun, Atmosphere.capture(we.environment, sun), map_id)
+	var rain_fx := Atmosphere.make_rain(Vector3(5, 0.2, 3), Atmosphere.rain_amount(Session.quality) / 2)
+	rain_fx.position = Vector3(0, 6.5, 0)
+	vp.add_child(rain_fx)
+	Atmosphere.set_rain(rain_fx, map_id)
 
 	vp.add_child(WorldBuild.build_arena(map_id))
 
@@ -440,13 +600,15 @@ func _build_arena() -> SubViewportContainer:
 	vp.add_child(cam)
 	cam.look_at_from_position(Vector3(0, 1.25, 3.7), Vector3(0, 0.75, 0))
 	cam.current = true
+	_vp = vp
+	_cam = cam
 
 	_hero_rig = Models.create(str(Heroes.current().id))
-	_hero_rig.position = Vector3(-1.0, 0, 0)
+	_hero_rig.position = Vector3(HERO_X, 0, 0)
 	_hero_rig.rotation.y = PI / 2.0  # menghadap +x
 	vp.add_child(_hero_rig)
 	_enemy_rig = Models.create(_enemy_id)
-	_enemy_rig.position = Vector3(1.0, 0, 0)
+	_enemy_rig.position = Vector3(ENEMY_X, 0, 0)
 	_enemy_rig.rotation.y = -PI / 2.0  # menghadap -x
 	vp.add_child(_enemy_rig)
 	return holder

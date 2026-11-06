@@ -34,6 +34,7 @@ tidak ada, dipakai **placeholder** buatan kode (`scripts/models.gd`). Model lain
 | `scripts/maps.gd` | Data peta sementara (teks) dan aturan tabrakan |
 | `scripts/world3d.gd`, `movement.gd`, `world_build.gd`, `joystick.gd` | Dunia 3D: adegan, gerak + tabrakan, pembangun peta 3D, joystick |
 | `scripts/models.gd`, `model_rig.gd` | Model 3D (GLB atau placeholder) dan animasinya |
+| `scripts/atmosphere.gd` | Dunia hidup: siang-malam (1 hari = 12 menit nyata) dan hujan; dipakai dunia dan arena |
 | `tests/shot.gd` | Alat pengembang: tangkapan layar 3D (tidak ikut APK) |
 | `scripts/login.gd`, `scripts/world.gd`, `scripts/battle.gd`, `scripts/shop.gd`, `scripts/dialog.gd` | Layar-layar game |
 | `tests/e2e.gd` | Uji ujung-ke-ujung terhadap server Go asli |

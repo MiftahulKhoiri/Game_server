@@ -11,6 +11,7 @@ const Joystick = preload("res://scripts/joystick.gd")
 const GameMenu = preload("res://scripts/game_menu.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
 const Heroes = preload("res://scripts/heroes.gd")
+const Atmosphere = preload("res://scripts/atmosphere.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -18,6 +19,10 @@ const RETRY_DELAY := 5.0
 const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap "langkah" (1 petak jalan) di ladang
 const TALK_RANGE := 1.5
 const CAM_DIST := 6.4
+const ATMO_STEP := 0.4        # detik antar pembaruan langit/cahaya (cukup halus, hemat tenaga)
+const NPC_NOTICE := 3.5       # jarak (petak) NPC mulai menoleh ke pemain
+const NPC_WANDER := 0.22      # NPC berjalan pelan di dalam petaknya sendiri (jangkauan, petak)
+const NPC_SPEED := 0.5        # petak per detik
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const SHOP_SCENE := "res://scenes/shop.tscn"
 const INVENTORY_SCENE := "res://scenes/inventory.tscn"
@@ -42,6 +47,13 @@ var _camera: Camera3D
 var _env: WorldEnvironment
 var _sun: DirectionalLight3D
 var _save_timer: Timer
+
+var _atmo_base: Dictionary = {}   # suasana dasar peta ini (sebelum waktu/cuaca)
+var _atmo_acc := 0.0
+var _rain: CPUParticles3D
+var _clock: Label
+var _npc_models: Dictionary = {}  # id NPC -> model 3D
+var _npc_time := 0.0
 
 var _joy: Control
 var _cam_finger := -1
@@ -71,6 +83,8 @@ func _ready() -> void:
 	_camera.far = 90.0
 	add_child(_camera)
 	_camera.current = true
+	_rain = Atmosphere.make_rain(Vector3(6, 0.2, 6), Atmosphere.rain_amount(Session.quality))
+	add_child(_rain)
 
 	_make_player()
 
@@ -128,6 +142,7 @@ func _load_map(map_id: String) -> void:
 	_npc_root = Node3D.new()
 	_npc_root.name = "NPC"
 	add_child(_npc_root)
+	_npc_models = {}
 	for id: String in Maps.NPCS:
 		var n: Dictionary = Maps.NPCS[id]
 		if n.map != map_id:
@@ -135,6 +150,7 @@ func _load_map(map_id: String) -> void:
 		var model := Models.create(id)
 		model.position = Vector3(n.pos.x + 0.5, 0.0, n.pos.y + 0.5)
 		_npc_root.add_child(model)
+		_npc_models[id] = model
 		_add_shadow(model, 0.3)
 		var label := Label3D.new()
 		label.text = str(n.name)
@@ -148,6 +164,10 @@ func _load_map(map_id: String) -> void:
 	_env.environment = WorldBuild.environment_for(map_id)
 	_sun.light_energy = WorldBuild.light_energy_for(map_id)
 	_sun.light_color = WorldBuild.light_color_for(map_id)
+	# Waktu dan cuaca berlaku di luar ruangan; suasana dasar peta disimpan dulu.
+	_atmo_base = Atmosphere.capture(_env.environment, _sun)
+	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
+	Atmosphere.set_rain(_rain, map_id)
 
 
 func _add_shadow(parent: Node3D, radius: float) -> void:
@@ -187,6 +207,7 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 # --- per bingkai ---
 
 func _process(delta: float) -> void:
+	_update_world_life(delta)
 	var rig := _player as Node
 	if _locked:
 		_set_moving(false)
@@ -211,6 +232,48 @@ func _process(delta: float) -> void:
 		_sync_state()
 		_mark_dirty()
 		_after_step(moved)
+
+
+## Waktu, cuaca, dan NPC yang bergerak pelan: semua hanya tampilan, tidak mengubah data permainan.
+func _update_world_life(delta: float) -> void:
+	Atmosphere.tick(delta)
+	_atmo_acc += delta
+	if _atmo_acc >= ATMO_STEP:
+		_atmo_acc = 0.0
+		Atmosphere.apply(_env.environment, _sun, _atmo_base, _map_id)
+		Atmosphere.set_rain(_rain, _map_id)
+		if _clock != null:
+			_clock.text = Atmosphere.label() if Atmosphere.outdoors(_map_id) else "Gua Batu"
+	if _rain != null:
+		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
+	_update_npcs(delta)
+
+
+## NPC menoleh ke pemain bila dekat; selain itu berjalan pelan di sekitar petaknya.
+## Petak NPC tetap terblokir di Maps, jadi tabrakan dan jangkauan bicara tidak berubah.
+func _update_npcs(delta: float) -> void:
+	_npc_time += delta
+	for id: String in _npc_models:
+		var model := _npc_models[id] as Node3D
+		if model == null or not is_instance_valid(model):
+			continue
+		var home := Vector2(Maps.NPCS[id].pos) + Vector2(0.5, 0.5)
+		var to_player := _pos - home
+		var near := to_player.length() < NPC_NOTICE
+		var phase := float(id.hash() % 100) * 0.1
+		var want := home
+		if not near:
+			want += Vector2(sin(_npc_time * 0.35 + phase), cos(_npc_time * 0.23 + phase * 1.7)) * NPC_WANDER
+		var cur := Vector2(model.position.x, model.position.z)
+		var nxt := cur.move_toward(want, NPC_SPEED * delta)
+		var step := nxt - cur
+		var walking := step.length() > 0.0005
+		model.position = Vector3(nxt.x, 0.0, nxt.y)
+		var face_dir := step if (walking and not near) else to_player
+		if face_dir.length() > 0.01:
+			model.rotation.y = lerp_angle(model.rotation.y, atan2(face_dir.x, face_dir.y), minf(1.0, delta * 6.0))
+		if "moving" in model:
+			model.moving = walking and not near
 
 
 func _set_moving(v: bool) -> void:
@@ -471,6 +534,14 @@ func _build_ui() -> void:
 	_status.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	_status.add_theme_constant_override("outline_size", 6)
 	layer.add_child(_status)
+
+	_clock = Label.new()
+	_clock.position = Vector2(20, 192)
+	_clock.add_theme_font_size_override("font_size", 24)
+	_clock.add_theme_color_override("font_color", Color("ffe9b0"))
+	_clock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_clock.add_theme_constant_override("outline_size", 6)
+	layer.add_child(_clock)
 
 	_toast = Label.new()
 	_toast.position = Vector2(0, 260)

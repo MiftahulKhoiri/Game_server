@@ -122,6 +122,11 @@ membawa pemain; bawaannya halaman Releases terbaru.
   layar Profil di klien. Hanya menambah; `DefaultMinClient` tetap 0.18.0. Pada rilis yang sama
   semua model musuh diganti model CC0 seragam dan nama tampilan musuh berubah (id tetap).
 
+- v0.20.0 menambah 5 misi sampingan (termasuk jenis "antar barang"), efek pertarungan di klien
+  (percikan, kilatan, getar kamera), dan dunia hidup (siang-malam, hujan, NPC bergerak). API hanya menambah field `collect_id` pada misi;
+  `DefaultMinClient` tetap 0.18.0. Klien lama masih jalan, tetapi dialog NPC-nya hanya
+  menampilkan misi pertama yang belum selesai, jadi misi baru butuh klien 0.20.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

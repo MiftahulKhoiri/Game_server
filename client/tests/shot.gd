@@ -107,6 +107,12 @@ func _ready() -> void:
 	var x := float(OS.get_environment("SHOT_X")) if OS.get_environment("SHOT_X") != "" else 5.5
 	var z := float(OS.get_environment("SHOT_Z")) if OS.get_environment("SHOT_Z") != "" else 7.5
 	Session.use_offline_player()
+	# SHOT_HOUR (0-24) dan SHOT_RAIN (0-1) memaksa waktu dan hujan untuk tangkapan layar.
+	const Atmo = preload("res://scripts/atmosphere.gd")
+	if OS.get_environment("SHOT_HOUR") != "":
+		Atmo.hour_override = float(OS.get_environment("SHOT_HOUR"))
+	if OS.get_environment("SHOT_RAIN") != "":
+		Atmo.rain = float(OS.get_environment("SHOT_RAIN"))
 	if map_id != "":
 		Session.player.state.map = map_id
 	Session.player.state.x = int(x)

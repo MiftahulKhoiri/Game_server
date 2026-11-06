@@ -516,6 +516,55 @@ func _run() -> void:
 	w3._pos = Vector2(7.5, 5.5)
 	w3._sync_state()
 	_check(Session.player.state.x == 7 and absf(float(Session.player.state.fx) - 7.5) < 0.001, "posisi 3D tersalin ke data pemain (petak 7, fx 7.5)")
+
+	# Dunia hidup: siang-malam, hujan, NPC.
+	const Atmo = preload("res://scripts/atmosphere.gd")
+	var env_a: Environment = w3._env.environment
+	Atmo.hour_override = 12.0
+	Atmo.rain = 0.0
+	Atmo.apply(env_a, w3._sun, w3._atmo_base, Maps.DEFAULT_MAP)
+	var noon_energy: float = w3._sun.light_energy
+	var noon_top: Color = (env_a.sky.sky_material as ProceduralSkyMaterial).sky_top_color
+	var noon_fog: float = env_a.fog_density
+	Atmo.hour_override = 0.0
+	Atmo.apply(env_a, w3._sun, w3._atmo_base, Maps.DEFAULT_MAP)
+	var night_top: Color = (env_a.sky.sky_material as ProceduralSkyMaterial).sky_top_color
+	_check(w3._sun.light_energy < noon_energy * 0.8, "malam: cahaya matahari/bulan lebih redup dari siang")
+	_check(night_top.get_luminance() < noon_top.get_luminance() * 0.5, "malam: langit lebih gelap dari siang")
+	_check(env_a.ambient_light_energy >= 0.3, "malam: cahaya ambient cukup agar tetap bisa dimainkan")
+	Atmo.hour_override = 12.0
+	Atmo.rain = 1.0
+	Atmo.apply(env_a, w3._sun, w3._atmo_base, Maps.DEFAULT_MAP)
+	_check(w3._sun.light_energy < noon_energy and env_a.fog_density > noon_fog, "hujan: cahaya lebih redup dan kabut lebih tebal")
+	_check(Atmo.label().contains("hujan"), "label waktu menyebut hujan")
+	Atmo.set_rain(w3._rain, Maps.DEFAULT_MAP)
+	_check(w3._rain.emitting, "hujan turun di luar ruangan")
+	Atmo.set_rain(w3._rain, Maps.GUA)
+	_check(not w3._rain.emitting, "tidak hujan di Gua Batu")
+	var gua_before: float = w3._sun.light_energy
+	Atmo.apply(env_a, w3._sun, w3._atmo_base, Maps.GUA)
+	_check(is_equal_approx(w3._sun.light_energy, gua_before), "Gua Batu tidak terpengaruh waktu/cuaca")
+	Atmo.hour_override = -1.0
+	Atmo.rain = 0.0
+	Atmo.apply(env_a, w3._sun, w3._atmo_base, Maps.DEFAULT_MAP)
+	_check(Atmo.hour() >= 0.0 and Atmo.hour() < 24.0 and not Atmo.raining_now(), "jam permainan wajar dan blok cuaca pertama cerah")
+	# NPC: menoleh ke pemain yang dekat, dan tetap di dalam petaknya.
+	w3._pos = Vector2(3.5, 8.5)  # selatan Nenek (3,6)
+	for i in 90:
+		w3._update_npcs(0.05)
+	var nenek: Node3D = w3._npc_models["nenek_penjual"]
+	var home := Vector2(3.5, 6.5)
+	var np := Vector2(nenek.position.x, nenek.position.z)
+	_check(np.distance_to(home) < 0.01, "NPC dekat pemain berdiri di tempatnya")
+	_check(absf(angle_difference(nenek.rotation.y, 0.0)) < 0.15, "NPC menoleh ke arah pemain (selatan)")
+	w3._pos = Vector2(13.5, 17.5)  # jauh: NPC boleh berjalan pelan
+	var max_off := 0.0
+	for i in 400:
+		w3._update_npcs(0.05)
+		var p2 := Vector2(nenek.position.x, nenek.position.z)
+		max_off = maxf(max_off, p2.distance_to(home))
+	_check(max_off > 0.05 and max_off <= 0.36, "NPC berjalan pelan tapi tetap di dalam petaknya (geser %.2f)" % max_off)
+	w3._pos = Vector2(7.5, 5.5)
 	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")
 	w3._toggle_menu()
 	_check(w3._menu.is_open and w3._locked, "tombol Menu membuka menu dan menahan gerak")

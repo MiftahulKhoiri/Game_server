@@ -219,6 +219,11 @@ misi. Kemajuan dan hadiah disimpan di `state.quests` (hanya server yang mengubah
 "reward_gold", "reward_items", "reward_text", "requires", "status", "progress"}]}`.
 `status`: `locked` (misi prasyarat `requires` belum diambil hadiahnya), `available`, `active`, `done`, `claimed`.
 
+Jenis misi (v0.20.0): "kalahkan N musuh" (`target_ids` terisi) dan "antar barang" (`collect_id` terisi,
+`target_ids` kosong). Pada misi antar barang, `progress` = jumlah barang yang sedang dibawa (maksimal
+`target_count`) dan `status` menjadi `done` begitu cukup; barang diambil dari tas saat hadiah diklaim.
+Klaim ditolak `422` bila barangnya kurang.
+
 ### `POST /v1/quests/accept` dan `POST /v1/quests/claim`  (login)
 Body: `{"quest": "selamatkan_nenek"}`. `200 {"player": {...}, "quests": [...], "reward_gold": 40}`
 (`reward_gold` dan `reward_text` hanya pada klaim).

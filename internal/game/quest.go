@@ -33,6 +33,9 @@ type QuestDef struct {
 	RewardItems []Item `json:"reward_items,omitempty"`
 	// Requires: id misi yang hadiahnya harus sudah diambil sebelum misi ini bisa diterima.
 	Requires string `json:"requires,omitempty"`
+	// CollectID: bila diisi, misi ini jenis "antar barang": pemain menyerahkan Count
+	// buah barang ini ke pemberi misi (TargetIDs dikosongkan). Barang diambil saat hadiah diklaim.
+	CollectID string `json:"collect_id,omitempty"`
 }
 
 // RewardText menjelaskan hadiah untuk ditampilkan, mis. "25 emas, Permata Merah x1".
@@ -94,6 +97,62 @@ var quests = []QuestDef{
 		RewardItems: []Item{{ID: "permata_merah", Qty: 3}, {ID: "pedang_rune", Qty: 1}},
 		Requires:    "usir_ogre",
 	},
+	// Misi sampingan (v0.20.0). Urutan penting: klien menampilkan misi utama lebih dulu.
+	{
+		ID:          "kebun_babi",
+		Title:       "Kebun yang Dirusak",
+		Giver:       "nenek_penjual",
+		Description: "Babi hutan mengobrak-abrik kebun sayur di desa. Kalahkan 3 babi hutan.",
+		TargetIDs:   []string{"babi_hutan"},
+		Count:       3,
+		RewardGold:  35,
+		RewardItems: []Item{{ID: "baju_kulit", Qty: 1}},
+		Requires:    "selamatkan_nenek",
+	},
+	{
+		ID:          "ramuan_nenek",
+		Title:       "Obat untuk Pengungsi",
+		Giver:       "nenek_penjual",
+		Description: "Nenek ingin meracik obat bagi para pengungsi, tetapi butuh 3 Taring Orc dari ladang perbatasan. Bawa ke Nenek, lalu ambil hadiahnya.",
+		CollectID:   "taring_goblin",
+		Count:       3,
+		RewardGold:  30,
+		RewardItems: []Item{{ID: PotionID, Qty: 3}},
+		Requires:    "selamatkan_nenek",
+	},
+	{
+		ID:          "serigala_perbatasan",
+		Title:       "Serigala di Jalan Raja",
+		Giver:       "petani",
+		Description: "Serigala-serigala turun dari gunung dan menghadang pedagang di jalan perbatasan. Kalahkan 4 serigala hutan.",
+		TargetIDs:   []string{"serigala_hutan"},
+		Count:       4,
+		RewardGold:  70,
+		RewardItems: []Item{{ID: PotionID, Qty: 2}},
+		Requires:    "selamatkan_petani",
+	},
+	{
+		ID:          "sisa_pasukan",
+		Title:       "Sisa Pasukan Iblis",
+		Giver:       "petani",
+		Description: "Raja Iblis sudah tumbang, tetapi sisa pasukan kerangkanya masih berkeliaran di gunung dan gua. Kalahkan 5 kerangka (kerangka gua, pejuang, atau penjaga).",
+		TargetIDs:   []string{"kelelawar_gua", "golem_kerikil", "goblin_penjaga"},
+		Count:       5,
+		RewardGold:  300,
+		RewardItems: []Item{{ID: "zirah_besi", Qty: 1}},
+		Requires:    "hentikan_raja_goblin",
+	},
+	{
+		ID:          "permata_nenek",
+		Title:       "Permata Sumber Kekuatan",
+		Giver:       "nenek_penjual",
+		Description: "Permata Merah adalah sumber kekuatan pasukan iblis. Serahkan 3 Permata Merah kepada Nenek agar disimpan aman di kuil kerajaan.",
+		CollectID:   "permata_merah",
+		Count:       3,
+		RewardGold:  120,
+		RewardItems: []Item{{ID: "pedang_baja", Qty: 1}},
+		Requires:    "hentikan_raja_goblin",
+	},
 }
 
 // QuestProgress adalah catatan misi pada pemain (disimpan di State).
@@ -145,6 +204,13 @@ func (s State) QuestViews() []QuestView {
 		v := QuestView{QuestDef: def, Status: QuestAvailable, RewardText: def.RewardText()}
 		if i := s.questIndex(def.ID); i >= 0 {
 			v.Status, v.Progress = s.Quests[i].Status, s.Quests[i].Progress
+			if def.CollectID != "" && v.Status == QuestActive {
+				// Misi antar barang: kemajuan = barang yang sedang dibawa.
+				v.Progress = min(s.itemQty(def.CollectID), def.Count)
+				if v.Progress >= def.Count {
+					v.Status = QuestDone
+				}
+			}
 		} else if s.questLocked(def) {
 			v.Status = QuestLocked
 		}
@@ -189,13 +255,21 @@ func (s *State) ClaimQuest(id string) (QuestDef, error) {
 	}
 	i := s.questIndex(id)
 	switch {
-	case i < 0 || s.Quests[i].Status == QuestActive:
+	case i < 0:
 		return QuestDef{}, ErrQuestNotReady
 	case s.Quests[i].Status == QuestClaimed:
 		return QuestDef{}, ErrQuestClaimed
 	}
 	// Barang masuk tas dulu; bila tas penuh, hadiah ditolak dan tidak ada yang berubah.
 	probe := State{Inventory: slices.Clone(s.Inventory)}
+	if def.CollectID != "" {
+		// Misi antar barang: barang yang diminta diserahkan lebih dulu.
+		if !probe.RemoveItem(def.CollectID, def.Count) {
+			return QuestDef{}, ErrQuestNotReady
+		}
+	} else if s.Quests[i].Status == QuestActive {
+		return QuestDef{}, ErrQuestNotReady
+	}
 	for _, it := range def.RewardItems {
 		if !probe.AddItem(it.ID, it.Qty) {
 			return QuestDef{}, ErrInventoryFull

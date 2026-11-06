@@ -30,6 +30,37 @@ const QUEST_TEXTS := {
 		"thanks": "Kamu mengalahkan Monster Batu! Kerajaan berutang budi padamu. Ini untukmu:",
 		"done": "Gunung itu sunyi sekarang. Terima kasih, Pelindung Kerajaan.",
 	},
+	# Misi sampingan (v0.20.0)
+	"kebun_babi": {
+		"offer": "Nak, kebun sayurku diobrak-abrik babi hutan semalam. Sayurnya hampir habis...",
+		"locked": "Tolong urus keadaanku dulu, baru kita bicara soal kebun.",
+		"thanks": "Kebunku selamat, terima kasih! Pakailah baju ini, dulu milik suamiku:",
+		"done": "Sayurnya tumbuh lagi. Kamu selalu diterima di dapurku, Nak.",
+	},
+	"ramuan_nenek": {
+		"offer": "Banyak pengungsi terluka di desa. Aku bisa meracik obat, tapi butuh taring orc dari ladang perbatasan.",
+		"locked": "Tolong urus keadaanku dulu, baru kita bicara soal obat.",
+		"thanks": "Taring-taring ini cukup untuk satu panci obat! Ini bagianmu:",
+		"done": "Para pengungsi sudah pulih berkat obatmu, Nak.",
+	},
+	"serigala_perbatasan": {
+		"offer": "Serigala-serigala turun dari gunung seperti ada yang mengusir mereka. Pedagang tak berani lewat.",
+		"locked": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi.",
+		"thanks": "Jalan raja aman lagi, pedagang mulai berdatangan. Ini upahmu:",
+		"done": "Pedagang kembali lewat tiap pagi. Terima kasih, Ksatria.",
+	},
+	"sisa_pasukan": {
+		"offer": "Raja Iblis memang tumbang, tapi pasukan kerangkanya belum semua padam. Mereka masih berkeliaran.",
+		"locked": "Aku punya kabar penting, tapi selesaikan dulu urusan Raja Iblis.",
+		"thanks": "Gunung dan gua kini benar-benar sunyi. Kerajaan memberimu zirah ini:",
+		"done": "Tak ada lagi kerangka yang mengusik desa. Kamu pahlawan kami.",
+	},
+	"permata_nenek": {
+		"offer": "Permata merah itu rupanya sumber kekuatan pasukan iblis. Jangan biarkan jatuh ke tangan salah.",
+		"locked": "Ada sesuatu yang ingin kubicarakan soal permata merah, tapi nanti, setelah Raja Iblis tumbang.",
+		"thanks": "Permata-permata ini kusimpan aman di kuil kerajaan. Terimalah pedang ini:",
+		"done": "Kuil menjaga permata itu sekarang. Kerajaan tenang berkatmu, Nak.",
+	},
 }
 const GREETINGS := {
 	"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman...",
@@ -38,6 +69,7 @@ const GREETINGS := {
 
 var _npc := ""
 var _quest: Dictionary = {}  # misi milik NPC ini (tampilan dari server), {} bila tidak ada
+var _others: Array[Dictionary] = []  # misi lain NPC ini yang sedang dikerjakan
 var _name_label: Label
 var _text: Label
 var _action: Button
@@ -63,14 +95,27 @@ func _load_quest() -> void:
 	if not res.ok:
 		_text.text = str(res.error)
 		return
-	# Misi NPC ini yang sedang relevan: yang pertama belum diambil hadiahnya,
-	# kalau semua sudah selesai tampilkan yang terakhir.
+	# NPC bisa punya beberapa misi. Yang ditampilkan: siap diklaim > baru ditawarkan >
+	# sedang dikerjakan > terkunci; kalau semua sudah selesai, yang terakhir.
+	# Dalam status yang sama, urutan di server berlaku (misi utama lebih dulu).
+	var mine: Array[Dictionary] = []
 	for q: Dictionary in res.data.get("quests", []):
-		if str(q.giver) != _npc:
-			continue
-		_quest = q
-		if str(q.status) != "claimed":
-			return
+		if str(q.giver) == _npc:
+			mine.append(q)
+	_others = []
+	for status: String in ["done", "available", "active", "locked"]:
+		for q: Dictionary in mine:
+			if str(q.status) == status:
+				_quest = q
+				break
+		if not _quest.is_empty():
+			break
+	if _quest.is_empty() and not mine.is_empty():
+		_quest = mine[mine.size() - 1]
+	# Misi lain yang sedang dikerjakan ikut dicatat supaya kemajuannya tetap terlihat.
+	for q: Dictionary in mine:
+		if str(q.status) == "active" and str(q.id) != str(_quest.get("id", "")):
+			_others.append(q)
 
 
 func _text_for(key: String, fallback := "") -> String:
@@ -98,6 +143,11 @@ func _render() -> void:
 			_set_action("Ambil hadiah", "claim")
 		_:
 			_text.text = _text_for("done", "Terima kasih.")
+	if not _others.is_empty() and status != "claimed":
+		var lines: PackedStringArray = []
+		for q: Dictionary in _others:
+			lines.append("%s %d/%d" % [str(q.title), int(q.progress), int(q.target_count)])
+		_text.text += "\n\nMisi lain yang kamu kerjakan: " + ", ".join(lines) + "."
 
 
 func _set_action(label: String, kind: String) -> void:

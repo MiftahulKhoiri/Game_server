@@ -110,8 +110,17 @@ func TestQuestValidate(t *testing.T) {
 
 func TestQuestCatalogConsistent(t *testing.T) {
 	for _, q := range Quests() {
-		if q.ID == "" || q.Giver == "" || q.Count < 1 || q.RewardGold < 0 || len(q.TargetIDs) == 0 {
+		if q.ID == "" || q.Giver == "" || q.Count < 1 || q.RewardGold < 0 {
 			t.Errorf("misi tidak valid: %+v", q)
+		}
+		// Tiap misi punya target musuh ATAU barang yang diantar, tidak keduanya.
+		if (len(q.TargetIDs) == 0) == (q.CollectID == "") {
+			t.Errorf("misi %s harus punya TargetIDs atau CollectID (salah satu)", q.ID)
+		}
+		if q.CollectID != "" {
+			if _, ok := ItemByID(q.CollectID); !ok {
+				t.Errorf("misi %s meminta barang yang tidak ada: %s", q.ID, q.CollectID)
+			}
 		}
 		if q.Requires != "" {
 			if _, ok := QuestByID(q.Requires); !ok || q.Requires == q.ID {
@@ -267,5 +276,114 @@ func TestRajaGoblinQuestEndsChain(t *testing.T) {
 	gold, gems := st.Gold, qtyOf(st, "permata_merah")
 	if _, err := st.ClaimQuest("hentikan_raja_goblin"); err != nil || st.Gold != gold+500 || qtyOf(st, "permata_merah") != gems+3 {
 		t.Errorf("hadiah salah: %v gold %d->%d permata %d->%d", err, gold, st.Gold, gems, qtyOf(st, "permata_merah"))
+	}
+}
+
+// questDone menamatkan misi utama sampai prasyarat misi sampingan terpenuhi.
+func finishQuest(t *testing.T, st *State, id string) {
+	t.Helper()
+	def, _ := QuestByID(id)
+	if def.Requires != "" {
+		if i := st.questIndex(def.Requires); i < 0 || st.Quests[i].Status != QuestClaimed {
+			finishQuest(t, st, def.Requires)
+		}
+	}
+	if err := st.AcceptQuest(id); err != nil {
+		t.Fatalf("terima %s: %v", id, err)
+	}
+	if def.CollectID != "" {
+		if !st.AddItem(def.CollectID, def.Count) {
+			t.Fatal("tas penuh")
+		}
+	} else {
+		for i := 0; i < def.Count; i++ {
+			st.RecordKill(def.TargetIDs[0])
+		}
+	}
+	if _, err := st.ClaimQuest(id); err != nil {
+		t.Fatalf("klaim %s: %v", id, err)
+	}
+}
+
+func TestCollectQuestNeedsItemsAndConsumesThem(t *testing.T) {
+	st := NewState()
+	finishQuest(t, &st, nenekQuest)
+	if err := st.AcceptQuest("ramuan_nenek"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.ClaimQuest("ramuan_nenek"); !errors.Is(err, ErrQuestNotReady) {
+		t.Fatalf("klaim tanpa barang: %v", err)
+	}
+	st.AddItem("taring_goblin", 2)
+	view := func() QuestView {
+		for _, v := range st.QuestViews() {
+			if v.ID == "ramuan_nenek" {
+				return v
+			}
+		}
+		t.Fatal("misi tidak ada di tampilan")
+		return QuestView{}
+	}
+	if v := view(); v.Status != QuestActive || v.Progress != 2 {
+		t.Errorf("baru 2 dari 3: %+v", v)
+	}
+	if _, err := st.ClaimQuest("ramuan_nenek"); !errors.Is(err, ErrQuestNotReady) {
+		t.Fatalf("klaim dengan barang kurang: %v", err)
+	}
+	if st.itemQty("taring_goblin") != 2 {
+		t.Error("klaim gagal tidak boleh mengambil barang")
+	}
+	st.AddItem("taring_goblin", 2) // sekarang 4, lebih dari cukup
+	if v := view(); v.Status != QuestDone || v.Progress != 3 {
+		t.Errorf("harus siap diklaim: %+v", v)
+	}
+	potions, gold := st.itemQty(PotionID), st.Gold
+	if _, err := st.ClaimQuest("ramuan_nenek"); err != nil {
+		t.Fatal(err)
+	}
+	if st.itemQty("taring_goblin") != 1 {
+		t.Errorf("harus tersisa 1 taring, ada %d", st.itemQty("taring_goblin"))
+	}
+	if st.itemQty(PotionID) != potions+3 || st.Gold != gold+30 {
+		t.Errorf("hadiah salah: ramuan %d, emas %d", st.itemQty(PotionID), st.Gold)
+	}
+	if _, err := st.ClaimQuest("ramuan_nenek"); !errors.Is(err, ErrQuestClaimed) {
+		t.Errorf("klaim dua kali: %v", err)
+	}
+}
+
+func TestSideQuestsFollowPrerequisites(t *testing.T) {
+	st := NewState()
+	locked := func(id string) bool {
+		for _, v := range st.QuestViews() {
+			if v.ID == id {
+				return v.Status == QuestLocked
+			}
+		}
+		t.Fatalf("misi %s tidak ada", id)
+		return false
+	}
+	for _, id := range []string{"kebun_babi", "ramuan_nenek", "serigala_perbatasan", "sisa_pasukan", "permata_nenek"} {
+		if !locked(id) {
+			t.Errorf("%s harus terkunci di awal", id)
+		}
+	}
+	finishQuest(t, &st, nenekQuest)
+	if locked("kebun_babi") || locked("ramuan_nenek") || !locked("serigala_perbatasan") {
+		t.Error("setelah Nenek: kebun_babi dan ramuan_nenek terbuka, serigala_perbatasan belum")
+	}
+	finishQuest(t, &st, "serigala_perbatasan")
+	if !locked("sisa_pasukan") || !locked("permata_nenek") {
+		t.Error("misi epilog harus terkunci sampai Raja Iblis dikalahkan")
+	}
+	finishQuest(t, &st, "hentikan_raja_goblin")
+	if locked("sisa_pasukan") || locked("permata_nenek") {
+		t.Error("misi epilog harus terbuka setelah Raja Iblis")
+	}
+	st.AddItem("permata_merah", 5) // beberapa sudah dipegang dari hadiah misi
+	finishQuest(t, &st, "sisa_pasukan")
+	finishQuest(t, &st, "permata_nenek")
+	if st.itemQty("zirah_besi") != 1 || st.itemQty("pedang_baja") != 1 {
+		t.Errorf("hadiah peralatan kurang: %+v", st.Inventory)
 	}
 }
