@@ -86,7 +86,7 @@ func _run() -> void:
 	if vi.ok:
 		_check(Version.compare(Version.app_version(), str(vi.data.min_client)) >= 0, "aplikasi memenuhi versi minimum server")
 	Api.client_version = "0.0.1"
-	var old_try: Dictionary = await Api.register("VersiLawas")
+	var old_try: Dictionary = await Api.register("VersiLawas", "lawas@contoh.id", "sandi-lawas-123")
 	_check(not old_try.ok and old_try.status == 426, "versi terlalu lama ditolak 426")
 	_check(old_try.get("data", {}).has("update_url"), "426 membawa update_url")
 	Api.client_version = Version.app_version()
@@ -98,10 +98,19 @@ func _run() -> void:
 	_check(login._version_label.text.contains("Server v"), "layar masuk menampilkan versi server")
 	_check(not login._btn_update.visible, "tidak ada ajakan update bila versi sudah terbaru")
 	_check(not login._btn_start.disabled, "tombol aktif bila versi memenuhi syarat")
+	_check(login._register_mode and login._register_box.visible and not login._login_box.visible, "pemasangan baru langsung di layar Daftar")
+	_check(login._btn_start.text == "Daftar dan mulai", "tombol mode Daftar")
+	login._set_mode(false)
+	_check(login._login_box.visible and not login._register_box.visible and not login._pass2_box.visible, "mode Masuk menyembunyikan isian daftar")
+	_check(login._btn_start.text == "Masuk", "tombol mode Masuk")
+	_check(login._pass_edit.secret, "kata sandi disamarkan")
+	_check(login._looks_like_email("a@b.id") and not login._looks_like_email("a@b") and not login._looks_like_email("a b@c.id") and not login._looks_like_email("@b.id"), "pemeriksaan ringan email di layar")
 	login.queue_free()
 
 	var name := "Uji%d" % (Time.get_ticks_usec() % 100000)
-	var reg: Dictionary = await Api.register(name)
+	var pw := "sandi-uji-12345"
+	var email := name.to_lower() + "@contoh.id"
+	var reg: Dictionary = await Api.register(name, email, pw)
 	_check(reg.ok, "daftar pemain " + name)
 	if not reg.ok:
 		return
@@ -109,8 +118,31 @@ func _run() -> void:
 	Session.set_player(reg.data.player)
 	_check(Session.player.state.x == 5 and typeof(Session.player.state.x) == TYPE_INT, "state memakai int")
 
-	var dup: Dictionary = await Api.register(name)
+	var dup: Dictionary = await Api.register(name, "lain_" + email, pw)
 	_check(not dup.ok and dup.status == 409, "nama kembar ditolak 409")
+
+	print("== akun: email, login, logout")
+	var dup_mail: Dictionary = await Api.register(name + "x", email.to_upper(), pw)
+	_check(not dup_mail.ok and dup_mail.status == 409, "email kembar (beda huruf) ditolak 409")
+	var weak: Dictionary = await Api.register(name + "y", "y" + email, "pendek")
+	_check(not weak.ok and weak.status == 422, "kata sandi pendek ditolak 422")
+	var no_mail: Dictionary = await Api.register(name + "z", "bukan-email", pw)
+	_check(not no_mail.ok and no_mail.status == 422, "email rusak ditolak 422")
+	var wrong: Dictionary = await Api.login(name, "salah-salah-salah")
+	_check(not wrong.ok and wrong.status == 401, "kata sandi salah ditolak 401")
+	var by_name: Dictionary = await Api.login(name, pw)
+	_check(by_name.ok and str(by_name.data.token) != str(reg.data.token), "login dengan nama memberi token baru")
+	var by_mail: Dictionary = await Api.login(email.to_upper(), pw)
+	_check(by_mail.ok and str(by_mail.data.player.id) == str(reg.data.player.id), "login dengan email (huruf besar) memberi pemain yang sama")
+	_check(str(by_mail.data.player.get("email", "")) == email, "email pemilik ikut di jawaban login")
+	var first_token: String = Api.token
+	Api.token = str(by_name.data.token)
+	var out: Dictionary = await Api.logout()
+	_check(out.ok and out.status == 204, "logout berhasil (204)")
+	var after_out: Dictionary = await Api.get_me()
+	_check(not after_out.ok and after_out.status == 401, "token setelah logout ditolak 401")
+	Api.token = first_token
+	_check((await Api.get_me()).ok, "token HP lain tetap berlaku setelah logout di HP ini")
 
 	print("== world: gerak lalu simpan otomatis")
 	Session.offline = false

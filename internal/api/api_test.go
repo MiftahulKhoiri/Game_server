@@ -7,14 +7,28 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/MiftahulKhoiri/Game_server/internal/auth"
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
 	"github.com/MiftahulKhoiri/Game_server/internal/store"
 	"github.com/MiftahulKhoiri/Game_server/internal/version"
 )
+
+func TestMain(m *testing.M) {
+	auth.Iterations = 1000 // hash cepat untuk tes
+	os.Exit(m.Run())
+}
+
+const testPassword = "sandi-rahasia-1"
+
+// regBody adalah isi permintaan daftar yang sah untuk nama tertentu.
+func regBody(name string) map[string]string {
+	return map[string]string{"name": name, "email": strings.ToLower(name) + "@contoh.id", "password": testPassword}
+}
 
 var testInfo = version.Info{
 	Server: "0.2.0", Commit: "test", API: 1,
@@ -62,7 +76,7 @@ func do(t *testing.T, method, url, token string, body any) (*http.Response, []by
 
 func register(t *testing.T, ts *httptest.Server, name string) createResponse {
 	t.Helper()
-	resp, data := do(t, "POST", ts.URL+"/v1/players", "", map[string]string{"name": name})
+	resp, data := do(t, "POST", ts.URL+"/v1/players", "", regBody(name))
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("daftar %q: status %d: %s", name, resp.StatusCode, data)
 	}
@@ -103,11 +117,11 @@ func TestRegisterRejects(t *testing.T) {
 	ts := newTestServer(t)
 	register(t, ts, "Budi")
 
-	resp, _ := do(t, "POST", ts.URL+"/v1/players", "", map[string]string{"name": "budi"})
+	resp, _ := do(t, "POST", ts.URL+"/v1/players", "", regBody("budi"))
 	if resp.StatusCode != http.StatusConflict {
 		t.Errorf("nama kembar (beda huruf besar) harus 409, dapat %d", resp.StatusCode)
 	}
-	resp, _ = do(t, "POST", ts.URL+"/v1/players", "", map[string]string{"name": "a"})
+	resp, _ = do(t, "POST", ts.URL+"/v1/players", "", regBody("a"))
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Errorf("nama pendek harus 422, dapat %d", resp.StatusCode)
 	}
@@ -227,7 +241,7 @@ func TestOldClientMustUpdate(t *testing.T) {
 	ts := newTestServer(t)
 
 	// Di bawah MinClient (0.2.0): ditolak 426 beserta alamat update.
-	resp, data := doWithVersion(t, "POST", ts.URL+"/v1/players", "0.1.0", map[string]string{"name": "Lawas"})
+	resp, data := doWithVersion(t, "POST", ts.URL+"/v1/players", "0.1.0", regBody("Lawas"))
 	if resp.StatusCode != http.StatusUpgradeRequired {
 		t.Fatalf("klien lama harus 426, dapat %d: %s", resp.StatusCode, data)
 	}
@@ -242,14 +256,14 @@ func TestOldClientMustUpdate(t *testing.T) {
 
 	// Tepat di MinClient atau lebih baru: boleh.
 	for _, v := range []string{"0.2.0", "0.3.0", "1.0.0"} {
-		resp, data = doWithVersion(t, "POST", ts.URL+"/v1/players", v, map[string]string{"name": "Baru" + v[:1] + v[2:3]})
+		resp, data = doWithVersion(t, "POST", ts.URL+"/v1/players", v, regBody("Baru"+v[:1]+v[2:3]))
 		if resp.StatusCode != http.StatusCreated {
 			t.Errorf("klien %s harus boleh, dapat %d: %s", v, resp.StatusCode, data)
 		}
 	}
 
 	// Tanpa header (klien sangat lama) tidak bisa dipaksa, tetap dilayani.
-	resp, _ = doWithVersion(t, "POST", ts.URL+"/v1/players", "", map[string]string{"name": "TanpaHeader"})
+	resp, _ = doWithVersion(t, "POST", ts.URL+"/v1/players", "", regBody("TanpaHeader"))
 	if resp.StatusCode != http.StatusCreated {
 		t.Errorf("tanpa header harus lolos, dapat %d", resp.StatusCode)
 	}

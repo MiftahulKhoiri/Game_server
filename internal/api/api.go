@@ -11,11 +11,14 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/MiftahulKhoiri/Game_server/internal/auth"
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
 	"github.com/MiftahulKhoiri/Game_server/internal/store"
 	"github.com/MiftahulKhoiri/Game_server/internal/version"
@@ -33,6 +36,11 @@ type Server struct {
 	log   *slog.Logger
 	info  version.Info
 	rng   game.Rand
+
+	// Pembatas percobaan: login gagal per nama/email dan per IP, serta pendaftaran per IP.
+	loginByName *auth.Limiter
+	loginByIP   *auth.Limiter
+	signupByIP  *auth.Limiter
 }
 
 // New membuat http.Handler lengkap dengan routing.
@@ -42,11 +50,18 @@ func New(st *store.Store, log *slog.Logger, info version.Info) http.Handler {
 
 // NewWithRand sama seperti New tetapi dengan sumber acak buatan sendiri (untuk tes).
 func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.Rand) http.Handler {
-	s := &Server{store: st, log: log, info: info, rng: rng}
+	s := &Server{
+		store: st, log: log, info: info, rng: rng,
+		loginByName: auth.NewLimiter(5, 15*time.Minute),
+		loginByIP:   auth.NewLimiter(30, 15*time.Minute),
+		signupByIP:  auth.NewLimiter(20, time.Hour),
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
 	mux.HandleFunc("GET /v1/version", s.versionInfo)
 	mux.HandleFunc("POST /v1/players", s.createPlayer)
+	mux.HandleFunc("POST /v1/login", s.login)
+	mux.Handle("POST /v1/logout", s.auth(http.HandlerFunc(s.logout)))
 	mux.Handle("GET /v1/players/me", s.auth(http.HandlerFunc(s.getMe)))
 	mux.Handle("PUT /v1/players/me/save", s.auth(http.HandlerFunc(s.saveMe)))
 	mux.Handle("GET /v1/battle", s.auth(http.HandlerFunc(s.getBattle)))
@@ -82,12 +97,15 @@ func (s *Server) versionInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 type createRequest struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
+// createResponse dipakai untuk daftar dan login: pemain beserta token sesi baru.
 type createResponse struct {
 	Player game.Player `json:"player"`
-	// Token hanya ditampilkan sekali di sini; klien wajib menyimpannya.
+	// Token dipakai klien sebagai "Authorization: Bearer"; hanya ditampilkan sekali di sini.
 	Token string `json:"token"`
 }
 
@@ -96,9 +114,27 @@ func (s *Server) createPlayer(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
+	ip := clientIP(r)
+	if s.tooMany(w, s.signupByIP, ip) {
+		return
+	}
+	s.signupByIP.Fail(ip) // setiap percobaan daftar dihitung
 	req.Name = strings.TrimSpace(req.Name)
 	if !nameRe.MatchString(req.Name) {
 		writeError(w, http.StatusUnprocessableEntity, "nama harus 3-20 karakter: huruf, angka, atau _")
+		return
+	}
+	email, err := auth.NormalizeEmail(req.Email)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if err := auth.ValidatePassword(req.Password); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if strings.EqualFold(req.Password, req.Name) || strings.EqualFold(req.Password, email) {
+		writeError(w, http.StatusUnprocessableEntity, "kata sandi tidak boleh sama dengan nama atau email")
 		return
 	}
 	id, err := randomHex(8)
@@ -111,15 +147,119 @@ func (s *Server) createPlayer(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	p, err := s.store.CreatePlayer(r.Context(), id, req.Name, hashToken(token), game.NewState())
+	pwHash, err := auth.Hash(req.Password)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	p, err := s.store.CreatePlayer(r.Context(), id, req.Name, email, pwHash, hashToken(token), game.NewState())
 	switch {
 	case errors.Is(err, store.ErrNameTaken):
 		writeError(w, http.StatusConflict, "nama sudah dipakai")
+	case errors.Is(err, store.ErrEmailTaken):
+		writeError(w, http.StatusConflict, "email sudah terdaftar")
 	case err != nil:
 		s.fail(w, r, err)
 	default:
 		writeJSON(w, http.StatusCreated, createResponse{Player: p, Token: token})
 	}
+}
+
+type loginRequest struct {
+	// Login berisi nama pemain ATAU email.
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+const badLogin = "nama/email atau kata sandi salah"
+
+func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	req.Login = strings.TrimSpace(req.Login)
+	if req.Login == "" || req.Password == "" {
+		writeError(w, http.StatusUnprocessableEntity, "isi nama (atau email) dan kata sandi")
+		return
+	}
+	key, ip := strings.ToLower(req.Login), clientIP(r)
+	if s.tooMany(w, s.loginByName, key) || s.tooMany(w, s.loginByIP, ip) {
+		return
+	}
+	reject := func() {
+		s.loginByName.Fail(key)
+		s.loginByIP.Fail(ip)
+		writeError(w, http.StatusUnauthorized, badLogin)
+	}
+	if len(req.Password) > auth.MaxPassword || len(req.Login) > 254 {
+		reject()
+		return
+	}
+	p, hash, err := s.store.PlayerByLogin(r.Context(), req.Login)
+	switch {
+	case errors.Is(err, store.ErrNotFound), err == nil && hash == "": // tidak ada, atau akun lama tanpa kata sandi
+		auth.BurnTime(req.Password) // samakan lama jawaban agar akun yang ada tidak bisa ditebak
+		reject()
+		return
+	case err != nil:
+		s.fail(w, r, err)
+		return
+	case !auth.Verify(req.Password, hash):
+		reject()
+		return
+	}
+	token, err := randomHex(32)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	if err := s.store.CreateSession(r.Context(), p.ID, hashToken(token)); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	s.loginByName.Reset(key)
+	writeJSON(w, http.StatusOK, createResponse{Player: p, Token: token})
+}
+
+// logout mencabut token yang dipakai permintaan ini; token di perangkat lain tetap hidup.
+func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if err := s.store.DeleteSession(r.Context(), hashToken(token)); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// tooMany menjawab 429 bila kunci sedang diblokir pembatas; true berarti sudah dijawab.
+func (s *Server) tooMany(w http.ResponseWriter, l *auth.Limiter, key string) bool {
+	wait, blocked := l.Blocked(key)
+	if !blocked {
+		return false
+	}
+	secs := int(wait.Seconds()) + 1
+	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	writeError(w, http.StatusTooManyRequests, "terlalu banyak percobaan; coba lagi dalam "+strconv.Itoa(secs)+" detik")
+	return true
+}
+
+// clientIP mengambil alamat peminta. Header proxy (Cloudflare / X-Forwarded-For) hanya dipercaya
+// bila sambungan datang dari mesin ini sendiri (proxy lokal), supaya tidak bisa dipalsukan dari luar.
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		for _, h := range []string{"CF-Connecting-IP", "X-Forwarded-For"} {
+			first := strings.TrimSpace(strings.Split(r.Header.Get(h), ",")[0])
+			if net.ParseIP(first) != nil {
+				return first
+			}
+		}
+	}
+	return host
 }
 
 func (s *Server) getMe(w http.ResponseWriter, r *http.Request) {

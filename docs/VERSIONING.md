@@ -99,6 +99,9 @@ membawa pemain; bawaannya halaman Releases terbaru.
 
 ## Catatan
 
+- v0.16.0 menambah akun (email + kata sandi, `POST /v1/login`). Aplikasi lama tidak bisa daftar
+  (kata sandi wajib), jadi `DefaultMinClient` dinaikkan ke 0.16.0: aplikasi lama diminta update.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

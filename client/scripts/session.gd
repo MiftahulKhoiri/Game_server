@@ -13,6 +13,8 @@ var talk_npc := ""
 var safe_steps := 0
 ## true = tidak terhubung ke server (mis. menguji peta langsung dari editor); tidak disimpan.
 var offline := false
+## Nama akun terakhir yang masuk di HP ini (untuk tombol "Lanjutkan sebagai ..."). Kata sandi tidak pernah disimpan.
+var saved_name := ""
 
 
 func _ready() -> void:
@@ -25,12 +27,16 @@ func load_config() -> void:
 		return
 	Api.base_url = str(cfg.get_value("server", "url", Api.base_url))
 	Api.token = str(cfg.get_value("auth", "token", ""))
+	saved_name = str(cfg.get_value("auth", "name", "")) if Api.token != "" else ""
 
 
 func save_config() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("server", "url", Api.base_url)
 	cfg.set_value("auth", "token", Api.token)
+	if Api.token != "" and str(player.get("name", "")) != "":
+		saved_name = str(player.name)
+	cfg.set_value("auth", "name", saved_name if Api.token != "" else "")
 	cfg.save(CONFIG_PATH)
 
 

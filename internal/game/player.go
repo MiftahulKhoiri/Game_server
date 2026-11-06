@@ -52,6 +52,7 @@ type State struct {
 type Player struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
+	Email     string    `json:"email,omitempty"` // kosong untuk akun lama
 	State     State     `json:"state"`
 	Version   int       `json:"version"`
 	CreatedAt time.Time `json:"created_at"`

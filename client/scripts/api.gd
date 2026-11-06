@@ -23,8 +23,21 @@ func version_info() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/version", null, false)
 
 
-func register(player_name: String) -> Dictionary:
-	return await _call(HTTPClient.METHOD_POST, "/v1/players", {"name": player_name}, false)
+## Daftar akun baru. Jawaban sukses: {"player", "token"}.
+func register(player_name: String, email: String, password: String) -> Dictionary:
+	var body := {"name": player_name, "email": email, "password": password}
+	return await _call(HTTPClient.METHOD_POST, "/v1/players", body, false)
+
+
+## Masuk dengan nama ATAU email. Jawaban sukses: {"player", "token"} (token baru untuk HP ini).
+## 401 = salah, 429 = terlalu banyak percobaan (pesan error memuat lama tunggu).
+func login(login_name: String, password: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/login", {"login": login_name, "password": password}, false)
+
+
+## Mencabut token HP ini di server (token di perangkat lain tetap hidup). Sukses = 204.
+func logout() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/logout", null, true)
 
 
 func get_me() -> Dictionary:
@@ -126,7 +139,8 @@ func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -
 	if net_result != HTTPRequest.RESULT_SUCCESS:
 		return {"ok": false, "status": 0, "error": "Server tidak terjangkau"}
 
-	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
+	var text := raw.get_string_from_utf8()
+	var parsed: Variant = JSON.parse_string(text) if text.strip_edges() != "" else null  # 204: tanpa isi
 	var data: Dictionary = parsed if parsed is Dictionary else {}
 	if status >= 200 and status < 300:
 		return {"ok": true, "status": status, "data": data}

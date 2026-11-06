@@ -8,15 +8,23 @@ Semua error berbentuk `{"error": "pesan"}`.
 
 ## Autentikasi
 
-Saat mendaftar, server memberi `token` **sekali saja**. Klien menyimpannya dan
-mengirim di setiap permintaan yang butuh login:
+Akun dibuat dengan **nama + email + kata sandi** (`POST /v1/players`). Kata sandi disimpan
+di database sebagai hash PBKDF2-HMAC-SHA256 dengan garam acak (`pbkdf2-sha256$<iterasi>$<garam>$<hash>`),
+tidak pernah sebagai teks asli, dan tidak pernah dikirim balik oleh server.
+
+Daftar dan login (`POST /v1/login`) sama-sama menjawab dengan `token` sesi. Klien menyimpannya
+dan mengirimnya di setiap permintaan yang butuh login:
 
 ```
 Authorization: Bearer <token>
 ```
 
-Server hanya menyimpan hash token. Token hilang = akun tidak bisa dipulihkan
-(untuk saat ini).
+- Server hanya menyimpan hash token (tabel `sessions`). Satu akun boleh punya beberapa token
+  sekaligus (beberapa HP); paling banyak 10, yang tertua dibuang otomatis.
+- Token hilang bukan lagi akhir akun: cukup login ulang dengan nama/email dan kata sandi,
+  progress tetap ada. Token tidak kedaluwarsa sampai di-logout.
+- Klien **tidak boleh** menyimpan kata sandi di HP, hanya token.
+- Percobaan login yang gagal dibatasi (lihat `429` di bawah).
 
 ## Versi klien
 
@@ -51,20 +59,46 @@ Info versi, tanpa login. Selalu terbuka, juga untuk klien yang terlalu lama.
 ```
 
 ### `POST /v1/players`
-Daftar pemain baru.
+Daftar akun baru.
 
-Body: `{"name": "Petualang"}`. Nama 3-20 karakter: huruf, angka, `_`. Nama tidak
-membedakan huruf besar/kecil.
+Body: `{"name": "Petualang", "email": "budi@contoh.id", "password": "sandi-rahasia"}`
+
+- `name`: 3-20 karakter: huruf, angka, `_`. Tidak membedakan huruf besar/kecil.
+- `email`: alamat polos (tanpa nama tampilan), maksimal 254 karakter, disimpan huruf kecil.
+  Unik, tidak membedakan huruf besar/kecil. Saat ini hanya untuk identitas akun (login lewat
+  email dan rencana pemulihan); server belum mengirim email.
+- `password`: 8-128 byte, tidak boleh hanya spasi, tidak boleh sama dengan nama atau email.
 
 | Status | Arti |
 |--------|------|
 | 201 | Berhasil: `{"player": {...}, "token": "..."}` |
 | 400 | JSON rusak atau ada field asing |
-| 409 | Nama sudah dipakai |
-| 422 | Nama tidak memenuhi aturan |
+| 409 | Nama sudah dipakai, atau email sudah terdaftar |
+| 422 | Nama / email / kata sandi tidak memenuhi aturan |
+| 429 | Terlalu banyak pendaftaran dari alamat yang sama (20 per jam) |
+
+### `POST /v1/login`
+Masuk ke akun yang sudah ada. Menghasilkan token **baru**; token lain milik akun ini tetap berlaku.
+
+Body: `{"login": "Petualang", "password": "sandi-rahasia"}`. `login` boleh nama ATAU email.
+
+| Status | Arti |
+|--------|------|
+| 200 | Berhasil: `{"player": {...}, "token": "..."}` |
+| 401 | Nama/email atau kata sandi salah (pesan sama untuk akun yang tidak ada, agar akun tidak bisa ditebak) |
+| 422 | Isian kosong |
+| 429 | Terlalu banyak percobaan gagal; header `Retry-After` berisi detik tunggu |
+
+Pembatas: 5 kegagalan per nama/email dan 30 per alamat IP dalam 15 menit. Login yang berhasil
+mereset hitungan nama. Akun lama (dibuat sebelum v0.16.0) yang belum punya kata sandi tidak bisa
+login lewat endpoint ini.
+
+### `POST /v1/logout`  (login)
+Mencabut token yang dipakai permintaan ini (token di perangkat lain tetap hidup). `204` tanpa isi,
+`401` bila token tidak valid.
 
 ### `GET /v1/players/me`  (login)
-Mengambil data pemain beserta progress. `200` berisi objek pemain, `401` jika token salah.
+Mengambil data pemain beserta progress. `200` berisi objek pemain (termasuk `email` milik sendiri), `401` jika token salah.
 
 ### `PUT /v1/players/me/save`  (login)
 Menyimpan **posisi** pemain. Sejak v0.3.0 server otoritatif: hanya `map`, `x`,

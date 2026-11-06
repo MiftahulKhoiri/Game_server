@@ -22,26 +22,46 @@ import (
 
 // Kesalahan yang bisa dikembalikan Store.
 var (
-	ErrNotFound  = errors.New("store: tidak ditemukan")
-	ErrNameTaken = errors.New("store: nama sudah dipakai")
-	ErrConflict  = errors.New("store: versi data tidak cocok")
+	ErrNotFound   = errors.New("store: tidak ditemukan")
+	ErrNameTaken  = errors.New("store: nama sudah dipakai")
+	ErrEmailTaken = errors.New("store: email sudah dipakai")
+	ErrConflict   = errors.New("store: versi data tidak cocok")
 )
 
-const schema = `
-CREATE TABLE IF NOT EXISTS players (
-	id         TEXT PRIMARY KEY,
-	name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
-	token_hash TEXT NOT NULL UNIQUE,
-	state      TEXT NOT NULL,
-	version    INTEGER NOT NULL DEFAULT 1,
-	created_at TEXT NOT NULL,
-	updated_at TEXT NOT NULL
+// schemaVersion disimpan di PRAGMA user_version. Naikkan saat skema berubah, dan tambahkan
+// langkah di migrate.
+//
+//	1 = skema awal (players.token_hash, satu token per pemain)
+//	2 = akun: email + password_hash di players, token pindah ke tabel sessions
+const schemaVersion = 2
+
+// playersDDL dipakai dua kali: tabel baru dan tabel bangun-ulang saat migrasi.
+const playersDDL = `CREATE TABLE %s (
+	id            TEXT PRIMARY KEY,
+	name          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+	email         TEXT UNIQUE COLLATE NOCASE, -- NULL untuk akun lama (belum punya akun)
+	password_hash TEXT,                       -- NULL untuk akun lama
+	state         TEXT NOT NULL,
+	version       INTEGER NOT NULL DEFAULT 1,
+	created_at    TEXT NOT NULL,
+	updated_at    TEXT NOT NULL
+)`
+
+const schemaRest = `
+CREATE TABLE IF NOT EXISTS sessions (
+	token_hash TEXT PRIMARY KEY,
+	player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+	created_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id);
 CREATE TABLE IF NOT EXISTS battles (
 	player_id  TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
 	state      TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );`
+
+// maxSessions membatasi jumlah token aktif per pemain (HP/perangkat); yang tertua dibuang.
+const maxSessions = 10
 
 // Store membungkus koneksi database.
 type Store struct {
@@ -68,11 +88,81 @@ func Open(path string) (*Store, error) {
 	// SQLite hanya mengizinkan satu penulis; satu koneksi menjaga semuanya sederhana
 	// dan membuat setiap transaksi berjalan bergantian (tidak saling menimpa).
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	if err := migrate(db); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("buat skema: %w", err)
+		return nil, fmt.Errorf("siapkan skema: %w", err)
 	}
 	return &Store{db: db}, nil
+}
+
+// migrate membuat skema baru, atau memigrasikan database versi lama tanpa menghapus data.
+func migrate(db *sql.DB) error {
+	var ver int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&ver); err != nil {
+		return err
+	}
+	if ver >= schemaVersion {
+		return nil
+	}
+	var legacy int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('players') WHERE name = 'token_hash'`).Scan(&legacy); err != nil {
+		return err
+	}
+	if legacy == 0 { // database baru
+		if _, err := db.Exec(fmt.Sprintf(playersDDL, "players") + ";" + schemaRest); err != nil {
+			return err
+		}
+		_, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
+		return err
+	}
+	return migrateFromV1(db)
+}
+
+// migrateFromV1 membangun ulang tabel players (SQLite tidak bisa mencabut kolom UNIQUE) dengan
+// urutan resmi SQLite: foreign_keys dimatikan dulu supaya DROP TABLE tidak menghapus battles.
+// Token lama dipindah ke sessions, jadi aplikasi lama tetap bisa masuk. Akun lama belum punya
+// email/kata sandi (NULL) dan tidak bisa login dengan kata sandi.
+func migrateFromV1(db *sql.DB) error {
+	if _, err := db.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+		return err
+	}
+	defer db.Exec(`PRAGMA foreign_keys = ON`)
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	steps := []string{
+		fmt.Sprintf(playersDDL, "players_baru"),
+		`INSERT INTO players_baru (id, name, state, version, created_at, updated_at)
+		 SELECT id, name, state, version, created_at, updated_at FROM players`,
+		`CREATE TABLE IF NOT EXISTS sessions (
+			token_hash TEXT PRIMARY KEY,
+			player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+			created_at TEXT NOT NULL
+		)`,
+		`INSERT OR IGNORE INTO sessions (token_hash, player_id, created_at)
+		 SELECT token_hash, id, created_at FROM players`,
+		`DROP TABLE players`,
+		`ALTER TABLE players_baru RENAME TO players`,
+		`CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id)`,
+		`CREATE TABLE IF NOT EXISTS battles (
+			player_id  TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+			state      TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
+		fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion),
+	}
+	for _, q := range steps {
+		if _, err := tx.Exec(q); err != nil {
+			return fmt.Errorf("migrasi v1 -> v2: %w", err)
+		}
+	}
+	var bad int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM pragma_foreign_key_check`).Scan(&bad); err == nil && bad > 0 {
+		return fmt.Errorf("migrasi v1 -> v2: %d baris melanggar foreign key", bad)
+	}
+	return tx.Commit()
 }
 
 // Close menutup database.
@@ -81,24 +171,90 @@ func (s *Store) Close() error { return s.db.Close() }
 // Ping memeriksa database masih bisa dijangkau.
 func (s *Store) Ping(ctx context.Context) error { return s.db.PingContext(ctx) }
 
-// CreatePlayer menambah pemain baru. tokenHash adalah hash token, bukan token asli.
-func (s *Store) CreatePlayer(ctx context.Context, id, name, tokenHash string, st game.State) (game.Player, error) {
+// CreatePlayer menambah akun baru beserta sesi pertamanya dalam satu transaksi. email sudah
+// dinormalkan (huruf kecil); passwordHash dan tokenHash adalah hash, bukan nilai aslinya.
+func (s *Store) CreatePlayer(ctx context.Context, id, name, email, passwordHash, tokenHash string, st game.State) (game.Player, error) {
 	js, err := json.Marshal(st)
 	if err != nil {
 		return game.Player{}, err
 	}
-	now := time.Now().UTC()
-	_, err = s.db.ExecContext(ctx,
-		`INSERT INTO players (id, name, token_hash, state, version, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, 1, ?, ?)`,
-		id, name, tokenHash, string(js), now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano))
+	stamp := time.Now().UTC().Format(time.RFC3339Nano)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		return game.Player{}, fmt.Errorf("mulai transaksi: %w", err)
+	}
+	defer tx.Rollback()
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO players (id, name, email, password_hash, state, version, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+		id, name, email, passwordHash, string(js), stamp, stamp)
+	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "players.email"):
+			return game.Player{}, ErrEmailTaken
+		case strings.Contains(err.Error(), "UNIQUE constraint failed"):
 			return game.Player{}, ErrNameTaken
 		}
 		return game.Player{}, fmt.Errorf("simpan pemain: %w", err)
 	}
+	if err := insertSession(ctx, tx, id, tokenHash, stamp); err != nil {
+		return game.Player{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return game.Player{}, fmt.Errorf("simpan transaksi: %w", err)
+	}
 	return s.PlayerByID(ctx, id)
+}
+
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
+// insertSession menyimpan hash token dan membuang sesi tertua bila melebihi maxSessions.
+func insertSession(ctx context.Context, q execer, playerID, tokenHash, stamp string) error {
+	if _, err := q.ExecContext(ctx,
+		`INSERT INTO sessions (token_hash, player_id, created_at) VALUES (?, ?, ?)`,
+		tokenHash, playerID, stamp); err != nil {
+		return fmt.Errorf("simpan sesi: %w", err)
+	}
+	if _, err := q.ExecContext(ctx,
+		`DELETE FROM sessions WHERE player_id = ? AND token_hash NOT IN (
+			SELECT token_hash FROM sessions WHERE player_id = ?
+			ORDER BY created_at DESC, rowid DESC LIMIT ?)`,
+		playerID, playerID, maxSessions); err != nil {
+		return fmt.Errorf("rapikan sesi: %w", err)
+	}
+	return nil
+}
+
+// CreateSession menambah token baru (hash) untuk pemain yang berhasil login.
+func (s *Store) CreateSession(ctx context.Context, playerID, tokenHash string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("mulai transaksi: %w", err)
+	}
+	defer tx.Rollback()
+	if err := insertSession(ctx, tx, playerID, tokenHash, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// DeleteSession mencabut satu token (logout). Token yang tidak ada bukan kesalahan.
+func (s *Store) DeleteSession(ctx context.Context, tokenHash string) error {
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, tokenHash); err != nil {
+		return fmt.Errorf("hapus sesi: %w", err)
+	}
+	return nil
+}
+
+// PlayerByLogin mencari akun berdasarkan nama ATAU email (tanpa membedakan huruf besar/kecil)
+// dan mengembalikan hash kata sandinya. Akun lama tanpa kata sandi mengembalikan hash kosong.
+func (s *Store) PlayerByLogin(ctx context.Context, login string) (game.Player, string, error) {
+	var hash string
+	p, err := scanPlayer(s.db.QueryRowContext(ctx,
+		`SELECT `+playerCols+`, COALESCE(password_hash, '') FROM players WHERE name = ?1 OR email = ?1`, login), &hash)
+	return p, hash, err
 }
 
 // PlayerByID mengambil pemain berdasarkan id.
@@ -108,7 +264,8 @@ func (s *Store) PlayerByID(ctx context.Context, id string) (game.Player, error) 
 
 // PlayerByTokenHash mengambil pemain berdasarkan hash token.
 func (s *Store) PlayerByTokenHash(ctx context.Context, hash string) (game.Player, error) {
-	return scanPlayer(s.db.QueryRowContext(ctx, selectPlayer+` WHERE token_hash = ?`, hash))
+	return scanPlayer(s.db.QueryRowContext(ctx,
+		selectPlayer+` WHERE id = (SELECT player_id FROM sessions WHERE token_hash = ?)`, hash))
 }
 
 // Battle mengambil pertarungan yang sedang berjalan, atau ErrNotFound bila tidak ada.
@@ -202,7 +359,10 @@ func (s *Store) mutate(ctx context.Context, id string, expectedVersion int, fn f
 	return sess, nil
 }
 
-const selectPlayer = `SELECT id, name, state, version, created_at, updated_at FROM players`
+const (
+	playerCols   = `id, name, COALESCE(email, ''), state, version, created_at, updated_at`
+	selectPlayer = `SELECT ` + playerCols + ` FROM players`
+)
 
 type rowScanner interface {
 	Scan(dest ...any) error
@@ -212,12 +372,14 @@ type queryer interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-func scanPlayer(row rowScanner) (game.Player, error) {
+// scanPlayer membaca kolom playerCols; extra adalah kolom tambahan di belakangnya (bila ada).
+func scanPlayer(row rowScanner, extra ...any) (game.Player, error) {
 	var (
 		p                   game.Player
 		stateJSON, cAt, uAt string
 	)
-	if err := row.Scan(&p.ID, &p.Name, &stateJSON, &p.Version, &cAt, &uAt); err != nil {
+	dest := append([]any{&p.ID, &p.Name, &p.Email, &stateJSON, &p.Version, &cAt, &uAt}, extra...)
+	if err := row.Scan(dest...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return game.Player{}, ErrNotFound
 		}
