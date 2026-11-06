@@ -39,3 +39,14 @@ Gambar yang masih berlatar (bukan PNG bertransparan) dipotong dulu dengan `cut.p
 Klien mengukur ulang tinggi model (`HEIGHTS` di `client/scripts/models.gd`), jadi ukuran
 asli GLB tidak penting. Hasil mengikuti gambar sumber: gambar berwatermark menghasilkan
 model berwatermark; ganti gambar sumber dengan karya sendiri sebelum rilis resmi.
+
+## Rangka & animasi (Blender, tanpa root)
+
+`split_cut.py` memotong latar dan memisahkan karakter dari satu gambar. Setelah `gen.py`,
+`tools/blender/rig.py` memberi rangka (biped/quad/bat/snake), bobot kulit berbasis jarak, dan klip
+`idle-loop`, `walk-loop`, `attack`, `hurt`, `die` (nama dikenali `model_rig.gd`):
+
+    blender -b --factory-startup -P tools/blender/rig.py -- masuk.glb keluar.glb biped
+
+Hasilnya diperiksa lewat log (deformasi, siluet ASCII pose mati). Posisi tulang diperkirakan dari
+kotak batas mesh, jadi pose ekstrem (senjata menjulur, makhluk melingkar) bisa tampak kurang rapi.

@@ -102,6 +102,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
 - v0.16.0 menambah akun (email + kata sandi, `POST /v1/login`). Aplikasi lama tidak bisa daftar
   (kata sandi wajib), jadi `DefaultMinClient` dinaikkan ke 0.16.0: aplikasi lama diminta update.
 
+- v0.17.0 menambah model 3D berrangka (Blender) + animasi idle/jalan/serang/luka/mati untuk
+  petani, goblin penjaga, ogre batu, serigala, ular, belalang, dan kelelawar. Tidak mengubah API;
+  `DefaultMinClient` tetap 0.16.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

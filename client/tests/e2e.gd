@@ -434,12 +434,25 @@ func _run() -> void:
 		if node != null:
 			node.free()
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
-	for mdl in ["golem_lava", "golem_kerikil", "goblin", "goblin_penjaga", "nenek_penjual", "petani", "babi_hutan", "tikus_sawah", "raja_goblin"]:
+	for mdl in ["golem_lava", "golem_kerikil", "goblin", "nenek_penjual", "babi_hutan", "tikus_sawah", "raja_goblin"]:
 		var gm: Node3D = Models.create(mdl)
 		_check(Models.has_glb(mdl) and gm.kind == "static" and gm.pivots.has("body"), "model GLB hasil AI '%s' terpasang (tanpa rangka)" % mdl)
 		gm.play_attack()
 		gm.play_hurt()
 		gm.free()
+	# Model berrangka + animasi (idle/walk/attack/hurt/die) dari Blender.
+	for mdl in ["petani", "goblin_penjaga", "ogre_batu", "serigala_hutan", "ular_sawah", "belalang_raksasa", "kelelawar_gua"]:
+		var rm: Node3D = Models.create(mdl)
+		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
+		var lengkap := true
+		for key: String in ["idle", "walk", "attack", "hurt", "die"]:
+			if not names.has(key):
+				lengkap = false
+		_check(Models.has_glb(mdl) and rm.anim_player != null and lengkap, "model '%s' berrangka dengan 5 klip animasi %s" % [mdl, str(names.keys())])
+		rm.play_attack()
+		rm.play_hurt()
+		rm.play_die()
+		rm.free()
 
 	Session.offline = true
 	Session.player = {"name": "Uji", "state": {"map": Maps.DEFAULT_MAP, "x": 5, "y": 5, "fx": 5.5, "fz": 5.5, "yaw": 0.0, "hp": 30, "max_hp": 30, "level": 1, "xp": 0, "gold": 0, "inventory": [], "equipment": {"weapon": "", "armor": ""}}, "version": 1}

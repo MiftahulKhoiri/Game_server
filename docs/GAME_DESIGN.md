@@ -144,7 +144,8 @@ separuh, kembali ke titik awal desa.
 
 Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
 terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
-Hutan, Kelelawar Gua, dan Ogre Batu belum punya gambar (pakai bulatan placeholder).
+Hutan, Kelelawar Gua, dan Ogre Batu kini punya model 3D berrangka dari gambar kiriman (v0.17.0);
+Petani dan Goblin Penjaga juga diganti model berrangka dengan animasi idle/jalan/serang/luka/mati.
 Gambar yang sudah ada: Goblin, Golem Kerikil, Golem Lava, Goblin Penjaga (render 3D, masih
 bermark air "pngtree": ganti dengan gambar berlisensi sebelum rilis resmi).
 Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh terlemah di wilayah itu.
