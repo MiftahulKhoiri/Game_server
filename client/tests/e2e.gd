@@ -95,8 +95,11 @@ func _run() -> void:
 	var login: Control = load("res://scenes/login.tscn").instantiate()
 	root.add_child(login)
 	await create_timer(0.6).timeout
-	_check(login._version_label.text.contains("Server v"), "layar masuk menampilkan versi server")
-	_check(not login._btn_update.visible, "tidak ada ajakan update bila versi sudah terbaru")
+	_check(login._server_ok and login._server_row.visible and not login._server_box.visible, "server terjangkau: alamat menciut jadi baris bercentang")
+	_check(login._server_label.text.contains("v"), "ringkasan server memuat versi server")
+	_check(login._main_box.visible, "tombol Daftar/Masuk muncul setelah server terjangkau")
+	_check(login._version_label.text.begins_with("Aplikasi "), "bagian bawah menampilkan versi aplikasi")
+	_check(not login._btn_update.visible and not login._update_status.visible, "tidak ada ajakan update bila versi sudah terbaru")
 	_check(not login._btn_start.disabled, "tombol aktif bila versi memenuhi syarat")
 	_check(login._register_mode and login._register_box.visible and not login._login_box.visible, "pemasangan baru langsung di layar Daftar")
 	_check(login._btn_start.text == "Daftar dan mulai", "tombol mode Daftar")
@@ -104,6 +107,16 @@ func _run() -> void:
 	_check(login._login_box.visible and not login._register_box.visible and not login._pass2_box.visible, "mode Masuk menyembunyikan isian daftar")
 	_check(login._btn_start.text == "Masuk", "tombol mode Masuk")
 	_check(login._pass_edit.secret, "kata sandi disamarkan")
+	login._on_change_server()
+	_check(login._server_box.visible and not login._server_row.visible and not login._main_box.visible, "tombol Ubah membuka lagi alamat server")
+	var good_url: String = Api.base_url
+	login._url_edit.text = "http://127.0.0.1:1"
+	await login._test_server()
+	_check(not login._server_ok and login._server_msg.text.begins_with("Server tidak terjangkau") and not login._main_box.visible, "server salah: pesan galat, Daftar/Masuk tetap tersembunyi")
+	Api.base_url = good_url
+	login._url_edit.text = good_url
+	await login._test_server()
+	_check(login._server_ok and login._main_box.visible, "tes server ulang berhasil setelah alamat dibetulkan")
 	_check(login._looks_like_email("a@b.id") and not login._looks_like_email("a@b") and not login._looks_like_email("a b@c.id") and not login._looks_like_email("@b.id"), "pemeriksaan ringan email di layar")
 	login.queue_free()
 

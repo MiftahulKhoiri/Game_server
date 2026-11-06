@@ -106,6 +106,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
   petani, goblin penjaga, ogre batu, serigala, ular, belalang, dan kelelawar. Tidak mengubah API;
   `DefaultMinClient` tetap 0.16.0.
 
+- v0.17.1 menata ulang layar awal: tes server (menciut dengan tanda centang hijau), tombol
+  Daftar/Masuk di tengah, info pembaruan di dasar, dan isi layar naik otomatis saat papan ketik muncul.
+  Tidak mengubah API.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
