@@ -13,13 +13,15 @@ signal status(text: String)
 signal progress(received: int, total: int)
 
 const SAVE_PATH := "user://update.apk"
-const MEDIA_NAME := "GamePetualang-update.apk"
+const MEDIA_PREFIX := "GamePetualang-"  # nama berkas di Download = nama aset rilis (unik per versi)
+const INSTALL_OK := "OK"
 const MIME_APK := "application/vnd.android.package-archive"
 const CHUNK := 1048576  # 1 MiB per tulis, supaya memori tetap kecil
 const UA := "User-Agent: GamePetualang"
 
 var _http: HTTPRequest
 var _expected_total := 0
+var _step := "belum mulai"  # langkah Android terakhir yang dimulai (untuk melacak kegagalan)
 
 
 # --- fungsi murni (diuji di e2e) ---
@@ -111,11 +113,17 @@ func run(update_url: String) -> Dictionary:
 			cleanup()
 			return {"ok": false, "message": err, "web": true}
 
-	status.emit("Membuka pemasang...")
-	var install_err := _install(SAVE_PATH)
-	if install_err != "":
-		return {"ok": false, "message": install_err + MANUAL_HINT, "web": true}
-	return {"ok": true, "web": false, "message": "Pemasang Android seharusnya terbuka: tekan Pasang, lalu buka aplikasi lagi." + MANUAL_HINT}
+	status.emit("Menyiapkan pemasangan...")
+	var file_name := str(asset.name)
+	# _install sengaja tidak bertipe: galat skrip di dalamnya menghentikan fungsi dan
+	# mengembalikan null. Sukses hanya bila hasilnya persis INSTALL_OK.
+	var install_res: Variant = _install(SAVE_PATH, file_name)
+	if str(install_res) != INSTALL_OK:
+		var why := "Pemasangan berhenti di langkah \"%s\"." % _step
+		if install_res is String and install_res != "":
+			why = install_res
+		return {"ok": false, "message": why + manual_hint(file_name), "web": true}
+	return {"ok": true, "web": false, "message": "Pemasang Android terbuka: tekan Pasang, lalu buka aplikasi lagi." + manual_hint(file_name)}
 
 
 ## Ambil info rilis terbaru dari GitHub. {"ok", "asset" | "error"}.
@@ -183,7 +191,9 @@ const ACTION_MANAGE_UNKNOWN_APP_SOURCES := "android.settings.MANAGE_UNKNOWN_APP_
 const FLAG_GRANT_READ_URI_PERMISSION := 1
 const FLAG_ACTIVITY_NEW_TASK := 0x10000000
 const DOWNLOADS_URI := "content://media/external_primary/downloads"
-const MANUAL_HINT := " Bila pemasang tidak muncul, buka aplikasi File > Download > %s lalu ketuk berkas itu." % MEDIA_NAME
+
+static func manual_hint(file_name: String) -> String:
+	return " Bila pemasang tidak muncul, buka aplikasi File > Download > %s lalu ketuk berkas itu." % file_name
 
 
 ## Kesalahan Java terakhir ("" bila tidak ada). Panggilan JavaClassWrapper yang gagal
@@ -215,9 +225,17 @@ func _open_install_settings() -> void:
 	rt.getActivity().startActivity(intent)
 
 
-## Salin APK ke Download (MediaStore) lalu buka pemasang. "" = berhasil, selain itu
-## pesan kesalahan yang menyebut langkah yang gagal.
-func _install(path: String) -> String:
+## Salin APK ke Download (MediaStore) lalu buka pemasang. Hasil INSTALL_OK = pemasang
+## sudah diminta terbuka; teks lain = pesan kegagalan; null = fungsi terhenti di tengah.
+##
+## PENTING (GDScript tidak punya try/catch): memanggil objek Java dengan tipe argumen yang
+## tidak cocok memunculkan galat skrip dan MENGHENTIKAN fungsi ini tanpa pesan. Contoh yang
+## pernah terjadi: resolver.delete(uri, where, null). Parameter String[] menolak null, jadi
+## fungsi berhenti sebelum berkas dibuat. Karena itu: jangan pernah mengoper null ke
+## parameter String/array (pakai PackedStringArray()), dan _step selalu menunjuk langkah
+## terakhir yang dimulai supaya kegagalan diam-diam tetap bisa dilacak.
+func _install(path: String, file_name: String) -> Variant:
+	_step = "menyiapkan akses Android"
 	java_error()  # buang sisa kesalahan lama
 	var rt: Object = Engine.get_singleton("AndroidRuntime")
 	var activity: Variant = rt.getActivity()
@@ -229,27 +247,36 @@ func _install(path: String) -> String:
 	if sdk < 29:
 		return "Android di bawah 10 belum didukung untuk pasang otomatis."
 
+	_step = "membaca alamat folder Download"
 	var Uri: Variant = JavaClassWrapper.wrap("android.net.Uri")
 	var table: Variant = Uri.parse(DOWNLOADS_URI)
 	if table == null:
 		return "Langkah 1 (alamat folder Download) gagal. " + java_error()
-	# Buang salinan lama agar namanya tidak jadi "(1)".
-	resolver.delete(table, "_display_name='%s'" % MEDIA_NAME, null)
+
+	# Buang salinan update lama milik aplikasi ini supaya Download tidak menumpuk.
+	# Argumen ketiga HARUS PackedStringArray(), bukan null (lihat catatan di atas).
+	_step = "menghapus salinan lama"
+	resolver.delete(table, "_display_name LIKE 'GamePetualang-%.apk'", PackedStringArray())
 	java_error()  # gagal menghapus salinan lama tidak fatal
 
+	_step = "membuat berkas di Download"
 	var ContentValues: Variant = JavaClassWrapper.wrap("android.content.ContentValues")
 	var values: Variant = ContentValues.ContentValues()
-	values.put("_display_name", MEDIA_NAME)
+	values.put("_display_name", file_name)
 	values.put("mime_type", MIME_APK)
 	values.put("relative_path", "Download/")
 	var uri: Variant = resolver.insert(table, values)
 	if uri == null:
 		return "Langkah 2 (membuat berkas di Download) gagal. " + java_error()
 
+	_step = "membuka berkas tujuan"
 	var out: Variant = resolver.openOutputStream(uri)
 	var src := FileAccess.open(path, FileAccess.READ)
 	if out == null or src == null:
 		return "Langkah 3 (membuka berkas tujuan) gagal. " + java_error()
+	_step = "menulis berkas ke Download"
+	var total := src.get_length()
+	var written := 0
 	while not src.eof_reached():
 		var chunk := src.get_buffer(CHUNK)
 		if chunk.is_empty():
@@ -258,10 +285,14 @@ func _install(path: String) -> String:
 		var werr := java_error()
 		if werr != "":
 			return "Langkah 4 (menulis berkas) gagal. " + werr
+		written += chunk.size()
 	out.flush()
 	out.close()
 	src.close()
+	if written != total:
+		return "Langkah 4 (menulis berkas) tidak lengkap: %d dari %d byte." % [written, total]
 
+	_step = "membuka pemasang sistem"
 	var Intent: Variant = JavaClassWrapper.wrap("android.content.Intent")
 	var last_err := ""
 	# ACTION_VIEW lebih dulu; bila ditolak, coba pemasang paket langsung.
@@ -275,5 +306,5 @@ func _install(path: String) -> String:
 		activity.startActivity(intent)
 		last_err = java_error()
 		if last_err == "":
-			return ""
+			return INSTALL_OK
 	return "Langkah 5 (membuka pemasang) gagal: " + last_err

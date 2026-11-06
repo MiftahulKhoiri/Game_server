@@ -67,8 +67,15 @@ dengan kunci yang sama (`deploy/android/debug.keystore`) dan `version code` lebi
 
 Sejak v0.13.1 langkah pasang tidak memakai bidang statis Java, mencoba `ACTION_VIEW` lalu
 `INSTALL_PACKAGE`, dan bila gagal pesan di layar menyebut langkah serta kesalahan Androidnya.
-Berkas hasil unduhan juga tersimpan di `Download/GamePetualang-update.apk` sehingga bisa
-dibuka manual lewat aplikasi File.
+Berkas hasil unduhan juga tersimpan di `Download/` dengan nama yang sama dengan aset rilis
+(mis. `GamePetualang-v0.15.1-build41.apk`) sehingga bisa dibuka manual lewat aplikasi File.
+
+v0.15.1 memperbaiki pasang otomatis yang berhenti diam-diam: `resolver.delete(..., null)`
+ditolak wrapper Java Godot (parameter `String[]` tidak menerima `null`), sehingga fungsi
+terhenti sebelum berkas dibuat dan layar tetap melapor sukses. Kini argumen itu
+`PackedStringArray()`, sukses hanya bila hasilnya persis `OK`, dan kegagalan diam-diam
+menampilkan langkah terakhir yang dimulai. Aturan untuk kode Java-dari-GDScript: jangan
+pernah mengoper `null` ke parameter String/array.
 
 Versi yang memuat fitur ini sendiri harus dipasang manual sekali; setelah itu
 pembaruan berikutnya bisa lewat dalam aplikasi.

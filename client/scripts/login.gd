@@ -133,7 +133,11 @@ func _on_update() -> void:
 	_progress.value = 0
 	_progress.visible = true
 	_status.modulate = Color.WHITE
-	var res: Dictionary = await _updater.run(_update_url)
+	var res_v: Variant = await _updater.run(_update_url)
+	var res: Dictionary = res_v if res_v is Dictionary else {
+		"ok": false, "web": true,
+		"message": "Pembaruan terhenti di langkah \"%s\"." % _updater._step,
+	}
 	_updating = false
 	_btn_update.disabled = false
 	_progress.visible = false
