@@ -104,8 +104,12 @@ Murni tampilan di klien (`client/scripts/atmosphere.gd`), tidak memengaruhi serv
 - **Warga desa** (`Maps.WARGA`, logika di `client/scripts/warga.gd`): 10 warga pemanis di Desa Awal
   (ibu, bapak, dua anak, penjaga, tiga ayam di kandang) berjalan bebas ke titik acak dalam jari-jari
   masing-masing, lewat petak jalan/rumput/bunga saja (tidak menembus pagar, air, atau rumah), berhenti
-  sebentar, lalu lanjut. Mereka menghindari pemain dan sesama warga, tidak menghalangi, dan belum
-  bisa diajak bicara. Model KayKit hasil `tools/blender/kaykit_npc.py` (mode ibu, ibu2, bapak, bapak2, anak).
+  sebentar, lalu lanjut. Mereka menghindari pemain dan sesama warga, tidak menghalangi, dan berhenti
+  menyapa bila pemain mendekat. Tombol **Bicara** membuka dialog singkat (`client/scripts/warga_dialog.gd`)
+  yang mengikuti tahap cerita utama (Nenek -> Petani -> Monster Batu -> Raja Iblis, 0-4 misi tuntas):
+  tiap warga berkomentar soal ancaman yang sedang terjadi dan memberi petunjuk ke mana harus pergi
+  berikutnya, dan kalimatnya berganti tiap kali diajak bicara. Dialog murni di klien (tahap dibaca dari
+  `GET /v1/quests`). Model KayKit hasil `tools/blender/kaykit_npc.py` (mode ibu, ibu2, bapak, bapak2, anak).
 
 ### Misi sampingan (v0.20.0)
 

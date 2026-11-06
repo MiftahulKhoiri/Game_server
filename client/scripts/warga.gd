@@ -8,11 +8,15 @@ extends RefCounted
 
 const Maps = preload("res://scripts/maps.gd")
 
+## Awalan id lawan bicara (Session.talk_npc) untuk membedakan warga dari NPC misi.
+const TALK_PREFIX := "warga:"
 const PLAYER_GAP := 0.85   # jarak minimal ke pemain (petak)
 const OTHER_GAP := 0.6     # jarak minimal ke warga lain
 const NOTICE := 2.6        # jarak warga yang berhenti mulai menoleh ke pemain
+const GREET := 1.9         # pemain sedekat ini: warga berhenti dan menoleh (supaya mudah diajak bicara)
 const TURN_RATE := 7.0
 
+var id := ""              # kunci dialog (Maps.WARGA[].id)
 var map_id := ""
 var home := Vector2.ZERO
 var radius := 3.0
@@ -30,6 +34,7 @@ var _rng := RandomNumberGenerator.new()
 
 
 func _init(def: Dictionary, seed_value: int) -> void:
+	id = str(def.id)
 	map_id = str(def.map)
 	home = def.pos
 	radius = float(def.radius)
@@ -58,7 +63,9 @@ func step(delta: float, player: Vector2, others: Array[Vector2]) -> void:
 	walking = false
 	var want_yaw := yaw
 	var face_player := false
-	if _wait > 0.0:
+	if pos.distance_to(player) < GREET:
+		face_player = true  # menyapa: diam di tempat sambil menoleh ke pemain
+	elif _wait > 0.0:
 		_wait -= delta
 		face_player = pos.distance_to(player) < NOTICE
 	elif not _has_target:

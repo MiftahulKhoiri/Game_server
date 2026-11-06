@@ -2,6 +2,7 @@ extends Control
 ## Layar bicara dengan NPC. Misi, kemajuan, dan hadiah semuanya diurus SERVER
 ## (docs/API.md); layar ini hanya menampilkan dan mengirim "terima" / "ambil hadiah".
 
+const WARGA_DIALOG = preload("res://scripts/warga_dialog.gd")
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ART_DIR := "res://assets/characters/"
 const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur", "petani": "Petani"}
@@ -68,6 +69,8 @@ const GREETINGS := {
 }
 
 var _npc := ""
+var _warga_id := ""  # id warga desa bila lawan bicara bukan NPC misi
+var _stage := 0      # tahap cerita utama (untuk kalimat warga)
 var _quest: Dictionary = {}  # misi milik NPC ini (tampilan dari server), {} bila tidak ada
 var _others: Array[Dictionary] = []  # misi lain NPC ini yang sedang dikerjakan
 var _name_label: Label
@@ -80,13 +83,32 @@ var _busy := false
 
 func _ready() -> void:
 	_npc = Session.talk_npc
-	var path := ART_DIR + _npc + ".png"
+	if _npc.begins_with("warga:"):
+		_warga_id = _npc.trim_prefix("warga:")
+	var path := ART_DIR + (_warga_id if _warga_id != "" else _npc) + ".png"
 	if ResourceLoader.exists(path):
 		_tex = load(path) as Texture2D
 	_build_ui()
 	_text.text = "..."
+	if _warga_id != "":
+		await _load_stage()
+		_render_warga()
+		return
 	await _load_quest()
 	_render()
+
+
+## Tahap cerita untuk kalimat warga: banyak misi utama yang sudah tuntas.
+func _load_stage() -> void:
+	var res: Dictionary = await Api.quests_get()
+	_stage = WARGA_DIALOG.stage_from_quests(res.data.get("quests", [])) if res.ok else 0
+
+
+func _render_warga() -> void:
+	_name_label.text = WARGA_DIALOG.display_name(_warga_id)
+	_action.visible = false
+	var n := int(Session.talk_counts.get(_npc, 1)) - 1
+	_text.text = WARGA_DIALOG.line(_warga_id, _stage, n)
 
 
 func _load_quest() -> void:
@@ -233,7 +255,11 @@ func _build_ui() -> void:
 func _draw_portrait() -> void:
 	var size := _portrait.size
 	if _tex == null:
-		_portrait.draw_circle(size / 2.0, 140, Color("c8a040"))
+		_portrait.draw_circle(size / 2.0, 140, Color("c8a040") if _warga_id == "" else Color("7a9a6a"))
+		if _warga_id != "":  # warga tanpa gambar: huruf depan namanya di tengah lingkaran
+			var initial := WARGA_DIALOG.display_name(_warga_id).substr(0, 1)
+			var font := ThemeDB.fallback_font
+			_portrait.draw_string(font, size / 2.0 + Vector2(-34, 38), initial, HORIZONTAL_ALIGNMENT_LEFT, -1, 110, Color("1a2420"))
 		return
 	var ts := _tex.get_size()
 	var scale := minf(size.x / ts.x, size.y / ts.y)

@@ -380,6 +380,42 @@ func _run() -> void:
 	_check(not dialog2._action.visible and dialog2._text.text.contains("Nenek"), "petani minta bantu nenek dulu")
 	dialog2.queue_free()
 	await process_frame
+	# Dialog warga desa: mengikuti tahap cerita utama.
+	var WD = load("res://scripts/warga_dialog.gd")
+	_check(WD.stage_from_quests([]) == 0, "tanpa misi tuntas: tahap cerita 0")
+	var qs := [{"id": "selamatkan_nenek", "status": "claimed"}, {"id": "selamatkan_petani", "status": "done"}, {"id": "usir_ogre", "status": "active"}, {"id": "hentikan_raja_goblin", "status": "locked"}]
+	_check(WD.stage_from_quests(qs) == 2, "dua misi utama tuntas (klaim atau siap klaim): tahap 2")
+	qs[2].status = "claimed"
+	qs[3].status = "claimed"
+	_check(WD.stage_from_quests(qs) == 4, "semua misi utama tuntas: tahap 4")
+	qs[1].status = "active"
+	_check(WD.stage_from_quests(qs) == 1, "tahap berhenti di misi utama pertama yang belum tuntas")
+	var all_lines := true
+	var diff_lines := true
+	for wid: String in WD.WARGA:
+		var stages: Array = WD.WARGA[wid].stages
+		all_lines = all_lines and stages.size() == 5
+		for lines: Array in stages:
+			all_lines = all_lines and lines.size() >= 1
+			for l in lines:
+				all_lines = all_lines and str(l).length() > 5
+		if wid != "ayam":
+			diff_lines = diff_lines and WD.line(wid, 0, 0) != WD.line(wid, 4, 0)
+	_check(all_lines, "setiap warga punya kalimat untuk kelima tahap cerita")
+	_check(diff_lines, "kalimat warga berubah mengikuti tahap cerita")
+	_check(WD.line("bu_sari", 1, 0) != WD.line("bu_sari", 1, 1), "kalimat warga bergantian tiap kali diajak bicara")
+	var dialog_ok := true
+	for d: Dictionary in Maps.WARGA:
+		dialog_ok = dialog_ok and WD.has_warga(str(d.id))
+	_check(dialog_ok, "semua warga di peta punya dialog")
+	Session.talk_npc = "warga:bu_sari"
+	Session.talk_counts["warga:bu_sari"] = 1
+	var dialog3: Control = load("res://scenes/dialog.tscn").instantiate()
+	root.add_child(dialog3)
+	await create_timer(0.8).timeout
+	_check(dialog3._name_label.text == "Bu Sari" and not dialog3._action.visible and dialog3._text.text == WD.line("bu_sari", 0, 0), "bicara dengan Bu Sari: nama dan kalimat tahap 0, tanpa tombol misi")
+	dialog3.queue_free()
+	await process_frame
 	_check(Maps.npc_at(Maps.DEFAULT_MAP, 11, 6) == "petani", "petani berdiri di (11,6)")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 3, 6), "petak nenek tetap bagian peta (diblokir oleh gerak, bukan peta)")
 
@@ -603,6 +639,8 @@ func _run() -> void:
 		for w in w3._warga:
 			near_player = minf(near_player, w.pos.distance_to(w3._pos))
 	_check(near_player > 0.6, "warga menjaga jarak dari pemain (terdekat %.2f)" % near_player)
+	w3._pos = w3._warga[0].pos + Vector2(0.6, 0.0)
+	_check(w3._npc_in_range().begins_with("warga:"), "warga di dekat pemain bisa diajak bicara")
 	_check(model_walked, "model warga memakai animasi jalan saat bergerak")
 	w3._pos = Vector2(7.5, 5.5)
 	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")

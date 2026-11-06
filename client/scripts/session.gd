@@ -9,6 +9,8 @@ var player: Dictionary = {}
 var battle: Dictionary = {}
 ## NPC yang sedang diajak bicara (untuk layar dialog).
 var talk_npc := ""
+## Berapa kali tiap lawan bicara sudah diajak bicara (kalimat warga bergantian). Tidak disimpan.
+var talk_counts: Dictionary = {}
 ## Sisa langkah aman di ladang setelah pertarungan (tidak ada pertemuan baru).
 var safe_steps := 0
 ## true = tidak terhubung ke server (mis. menguji peta langsung dari editor); tidak disimpan.

@@ -87,18 +87,19 @@ const NPCS := {
 
 ## Warga desa: pemanis tanpa misi, berjalan bebas di sekitar titik asalnya (`pos`, petak) dalam
 ## jari-jari `radius` petak, hanya di petak jalan/rumput/bunga. `model` = id model 3D;
-## `speed` = petak per detik. Tidak menghalangi pemain dan tidak bisa diajak bicara.
+## `speed` = petak per detik; `id` = kunci dialognya di warga_dialog.gd. Tidak menghalangi pemain,
+## berhenti dan menoleh bila pemain mendekat, dan bisa diajak bicara (tombol Bicara).
 const WARGA := [
-	{"model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(8.5, 8.5), "radius": 5.0, "speed": 0.7},
-	{"model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(16.5, 8.5), "radius": 5.0, "speed": 0.75},
-	{"model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(14.5, 12.5), "radius": 5.0, "speed": 0.7},
-	{"model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(10.5, 21.5), "radius": 6.0, "speed": 0.8},
-	{"model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(11.5, 9.5), "radius": 4.5, "speed": 1.1},
-	{"model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(13.5, 11.5), "radius": 4.5, "speed": 1.2},
-	{"model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(12.5, 25.5), "radius": 3.5, "speed": 0.6},
-	{"model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(4.5, 12.5), "radius": 2.2, "speed": 0.6},
-	{"model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 10.5), "radius": 2.2, "speed": 0.7},
-	{"model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 2.2, "speed": 0.6},
+	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(8.5, 8.5), "radius": 5.0, "speed": 0.7},
+	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(16.5, 8.5), "radius": 5.0, "speed": 0.75},
+	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(14.5, 12.5), "radius": 5.0, "speed": 0.7},
+	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(10.5, 21.5), "radius": 6.0, "speed": 0.8},
+	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(11.5, 9.5), "radius": 4.5, "speed": 1.1},
+	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(13.5, 11.5), "radius": 4.5, "speed": 1.2},
+	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(12.5, 25.5), "radius": 3.5, "speed": 0.6},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(4.5, 12.5), "radius": 2.2, "speed": 0.6},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 10.5), "radius": 2.2, "speed": 0.7},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 2.2, "speed": 0.6},
 ]
 
 ## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).

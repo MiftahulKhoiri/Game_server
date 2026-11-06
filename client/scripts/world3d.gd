@@ -484,6 +484,11 @@ func _npc_in_range() -> String:
 		if d <= best_d:
 			best_d = d
 			best = id
+	for w in _warga:  # warga desa: posisi hidup (mereka berjalan), id dialog berawalan "warga:"
+		var wd := _pos.distance_to(w.pos)
+		if wd <= best_d:
+			best_d = wd
+			best = Warga.TALK_PREFIX + w.id
 	return best
 
 
@@ -498,6 +503,7 @@ func _talk() -> void:
 		return
 	_locked = true
 	Session.talk_npc = npc
+	Session.talk_counts[npc] = int(Session.talk_counts.get(npc, 0)) + 1
 	await _flush_save()  # versi pemain harus sinkron sebelum hadiah diambil
 	get_tree().change_scene_to_file(DIALOG_SCENE)
 
