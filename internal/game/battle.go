@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Status hasil sebuah ronde.
+// Status hasil sebuah aksi atau sinkronisasi.
 const (
 	StatusOngoing = "ongoing" // pertarungan berlanjut
 	StatusWon     = "won"     // musuh kalah
@@ -13,22 +13,49 @@ const (
 	StatusFled    = "fled"    // pemain berhasil kabur
 )
 
-// Aksi pemain dalam satu ronde.
+// Aksi pemain. Pertarungan berjalan real-time: tiap aksi punya waktu isi ulang (cooldown)
+// dan musuh menyerang sendiri secara berkala tanpa menunggu pemain.
 const (
-	ActionAttack = "attack"
-	ActionDefend = "defend"
+	ActionAttack = "attack" // serangan biasa, cooldown pendek
+	ActionDefend = "defend" // bertahan: jendela waktu mengurangi kerusakan; tepat waktu = tangkis penuh
+	ActionSkill1 = "skill1" // Tebasan Kuat: kerusakan besar
+	ActionSkill2 = "skill2" // Perisai Cahaya: pulihkan HP dan kurangi kerusakan sesaat
 	ActionPotion = "potion"
 	ActionFlee   = "flee"
 )
 
-// Aturan pertarungan (draf awal untuk diseimbangkan).
+// Aturan pertarungan (draf awal untuk diseimbangkan). Satuan waktu: milidetik.
 const (
 	PotionID      = "ramuan"
 	PotionHeal    = 15 // HP yang dipulihkan satu ramuan
 	FleeChance    = 60 // persen peluang berhasil kabur
 	CritChance    = 10 // persen peluang serangan pemain kritis
 	DefendDivisor = 2  // bertahan membagi kerusakan musuh dengan ini
+
+	Skill1Mult        = 22 // kerusakan Skill 1 = serangan x 2,2 (per 10)
+	Skill2HealPercent = 25 // Skill 2 memulihkan sekian persen HP maksimum
+	ShieldPercent     = 30 // selama perisai aktif pemain hanya menerima sekian persen kerusakan
+
+	EnemyIntervalMs = 2000 // jeda antar serangan musuh biasa
+	BossIntervalMs  = 1600 // jeda antar serangan bos
+	FirstHitDelayMs = 3000 // musuh baru menyerang pertama kali setelah sekian ms
+	GuardMs         = 1200 // lama jendela bertahan
+	PerfectMs       = 450  // serangan musuh yang tiba dalam sekian ms setelah menekan Bertahan ditangkis penuh
+	PerfectDelayMs  = 600  // tangkisan sempurna menunda serangan musuh berikutnya
+	ShieldMs        = 3000 // lama Perisai Cahaya
+	LagGraceMs      = 250  // kelonggaran jaringan: aksi dianggap terjadi sedikit lebih awal
+	maxCatchUpHits  = 1    // serangan susulan maksimal saat klien lama tidak menyapa
 )
+
+// CooldownMs adalah waktu isi ulang tiap aksi.
+var CooldownMs = map[string]int64{
+	ActionAttack: 900,
+	ActionDefend: 1800,
+	ActionSkill1: 5000,
+	ActionSkill2: 14000,
+	ActionPotion: 2500,
+	ActionFlee:   3000,
+}
 
 // Kesalahan aturan pertarungan.
 var (
@@ -36,16 +63,49 @@ var (
 	ErrNoPotion  = errors.New("kamu tidak punya ramuan")
 	ErrFullHP    = errors.New("HP sudah penuh")
 	ErrCorrupt   = errors.New("data pertarungan rusak")
+	ErrCooldown  = errors.New("aksi belum siap")
 )
 
 // Battle adalah pertarungan yang sedang berjalan. Disimpan di server supaya
-// klien tidak bisa mengubah musuh atau hasilnya.
+// klien tidak bisa mengubah musuh atau hasilnya. Semua waktu (…Ms) adalah
+// milidetik jam server; klien hanya menerima selisih lewat View.
 type Battle struct {
 	EnemyID    string `json:"enemy_id"`
 	EnemyName  string `json:"enemy_name"`
 	EnemyHP    int    `json:"enemy_hp"`
 	EnemyMaxHP int    `json:"enemy_max_hp"`
+	Round      int    `json:"round"` // jumlah serangan musuh + 1
+
+	NextEnemyMs int64            `json:"next_enemy_ms,omitempty"` // 0 = belum dijadwalkan (data lama)
+	Ready       map[string]int64 `json:"ready,omitempty"`         // aksi -> kapan siap lagi
+	GuardPress  int64            `json:"guard_press,omitempty"`
+	GuardUntil  int64            `json:"guard_until,omitempty"`
+	ShieldUntil int64            `json:"shield_until,omitempty"`
+}
+
+// BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
+// sekarang, jadi jam klien tidak perlu sama dengan jam server.
+type BattleView struct {
+	EnemyID    string `json:"enemy_id"`
+	EnemyName  string `json:"enemy_name"`
+	EnemyHP    int    `json:"enemy_hp"`
+	EnemyMaxHP int    `json:"enemy_max_hp"`
 	Round      int    `json:"round"`
+
+	EnemyNextMs     int64            `json:"enemy_next_ms"`     // sisa waktu sampai serangan musuh berikutnya
+	EnemyIntervalMs int64            `json:"enemy_interval_ms"` // jeda antar serangan musuh
+	Cooldowns       map[string]int64 `json:"cooldowns"`         // sisa cooldown per aksi (ms)
+	CooldownMax     map[string]int64 `json:"cooldown_max"`      // cooldown penuh per aksi (ms)
+	GuardMs         int64            `json:"guard_ms"`          // sisa jendela bertahan
+	ShieldMs        int64            `json:"shield_ms"`         // sisa Perisai Cahaya
+}
+
+// Event adalah satu kejadian untuk dianimasikan klien.
+type Event struct {
+	Who  string `json:"who"`            // "player" atau "enemy"
+	Kind string `json:"kind"`           // attack, crit, skill1, skill2, guard, potion, hit, perfect, shield
+	Dmg  int    `json:"dmg,omitempty"`  // kerusakan yang diterima target
+	Heal int    `json:"heal,omitempty"` // HP yang dipulihkan
 }
 
 // Rewards adalah hadiah setelah menang.
@@ -61,59 +121,146 @@ type Rewards struct {
 type Result struct {
 	Status  string   `json:"status"`
 	Log     []string `json:"log"`
+	Events  []Event  `json:"events,omitempty"`
 	Rewards *Rewards `json:"rewards,omitempty"`
 }
 
 // StartBattle memulai pertarungan melawan musuh acak yang cocok untuk level pemain.
-func StartBattle(p *Player, rng Rand) Battle {
-	return newBattle(PickEnemy(p.State.Level, p.State.Map, rng))
+// now adalah jam server (ms).
+func StartBattle(p *Player, rng Rand, now int64) Battle {
+	return newBattle(PickEnemy(p.State.Level, p.State.Map, rng), now)
 }
 
 // ErrNoBoss berarti tidak ada bos di petak tempat pemain berdiri.
 var ErrNoBoss = errors.New("tidak ada bos di sini")
 
 // StartBossBattle memulai pertarungan dengan bos di petak pemain (posisi tersimpan di server).
-func StartBossBattle(p *Player) (Battle, error) {
+func StartBossBattle(p *Player, now int64) (Battle, error) {
 	e, ok := BossAt(p.State.Map, p.State.X, p.State.Y)
 	if !ok {
 		return Battle{}, ErrNoBoss
 	}
-	return newBattle(e), nil
+	return newBattle(e, now), nil
 }
 
-func newBattle(e Enemy) Battle {
-	return Battle{EnemyID: e.ID, EnemyName: e.Name, EnemyHP: e.HP, EnemyMaxHP: e.HP, Round: 1}
+func newBattle(e Enemy, now int64) Battle {
+	return Battle{
+		EnemyID: e.ID, EnemyName: e.Name, EnemyHP: e.HP, EnemyMaxHP: e.HP, Round: 1,
+		NextEnemyMs: now + FirstHitDelayMs,
+	}
 }
 
-// Act menjalankan satu ronde: aksi pemain, lalu (bila musuh masih hidup dan
-// pemain tidak kabur) giliran musuh. State pemain diubah langsung.
-func (b *Battle) Act(p *Player, action string, rng Rand) (Result, error) {
+func enemyInterval(e Enemy) int64 {
+	if e.Boss {
+		return BossIntervalMs
+	}
+	return EnemyIntervalMs
+}
+
+// View membuat tampilan relatif untuk klien.
+func (b *Battle) View(now int64) BattleView {
+	left := func(t int64) int64 { return max(0, t-now) }
+	v := BattleView{
+		EnemyID: b.EnemyID, EnemyName: b.EnemyName, EnemyHP: b.EnemyHP, EnemyMaxHP: b.EnemyMaxHP, Round: b.Round,
+		EnemyNextMs: left(b.NextEnemyMs), EnemyIntervalMs: EnemyIntervalMs,
+		Cooldowns: map[string]int64{}, CooldownMax: map[string]int64{},
+		GuardMs: left(b.GuardUntil), ShieldMs: left(b.ShieldUntil),
+	}
+	if e, ok := EnemyByID(b.EnemyID); ok {
+		v.EnemyIntervalMs = enemyInterval(e)
+	}
+	for a, cd := range CooldownMs {
+		v.CooldownMax[a] = cd
+		v.Cooldowns[a] = left(b.Ready[a])
+	}
+	return v
+}
+
+// Sync menyelesaikan semua serangan musuh yang jatuh tempo sampai now tanpa aksi pemain.
+func (b *Battle) Sync(p *Player, now int64, rng Rand) (Result, error) {
 	e, ok := EnemyByID(b.EnemyID)
 	if !ok {
 		return Result{}, ErrCorrupt
 	}
+	res := Result{Status: StatusOngoing}
+	b.settle(p, e, now, rng, &res)
+	return res, nil
+}
+
+// Act menjalankan satu aksi pemain pada waktu now (ms jam server). Sebelumnya semua
+// serangan musuh yang sudah jatuh tempo diselesaikan dulu. State pemain diubah langsung.
+func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, error) {
+	e, ok := EnemyByID(b.EnemyID)
+	if !ok {
+		return Result{}, ErrCorrupt
+	}
+	if _, known := CooldownMs[action]; !known {
+		return Result{}, ErrBadAction
+	}
 	st := &p.State
 	res := Result{Status: StatusOngoing}
 	logf := func(format string, args ...any) { res.Log = append(res.Log, fmt.Sprintf(format, args...)) }
-	defending := false
 
-	switch action {
-	case ActionAttack:
-		dmg, crit := rollDamage(st.Attack(), e.Defense, rng, true)
+	// Serangan musuh sebelum (now - kelonggaran) terjadi sebelum aksi ini.
+	if b.settle(p, e, now-LagGraceMs, rng, &res) {
+		return res, nil
+	}
+	if left := b.Ready[action] - now; left > 0 {
+		return Result{}, fmt.Errorf("%w (%d ms lagi)", ErrCooldown, left)
+	}
+	cd := func() {
+		if b.Ready == nil {
+			b.Ready = map[string]int64{}
+		}
+		b.Ready[action] = now + CooldownMs[action]
+	}
+	strike := func(power int, kind string) bool {
+		dmg, crit := rollDamage(power, e.Defense, rng, true)
 		b.EnemyHP -= dmg
-		if crit {
+		if crit && kind == "attack" {
+			kind = "crit"
+		}
+		res.Events = append(res.Events, Event{Who: "player", Kind: kind, Dmg: dmg})
+		switch {
+		case kind == "skill1":
+			logf("Tebasan Kuat! %s kehilangan %d HP.", b.EnemyName, dmg)
+		case crit:
 			logf("Serangan kritis! %s kehilangan %d HP.", b.EnemyName, dmg)
-		} else {
+		default:
 			logf("Kamu menyerang %s: -%d HP.", b.EnemyName, dmg)
 		}
 		if b.EnemyHP <= 0 {
 			b.EnemyHP = 0
 			b.win(p, e, rng, &res)
+			return true
+		}
+		return false
+	}
+
+	switch action {
+	case ActionAttack:
+		cd()
+		if strike(st.Attack(), "attack") {
+			return res, nil
+		}
+	case ActionSkill1:
+		cd()
+		if strike(st.Attack()*Skill1Mult/10, "skill1") {
 			return res, nil
 		}
 	case ActionDefend:
-		defending = true
+		cd()
+		b.GuardPress, b.GuardUntil = now, now+GuardMs
+		res.Events = append(res.Events, Event{Who: "player", Kind: "guard"})
 		logf("Kamu bersiap bertahan.")
+	case ActionSkill2:
+		cd()
+		heal := max(1, st.MaxHP*Skill2HealPercent/100)
+		heal = min(heal, st.MaxHP-st.HP)
+		st.HP += heal
+		b.ShieldUntil = now + ShieldMs
+		res.Events = append(res.Events, Event{Who: "player", Kind: "skill2", Heal: heal})
+		logf("Perisai Cahaya! +%d HP, kerusakan berkurang sesaat.", heal)
 	case ActionPotion:
 		if st.HP >= st.MaxHP {
 			return Result{}, ErrFullHP
@@ -121,33 +268,68 @@ func (b *Battle) Act(p *Player, action string, rng Rand) (Result, error) {
 		if !st.RemoveItem(PotionID, 1) {
 			return Result{}, ErrNoPotion
 		}
+		cd()
 		heal := min(PotionHeal, st.MaxHP-st.HP)
 		st.HP += heal
+		res.Events = append(res.Events, Event{Who: "player", Kind: "potion", Heal: heal})
 		logf("Kamu minum ramuan: +%d HP.", heal)
 	case ActionFlee:
+		cd()
 		if rng.Intn(100) < FleeChance {
 			res.Status = StatusFled
 			logf("Kamu berhasil kabur.")
 			return res, nil
 		}
 		logf("Gagal kabur!")
-	default:
-		return Result{}, ErrBadAction
 	}
 
-	// Giliran musuh.
-	dmg, _ := rollDamage(e.Attack, st.Defense(), rng, false)
-	if defending {
-		dmg = max(1, dmg/DefendDivisor)
-	}
-	st.HP -= dmg
-	logf("%s menyerang: -%d HP.", b.EnemyName, dmg)
-	if st.HP <= 0 {
-		b.lose(p, &res)
-		return res, nil
-	}
-	b.Round++
+	// Serangan musuh yang jatuh tempo tepat setelah aksi (dalam kelonggaran jaringan).
+	b.settle(p, e, now, rng, &res)
 	return res, nil
+}
+
+// settle menjalankan semua serangan musuh dengan jadwal <= upto. Mengembalikan true bila
+// pemain kalah (res sudah diisi).
+func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) bool {
+	st := &p.State
+	iv := enemyInterval(e)
+	if b.NextEnemyMs == 0 { // pertarungan lama tanpa jadwal
+		b.NextEnemyMs = upto + FirstHitDelayMs
+	}
+	// Klien lama tidak menyapa (app ditutup): jangan menumpuk serangan.
+	if lag := upto - b.NextEnemyMs; lag > maxCatchUpHits*iv {
+		b.NextEnemyMs += lag - maxCatchUpHits*iv
+	}
+	for b.NextEnemyMs <= upto {
+		t := b.NextEnemyMs
+		dmg, _ := rollDamage(e.Attack, st.Defense(), rng, false)
+		kind := "hit"
+		next := t + iv
+		guarded := t >= b.GuardPress-LagGraceMs && t <= b.GuardUntil && b.GuardUntil > 0
+		switch {
+		case guarded && t-b.GuardPress <= PerfectMs:
+			dmg, kind = 0, "perfect"
+			next += PerfectDelayMs
+		case t < b.ShieldUntil:
+			dmg, kind = max(1, dmg*ShieldPercent/100), "shield"
+		case guarded:
+			dmg, kind = max(1, dmg/DefendDivisor), "guard"
+		}
+		st.HP -= dmg
+		b.Round++
+		b.NextEnemyMs = next
+		res.Events = append(res.Events, Event{Who: "enemy", Kind: kind, Dmg: dmg})
+		if kind == "perfect" {
+			res.Log = append(res.Log, fmt.Sprintf("Tangkisan sempurna! Serangan %s tidak berefek.", b.EnemyName))
+		} else {
+			res.Log = append(res.Log, fmt.Sprintf("%s menyerang: -%d HP.", b.EnemyName, dmg))
+		}
+		if st.HP <= 0 {
+			b.lose(p, res)
+			return true
+		}
+	}
+	return false
 }
 
 func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {

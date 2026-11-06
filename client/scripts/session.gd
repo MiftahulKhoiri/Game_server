@@ -15,6 +15,9 @@ var safe_steps := 0
 var offline := false
 ## Nama akun terakhir yang masuk di HP ini (untuk tombol "Lanjutkan sebagai ..."). Kata sandi tidak pernah disimpan.
 var saved_name := ""
+## Pengaturan grafis/kontrol (disimpan di HP): 0 = Hemat, 1 = Normal, 2 = Tinggi.
+var quality := 1
+var cam_sens := 1.0
 
 
 func _ready() -> void:
@@ -28,6 +31,8 @@ func load_config() -> void:
 	Api.base_url = str(cfg.get_value("server", "url", Api.base_url))
 	Api.token = str(cfg.get_value("auth", "token", ""))
 	saved_name = str(cfg.get_value("auth", "name", "")) if Api.token != "" else ""
+	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)
+	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
 
 
 func save_config() -> void:
@@ -37,6 +42,8 @@ func save_config() -> void:
 	if Api.token != "" and str(player.get("name", "")) != "":
 		saved_name = str(player.name)
 	cfg.set_value("auth", "name", saved_name if Api.token != "" else "")
+	cfg.set_value("game", "quality", quality)
+	cfg.set_value("game", "cam_sens", cam_sens)
 	cfg.save(CONFIG_PATH)
 
 

@@ -36,6 +36,7 @@ type Server struct {
 	log   *slog.Logger
 	info  version.Info
 	rng   game.Rand
+	clock func() time.Time // jam server (dapat diganti di tes)
 
 	// Pembatas percobaan: login gagal per nama/email dan per IP, serta pendaftaran per IP.
 	loginByName *auth.Limiter
@@ -50,8 +51,14 @@ func New(st *store.Store, log *slog.Logger, info version.Info) http.Handler {
 
 // NewWithRand sama seperti New tetapi dengan sumber acak buatan sendiri (untuk tes).
 func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.Rand) http.Handler {
+	return NewWithClock(st, log, info, rng, time.Now)
+}
+
+// NewWithClock sama seperti NewWithRand tetapi dengan jam buatan sendiri (untuk tes
+// pertarungan real-time).
+func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game.Rand, clock func() time.Time) http.Handler {
 	s := &Server{
-		store: st, log: log, info: info, rng: rng,
+		store: st, log: log, info: info, rng: rng, clock: clock,
 		loginByName: auth.NewLimiter(5, 15*time.Minute),
 		loginByIP:   auth.NewLimiter(30, 15*time.Minute),
 		signupByIP:  auth.NewLimiter(20, time.Hour),
@@ -310,30 +317,53 @@ var (
 
 type battleResponse struct {
 	// Battle bernilai null bila pertarungan sudah selesai.
-	Battle  *game.Battle  `json:"battle"`
-	Player  game.Player   `json:"player"`
-	Status  string        `json:"status,omitempty"`
-	Log     []string      `json:"log,omitempty"`
-	Rewards *game.Rewards `json:"rewards,omitempty"`
+	Battle  *game.BattleView `json:"battle"`
+	Player  game.Player      `json:"player"`
+	Status  string           `json:"status,omitempty"`
+	Log     []string         `json:"log,omitempty"`
+	Events  []game.Event     `json:"events,omitempty"`
+	Rewards *game.Rewards    `json:"rewards,omitempty"`
 }
 
+func (s *Server) nowMs() int64 { return s.clock().UnixMilli() }
+
+func battleView(b *game.Battle, now int64) *game.BattleView {
+	if b == nil {
+		return nil
+	}
+	v := b.View(now)
+	return &v
+}
+
+// getBattle melanjutkan pertarungan sekaligus menyelesaikan serangan musuh yang jatuh tempo.
 func (s *Server) getBattle(w http.ResponseWriter, r *http.Request) {
-	id := playerFrom(r).ID
-	b, err := s.store.Battle(r.Context(), id)
-	if errors.Is(err, store.ErrNotFound) {
+	now := s.nowMs()
+	var result game.Result
+	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
+		if sess.Battle == nil {
+			return errNoBattle
+		}
+		res, err := sess.Battle.Sync(&sess.Player, now, s.rng)
+		if err != nil {
+			return err
+		}
+		result = res
+		if res.Status != game.StatusOngoing {
+			sess.Battle = nil
+		}
+		return nil
+	})
+	switch {
+	case errors.Is(err, errNoBattle):
 		writeError(w, http.StatusNotFound, errNoBattle.Error())
-		return
-	}
-	if err != nil {
+	case err != nil:
 		s.fail(w, r, err)
-		return
+	default:
+		writeJSON(w, http.StatusOK, battleResponse{
+			Battle: battleView(sess.Battle, now), Player: sess.Player,
+			Status: result.Status, Log: result.Log, Events: result.Events, Rewards: result.Rewards,
+		})
 	}
-	p, err := s.store.PlayerByID(r.Context(), id)
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, battleResponse{Battle: &b, Player: p, Status: game.StatusOngoing})
 }
 
 type startRequest struct {
@@ -346,6 +376,7 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength != 0 && !decode(w, r, &req) { // body boleh kosong
 		return
 	}
+	now := s.nowMs()
 	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
 		if sess.Battle != nil {
 			return errBattleActive
@@ -353,11 +384,11 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 		var b game.Battle
 		if req.Boss {
 			var err error
-			if b, err = game.StartBossBattle(&sess.Player); err != nil {
+			if b, err = game.StartBossBattle(&sess.Player, now); err != nil {
 				return err
 			}
 		} else {
-			b = game.StartBattle(&sess.Player, s.rng)
+			b = game.StartBattle(&sess.Player, s.rng, now)
 		}
 		sess.Battle = &b
 		return nil
@@ -370,7 +401,7 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, r, err)
 	default:
-		writeJSON(w, http.StatusCreated, battleResponse{Battle: sess.Battle, Player: sess.Player, Status: game.StatusOngoing})
+		writeJSON(w, http.StatusCreated, battleResponse{Battle: battleView(sess.Battle, now), Player: sess.Player, Status: game.StatusOngoing})
 	}
 }
 
@@ -383,12 +414,13 @@ func (s *Server) battleAction(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
+	now := s.nowMs()
 	var result game.Result
 	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
 		if sess.Battle == nil {
 			return errNoBattle
 		}
-		res, err := sess.Battle.Act(&sess.Player, req.Action, s.rng)
+		res, err := sess.Battle.Act(&sess.Player, req.Action, now, s.rng)
 		if err != nil {
 			return err
 		}
@@ -401,14 +433,14 @@ func (s *Server) battleAction(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, errNoBattle):
 		writeError(w, http.StatusNotFound, errNoBattle.Error())
-	case errors.Is(err, game.ErrBadAction), errors.Is(err, game.ErrNoPotion), errors.Is(err, game.ErrFullHP):
+	case errors.Is(err, game.ErrBadAction), errors.Is(err, game.ErrNoPotion), errors.Is(err, game.ErrFullHP), errors.Is(err, game.ErrCooldown):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case err != nil:
 		s.fail(w, r, err)
 	default:
 		writeJSON(w, http.StatusOK, battleResponse{
-			Battle: sess.Battle, Player: sess.Player,
-			Status: result.Status, Log: result.Log, Rewards: result.Rewards,
+			Battle: battleView(sess.Battle, now), Player: sess.Player,
+			Status: result.Status, Log: result.Log, Events: result.Events, Rewards: result.Rewards,
 		})
 	}
 }

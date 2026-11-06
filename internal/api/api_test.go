@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MiftahulKhoiri/Game_server/internal/auth"
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
@@ -49,7 +51,11 @@ func newTestServerWithStore(t *testing.T) (*httptest.Server, *store.Store) {
 	}
 	t.Cleanup(func() { st.Close() })
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	ts := httptest.NewServer(NewWithRand(st, log, testInfo, game.RandFunc(func(n int) int { return 99 % n })))
+	// Jam buatan: maju 2,5 detik tiap permintaan pertarungan, jadi cooldown selalu siap
+	// dan musuh menyerang kira-kira sekali per aksi.
+	var tick atomic.Int64
+	clock := func() time.Time { return time.UnixMilli(1_700_000_000_000 + tick.Add(2500)) }
+	ts := httptest.NewServer(NewWithClock(st, log, testInfo, game.RandFunc(func(n int) int { return 99 % n }), clock))
 	t.Cleanup(ts.Close)
 	return ts, st
 }
@@ -351,8 +357,15 @@ func TestBattleActionErrors(t *testing.T) {
 	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "teleport"}); code != http.StatusUnprocessableEntity {
 		t.Errorf("aksi asing harus 422, dapat %d", code)
 	}
-	if code, _, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "potion"}); code != http.StatusUnprocessableEntity {
-		t.Errorf("ramuan saat HP penuh harus 422, dapat %d: %s", code, d)
+	// Semua aksi real-time dikenali dan hasilnya memuat tampilan cooldown + kejadian.
+	for _, a := range []string{"defend", "skill1", "skill2"} {
+		code, br, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": a})
+		if code != http.StatusOK {
+			t.Fatalf("%s: %d %s", a, code, d)
+		}
+		if br.Battle != nil && (br.Battle.CooldownMax[a] == 0 || len(br.Events) == 0) {
+			t.Errorf("%s: tampilan/kejadian kosong: %s", a, d)
+		}
 	}
 	if code, _, _ := battleCall(t, ts, "", "POST", "/v1/battle/start", nil); code != http.StatusUnauthorized {
 		t.Errorf("tanpa token harus 401, dapat %d", code)

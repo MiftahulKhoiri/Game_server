@@ -31,13 +31,20 @@ func newPlayer() *Player { return &Player{State: NewState()} }
 
 func battleVs(enemyID string, hp int) *Battle {
 	e, _ := EnemyByID(enemyID)
-	return &Battle{EnemyID: e.ID, EnemyName: e.Name, EnemyHP: hp, EnemyMaxHP: e.HP, Round: 1}
+	return &Battle{EnemyID: e.ID, EnemyName: e.Name, EnemyHP: hp, EnemyMaxHP: e.HP, Round: 1, NextEnemyMs: 1000}
+}
+
+// act menjalankan aksi tepat saat serangan musuh jatuh tempo, dengan semua cooldown siap:
+// sama seperti satu "ronde" lama (aksi pemain lalu satu serangan musuh).
+func act(b *Battle, p *Player, action string, rng Rand) (Result, error) {
+	b.Ready = nil
+	return b.Act(p, action, b.NextEnemyMs, rng)
 }
 
 func TestAttackKillsAndRewards(t *testing.T) {
 	p := newPlayer()
 	b := battleVs("tikus_sawah", 5)
-	res, err := b.Act(p, ActionAttack, seq(20, 99, 99))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 99))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +63,7 @@ func TestLevelUp(t *testing.T) {
 	p := newPlayer()
 	p.State.XP = 18
 	b := battleVs("tikus_sawah", 1)
-	res, err := b.Act(p, ActionAttack, seq(20, 99, 99))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 99))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +81,7 @@ func TestLevelUp(t *testing.T) {
 func TestDropAddsItem(t *testing.T) {
 	p := newPlayer() // mulai dengan 2 ramuan
 	b := battleVs("tikus_sawah", 1)
-	res, _ := b.Act(p, ActionAttack, seq(20, 99, 0)) // drop 0 < 10%
+	res, _ := act(b, p, ActionAttack, seq(20, 99, 0)) // drop 0 < 10%
 	if res.Rewards.Drop != PotionID || p.State.Inventory[0].Qty != 3 {
 		t.Errorf("harus dapat ramuan: %+v %+v", res.Rewards, p.State.Inventory)
 	}
@@ -83,7 +90,7 @@ func TestDropAddsItem(t *testing.T) {
 func TestEnemyRetaliates(t *testing.T) {
 	p := newPlayer()
 	b := battleVs("tikus_sawah", 10)
-	res, err := b.Act(p, ActionAttack, seq(20, 99, 20))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 20))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,11 +105,149 @@ func TestEnemyRetaliates(t *testing.T) {
 func TestDefendHalvesDamage(t *testing.T) {
 	p := newPlayer()
 	b := battleVs("babi_hutan", 34) // serang 8 - bertahan 2 = 6, dibagi 2 = 3
-	if _, err := b.Act(p, ActionDefend, seq(20)); err != nil {
+	// Bertahan ditekan 800 ms sebelum serangan musuh: di dalam jendela tetapi lewat batas tangkisan sempurna.
+	if _, err := b.Act(p, ActionDefend, 200, seq()); err != nil {
 		t.Fatal(err)
 	}
-	if p.State.HP != 27 {
-		t.Errorf("HP = %d; mau 27", p.State.HP)
+	res, err := b.Sync(p, 1000, seq(20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.State.HP != 27 || len(res.Events) != 1 || res.Events[0].Kind != "guard" {
+		t.Errorf("HP = %d; mau 27 (%+v)", p.State.HP, res.Events)
+	}
+}
+
+func TestPerfectGuardBlocksAndDelays(t *testing.T) {
+	p := newPlayer()
+	b := battleVs("babi_hutan", 34)
+	// Bertahan ditekan 200 ms sebelum serangan: tangkisan sempurna.
+	if _, err := b.Act(p, ActionDefend, 800, seq()); err != nil {
+		t.Fatal(err)
+	}
+	res, _ := b.Sync(p, 1000, seq(20))
+	if p.State.HP != 30 || res.Events[0].Kind != "perfect" {
+		t.Errorf("harus tertangkis penuh: hp=%d %+v", p.State.HP, res.Events)
+	}
+	if want := int64(1000 + EnemyIntervalMs + PerfectDelayMs); b.NextEnemyMs != want {
+		t.Errorf("serangan berikutnya harus tertunda: %d; mau %d", b.NextEnemyMs, want)
+	}
+	// Setelah jendela habis, serangan berikutnya kena penuh.
+	b.GuardUntil = 0
+	b.Sync(p, b.NextEnemyMs, seq(20))
+	if p.State.HP != 30-6 {
+		t.Errorf("serangan tanpa bertahan: hp=%d", p.State.HP)
+	}
+}
+
+func TestGuardLateNetworkStillCounts(t *testing.T) {
+	// Tombol ditekan sedikit sebelum serangan, tetapi paketnya tiba sedikit sesudahnya.
+	p := newPlayer()
+	b := battleVs("babi_hutan", 34)
+	b.NextEnemyMs = 1000
+	if _, err := b.Act(p, ActionDefend, 1100, seq(20)); err != nil { // tiba 100 ms terlambat
+		t.Fatal(err)
+	}
+	if p.State.HP != 30 {
+		t.Errorf("kelonggaran jaringan harus menolong: hp=%d", p.State.HP)
+	}
+}
+
+func TestCooldownEnforced(t *testing.T) {
+	p := newPlayer()
+	b := battleVs("babi_hutan", 34)
+	b.NextEnemyMs = 10_000
+	if _, err := b.Act(p, ActionAttack, 0, seq(20, 99)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Act(p, ActionAttack, CooldownMs[ActionAttack]-1, seq()); !errors.Is(err, ErrCooldown) {
+		t.Errorf("harus ErrCooldown, dapat %v", err)
+	}
+	if _, err := b.Act(p, ActionAttack, CooldownMs[ActionAttack], seq(20, 99)); err != nil {
+		t.Errorf("setelah cooldown harus bisa: %v", err)
+	}
+	// Aksi lain tidak ikut terkunci.
+	if _, err := b.Act(p, ActionSkill1, CooldownMs[ActionAttack], seq(20, 99)); err != nil {
+		t.Errorf("skill harus tetap bisa: %v", err)
+	}
+	v := b.View(CooldownMs[ActionAttack])
+	if v.Cooldowns[ActionSkill1] != CooldownMs[ActionSkill1] || v.CooldownMax[ActionSkill2] != CooldownMs[ActionSkill2] {
+		t.Errorf("tampilan cooldown salah: %+v", v)
+	}
+}
+
+func TestSkill1DealsMore(t *testing.T) {
+	hp := func(action string) int {
+		p := newPlayer()
+		b := battleVs("babi_hutan", 34)
+		b.NextEnemyMs = 10_000
+		if _, err := b.Act(p, action, 0, seq(20, 99)); err != nil {
+			t.Fatal(err)
+		}
+		return b.EnemyHP
+	}
+	if a, s := hp(ActionAttack), hp(ActionSkill1); s >= a {
+		t.Errorf("skill 1 harus lebih kuat: serang sisa %d, skill sisa %d", a, s)
+	}
+}
+
+func TestSkill2HealsAndShields(t *testing.T) {
+	p := newPlayer()
+	p.State.HP = 10
+	b := battleVs("babi_hutan", 34)
+	b.NextEnemyMs = 1500
+	if _, err := b.Act(p, ActionSkill2, 1000, seq()); err != nil {
+		t.Fatal(err)
+	}
+	want := 10 + p.State.MaxHP*Skill2HealPercent/100
+	if p.State.HP != want {
+		t.Fatalf("HP = %d; mau %d", p.State.HP, want)
+	}
+	b.Sync(p, 1500, seq(20)) // serangan 6 -> 30% = 1
+	if p.State.HP != want-max(1, 6*ShieldPercent/100) {
+		t.Errorf("perisai harus meredam: hp=%d", p.State.HP)
+	}
+}
+
+func TestEnemyAttacksWithoutPlayer(t *testing.T) {
+	p := newPlayer()
+	b := battleVs("babi_hutan", 34)
+	res, err := b.Sync(p, 999, seq())
+	if err != nil || len(res.Events) != 0 || p.State.HP != 30 {
+		t.Fatalf("belum jatuh tempo: %v %+v hp=%d", err, res, p.State.HP)
+	}
+	res, _ = b.Sync(p, 1000, seq(20))
+	if len(res.Events) != 1 || p.State.HP != 24 || b.NextEnemyMs != 1000+EnemyIntervalMs {
+		t.Errorf("musuh harus menyerang sendiri: %+v hp=%d next=%d", res.Events, p.State.HP, b.NextEnemyMs)
+	}
+}
+
+func TestCatchUpIsCapped(t *testing.T) {
+	// App ditutup lama: tidak boleh menumpuk puluhan serangan.
+	p := newPlayer()
+	b := battleVs("tikus_sawah", 10)
+	res, _ := b.Sync(p, 10*60*1000, RandomSource{})
+	if n := len(res.Events); n > maxCatchUpHits+1 {
+		t.Errorf("serangan susulan terlalu banyak: %d", n)
+	}
+}
+
+func TestLegacyBattleGetsSchedule(t *testing.T) {
+	p := newPlayer()
+	b := &Battle{EnemyID: "tikus_sawah", EnemyName: "Tikus", EnemyHP: 10, EnemyMaxHP: 10, Round: 1}
+	res, err := b.Sync(p, 5000, seq())
+	if err != nil || len(res.Events) != 0 || b.NextEnemyMs != 5000+FirstHitDelayMs {
+		t.Errorf("pertarungan lama harus dijadwalkan: %v %+v next=%d", err, res, b.NextEnemyMs)
+	}
+}
+
+func TestDeathDuringSync(t *testing.T) {
+	p := newPlayer()
+	p.State.HP = 1
+	b := battleVs("babi_hutan", 34)
+	res, _ := b.Sync(p, 1000, seq(20))
+	if res.Status != StatusLost || p.State.Map != SpawnMap {
+		t.Errorf("harus kalah dan pulang: %+v", res)
 	}
 }
 
@@ -110,7 +255,7 @@ func TestPotion(t *testing.T) {
 	p := newPlayer()
 	p.State.HP = 10
 	b := battleVs("tikus_sawah", 10)
-	if _, err := b.Act(p, ActionPotion, seq(20)); err != nil {
+	if _, err := act(b, p, ActionPotion, seq(20)); err != nil {
 		t.Fatal(err)
 	}
 	if p.State.HP != 24 { // 10 + 15 - 1 serangan tikus
@@ -124,7 +269,7 @@ func TestPotion(t *testing.T) {
 func TestPotionRejected(t *testing.T) {
 	p := newPlayer() // HP penuh
 	b := battleVs("tikus_sawah", 10)
-	if _, err := b.Act(p, ActionPotion, seq()); !errors.Is(err, ErrFullHP) {
+	if _, err := act(b, p, ActionPotion, seq()); !errors.Is(err, ErrFullHP) {
 		t.Errorf("HP penuh harus ErrFullHP, dapat %v", err)
 	}
 	if p.State.Inventory[0].Qty != 2 {
@@ -133,7 +278,7 @@ func TestPotionRejected(t *testing.T) {
 
 	p.State.HP = 5
 	p.State.Inventory = []Item{}
-	if _, err := b.Act(p, ActionPotion, seq()); !errors.Is(err, ErrNoPotion) {
+	if _, err := act(b, p, ActionPotion, seq()); !errors.Is(err, ErrNoPotion) {
 		t.Errorf("tanpa ramuan harus ErrNoPotion, dapat %v", err)
 	}
 }
@@ -141,12 +286,12 @@ func TestPotionRejected(t *testing.T) {
 func TestFlee(t *testing.T) {
 	p := newPlayer()
 	b := battleVs("tikus_sawah", 10)
-	res, _ := b.Act(p, ActionFlee, seq(0))
+	res, _ := act(b, p, ActionFlee, seq(0))
 	if res.Status != StatusFled || p.State.HP != 30 {
 		t.Errorf("kabur berhasil: status=%s hp=%d", res.Status, p.State.HP)
 	}
 
-	res, _ = b.Act(p, ActionFlee, seq(99, 20))
+	res, _ = act(b, p, ActionFlee, seq(99, 20))
 	if res.Status != StatusOngoing || p.State.HP != 29 {
 		t.Errorf("kabur gagal harus kena serang: status=%s hp=%d", res.Status, p.State.HP)
 	}
@@ -157,7 +302,7 @@ func TestLoseRespawns(t *testing.T) {
 	p.State.HP, p.State.Gold = 1, 11
 	p.State.Map, p.State.X, p.State.Y = "peta_lain", 9, 9
 	b := battleVs("tikus_sawah", 10)
-	res, _ := b.Act(p, ActionFlee, seq(99, 20))
+	res, _ := act(b, p, ActionFlee, seq(99, 20))
 	if res.Status != StatusLost {
 		t.Fatalf("harus kalah: %+v", res)
 	}
@@ -169,7 +314,7 @@ func TestLoseRespawns(t *testing.T) {
 
 func TestBadAction(t *testing.T) {
 	b := battleVs("tikus_sawah", 10)
-	if _, err := b.Act(newPlayer(), "teleport", seq()); !errors.Is(err, ErrBadAction) {
+	if _, err := act(b, newPlayer(), "teleport", seq()); !errors.Is(err, ErrBadAction) {
 		t.Errorf("harus ErrBadAction, dapat %v", err)
 	}
 }
@@ -261,7 +406,7 @@ func TestBalanceFirstFightsAreWinnable(t *testing.T) {
 		p := newPlayer()
 		b := battleVs(id, mustEnemy(id).HP)
 		for round := 0; round < 50 && p.State.HP > 0; round++ {
-			res, err := b.Act(p, ActionAttack, RandomSource{})
+			res, err := act(b, p, ActionAttack, RandomSource{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -296,16 +441,16 @@ func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
 	}
 
 	p := newPlayer()
-	if _, err := StartBossBattle(p); !errors.Is(err, ErrNoBoss) {
+	if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrNoBoss) {
 		t.Errorf("jauh dari bos harus ErrNoBoss, dapat %v", err)
 	}
 	p.State.Map, p.State.X, p.State.Y = MapGuaBatu, 7, 14
-	b, err := StartBossBattle(p)
+	b, err := StartBossBattle(p, 0)
 	if err != nil || b.EnemyID != "raja_goblin" || b.EnemyHP != 120 {
 		t.Fatalf("bos: %+v %v", b, err)
 	}
 	p.State.X = 8
-	if _, err := StartBossBattle(p); !errors.Is(err, ErrNoBoss) {
+	if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrNoBoss) {
 		t.Error("bergeser satu petak harus ErrNoBoss")
 	}
 }

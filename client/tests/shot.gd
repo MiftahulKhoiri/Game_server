@@ -56,6 +56,19 @@ func _battle() -> void:
 	var scene: Node = load("res://scenes/battle.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(1.2).timeout
+	# Tanpa server: isi keadaan pertarungan secara manual supaya tombol dan penunjuk tampak.
+	var now := Time.get_ticks_msec()
+	scene._lines.clear()
+	var demo: Array[String] = ["Kamu menyerang: -6 HP.", "Tebasan Kuat! -13 HP.", "Musuh menyerang: -3 HP."]
+	scene._add_lines(demo)
+	scene._ready_at["skill1"] = now + 3200
+	scene._ready_at["skill2"] = now + 9000
+	scene._ready_at["attack"] = now + 400
+	scene._enemy_at = now + 800
+	scene._last_sync = now + 100000
+	scene._pop("Tebasan! -13", Color("ff9a3c"), false, 44)
+	scene._pop("-3", Color("ff5c5c"), true, 44)
+	await get_tree().create_timer(0.25).timeout
 	var img := get_viewport().get_texture().get_image()
 	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
@@ -86,6 +99,10 @@ func _ready() -> void:
 		scene._cam_yaw = deg_to_rad(float(OS.get_environment("SHOT_YAW")))
 	if OS.get_environment("SHOT_PITCH") != "":
 		scene._cam_pitch = deg_to_rad(float(OS.get_environment("SHOT_PITCH")))
+	if OS.get_environment("SHOT_MENU") != "":
+		scene._toggle_menu()
+		if OS.get_environment("SHOT_MENU") == "pengaturan":
+			scene._menu._show_page(false)
 	await get_tree().create_timer(0.8).timeout
 	var img := get_viewport().get_texture().get_image()
 	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)

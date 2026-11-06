@@ -140,7 +140,9 @@ func _process(delta: float) -> void:
 
 func _drive_animation_player() -> void:
 	var want := "idle"
-	if _attack > 0.0 and _anim_names.has("attack"):
+	if _hurt > 0.0 and _anim_names.has("hurt"):
+		want = "hurt"
+	elif _attack > 0.0 and _anim_names.has("attack"):
 		want = "attack"
 	elif moving and _anim_names.has("walk"):
 		want = "walk"

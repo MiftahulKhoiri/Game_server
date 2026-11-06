@@ -81,7 +81,7 @@ func TestEquipmentChangesBattleDamage(t *testing.T) {
 			_ = p.State.Equip("pedang_baja")
 		}
 		b := battleVs("babi_hutan", 34)
-		if _, err := b.Act(p, ActionAttack, seq(20, 99, 20)); err != nil {
+		if _, err := act(b, p, ActionAttack, seq(20, 99, 20)); err != nil {
 			t.Fatal(err)
 		}
 		return b.EnemyHP

@@ -8,6 +8,7 @@ const Movement = preload("res://scripts/movement.gd")
 const WorldBuild = preload("res://scripts/world_build.gd")
 const Models = preload("res://scripts/models.gd")
 const Joystick = preload("res://scripts/joystick.gd")
+const GameMenu = preload("res://scripts/game_menu.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -19,6 +20,7 @@ const BATTLE_SCENE := "res://scenes/battle.tscn"
 const SHOP_SCENE := "res://scenes/shop.tscn"
 const INVENTORY_SCENE := "res://scenes/inventory.tscn"
 const DIALOG_SCENE := "res://scenes/dialog.tscn"
+const LOGIN_SCENE := "res://scenes/login.tscn"
 
 var _map_id := Maps.DEFAULT_MAP
 var _pos := Vector2(5.5, 5.5)  # (x, z) di dunia
@@ -46,6 +48,7 @@ var _status: Label
 var _toast: Label
 var _talk_button: Button
 var _buttons: Array[Button] = []
+var _menu: CanvasLayer
 
 
 func _ready() -> void:
@@ -56,7 +59,10 @@ func _ready() -> void:
 	add_child(_env)
 	_sun = DirectionalLight3D.new()
 	_sun.rotation = Vector3(deg_to_rad(-52), deg_to_rad(-35), 0)
+	_sun.shadow_bias = 0.04
+	_sun.shadow_normal_bias = 1.2
 	add_child(_sun)
+	_apply_quality()
 	_camera = Camera3D.new()
 	_camera.fov = 52.0
 	_camera.far = 90.0
@@ -104,6 +110,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		if _unsaved and not _saving:
 			_save()
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_toggle_menu()
 
 
 # --- peta ---
@@ -138,6 +146,7 @@ func _load_map(map_id: String) -> void:
 		_npc_root.add_child(label)
 	_env.environment = WorldBuild.environment_for(map_id)
 	_sun.light_energy = WorldBuild.light_energy_for(map_id)
+	_sun.light_color = WorldBuild.light_color_for(map_id)
 
 
 func _add_shadow(parent: Node3D, radius: float) -> void:
@@ -283,6 +292,9 @@ func _input_vector() -> Vector2:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_ESCAPE:
+		_toggle_menu()
+		return
 	if _locked:
 		return
 	# Geser layar (di luar joystick dan tombol) untuk memutar kamera.
@@ -304,8 +316,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _rotate_camera(rel: Vector2) -> void:
-	_cam_yaw -= rel.x * 0.008
-	_cam_pitch = clampf(_cam_pitch + rel.y * 0.004, 0.3, 1.15)
+	_cam_yaw -= rel.x * 0.008 * Session.cam_sens
+	_cam_pitch = clampf(_cam_pitch + rel.y * 0.004 * Session.cam_sens, 0.3, 1.15)
 
 
 func _on_ui(p: Vector2) -> bool:
@@ -479,6 +491,24 @@ func _build_ui() -> void:
 	_add_button(layer, "Toko", 2, _open_screen.bind(SHOP_SCENE)).disabled = Session.offline
 	_update_talk_button()
 
+	var menu_btn := Button.new()
+	menu_btn.text = "Menu"
+	menu_btn.position = Vector2(560, 16)
+	menu_btn.size = Vector2(144, 72)
+	menu_btn.focus_mode = Control.FOCUS_NONE
+	menu_btn.add_theme_font_size_override("font_size", 30)
+	menu_btn.pressed.connect(_toggle_menu)
+	layer.add_child(menu_btn)
+	_buttons.append(menu_btn)
+
+	_menu = GameMenu.new()
+	add_child(_menu)
+	_menu.resumed.connect(_close_menu)
+	_menu.go_home.connect(_leave_to_home.bind(false))
+	_menu.logout.connect(_leave_to_home.bind(true))
+	_menu.quit_game.connect(_quit_game)
+	_menu.settings_changed.connect(_apply_quality)
+
 
 func _add_button(layer: CanvasLayer, text: String, slot: int, callback: Callable) -> Button:
 	var b := Button.new()
@@ -516,3 +546,51 @@ func _show_toast(text: String) -> void:
 	var tw := create_tween()
 	tw.tween_interval(1.2)
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.8)
+
+
+# --- menu dalam game ---
+
+func _toggle_menu() -> void:
+	if _menu == null:
+		return
+	if _menu.is_open:
+		_menu.back()
+	elif not _locked:
+		_locked = true
+		_menu.open()
+
+
+func _close_menu() -> void:
+	_menu.close()
+	_locked = false
+
+
+## Simpan posisi dulu, lalu kembali ke Beranda (dan bila `forget`, keluar dari akun di HP ini).
+func _leave_to_home(forget: bool) -> void:
+	_menu.close()
+	_locked = true
+	await _flush_save()
+	if forget and not Session.offline:
+		await Api.logout()  # gagal terhubung pun tidak masalah: token lokal tetap dihapus
+		Api.token = ""
+		Session.saved_name = ""
+		Session.player = {}
+		Session.save_config()
+	get_tree().change_scene_to_file(LOGIN_SCENE)
+
+
+func _quit_game() -> void:
+	_menu.close()
+	_locked = true
+	await _flush_save()
+	get_tree().quit()
+
+
+## Kualitas grafis dari pengaturan: bayangan matahari dan tepi halus (MSAA).
+func _apply_quality() -> void:
+	var q: int = Session.quality
+	_sun.shadow_enabled = q >= 1
+	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if q == 1 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	_sun.directional_shadow_max_distance = 16.0 if q == 1 else 26.0
+	RenderingServer.directional_shadow_atlas_set_size(1024 if q == 1 else 2048, true)
+	get_viewport().msaa_3d = Viewport.MSAA_2X if q >= 2 else Viewport.MSAA_DISABLED

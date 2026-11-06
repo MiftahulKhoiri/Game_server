@@ -215,13 +215,18 @@ func _run() -> void:
 		_check(scene._enemy_name.text == str(Session.battle.enemy_name), "layar pertarungan menampilkan nama musuh")
 		_check(scene._enemy_rig != null and scene._hero_rig != null, "arena 3D memuat model ksatria dan musuh")
 		_check((scene._buttons["potion"] as Button).disabled, "ramuan nonaktif saat HP penuh")
-		var guard := 0
-		while not scene._finished and guard < 60:
-			guard += 1
+		# Real-time: tombol yang masih cooldown diabaikan, musuh menyerang sendiri lewat sinkron.
+		var t0 := Time.get_ticks_msec()
+		var used_skill := false
+		while not scene._finished and Time.get_ticks_msec() - t0 < 60000:
+			if not used_skill and scene._cooldown_left("skill1") == 0:
+				scene._on_action("skill1")
+				used_skill = true
 			scene._on_action("attack")
-			while scene._busy:
-				await process_frame
-		_check(scene._finished, "pertarungan selesai (%s) dalam %d aksi" % [scene._result, guard])
+			await process_frame
+		_check(used_skill, "Skill 1 bisa dipakai")
+		_check((scene._buttons["skill2"] as Button) != null and (scene._buttons["defend"] as Button) != null, "tombol Bertahan dan Skill 2 ada")
+		_check(scene._finished, "pertarungan real-time selesai (%s) dalam %d ms" % [scene._result, Time.get_ticks_msec() - t0])
 		_check(Session.battle.is_empty(), "sesi tidak lagi menyimpan pertarungan")
 		_check(scene._btn_continue.visible, "tombol lanjut muncul")
 		var after: Dictionary = await Api.get_me()
@@ -383,10 +388,13 @@ func _run() -> void:
 	var pb: Dictionary = await Api.battle_start()
 	_check(pb.ok and pb.data.battle.enemy_id == "goblin" or pb.ok and pb.data.battle.enemy_id == "serigala_hutan", "musuh di Perbatasan berbeda dari desa (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
 	if pb.ok:
-		for i in 12:  # kabur dari pertarungan acak (peluang 60%) supaya tidak menggantung
+		for i in 40:  # kabur dari pertarungan acak (peluang 60%, cooldown 3 d) supaya tidak menggantung
 			var fl: Dictionary = await Api.battle_action("flee")
-			if not fl.ok or fl.data.status != "ongoing":
+			if fl.ok and fl.data.status != "ongoing":
 				break
+			await create_timer(1.0).timeout
+		var still: Dictionary = await Api.battle_get()
+		_check(not still.ok, "pertarungan acak selesai sebelum uji bos")
 	var away: Dictionary = await Api.battle_start(true)
 	_check(not away.ok and away.status == 422, "bos tidak bisa dipanggil jauh dari singgasana")
 	var cur: Dictionary = (await Api.get_me()).data
@@ -484,6 +492,23 @@ func _run() -> void:
 	w3._pos = Vector2(7.5, 5.5)
 	w3._sync_state()
 	_check(Session.player.state.x == 7 and absf(float(Session.player.state.fx) - 7.5) < 0.001, "posisi 3D tersalin ke data pemain (petak 7, fx 7.5)")
+	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")
+	w3._toggle_menu()
+	_check(w3._menu.is_open and w3._locked, "tombol Menu membuka menu dan menahan gerak")
+	w3._menu._show_page(false)
+	_check(w3._menu._settings.visible and not w3._menu._main.visible, "halaman Pengaturan terbuka dari menu")
+	w3._toggle_menu()  # tombol kembali: dari Pengaturan balik ke menu utama
+	_check(w3._menu.is_open and w3._menu._main.visible, "tombol kembali dari Pengaturan ke menu utama")
+	Session.quality = 2
+	w3._apply_quality()
+	_check(w3._sun.shadow_enabled, "kualitas Tinggi menyalakan bayangan")
+	Session.quality = 0
+	w3._apply_quality()
+	_check(not w3._sun.shadow_enabled, "kualitas Hemat mematikan bayangan")
+	Session.quality = 1
+	w3._apply_quality()
+	w3._toggle_menu()  # dari menu utama: menutup
+	_check(not w3._menu.is_open and not w3._locked, "menu bisa ditutup dan gerak berlanjut")
 	w3.queue_free()
 	await process_frame
 	Session.offline = false

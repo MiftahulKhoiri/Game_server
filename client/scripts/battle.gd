@@ -1,32 +1,59 @@
 extends Control
-## Layar pertarungan bergiliran. Semua hasil dihitung SERVER; layar ini hanya
-## mengirim aksi pemain dan menampilkan jawaban server (docs/API.md).
+## Layar pertarungan REAL-TIME dengan cooldown (seperti game konsol).
+## Semua hasil dihitung SERVER (docs/API.md): musuh menyerang sendiri tiap beberapa detik,
+## pemain memilih Serang / Bertahan / Skill 1 / Skill 2 / Ramuan / Kabur. Layar ini hanya
+## mengirim aksi, menghitung mundur cooldown dari waktu relatif server, dan menganimasikan
+## kejadian (events) dari jawaban server.
 ## Arena 3D: ksatria dan musuh (model dari scripts/models.gd) saling berhadapan.
 
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const Models = preload("res://scripts/models.gd")
 const POTION_ID := "ramuan"
-const MAX_LOG_LINES := 6
+const MAX_LOG_LINES := 4
 const SAFE_STEPS_AFTER_BATTLE := 3
+const SYNC_LATE_MS := 80      # lewat sekian ms dari jadwal serangan musuh -> minta sinkron
+const POLL_MS := 4000         # sinkron berkala bila tidak ada kabar
+const EVENT_STAGGER := 0.32   # jeda animasi antar kejadian dalam satu jawaban
+const READY_SLACK_MS := 150   # toleransi tombol ditekan sedikit sebelum cooldown habis
+
+## Tombol utama: aksi -> [judul, subjudul].
+const MAIN_ACTIONS := [
+	["attack", "Serang", ""],
+	["defend", "Bertahan", ""],
+	["skill1", "Skill 1", "Tebasan Kuat"],
+	["skill2", "Skill 2", "Perisai Cahaya"],
+]
 
 var _enemy_id := ""
 var _hero_rig: Node3D
 var _enemy_rig: Node3D
-var _last_enemy_hp := -1
-var _last_hero_hp := -1
 var _enemy_name: Label
 var _enemy_bar: ProgressBar
+var _telegraph: ProgressBar
 var _enemy_view: SubViewportContainer
+var _fx: Control
 var _log: Label
 var _player_label: Label
 var _player_bar: ProgressBar
-var _grid: GridContainer
 var _buttons: Dictionary = {}  # aksi -> Button
+var _controls: Control
 var _btn_continue: Button
 var _lines: Array[String] = []
-var _busy := false
+
+var _busy := false            # ada permintaan ke server yang belum dijawab
+var _pending := ""            # satu aksi yang menunggu giliran kirim
 var _finished := false
 var _result := ""
+
+# Waktu (Time.get_ticks_msec) tempat kejadian dijadwalkan; diturunkan dari selisih relatif server.
+var _enemy_at := 0
+var _enemy_iv := 2000
+var _ready_at: Dictionary = {}
+var _cd_max: Dictionary = {}
+var _guard_until := 0
+var _shield_until := 0
+var _last_sync := 0
+var _next_ask := 0
 
 
 func _ready() -> void:
@@ -36,25 +63,57 @@ func _ready() -> void:
 		return
 	_enemy_id = str(Session.battle.get("enemy_id", ""))
 	_build_ui()
+	_read_view(Session.battle, Time.get_ticks_msec())
 	_add_lines(["%s muncul!" % str(Session.battle.get("enemy_name", "Musuh"))])
 	_refresh()
+	_ask("")  # selaraskan jam dengan server sebelum musuh menyerang
 
 
-# --- aksi ---
+# --- komunikasi dengan server ---
 
 func _on_action(action: String) -> void:
-	if _busy or _finished:
+	if _finished:
 		return
+	if _cooldown_left(action) > READY_SLACK_MS:
+		return  # belum siap; tombol sudah tampak mati
+	if action == "potion" and (_potion_count() <= 0 or int(Session.player.state.hp) >= int(Session.player.state.max_hp)):
+		return
+	if _busy:
+		_pending = action
+		return
+	# Cooldown langsung terasa; jawaban server menyetel ulang nilai persisnya.
+	_ready_at[action] = Time.get_ticks_msec() + int(_cd_max.get(action, 1000))
+	_ask(action)
+
+
+## Kirim aksi (atau sinkron bila action kosong) dan terapkan jawabannya.
+func _ask(action: String) -> void:
 	_busy = true
-	_refresh()
-	_last_enemy_hp = int(Session.battle.get("enemy_hp", -1))
-	_last_hero_hp = int(Session.player.state.hp)
-	if action == "attack":
-		_play(_hero_rig, "play_attack")
-	var res: Dictionary = await Api.battle_action(action)
+	_next_ask = Time.get_ticks_msec() + 300
+	var res: Dictionary
+	if action == "":
+		res = await Api.battle_get()
+	else:
+		res = await Api.battle_action(action)
+	if not is_inside_tree():
+		return
 	_busy = false
+	_apply(res)
+	if _pending != "" and not _finished:
+		var next := _pending
+		_pending = ""
+		_on_action(next)
+
+
+func _apply(res: Dictionary) -> void:
+	var now := Time.get_ticks_msec()
+	_last_sync = now
 	if not res.ok:
-		_add_lines([str(res.error)])
+		var msg := str(res.error)
+		# "belum siap" hanya berarti jam kita meleset sedikit: cukup selaraskan lagi.
+		if msg.find("belum siap") < 0:
+			_add_lines([msg])
+		_next_ask = now + 150
 		_refresh()
 		return
 
@@ -64,42 +123,135 @@ func _on_action(action: String) -> void:
 	Session.merge_server_player(data.player, status == "lost")
 	var next_battle: Variant = data.get("battle")
 	Session.battle = next_battle if next_battle is Dictionary else {}
+	if not Session.battle.is_empty():
+		_read_view(Session.battle, now)
+
 	var lines: Array[String] = []
 	for line in data.get("log", []):
 		lines.append(str(line))
 	_add_lines(lines)
-	_animate_result(status)
+	_play_events(data.get("events", []))
 	if status != "ongoing":
 		_finish(status)
 	_refresh()
 
+
+## Ubah tampilan relatif server menjadi jadwal di jam lokal.
+func _read_view(v: Dictionary, now: int) -> void:
+	_enemy_at = now + int(v.get("enemy_next_ms", 2000))
+	_enemy_iv = maxi(1, int(v.get("enemy_interval_ms", 2000)))
+	var left: Dictionary = v.get("cooldowns", {})
+	for a: String in left:
+		_ready_at[a] = now + int(left[a])
+	_cd_max = v.get("cooldown_max", _cd_max)
+	_guard_until = now + int(v.get("guard_ms", 0))
+	_shield_until = now + int(v.get("shield_ms", 0))
+
+
+func _cooldown_left(action: String) -> int:
+	return maxi(0, int(_ready_at.get(action, 0)) - Time.get_ticks_msec())
+
+
+func _process(_delta: float) -> void:
+	if _finished or _enemy_bar == null:
+		return
+	var now := Time.get_ticks_msec()
+	var until_hit := _enemy_at - now
+	_telegraph.value = clampf(1.0 - float(until_hit) / float(_enemy_iv), 0.0, 1.0)
+	# Saat musuh jatuh tempo menyerang (atau lama tak ada kabar): tanya server.
+	if not _busy and now >= _next_ask and (until_hit < -SYNC_LATE_MS or now - _last_sync > POLL_MS):
+		_ask("")
+	_update_buttons(now)
+
+
+# --- animasi ---
 
 func _play(rig: Node3D, method: String) -> void:
 	if rig != null and is_instance_valid(rig) and rig.has_method(method):
 		rig.call(method)
 
 
-## Animasi mengikuti hasil dari server: siapa yang terkena, siapa yang menyerang.
-func _animate_result(status: String) -> void:
-	var enemy_hp := int(Session.battle.get("enemy_hp", 0)) if status == "ongoing" else 0
-	if _last_enemy_hp >= 0 and enemy_hp < _last_enemy_hp:
-		_play(_enemy_rig, "play_hurt")
-	if int(Session.player.state.hp) < _last_hero_hp:
+func _play_events(events: Array) -> void:
+	for i in events.size():
+		if i == 0:
+			_play_event(events[i])
+		else:
+			get_tree().create_timer(EVENT_STAGGER * i).timeout.connect(_play_event.bind(events[i]))
+
+
+## Satu kejadian dari server: siapa menyerang, siapa kena, berapa banyak.
+func _play_event(e: Dictionary) -> void:
+	if not is_inside_tree():
+		return
+	var kind := str(e.get("kind", ""))
+	var dmg := int(e.get("dmg", 0))
+	var heal := int(e.get("heal", 0))
+	if str(e.get("who", "")) == "player":
+		match kind:
+			"attack", "crit", "skill1":
+				_play(_hero_rig, "play_attack")
+				get_tree().create_timer(0.18).timeout.connect(func() -> void: _play(_enemy_rig, "play_hurt"))
+				if kind == "skill1":
+					_pop("Tebasan! -%d" % dmg, Color("ff9a3c"), false, 44)
+				elif kind == "crit":
+					_pop("KRITIS -%d" % dmg, Color("ffd23c"), false, 44)
+				else:
+					_pop("-%d" % dmg, Color("ffffff"), false, 38)
+			"guard":
+				_pop("Bertahan", Color("6ec6ff"), true, 36)
+			"skill2":
+				_pop("+%d HP" % heal, Color("7be06b"), true, 40)
+			"potion":
+				_pop("+%d HP" % heal, Color("7be06b"), true, 38)
+	else:
 		_play(_enemy_rig, "play_attack")
-		_play(_hero_rig, "play_hurt")
-	if status == "won":
-		_play(_enemy_rig, "play_die")
-	elif status == "lost":
-		_play(_hero_rig, "play_die")
+		match kind:
+			"perfect":
+				_pop("TANGKIS!", Color("6ef0ff"), true, 48)
+			"guard":
+				_play(_hero_rig, "play_hurt")
+				_pop("Ditahan -%d" % dmg, Color("6ec6ff"), true, 38)
+			"shield":
+				_play(_hero_rig, "play_hurt")
+				_pop("Perisai -%d" % dmg, Color("ffe08a"), true, 38)
+			_:
+				_play(_hero_rig, "play_hurt")
+				_pop("-%d" % dmg, Color("ff5c5c"), true, 44)
+
+
+## Teks melayang di atas arena. hero=true di sisi ksatria (kiri), selain itu di sisi musuh (kanan).
+func _pop(text: String, color: Color, hero: bool, size: int) -> void:
+	if _enemy_view == null:
+		return
+	var label := _make_label(text, size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.add_theme_constant_override("outline_size", 8)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.add_child(label)
+	var area := Rect2(_enemy_view.global_position, _enemy_view.size)
+	var x := area.position.x + area.size.x * (0.14 if hero else 0.58)
+	var y := area.position.y + area.size.y * 0.22
+	label.global_position = Vector2(x, y)
+	var tween := label.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "global_position:y", y - 90.0, 1.0)
+	tween.tween_property(label, "modulate:a", 0.0, 1.0).set_delay(0.45)
+	tween.chain().tween_callback(label.queue_free)
 
 
 func _finish(status: String) -> void:
 	_finished = true
 	_result = status
 	Session.safe_steps = SAFE_STEPS_AFTER_BATTLE
-	_grid.visible = false
+	_controls.visible = false
+	_telegraph.visible = false
 	_btn_continue.visible = true
 	_btn_continue.text = "Kembali ke desa" if status == "lost" else "Lanjut"
+	if status == "won":
+		_play(_enemy_rig, "play_die")
+	elif status == "lost":
+		_play(_hero_rig, "play_die")
 
 
 func _on_continue() -> void:
@@ -131,15 +283,34 @@ func _refresh() -> void:
 	]
 	_player_bar.max_value = int(st.max_hp)
 	_player_bar.value = int(st.hp)
+	_update_buttons(Time.get_ticks_msec())
 
+
+func _update_buttons(now: int) -> void:
+	if _buttons.is_empty():
+		return
+	for entry: Array in MAIN_ACTIONS:
+		var action := str(entry[0])
+		var button := _buttons[action] as Button
+		var left := _cooldown_left(action)
+		var sub := str(entry[2])
+		if left > READY_SLACK_MS:
+			sub = "%.1f d" % (left / 1000.0)
+		elif action == "defend" and now < _guard_until:
+			sub = "Menahan!"
+		elif action == "skill2" and now < _shield_until:
+			sub = "Perisai aktif"
+		button.text = str(entry[1]) if sub == "" else "%s\n%s" % [entry[1], sub]
+		button.disabled = left > READY_SLACK_MS
 	var potions := _potion_count()
-	var locked := _busy or _finished
-	(_buttons["attack"] as Button).disabled = locked
-	(_buttons["defend"] as Button).disabled = locked
-	(_buttons["flee"] as Button).disabled = locked
 	var potion_button := _buttons["potion"] as Button
-	potion_button.text = "Ramuan (%d)" % potions
-	potion_button.disabled = locked or potions <= 0 or int(st.hp) >= int(st.max_hp)
+	var potion_left := _cooldown_left("potion")
+	potion_button.text = "Ramuan (%d)" % potions if potion_left <= READY_SLACK_MS else "Ramuan %.1f d" % (potion_left / 1000.0)
+	potion_button.disabled = potions <= 0 or int(Session.player.state.hp) >= int(Session.player.state.max_hp) or potion_left > READY_SLACK_MS
+	var flee_button := _buttons["flee"] as Button
+	var flee_left := _cooldown_left("flee")
+	flee_button.text = "Kabur" if flee_left <= READY_SLACK_MS else "Kabur %.1f d" % (flee_left / 1000.0)
+	flee_button.disabled = flee_left > READY_SLACK_MS
 
 
 func _potion_count() -> int:
@@ -157,26 +328,32 @@ func _build_ui() -> void:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 36)
+		margin.add_theme_constant_override("margin_" + side, 28)
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
+	box.add_theme_constant_override("separation", 10)
 	margin.add_child(box)
 
-	_enemy_name = _make_label("", 40)
+	_enemy_name = _make_label("", 38)
 	_enemy_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_enemy_name)
 
 	_enemy_bar = _make_bar(Color("d9534f"))
 	box.add_child(_enemy_bar)
 
+	# Penunjuk waktu serangan musuh berikutnya: penuh = musuh menyerang.
+	_telegraph = _make_bar(Color("f0a030"))
+	_telegraph.custom_minimum_size = Vector2(0, 16)
+	_telegraph.max_value = 1.0
+	box.add_child(_telegraph)
+
 	_enemy_view = _build_arena()
 	box.add_child(_enemy_view)
 
-	_log = _make_label("", 28)
-	_log.custom_minimum_size = Vector2(0, 230)
+	_log = _make_label("", 26)
+	_log.custom_minimum_size = Vector2(0, 120)
 	_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_log)
 
@@ -186,32 +363,53 @@ func _build_ui() -> void:
 	_player_bar = _make_bar(Color("4c9a4c"))
 	box.add_child(_player_bar)
 
-	_grid = GridContainer.new()
-	_grid.columns = 2
-	_grid.add_theme_constant_override("h_separation", 16)
-	_grid.add_theme_constant_override("v_separation", 16)
-	box.add_child(_grid)
-	for entry: Array in [["attack", "Serang"], ["defend", "Bertahan"], ["potion", "Ramuan"], ["flee", "Kabur"]]:
-		var button := _make_button(str(entry[1]))
+	_controls = VBoxContainer.new()
+	_controls.add_theme_constant_override("separation", 14)
+	box.add_child(_controls)
+
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	_controls.add_child(grid)
+	for entry: Array in MAIN_ACTIONS:
+		var button := _make_button(str(entry[1]), 32, 118)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_on_action.bind(str(entry[0])))
-		_grid.add_child(button)
+		grid.add_child(button)
 		_buttons[str(entry[0])] = button
 
-	_btn_continue = _make_button("Lanjut")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	_controls.add_child(row)
+	for entry: Array in [["potion", "Ramuan"], ["flee", "Kabur"]]:
+		var small := _make_button(str(entry[1]), 28, 84)
+		small.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		small.pressed.connect(_on_action.bind(str(entry[0])))
+		row.add_child(small)
+		_buttons[str(entry[0])] = small
+
+	_btn_continue = _make_button("Lanjut", 34, 110)
 	_btn_continue.visible = false
 	_btn_continue.pressed.connect(_on_continue)
 	box.add_child(_btn_continue)
+
+	# Lapisan teks melayang (angka kerusakan) di atas segalanya.
+	_fx = Control.new()
+	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fx)
+	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## Arena 3D di dalam SubViewport: ksatria di kiri, musuh di kanan.
 func _build_arena() -> SubViewportContainer:
 	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(0, 420)
+	holder.custom_minimum_size = Vector2(0, 360)
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	holder.stretch = true
 	var vp := SubViewport.new()
 	vp.own_world_3d = true
-	vp.size = Vector2i(648, 420)
+	vp.size = Vector2i(664, 360)
 	vp.msaa_3d = Viewport.MSAA_2X
 	holder.add_child(vp)
 
@@ -269,7 +467,7 @@ func _make_label(text: String, font_size: int) -> Label:
 
 func _make_bar(fill: Color) -> ProgressBar:
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(0, 34)
+	bar.custom_minimum_size = Vector2(0, 30)
 	bar.show_percentage = false
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill
@@ -277,9 +475,9 @@ func _make_bar(fill: Color) -> ProgressBar:
 	return bar
 
 
-func _make_button(text: String) -> Button:
+func _make_button(text: String, font_size: int, height: int) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.add_theme_font_size_override("font_size", 34)
-	button.custom_minimum_size = Vector2(0, 110)
+	button.add_theme_font_size_override("font_size", font_size)
+	button.custom_minimum_size = Vector2(0, height)
 	return button

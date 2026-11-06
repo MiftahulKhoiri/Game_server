@@ -12,7 +12,7 @@
 ## Keputusan gameplay
 
 - Gerak: **per kotak (grid)**, tampak atas (top-down).
-- Pertarungan: **bergiliran (turn-based)**.
+- Pertarungan: **real-time dengan cooldown** (sejak v0.18.0; sebelumnya bergiliran): Serang, Bertahan (tangkis tepat waktu), Skill 1 Tebasan Kuat, Skill 2 Perisai Cahaya, Ramuan, Kabur. Musuh menyerang sendiri tiap 2 d.
 
 Alasannya hemat tenaga: gambar lebih sedikit (tanpa animasi banyak arah), logika
 server mudah diuji, dan nyaman di layar sentuh.

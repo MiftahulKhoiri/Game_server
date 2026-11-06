@@ -125,28 +125,44 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 
 ## Pertarungan (v0.3.0)
 
-Bergiliran dan sepenuhnya dihitung server. Satu pemain hanya punya satu
-pertarungan aktif; pertarungan tersimpan di database sehingga bisa dilanjutkan
-setelah aplikasi ditutup.
+Real-time dengan cooldown (sejak v0.18.0) dan sepenuhnya dihitung server. Musuh menyerang
+sendiri tiap beberapa detik tanpa menunggu pemain; pemain memakai aksi yang masing-masing punya
+cooldown. Satu pemain hanya punya satu pertarungan aktif; pertarungan tersimpan di database
+sehingga bisa dilanjutkan setelah aplikasi ditutup. Server "malas": serangan musuh yang jatuh
+tempo dihitung saat ada permintaan (aksi atau `GET /v1/battle`), jadi klien perlu menyapa
+server kira-kira saat `enemy_next_ms` habis. Bila klien lama tidak menyapa, serangan susulan
+dibatasi (maksimal 2) supaya pemain tidak mati saat aplikasi ditutup.
 
 ### `GET /v1/battle`  (login)
-Pertarungan yang sedang berjalan. `200` berisi respons pertarungan, `404` bila tidak ada.
+Pertarungan yang sedang berjalan sekaligus **sinkronisasi**: serangan musuh yang sudah jatuh
+tempo diselesaikan dan dilaporkan di `log`/`events`. `200` berisi respons pertarungan, `404`
+bila tidak ada. Pemain bisa kalah di sini (`status: "lost"`).
 
 ### `POST /v1/battle/start`  (login)
 Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana.
 Mulai melawan musuh acak sesuai level pemain dan peta tempat ia berada (peta terakhir yang disimpan). `201` berisi respons pertarungan,
-`409` bila sudah ada pertarungan aktif.
+`409` bila sudah ada pertarungan aktif. Musuh pertama menyerang 3 detik setelah mulai.
 
 ### `POST /v1/battle/action`  (login)
-Body: `{"action": "attack"}`. Aksi: `attack`, `defend` (kurangi separuh serangan
-musuh berikutnya), `potion` (pulihkan 15 HP), `flee` (peluang 60%).
-Setelah aksi pemain, musuh membalas dalam permintaan yang sama.
+Body: `{"action": "attack"}`. Aksi dan cooldown:
+
+| Aksi | Efek | Cooldown |
+|------|------|----------|
+| `attack` | serangan biasa (10% kritis) | 0,9 d |
+| `defend` | jendela bertahan 1,2 d: serangan musuh yang tiba di dalamnya dikurangi separuh; bila tiba ≤ 0,45 d setelah ditekan = **tangkisan sempurna** (0 kerusakan, serangan musuh berikutnya tertunda 0,6 d) | 1,8 d |
+| `skill1` | Tebasan Kuat: kerusakan 2,2x serangan | 5 d |
+| `skill2` | Perisai Cahaya: pulihkan 25% HP maks dan hanya menerima 30% kerusakan selama 3 d | 14 d |
+| `potion` | pulihkan 15 HP (memakai 1 ramuan) | 2,5 d |
+| `flee` | peluang 60% kabur | 3 d |
+
+Serangan musuh: tiap 2 d (bos 1,6 d). Server memberi kelonggaran jaringan 250 ms: aksi
+dianggap terjadi sedikit lebih awal.
 
 | Status | Arti |
 |--------|------|
 | 200 | Aksi diproses |
 | 404 | Tidak ada pertarungan |
-| 422 | Aksi tidak dikenal, tidak punya ramuan, atau HP sudah penuh |
+| 422 | Aksi tidak dikenal, belum siap (cooldown), tidak punya ramuan, atau HP sudah penuh |
 
 Respons:
 
@@ -154,12 +170,21 @@ Respons:
 {
   "status": "ongoing",
   "battle": {"enemy_id": "tikus_sawah", "enemy_name": "Tikus Sawah",
-             "enemy_hp": 4, "enemy_max_hp": 10, "round": 2},
-  "log": ["Kamu menyerang Tikus Sawah (6 damage).", "Tikus Sawah menggigit (2 damage)."],
+             "enemy_hp": 4, "enemy_max_hp": 10, "round": 2,
+             "enemy_next_ms": 1350, "enemy_interval_ms": 2000,
+             "cooldowns": {"attack": 900, "defend": 0, "skill1": 0, "skill2": 0, "potion": 0, "flee": 0},
+             "cooldown_max": {"attack": 900, "defend": 1800, "skill1": 5000, "skill2": 14000, "potion": 2500, "flee": 3000},
+             "guard_ms": 0, "shield_ms": 0},
+  "log": ["Kamu menyerang Tikus Sawah: -6 HP.", "Tikus Sawah menyerang: -2 HP."],
+  "events": [{"who": "player", "kind": "attack", "dmg": 6}, {"who": "enemy", "kind": "hit", "dmg": 2}],
   "rewards": null,
   "player": { "...": "objek pemain" }
 }
 ```
+
+Semua waktu di `battle` adalah **sisa milidetik relatif sekarang** (jam klien tidak perlu sama
+dengan jam server). `events` untuk animasi: `who` `player`/`enemy`; `kind` `attack`, `crit`,
+`skill1`, `skill2`, `guard`, `potion` (pemain) atau `hit`, `guard`, `shield`, `perfect` (musuh).
 
 `status`: `ongoing`, `won`, `lost`, atau `fled`. Saat selesai `battle` bernilai
 `null`. `rewards` (menang) berisi `xp`, `gold`, `drop`, `leveled_up`, `new_level`.

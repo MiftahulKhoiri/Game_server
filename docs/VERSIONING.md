@@ -114,6 +114,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
   halaman Masuk, Daftar, dan Pengaturan (alamat server, keluar akun, info pembaruan APK).
   Tidak mengubah API.
 
+- v0.18.0 mengubah pertarungan jadi real-time dengan cooldown (aksi `skill1`, `skill2`, respons
+  `battle` relatif-waktu, `events`). Klien lama (bergiliran) tidak cocok, jadi `DefaultMinClient`
+  dinaikkan ke 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
