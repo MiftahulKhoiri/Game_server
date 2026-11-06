@@ -9,6 +9,8 @@ const WorldBuild = preload("res://scripts/world_build.gd")
 const Models = preload("res://scripts/models.gd")
 const Joystick = preload("res://scripts/joystick.gd")
 const GameMenu = preload("res://scripts/game_menu.gd")
+const ProfileScreen = preload("res://scripts/profile.gd")
+const Heroes = preload("res://scripts/heroes.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -49,6 +51,7 @@ var _toast: Label
 var _talk_button: Button
 var _buttons: Array[Button] = []
 var _menu: CanvasLayer
+var _profile: CanvasLayer
 
 
 func _ready() -> void:
@@ -69,9 +72,7 @@ func _ready() -> void:
 	add_child(_camera)
 	_camera.current = true
 
-	_player = Models.create("ksatria")
-	add_child(_player)
-	_add_shadow(_player, 0.3)
+	_make_player()
 
 	var st: Dictionary = Session.player.state
 	var map_id := str(st.map)
@@ -508,6 +509,11 @@ func _build_ui() -> void:
 	_menu.logout.connect(_leave_to_home.bind(true))
 	_menu.quit_game.connect(_quit_game)
 	_menu.settings_changed.connect(_apply_quality)
+	_menu.profile_requested.connect(_open_profile)
+	_profile = ProfileScreen.new()
+	add_child(_profile)
+	_profile.closed.connect(_close_profile)
+	_profile.hero_changed.connect(_make_player)
 
 
 func _add_button(layer: CanvasLayer, text: String, slot: int, callback: Callable) -> Button:
@@ -553,11 +559,34 @@ func _show_toast(text: String) -> void:
 func _toggle_menu() -> void:
 	if _menu == null:
 		return
-	if _menu.is_open:
+	if _profile.is_open:
+		_close_profile()
+	elif _menu.is_open:
 		_menu.back()
 	elif not _locked:
 		_locked = true
 		_menu.open()
+
+
+## Model pemain di dunia mengikuti pahlawan yang dipilih (dibuat ulang saat pilihan berganti).
+func _make_player() -> void:
+	var old := _player
+	_player = Models.create(str(Heroes.current().id))
+	add_child(_player)
+	_add_shadow(_player, 0.3)
+	if old != null:
+		old.queue_free()
+		_apply_transform()
+
+
+func _open_profile() -> void:
+	_menu.close()
+	_profile.open()
+
+
+func _close_profile() -> void:
+	_profile.close()
+	_locked = false
 
 
 func _close_menu() -> void:

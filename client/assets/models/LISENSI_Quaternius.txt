@@ -1,0 +1,9 @@
+Model musuh dari Quaternius (https://quaternius.com), lisensi CC0 (domain publik):
+http://creativecommons.org/publicdomain/zero/1.0/
+
+Bebas dipakai untuk proyek pribadi, pendidikan, dan komersial; mencantumkan Quaternius tidak wajib.
+
+Dipakai di game ini (diubah ke GLB ringan dengan tools/blender/siapkan_musuh.py):
+- Farm Animals / Animal Pack Vol.2 / Animals Pack by @Quaternius: Anak Ayam (tikus_sawah), Kucing
+  (belalang_raksasa), Rubah (ular_sawah), Babi (babi_hutan), Serigala (serigala_hutan).
+- Ultimate Monsters: Orc (goblin), Iblis (golem_lava), Iblis Biru (raja_goblin), Creep (ogre_batu).

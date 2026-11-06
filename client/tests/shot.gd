@@ -51,6 +51,10 @@ func _gallery() -> void:
 
 func _battle() -> void:
 	Session.use_offline_player()
+	if OS.get_environment("SHOT_MAP") != "":
+		Session.player.state.map = OS.get_environment("SHOT_MAP")
+	if OS.get_environment("SHOT_HEROID") != "":
+		Session.player.state.hero = OS.get_environment("SHOT_HEROID")
 	var id := OS.get_environment("SHOT_ENEMY") if OS.get_environment("SHOT_ENEMY") != "" else "goblin"
 	Session.battle = {"enemy_id": id, "enemy_name": id, "enemy_hp": 20, "enemy_max_hp": 24}
 	var scene: Node = load("res://scenes/battle.tscn").instantiate()
@@ -75,7 +79,24 @@ func _battle() -> void:
 	get_tree().quit()
 
 
+func _profile() -> void:
+	Session.use_offline_player()
+	var scr: CanvasLayer = load("res://scripts/profile.gd").new()
+	get_tree().root.add_child.call_deferred(scr)
+	await get_tree().create_timer(0.5).timeout
+	scr.open()
+	scr._select(int(OS.get_environment("SHOT_HERO")) if OS.get_environment("SHOT_HERO") != "" else 0)
+	await get_tree().create_timer(1.0).timeout
+	var img := get_viewport().get_texture().get_image()
+	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.save_png(OS.get_environment("SHOT_OUT"))
+	get_tree().quit()
+
+
 func _ready() -> void:
+	if OS.get_environment("SHOT_SCENE") == "profile":
+		_profile()
+		return
 	if OS.get_environment("SHOT_SCENE") == "models":
 		_gallery()
 		return

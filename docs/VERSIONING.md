@@ -118,6 +118,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
   `battle` relatif-waktu, `events`). Klien lama (bergiliran) tidak cocok, jadi `DefaultMinClient`
   dinaikkan ke 0.18.0.
 
+- v0.19.0 menambah pilihan pahlawan (`state.hero`, `GET /v1/heroes`, `POST /v1/players/me/hero`) dan
+  layar Profil di klien. Hanya menambah; `DefaultMinClient` tetap 0.18.0. Pada rilis yang sama
+  semua model musuh diganti model CC0 seragam dan nama tampilan musuh berubah (id tetap).
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

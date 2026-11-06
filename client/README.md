@@ -1,9 +1,8 @@
 # Klien Android (Godot 4.7)
 
-Klien RPG 3D untuk server di folder induk (sejak v0.13.0). Model karakter/musuh
-masih campuran: ksatria memakai Paladin (`assets/models/ksatria.glb`), goblin, golem, nenek, petani,
-babi hutan, tikus, dan Raja Goblin memakai model hasil gambar-ke-3D (TripoSR, lihat `../tools/triposr/`), sisanya
-**placeholder** buatan kode (`scripts/models.gd`). Model lain diganti dengan menaruh `assets/models/<id>.glb`
+Klien RPG 3D untuk server di folder induk (sejak v0.13.0). Semua pahlawan dan musuh memakai model low-poly CC0 berrangka (KayKit dan Quaternius, `assets/models/`);
+hanya nenek penjual dan petani yang masih model lama dari gambar-ke-3D (TripoSR, `../tools/triposr/`). Bila `assets/models/<id>.glb`
+tidak ada, dipakai **placeholder** buatan kode (`scripts/models.gd`). Model lain diganti dengan menaruh `assets/models/<id>.glb`
 (id = id musuh/NPC) tanpa mengubah kode.
 
 ## Yang sudah ada

@@ -13,27 +13,27 @@ const QUEST_TEXTS := {
 		"done": "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu.",
 	},
 	"selamatkan_petani": {
-		"offer": "Hei, Ksatria! Ladangku sudah diinjak-injak makhluk-makhluk hijau itu...",
+		"offer": "Hei, Ksatria! Ladangku sudah diinjak-injak orc-orc hijau itu...",
 		"locked": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi.",
 		"thanks": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
 		"done": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
 	},
 	"hentikan_raja_goblin": {
-		"offer": "Ksatria! Seekor ogre tertangkap dan ia mengaku disuruh seseorang di bawah gunung...",
-		"locked": "Aku punya kabar penting, tapi selesaikan urusan Nenek dengan Ogre dulu.",
-		"thanks": "Raja Goblin sudah tumbang! Kerajaan aman berkatmu. Terimalah ini:",
+		"offer": "Ksatria! Sebuah kerangka tertangkap dan ia mengaku disuruh seseorang di bawah gunung...",
+		"locked": "Aku punya kabar penting, tapi selesaikan urusan Nenek dan Monster Batu dulu.",
+		"thanks": "Raja Iblis sudah tumbang! Kerajaan aman berkatmu. Terimalah ini:",
 		"done": "Desa ini dan seluruh kerajaan berutang padamu, Pelindung Kerajaan.",
 	},
 	"usir_ogre": {
 		"offer": "Ksatria... ada kabar buruk dari para pedagang. Sumber semua kekacauan ini ada di gunung.",
 		"locked": "Nenek sedang mengkhawatirkan banyak hal. Bantu Petani dulu, ya, Nak.",
-		"thanks": "Kamu mengalahkan Ogre Batu! Kerajaan berutang budi padamu. Ini untukmu:",
+		"thanks": "Kamu mengalahkan Monster Batu! Kerajaan berutang budi padamu. Ini untukmu:",
 		"done": "Gunung itu sunyi sekarang. Terima kasih, Pelindung Kerajaan.",
 	},
 }
 const GREETINGS := {
 	"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman...",
-	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak makhluk-makhluk hijau itu...",
+	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak orc-orc hijau itu...",
 }
 
 var _npc := ""

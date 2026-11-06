@@ -42,6 +42,8 @@ type State struct {
 	FZ        float64 `json:"fz"`
 	Yaw       float64 `json:"yaw"`
 	Inventory []Item  `json:"inventory"`
+	// Hero adalah id pahlawan yang dipakai (lihat hero.go); kosong = pahlawan bawaan.
+	Hero string `json:"hero,omitempty"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
@@ -71,6 +73,7 @@ func NewState() State {
 		FX:        SpawnX + 0.5,
 		FZ:        SpawnY + 0.5,
 		Inventory: []Item{{ID: PotionID, Qty: 2}},
+		Hero:      DefaultHero,
 	}
 }
 
@@ -134,6 +137,9 @@ func (s State) Validate() error {
 		return errors.New("posisi halus harus bilangan biasa")
 	case len(s.Inventory) > MaxInventory:
 		return fmt.Errorf("inventori maksimal %d tumpukan", MaxInventory)
+	}
+	if _, ok := HeroByID(s.Hero); !ok {
+		return ErrUnknownHero
 	}
 	if len(s.Equipment.Weapon) > 64 || len(s.Equipment.Armor) > 64 {
 		return errors.New("id perlengkapan terlalu panjang")

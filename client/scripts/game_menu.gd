@@ -5,6 +5,7 @@ extends CanvasLayer
 ## ketukan kedua dalam 3 detik. Pemilik menu (world3d.gd) yang melakukan tindakannya.
 
 signal resumed
+signal profile_requested
 signal go_home
 signal logout
 signal quit_game
@@ -66,6 +67,7 @@ func _ready() -> void:
 	holder.add_child(_main)
 	_main.add_child(_title("Menu"))
 	_main.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
+	_main.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
 	_main.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
 	_main.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
 	_btn_logout = _button("Keluar akun", Callable())

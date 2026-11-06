@@ -213,7 +213,8 @@ func _run() -> void:
 		root.add_child(scene)
 		await process_frame
 		_check(scene._enemy_name.text == str(Session.battle.enemy_name), "layar pertarungan menampilkan nama musuh")
-		_check(scene._enemy_rig != null and scene._hero_rig != null, "arena 3D memuat model ksatria dan musuh")
+		_check(scene._enemy_rig != null and scene._hero_rig != null, "arena 3D memuat model pahlawan dan musuh")
+		_check(scene._skill_name("skill1") != "" and scene._skill_name("skill2") != "", "tombol skill memakai nama skill pahlawan")
 		_check((scene._buttons["potion"] as Button).disabled, "ramuan nonaktif saat HP penuh")
 		# Real-time: tombol yang masih cooldown diabaikan, musuh menyerang sendiri lewat sinkron.
 		var t0 := Time.get_ticks_msec()
@@ -238,6 +239,20 @@ func _run() -> void:
 		await process_frame
 	var gone: Dictionary = await Api.battle_get()
 	_check(not gone.ok and gone.status == 404, "pertarungan terhapus di server setelah selesai")
+
+	print("== pahlawan")
+	var hs: Dictionary = await Api.set_hero("pemanah")
+	_check(hs.ok and hs.data.state.hero == "pemanah", "server menyimpan pahlawan pilihan")
+	var hbad: Dictionary = await Api.set_hero("naga")
+	_check(not hbad.ok and hbad.status == 422, "pahlawan asing ditolak 422")
+	if hs.ok:
+		Session.merge_server_player(hs.data)
+		_check(Session.player.state.hero == "pemanah", "pahlawan ikut digabung ke data lokal")
+	await Api.set_hero("ksatria")
+	var hme: Dictionary = await Api.get_me()
+	if hme.ok:
+		Session.merge_server_player(hme.data)
+	_check(hme.ok and Session.player.state.hero == "ksatria", "pahlawan dikembalikan ke Ksatria")
 
 	print("== toko")
 	var shop_list: Dictionary = await Api.shop_get()
@@ -452,7 +467,7 @@ func _run() -> void:
 	for mid in [Maps.DEFAULT_MAP, Maps.PERBATASAN, Maps.GUNUNG, Maps.GUA]:
 		_check(WorldBuild.environment_for(mid) != null, "lingkungan 3D '%s'" % mid)
 
-	var model_ids := ["ksatria", "nenek_penjual", "petani", "goblin", "goblin_penjaga", "raja_goblin", "ogre_batu",
+	var model_ids := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "nenek_penjual", "petani", "goblin", "goblin_penjaga", "raja_goblin", "ogre_batu",
 		"golem_kerikil", "golem_lava", "tikus_sawah", "babi_hutan", "serigala_hutan", "ular_sawah", "belalang_raksasa", "kelelawar_gua"]
 	var bad_models: Array[String] = []
 	for mdl in model_ids:
@@ -462,14 +477,14 @@ func _run() -> void:
 		if node != null:
 			node.free()
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
-	for mdl in ["golem_lava", "golem_kerikil", "goblin", "nenek_penjual", "babi_hutan", "tikus_sawah", "raja_goblin"]:
+	for mdl in ["nenek_penjual"]:
 		var gm: Node3D = Models.create(mdl)
 		_check(Models.has_glb(mdl) and gm.kind == "static" and gm.pivots.has("body"), "model GLB hasil AI '%s' terpasang (tanpa rangka)" % mdl)
 		gm.play_attack()
 		gm.play_hurt()
 		gm.free()
 	# Model berrangka + animasi (idle/walk/attack/hurt/die) dari Blender.
-	for mdl in ["petani", "goblin_penjaga", "ogre_batu", "serigala_hutan", "ular_sawah", "belalang_raksasa", "kelelawar_gua"]:
+	for mdl in ["pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)
 		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
 		var lengkap := true
@@ -481,6 +496,15 @@ func _run() -> void:
 		rm.play_hurt()
 		rm.play_die()
 		rm.free()
+	# Hewan (Quaternius): hanya klip idle + jalan; serang/terkena/mati lewat gerak tambahan model_rig.
+	for mdl in ["tikus_sawah", "belalang_raksasa", "ular_sawah", "babi_hutan", "serigala_hutan"]:
+		var am: Node3D = Models.create(mdl)
+		var anames: Dictionary = am._anim_names if am.anim_player != null else {}
+		_check(Models.has_glb(mdl) and anames.has("idle") and anames.has("walk") and am.pivots.has("body"), "hewan '%s' berrangka dengan klip idle dan jalan %s" % [mdl, str(anames.keys())])
+		am.play_attack()
+		am.play_hurt()
+		am.play_die()
+		am.free()
 
 	Session.offline = true
 	Session.player = {"name": "Uji", "state": {"map": Maps.DEFAULT_MAP, "x": 5, "y": 5, "fx": 5.5, "fz": 5.5, "yaw": 0.0, "hp": 30, "max_hp": 30, "level": 1, "xp": 0, "gold": 0, "inventory": [], "equipment": {"weapon": "", "armor": ""}}, "version": 1}
@@ -509,6 +533,20 @@ func _run() -> void:
 	w3._apply_quality()
 	w3._toggle_menu()  # dari menu utama: menutup
 	_check(not w3._menu.is_open and not w3._locked, "menu bisa ditutup dan gerak berlanjut")
+	# Profil dan pilihan pahlawan (mode uji: pilihan tersimpan lokal).
+	Session.offline = true
+	w3._toggle_menu()
+	w3._menu.profile_requested.emit()
+	_check(w3._profile.is_open and not w3._menu.is_open, "Profil terbuka dari menu")
+	_check(w3._profile._tabs.size() == 4 and w3._profile._preview_rig != null, "Profil memuat 4 pahlawan dengan pratinjau 3D")
+	w3._profile._select(2)
+	_check(w3._profile._preview_rig.name == "pemanah", "pratinjau 3D mengikuti pilihan")
+	w3._profile._on_use()
+	await process_frame
+	_check(str(Session.player.state.hero) == "pemanah" and w3._player.name == "pemanah", "memilih Pemanah mengganti model di dunia")
+	w3._toggle_menu()  # tombol kembali menutup Profil
+	_check(not w3._profile.is_open and not w3._locked, "tombol kembali menutup Profil dan gerak berlanjut")
+	Session.offline = false
 	w3.queue_free()
 	await process_frame
 	Session.offline = false

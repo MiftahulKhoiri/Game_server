@@ -59,7 +59,7 @@ gambar `client/assets/items/<id>.png`; tanpa gambar klien memakai kotak berwarna
 | Id | Nama | Jenis | Beli | Jual |
 |----|------|-------|------|------|
 | `ramuan` | Ramuan Penyembuh | consumable | 15 | 6 |
-| `taring_goblin` | Taring Goblin | material (jatuhan goblin 35%) | - | 12 |
+| `taring_goblin` | Taring Orc | material (jatuhan orc 35%) | - | 12 |
 | `koin_kuno` | Koin Kuno | treasure (hadiah misi) | - | 25 |
 | `permata_merah` | Permata Merah | treasure (hadiah misi) | - | 60 |
 
@@ -86,10 +86,10 @@ dan gambar `client/assets/characters/<id npc>.png`.
 
 | Misi | Pemberi | Tugas | Hadiah |
 |------|---------|-------|--------|
-| Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 tikus sawah atau belalang raksasa | 40 emas |
-| Selamatkan Petani | Petani (11,6) | Kalahkan 3 goblin di Perbatasan. Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
-| Usir Ogre Batu | Nenek (3,6) | Kalahkan 1 Ogre Batu di Gunung Batu. Terkunci sampai hadiah Petani diambil | 150 emas + 2 Koin Kuno |
-| Hentikan Raja Goblin | Petani (11,6) | Kalahkan Raja Goblin di Gua Batu. Terkunci sampai hadiah Ogre diambil | 500 emas + 3 Permata Merah |
+| Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 ayam liar atau kucing liar | 40 emas |
+| Selamatkan Petani | Petani (11,6) | Kalahkan 3 orc ladang di Perbatasan. Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
+| Usir Monster Batu | Nenek (3,6) | Kalahkan 1 Monster Batu di Gunung Batu. Terkunci sampai hadiah Petani diambil | 150 emas + 2 Koin Kuno |
+| Hentikan Raja Iblis | Petani (11,6) | Kalahkan Raja Iblis di Gua Batu. Terkunci sampai hadiah Ogre diambil | 500 emas + 3 Permata Merah |
 
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
@@ -129,33 +129,32 @@ separuh, kembali ke titik awal desa.
 
 | Musuh | Wilayah | HP | Serang | Bertahan | XP | Emas | Min. level | Jatuhan |
 |-------|---------|----|--------|----------|----|------|------------|---------|
-| Tikus Sawah | Desa | 10 | 3 | 0 | 6 | 2 | 1 | Ramuan 10% |
-| Belalang Raksasa | Desa | 14 | 4 | 1 | 8 | 3 | 1 | Ramuan 10% |
-| Ular Sawah | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
+| Ayam Liar (`tikus_sawah`) | Desa | 10 | 3 | 0 | 6 | 2 | 1 | Ramuan 10% |
+| Kucing Liar (`belalang_raksasa`) | Desa | 14 | 4 | 1 | 8 | 3 | 1 | Ramuan 10% |
+| Rubah Sawah (`ular_sawah`) | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
 | Babi Hutan | Desa | 34 | 8 | 3 | 22 | 9 | 3 | Ramuan 25% |
-| Goblin | Perbatasan | 26 | 7 | 2 | 15 | 7 | 1 | Taring Goblin 35% |
+| Orc Ladang (`goblin`) | Perbatasan | 26 | 7 | 2 | 15 | 7 | 1 | Taring Orc 35% |
 | Serigala Hutan | Perbatasan dan Gunung Batu | 32 | 9 | 2 | 20 | 9 | 3 | Ramuan 20% |
-| Kelelawar Gua | Gunung Batu | 28 | 8 | 1 | 18 | 8 | 3 | Ramuan 20% |
-| Golem Kerikil | Gunung Batu | 50 | 10 | 6 | 32 | 14 | 4 | Koin Kuno 25% |
-| Ogre Batu | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
-| Goblin Penjaga | Gua Batu | 45 | 11 | 4 | 28 | 12 | 5 | Taring Goblin 50% |
-| Golem Lava | Gua Batu | 62 | 13 | 6 | 40 | 18 | 6 | Permata Merah 20% |
-| **Raja Goblin (bos)** | Gua Batu, singgasana (7,14) | 120 | 14 | 6 | 100 | 60 | 7 | Permata Merah 100% |
+| Kerangka Gua (`kelelawar_gua`) | Gunung Batu | 28 | 8 | 1 | 18 | 8 | 3 | Ramuan 20% |
+| Kerangka Pejuang (`golem_kerikil`) | Gunung Batu | 50 | 10 | 6 | 32 | 14 | 4 | Koin Kuno 25% |
+| Monster Batu (`ogre_batu`) | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
+| Kerangka Penjaga (`goblin_penjaga`) | Gua Batu | 45 | 11 | 4 | 28 | 12 | 5 | Taring Orc 50% |
+| Iblis Lava (`golem_lava`) | Gua Batu | 62 | 13 | 6 | 40 | 18 | 6 | Permata Merah 20% |
+| **Raja Iblis (bos, `raja_goblin`)** | Gua Batu, singgasana (7,14) | 120 | 14 | 6 | 100 | 60 | 7 | Permata Merah 100% |
 
 Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
 terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
 Hutan, Kelelawar Gua, dan Ogre Batu kini punya model 3D berrangka dari gambar kiriman (v0.17.0);
-Petani dan Goblin Penjaga juga diganti model berrangka dengan animasi idle/jalan/serang/luka/mati.
-Gambar yang sudah ada: Goblin, Golem Kerikil, Golem Lava, Goblin Penjaga (render 3D, masih
-bermark air "pngtree": ganti dengan gambar berlisensi sebelum rilis resmi).
+Sejak v0.19.0 semua musuh seragam memakai model 3D low-poly CC0 (KayKit Skeletons dan Quaternius):
+hewan (ayam, kucing, rubah, babi, serigala) dan monster/kerangka/iblis, semua berrangka dan beranimasi.
+Nama tampilan musuh ikut berubah; id musuh (`tikus_sawah`, dst.) tidak berubah supaya data lama aman.
 Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh terlemah di wilayah itu.
 
 ## Bos
 
 Bos tidak muncul acak. Injak singgasana (petak `K`); klien meminta `POST /v1/battle/start`
 dengan `{"boss": true}` dan server memeriksa posisi tersimpan pemain. Bos bisa dilawan
-berulang (hadiahnya: XP, emas, dan drop). Raja Goblin sementara memakai gambar goblin
-berwarna merah sampai gambarnya sendiri ada (`ART_ALIAS` di `client/scripts/battle.gd`).
+berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai model Iblis Biru.
 
 ## Peta
 

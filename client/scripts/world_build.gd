@@ -422,6 +422,123 @@ static func build(map_id: String) -> Node3D:
 	return root
 
 
+## Titik di sekeliling arena pertarungan (pusat 0,0,0; kamera di +Z; tokoh di x = -1 dan 1).
+## i/n menentukan sudut di busur belakang-samping, `salt` mengacak jarak. Deterministik.
+static func _arena_pos(i: int, n: int, r_min: float, r_max: float, salt: int) -> Vector3:
+	var a := lerpf(-0.08, 1.08, (float(i) + _jitter(i, n, salt)) / float(n)) * PI
+	var r := lerpf(r_min, r_max, _jitter(i, 7, salt + 1))
+	return Vector3(cos(a) * r, 0.0, -sin(a) * r * 0.95 + 0.4)
+
+
+## Arena pertarungan sesuai peta tempat pemain berada: tanah, pepohonan / gunung / batu sebagai
+## latar (pakai model KayKit yang sama dengan dunia), rumput atau kerikil, dan obor di gua.
+static func build_arena(map_id: String) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Arena"
+	var tile := "."
+	match map_id:
+		Maps.GUNUNG: tile = "M"
+		Maps.GUA: tile = "G"
+	var floor_color := ground_color(tile)
+	if map_id == Maps.PERBATASAN:
+		floor_color = floor_color.darkened(0.1)
+	var disc := CylinderMesh.new()
+	disc.top_radius = 18.0
+	disc.bottom_radius = 18.0
+	disc.height = 0.2
+	var ground := MeshInstance3D.new()
+	ground.mesh = disc
+	ground.material_override = mat(floor_color, false, 1.0)
+	ground.position = Vector3(0, -0.1, 0)
+	root.add_child(ground)
+
+	var sway_by: Dictionary = {}
+	var static_by: Dictionary = {}
+	var tufts: Array[Transform3D] = []
+	var pebbles: Array[Transform3D] = []
+	match map_id:
+		Maps.GUNUNG:
+			for i in 7:
+				var mid: String = MOUNTAINS[i % MOUNTAINS.size()]
+				var p := _arena_pos(i, 7, 8.5, 12.5, 11)
+				p.z = minf(p.z, -3.0)
+				_tambah(static_by, mid, _xf(p, Vector3.ONE * (3.4 + 1.6 * _jitter(i, 3, 12)), _jitter(i, 4, 13) * TAU))
+			for i in 10:
+				var rid: String = ROCKS[i % ROCKS.size()]
+				_tambah(static_by, rid, _xf(_arena_pos(i, 10, 3.9, 7.5, 21), Vector3.ONE * (2.4 + 1.8 * _jitter(i, 5, 22)), _jitter(i, 6, 23) * TAU))
+			for i in 60:
+				var q := _arena_pos(i, 60, 1.2, 9.0, 31)
+				pebbles.append(_xf(q + Vector3(0, 0.03, 0), Vector3.ONE * (0.5 + _jitter(i, 8, 32) * 0.9)))
+		Maps.GUA:
+			for i in 10:
+				var mid2: String = MOUNTAINS[i % MOUNTAINS.size()]
+				_tambah(static_by, mid2, _xf(_arena_pos(i, 10, 5.5, 8.0, 41), Vector3.ONE * (3.0 + 1.2 * _jitter(i, 3, 42)), _jitter(i, 4, 43) * TAU))
+			for i in 9:
+				var rid2: String = ROCKS[i % ROCKS.size()]
+				_tambah(static_by, rid2, _xf(_arena_pos(i, 9, 3.8, 6.0, 51), Vector3.ONE * (2.2 + 1.4 * _jitter(i, 5, 52)), _jitter(i, 6, 53) * TAU))
+			for i in 40:
+				pebbles.append(_xf(_arena_pos(i, 40, 1.2, 7.0, 61) + Vector3(0, 0.03, 0), Vector3.ONE * (0.5 + _jitter(i, 8, 62) * 0.9)))
+			for sx in [-2.7, 2.7]:
+				var torch := Node3D.new()
+				torch.position = Vector3(sx, 0, -1.4)
+				root.add_child(torch)
+				var stick := MeshInstance3D.new()
+				stick.mesh = _cyl(0.05, 0.06, 0.9, 6)
+				stick.material_override = mat(Color("5b3b1e"))
+				stick.position = Vector3(0, 0.45, 0)
+				torch.add_child(stick)
+				var flame := MeshInstance3D.new()
+				flame.mesh = _sphere(0.13, 6)
+				var fm := StandardMaterial3D.new()
+				fm.albedo_color = Color("ffb040")
+				fm.emission_enabled = true
+				fm.emission = Color("ff8a20")
+				fm.emission_energy_multiplier = 2.0
+				flame.material_override = fm
+				flame.position = Vector3(0, 0.98, 0)
+				torch.add_child(flame)
+				var light := OmniLight3D.new()
+				light.light_color = Color("ffa050")
+				light.light_energy = 1.8
+				light.omni_range = 7.0
+				light.position = Vector3(0, 1.2, 0.3)
+				torch.add_child(light)
+		Maps.PERBATASAN:  # hutan lebat
+			for i in 16:
+				var tid: String = TREE_SINGLE[i % TREE_SINGLE.size()]
+				_tambah(sway_by, tid, _xf(_arena_pos(i, 16, 3.8, 8.0, 71), Vector3.ONE * (1.7 + 0.6 * _jitter(i, 3, 72)), _jitter(i, 4, 73) * TAU))
+			for i in 9:
+				var gid: String = TREE_GROVE[i % TREE_GROVE.size()]
+				_tambah(sway_by, gid, _xf(_arena_pos(i, 9, 7.0, 11.0, 81), Vector3.ONE * (1.3 + 0.4 * _jitter(i, 3, 82)), _jitter(i, 4, 83) * TAU))
+			for i in 4:
+				var sid: String = STUMPS[i % STUMPS.size()]
+				_tambah(static_by, sid, _xf(_arena_pos(i, 4, 3.6, 5.5, 91), Vector3.ONE * 1.6, _jitter(i, 4, 93) * TAU))
+		_:  # desa awal: padang dengan pohon-pohon jarang
+			for i in 9:
+				var tid2: String = TREE_SINGLE[i % TREE_SINGLE.size()]
+				_tambah(sway_by, tid2, _xf(_arena_pos(i, 9, 4.5, 9.0, 101), Vector3.ONE * (1.7 + 0.7 * _jitter(i, 3, 102)), _jitter(i, 4, 103) * TAU))
+			for i in 3:
+				var gid2: String = TREE_GROVE[i % TREE_GROVE.size()]
+				_tambah(sway_by, gid2, _xf(_arena_pos(i, 3, 9.0, 12.0, 111), Vector3.ONE * 1.3, _jitter(i, 4, 113) * TAU))
+			for i in 3:
+				var rid3: String = ROCKS[i % ROCKS.size()]
+				_tambah(static_by, rid3, _xf(_arena_pos(i, 3, 4.0, 6.0, 121), Vector3.ONE * 2.2, _jitter(i, 4, 123) * TAU))
+	if map_id != Maps.GUNUNG and map_id != Maps.GUA:
+		for i in 150:
+			var q2 := _arena_pos(i, 150, 0.9, 9.5, 131)
+			if absf(q2.x) < 0.3 and q2.z > -0.3:
+				continue
+			tufts.append(_xf(q2, Vector3.ONE * (1.0 + 0.6 * _jitter(i, 9, 132)), _jitter(i, 5, 133) * TAU))
+
+	for id: String in sway_by:
+		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id])
+	for id: String in static_by:
+		_multi(root, _dekor_mesh(id), null, static_by[id])
+	_multi(root, _tuft_mesh(), _grass_material(), tufts)
+	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebbles)
+	return root
+
+
 static func _add_well(root: Node3D, c: Vector3) -> void:
 	var ring := MeshInstance3D.new()
 	ring.mesh = _cyl(0.42, 0.45, 0.5, 14)

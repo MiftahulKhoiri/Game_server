@@ -64,7 +64,7 @@ func set_player(p: Dictionary) -> void:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -102,4 +102,5 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"fz": float(s.get("fz", 0.0)),
 		"yaw": float(s.get("yaw", 0.0)),
 		"inventory": inventory,
+		"hero": str(s.get("hero", "")) if str(s.get("hero", "")) != "" else "ksatria",
 	}

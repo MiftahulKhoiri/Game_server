@@ -81,6 +81,8 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/inventory/equip", s.auth(s.itemAction(func(st *game.State, item string) error { return st.Equip(item) })))
 	mux.Handle("POST /v1/inventory/unequip", s.auth(s.slotAction()))
 	mux.Handle("POST /v1/rest", s.auth(s.restAction()))
+	mux.Handle("GET /v1/heroes", s.auth(http.HandlerFunc(s.getHeroes)))
+	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.Buy))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.Sell))))
@@ -541,7 +543,7 @@ func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*g
 func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
-		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest,
+		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -568,6 +570,23 @@ func (s *Server) slotAction() http.Handler {
 		}
 		s.applyToState(w, r, func(st *game.State) error { return st.Unequip(req.Slot) })
 	})
+}
+
+func (s *Server) getHeroes(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"heroes": game.Heroes, "default": game.DefaultHero})
+}
+
+type heroRequest struct {
+	Hero string `json:"hero"`
+}
+
+// setHero mengganti pahlawan yang dipakai (tidak bisa saat bertarung).
+func (s *Server) setHero(w http.ResponseWriter, r *http.Request) {
+	var req heroRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.SetHero(req.Hero) })
 }
 
 func (s *Server) restAction() http.Handler {

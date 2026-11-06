@@ -715,3 +715,49 @@ func TestSaveFinePosition(t *testing.T) {
 		t.Errorf("harus di tengah petak: %+v", fixed.State)
 	}
 }
+
+func TestHeroSelection(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pemilih")
+	if cr.Player.State.Hero != "ksatria" {
+		t.Fatalf("pemain baru harus Ksatria: %q", cr.Player.State.Hero)
+	}
+	resp, data := do(t, "GET", ts.URL+"/v1/heroes", cr.Token, nil)
+	var list struct {
+		Heroes  []game.HeroDef `json:"heroes"`
+		Default string         `json:"default"`
+	}
+	_ = json.Unmarshal(data, &list)
+	if resp.StatusCode != http.StatusOK || len(list.Heroes) != 4 || list.Default != "ksatria" {
+		t.Fatalf("daftar pahlawan: %d %s", resp.StatusCode, data)
+	}
+
+	resp, data = do(t, "POST", ts.URL+"/v1/players/me/hero", cr.Token, map[string]string{"hero": "pemanah"})
+	var p game.Player
+	_ = json.Unmarshal(data, &p)
+	if resp.StatusCode != http.StatusOK || p.State.Hero != "pemanah" || p.Version <= cr.Player.Version {
+		t.Fatalf("ganti pahlawan: %d %s", resp.StatusCode, data)
+	}
+	// Tersimpan, dan simpan posisi dari klien tidak menimpanya.
+	st := p.State
+	st.X = 6
+	st.Hero = "ksatria"
+	do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: p.Version, State: st})
+	_, data = do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
+	var me game.Player
+	_ = json.Unmarshal(data, &me)
+	if me.State.Hero != "pemanah" {
+		t.Errorf("klien tidak boleh menimpa pahlawan lewat simpan: %q", me.State.Hero)
+	}
+
+	if resp, _ := do(t, "POST", ts.URL+"/v1/players/me/hero", cr.Token, map[string]string{"hero": "naga"}); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("pahlawan asing harus 422, dapat %d", resp.StatusCode)
+	}
+	if resp, _ := do(t, "POST", ts.URL+"/v1/players/me/hero", "", map[string]string{"hero": "pemanah"}); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
+	battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
+	if resp, _ := do(t, "POST", ts.URL+"/v1/players/me/hero", cr.Token, map[string]string{"hero": "ksatria"}); resp.StatusCode != http.StatusConflict {
+		t.Errorf("ganti pahlawan saat bertarung harus 409, dapat %d", resp.StatusCode)
+	}
+}

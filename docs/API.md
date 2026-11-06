@@ -169,13 +169,13 @@ Respons:
 ```json
 {
   "status": "ongoing",
-  "battle": {"enemy_id": "tikus_sawah", "enemy_name": "Tikus Sawah",
+  "battle": {"enemy_id": "tikus_sawah", "enemy_name": "Ayam Liar",
              "enemy_hp": 4, "enemy_max_hp": 10, "round": 2,
              "enemy_next_ms": 1350, "enemy_interval_ms": 2000,
              "cooldowns": {"attack": 900, "defend": 0, "skill1": 0, "skill2": 0, "potion": 0, "flee": 0},
              "cooldown_max": {"attack": 900, "defend": 1800, "skill1": 5000, "skill2": 14000, "potion": 2500, "flee": 3000},
              "guard_ms": 0, "shield_ms": 0},
-  "log": ["Kamu menyerang Tikus Sawah: -6 HP.", "Tikus Sawah menyerang: -2 HP."],
+  "log": ["Kamu menyerang Ayam Liar: -6 HP.", "Ayam Liar menyerang: -2 HP."],
   "events": [{"who": "player", "kind": "attack", "dmg": 6}, {"who": "enemy", "kind": "hit", "dmg": 2}],
   "rewards": null,
   "player": { "...": "objek pemain" }
@@ -193,6 +193,20 @@ awal desa. Klien harus **menggabungkan** `player` ke data lokal: statistik dan t
 ikut server, sedangkan posisi tetap milik klien (kecuali setelah kalah).
 
 Daftar musuh dan rumusnya ada di [GAME_DESIGN](GAME_DESIGN.md).
+
+## Pahlawan (v0.19.0)
+
+Pemain memilih pahlawan (penampilan model 3D + nama skill; statistik sama untuk semua).
+`state.hero` berisi id pilihan (`ksatria` bawaan; akun lama tanpa isian dianggap `ksatria`).
+Klien **tidak** bisa mengubahnya lewat `PUT /v1/players/me/save` (hanya posisi yang diterima).
+
+### `GET /v1/heroes`  (login)
+`200 {"heroes": [{"id", "name", "weapon", "skill1", "skill2"}], "default": "ksatria"}`.
+Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
+
+### `POST /v1/players/me/hero`  (login)
+Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
+dikenal, `409` bila sedang bertarung. Nama skill di `log` pertarungan mengikuti pahlawan.
 
 ## Misi (v0.6.0)
 

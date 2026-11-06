@@ -77,8 +77,9 @@ func _process(delta: float) -> void:
 	_hurt = maxf(0.0, _hurt - delta)
 	if _dead > 0.0:
 		_dead = minf(1.0, _dead + delta * 1.6)
-		rotation.z = lerpf(0.0, PI / 2.0, _dead)
-		position.y = base_y - 0.15 * _dead
+		if not _anim_names.has("die"):  # tanpa klip mati: roboh ke samping
+			rotation.z = lerpf(0.0, PI / 2.0, _dead)
+			position.y = base_y - 0.15 * _dead
 		return
 	if anim_player != null and not _anim_names.is_empty():
 		_drive_animation_player()
@@ -139,6 +140,7 @@ func _process(delta: float) -> void:
 
 
 func _drive_animation_player() -> void:
+	_overlay_without_clips()
 	var want := "idle"
 	if _hurt > 0.0 and _anim_names.has("hurt"):
 		want = "hurt"
@@ -148,3 +150,21 @@ func _drive_animation_player() -> void:
 		want = "walk"
 	if _anim_names.has(want) and anim_player.current_animation != _anim_names[want]:
 		anim_player.play(_anim_names[want])
+
+
+## Model berangka yang tidak punya klip serang/terkena (hewan Quaternius hanya idle dan jalan):
+## badan utuh (pivot "body") maju saat menyerang dan terhuyung saat terkena.
+func _overlay_without_clips() -> void:
+	if not pivots.has("body"):
+		return
+	var b := pivots["body"] as Node3D
+	var z := 0.0
+	var rx := 0.0
+	if not _anim_names.has("attack") and _attack > 0.0:
+		z += sin((1.0 - _attack / ATTACK_TIME) * PI) * 0.35
+	if not _anim_names.has("hurt") and _hurt > 0.0:
+		var k := _hurt / HURT_TIME
+		z -= sin(k * PI) * 0.15
+		rx = -sin(k * PI) * 0.25
+	b.position.z = z
+	b.rotation.x = rx

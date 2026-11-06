@@ -104,3 +104,26 @@ Diunduh dari GitHub ke `~/Claude/aset_cc0/` (lisensi CC0, Kay Lousberg; salinan 
 
 Model pohon/batu/tanaman hasil TripoSR yang lama dipindah ke `~/Claude/backup/dekor_triposr/`
 (tidak dipakai lagi); alat `tools/blender/ringankan.py` tetap ada untuk model gambar-ke-3D lain.
+
+## Pahlawan KayKit (tools/blender/kaykit_pahlawan.py)
+
+Menyiapkan Pendekar Kapak (Barbarian + kapak besar), Pemanah (Rogue + busur silang) dan Pendekar
+Tombak (Knight tanpa helm + tombak buatan sendiri; KayKit tidak punya tombak) menjadi GLB ringan
+dengan lima klip (idle-loop, walk-loop, attack, hurt, die). Sumber CC0:
+https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+Contoh perintah ada di docstring skripnya.
+
+## Musuh seragam CC0 (tools/blender/siapkan_musuh.py)
+
+Semua 12 musuh memakai model low-poly CC0 berrangka (v0.19.0). Skrip ini mengubah satu sumber
+(GLB/glTF/FBX) menjadi GLB ringan: membuang mesh sisa, memberi nama ulang klip menjadi `idle-loop`,
+`walk-loop`, `attack`, `hurt`, `die` (opsi lewat JSON, `@berkas.json`), memasang senjata, memutar
+arah hadap (`rotz`, model menghadap -Y Blender) dan memperkecil tekstur (`max_tex`).
+- Kerangka (KayKit Skeletons, CC0): Minion, Warrior, Rogue ->  kelelawar_gua, golem_kerikil, goblin_penjaga.
+  https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
+- Monster (Quaternius, CC0; dari https://github.com/511action/descent-3d-assets): Orc -> goblin,
+  Demon -> golem_lava, BlueDemon -> raja_goblin, CreepCreature -> ogre_batu.
+- Hewan (Quaternius, CC0, OpenGameArt): Chick -> tikus_sawah, Cat -> belalang_raksasa, Red Fox ->
+  ular_sawah, Pig -> babi_hutan, Wolf -> serigala_hutan. Hewan hanya punya klip idle dan jalan;
+  serang/terkena/mati digerakkan `model_rig.gd` (badan maju, terhuyung, roboh).
+Id musuh tidak berubah; yang berubah hanya nama tampilan (mis. `tikus_sawah` = "Ayam Liar").

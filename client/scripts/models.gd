@@ -12,13 +12,21 @@ const MODEL_DIR := "res://assets/models/"
 
 ## Tinggi akhir (satuan petak) untuk model GLB buatan AI/unduhan selain ksatria. Ukuran asli
 ## GLB tidak dipercaya: model diukur lalu diskalakan ke tinggi ini, kaki di tanah, di tengah.
-const HEIGHTS := {"golem_lava": 1.5, "golem_kerikil": 1.45, "ogre_batu": 1.2, "raja_goblin": 1.35, "goblin": 0.9, "goblin_penjaga": 1.0, "nenek_penjual": 0.85, "petani": 0.95, "babi_hutan": 0.85, "tikus_sawah": 0.55,
-	"serigala_hutan": 0.75, "kelelawar_gua": 0.65, "ular_sawah": 0.6, "belalang_raksasa": 0.75}
+const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "babi_hutan": 0.75, "tikus_sawah": 0.5,
+	"serigala_hutan": 0.8, "kelelawar_gua": 0.95, "ular_sawah": 0.6, "belalang_raksasa": 0.55}
 const DEFAULT_HEIGHT := 1.0
+
+## Pahlawan yang bisa dipilih pemain (semua dari KayKit, berangka + animasi sendiri). Urutan = urutan di layar profil.
+const HEROES := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak"]
+
+
+static func is_hero(id: String) -> bool:
+	return HEROES.has(id)
+
 
 ## Skala akhir model terhadap petak (disetel supaya tinggi mendekati 1 petak).
 const SCALES := {
-	"ksatria": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
+	"ksatria": 0.42, "pendekar_kapak": 0.44, "pemanah": 0.42, "pendekar_tombak": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
 	"goblin": 0.58, "goblin_penjaga": 0.68, "raja_goblin": 0.95, "ogre_batu": 1.1,
 	"golem_kerikil": 1.0, "golem_lava": 1.1,
 	"tikus_sawah": 0.8, "babi_hutan": 0.95, "serigala_hutan": 0.95,
@@ -36,7 +44,7 @@ static func create(id: String) -> Node3D:
 		from_glb = node != null
 	if node == null:
 		node = build_placeholder(id)
-	if from_glb and id != "ksatria":
+	if from_glb and not is_hero(id):
 		node.scale = Vector3.ONE  # sudah dinormalkan di _from_glb
 	else:
 		node.scale = Vector3.ONE * float(SCALES.get(id, 0.7))
@@ -57,20 +65,20 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	var inst := scene.instantiate() as Node3D
 	if inst == null:
 		return null
-	if id != "ksatria":
+	if not is_hero(id):
 		_fix_materials(inst)
 		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
 	var rig := Rig.new()
 	var holder := Node3D.new()  # badan utuh: digerakkan rig untuk model tanpa rangka
 	holder.name = "body"
-	if id == "ksatria":
+	if is_hero(id):
 		rig.add_child(inst)
 	else:
 		holder.add_child(inst)
 		rig.add_child(holder)
 	var ap := _find_animation_player(inst)
 	if ap != null and not ap.get_animation_list().is_empty():
-		rig.setup("biped", {})
+		rig.setup("biped", {} if is_hero(id) else {"body": holder})
 		rig.use_animation_player(ap)
 	elif id == "ksatria":
 		rig.setup("biped", _paladin_pivots(inst))

@@ -49,6 +49,11 @@ func save(version: int, state: Dictionary) -> Dictionary:
 	return await _call(HTTPClient.METHOD_PUT, "/v1/players/me/save", body, true)
 
 
+## Ganti pahlawan yang dipakai (id dari scripts/heroes.gd). 409 bila sedang bertarung.
+func set_hero(hero: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/hero", {"hero": hero}, true)
+
+
 ## Pertarungan yang sedang berjalan (404 bila tidak ada).
 func battle_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/battle", null, true)
@@ -60,7 +65,7 @@ func battle_start(boss := false) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/start", {"boss": true} if boss else null, true)
 
 
-## action: "attack" | "defend" | "potion" | "flee"
+## action: "attack" | "defend" | "skill1" | "skill2" | "potion" | "flee"
 func battle_action(action: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/action", {"action": action}, true)
 

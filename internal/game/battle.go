@@ -223,7 +223,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		res.Events = append(res.Events, Event{Who: "player", Kind: kind, Dmg: dmg})
 		switch {
 		case kind == "skill1":
-			logf("Tebasan Kuat! %s kehilangan %d HP.", b.EnemyName, dmg)
+			logf("%s! %s kehilangan %d HP.", st.HeroDef().Skill1, b.EnemyName, dmg)
 		case crit:
 			logf("Serangan kritis! %s kehilangan %d HP.", b.EnemyName, dmg)
 		default:
@@ -260,7 +260,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		st.HP += heal
 		b.ShieldUntil = now + ShieldMs
 		res.Events = append(res.Events, Event{Who: "player", Kind: "skill2", Heal: heal})
-		logf("Perisai Cahaya! +%d HP, kerusakan berkurang sesaat.", heal)
+		logf("%s! +%d HP, kerusakan berkurang sesaat.", st.HeroDef().Skill2, heal)
 	case ActionPotion:
 		if st.HP >= st.MaxHP {
 			return Result{}, ErrFullHP

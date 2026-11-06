@@ -119,7 +119,7 @@ const PERBATASAN_ROWS: Array[String] = [
 ]
 
 
-## Gunung Batu (15x20): lereng berbatu, sarang Ogre Batu. Satu-satunya jalan masuk
+## Gunung Batu (15x20): lereng berbatu, sarang Monster Batu. Satu-satunya jalan masuk
 ## dari utara; kerikil (G) adalah tempat monster berkeliaran.
 const GUNUNG_ROWS: Array[String] = [
 	"RRRRRRRMRRRRRRR",
@@ -144,7 +144,7 @@ const GUNUNG_ROWS: Array[String] = [
 	"RRRRRRRMRRRRRRR",
 ]
 
-## Gua Batu (15x20): sarang Raja Goblin, dalang serangan monster. Singgasananya (K)
+## Gua Batu (15x20): sarang Raja Iblis, dalang serangan monster. Singgasananya (K)
 ## ada di ujung lorong selatan.
 const GUA_ROWS: Array[String] = [
 	"RRRRRRRMRRRRRRR",

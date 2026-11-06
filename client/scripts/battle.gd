@@ -8,6 +8,8 @@ extends Control
 
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const Models = preload("res://scripts/models.gd")
+const WorldBuild = preload("res://scripts/world_build.gd")
+const Heroes = preload("res://scripts/heroes.gd")
 const POTION_ID := "ramuan"
 const MAX_LOG_LINES := 4
 const SAFE_STEPS_AFTER_BATTLE := 3
@@ -20,8 +22,8 @@ const READY_SLACK_MS := 150   # toleransi tombol ditekan sedikit sebelum cooldow
 const MAIN_ACTIONS := [
 	["attack", "Serang", ""],
 	["defend", "Bertahan", ""],
-	["skill1", "Skill 1", "Tebasan Kuat"],
-	["skill2", "Skill 2", "Perisai Cahaya"],
+	["skill1", "Skill 1", ""],   # subjudul = nama skill pahlawan (lihat _skill_name)
+	["skill2", "Skill 2", ""],
 ]
 
 var _enemy_id := ""
@@ -192,7 +194,7 @@ func _play_event(e: Dictionary) -> void:
 				_play(_hero_rig, "play_attack")
 				get_tree().create_timer(0.18).timeout.connect(func() -> void: _play(_enemy_rig, "play_hurt"))
 				if kind == "skill1":
-					_pop("Tebasan! -%d" % dmg, Color("ff9a3c"), false, 44)
+					_pop("%s! -%d" % [_skill_name("skill1"), dmg], Color("ff9a3c"), false, 44)
 				elif kind == "crit":
 					_pop("KRITIS -%d" % dmg, Color("ffd23c"), false, 44)
 				else:
@@ -293,7 +295,7 @@ func _update_buttons(now: int) -> void:
 		var action := str(entry[0])
 		var button := _buttons[action] as Button
 		var left := _cooldown_left(action)
-		var sub := str(entry[2])
+		var sub := _skill_name(action) if str(entry[2]) == "" and action.begins_with("skill") else str(entry[2])
 		if left > READY_SLACK_MS:
 			sub = "%.1f d" % (left / 1000.0)
 		elif action == "defend" and now < _guard_until:
@@ -311,6 +313,10 @@ func _update_buttons(now: int) -> void:
 	var flee_left := _cooldown_left("flee")
 	flee_button.text = "Kabur" if flee_left <= READY_SLACK_MS else "Kabur %.1f d" % (flee_left / 1000.0)
 	flee_button.disabled = flee_left > READY_SLACK_MS
+
+
+func _skill_name(action: String) -> String:
+	return str(Heroes.current().get(action, ""))
 
 
 func _potion_count() -> int:
@@ -413,33 +419,21 @@ func _build_arena() -> SubViewportContainer:
 	vp.msaa_3d = Viewport.MSAA_2X
 	holder.add_child(vp)
 
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("2b3a33")
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("aab8b0")
-	env.ambient_light_energy = 0.7
+	# Arena mengikuti peta tempat pertarungan terjadi: hutan, desa, gunung batu, atau gua.
+	var map_id := str(Session.player.state.get("map", "desa_awal"))
 	var we := WorldEnvironment.new()
-	we.environment = env
+	we.environment = WorldBuild.environment_for(map_id)
 	vp.add_child(we)
 
 	var sun := DirectionalLight3D.new()
-	sun.rotation = Vector3(deg_to_rad(-45), deg_to_rad(-25), 0)
-	sun.light_energy = 1.1
+	sun.rotation = Vector3(deg_to_rad(-48), deg_to_rad(-30), 0)
+	sun.light_energy = WorldBuild.light_energy_for(map_id) + 0.15
+	sun.light_color = WorldBuild.light_color_for(map_id)
+	sun.shadow_enabled = Session.quality >= 1
+	sun.directional_shadow_max_distance = 14.0
 	vp.add_child(sun)
 
-	var floor_mesh := CylinderMesh.new()
-	floor_mesh.top_radius = 3.4
-	floor_mesh.bottom_radius = 3.4
-	floor_mesh.height = 0.2
-	var floor_node := MeshInstance3D.new()
-	floor_node.mesh = floor_mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color("5b7a4a")
-	mat.roughness = 1.0
-	floor_node.material_override = mat
-	floor_node.position = Vector3(0, -0.1, 0)
-	vp.add_child(floor_node)
+	vp.add_child(WorldBuild.build_arena(map_id))
 
 	var cam := Camera3D.new()
 	cam.fov = 40.0
@@ -447,7 +441,7 @@ func _build_arena() -> SubViewportContainer:
 	cam.look_at_from_position(Vector3(0, 1.25, 3.7), Vector3(0, 0.75, 0))
 	cam.current = true
 
-	_hero_rig = Models.create("ksatria")
+	_hero_rig = Models.create(str(Heroes.current().id))
 	_hero_rig.position = Vector3(-1.0, 0, 0)
 	_hero_rig.rotation.y = PI / 2.0  # menghadap +x
 	vp.add_child(_hero_rig)
