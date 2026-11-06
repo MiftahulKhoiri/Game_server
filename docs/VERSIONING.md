@@ -110,6 +110,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Daftar/Masuk di tengah, info pembaruan di dasar, dan isi layar naik otomatis saat papan ketik muncul.
   Tidak mengubah API.
 
+- v0.17.2 memecah layar awal jadi halaman: Beranda (hanya tombol Masuk, Daftar, Pengaturan),
+  halaman Masuk, Daftar, dan Pengaturan (alamat server, keluar akun, info pembaruan APK).
+  Tidak mengubah API.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
