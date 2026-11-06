@@ -477,14 +477,8 @@ func _run() -> void:
 		if node != null:
 			node.free()
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
-	for mdl in ["nenek_penjual"]:
-		var gm: Node3D = Models.create(mdl)
-		_check(Models.has_glb(mdl) and gm.kind == "static" and gm.pivots.has("body"), "model GLB hasil AI '%s' terpasang (tanpa rangka)" % mdl)
-		gm.play_attack()
-		gm.play_hurt()
-		gm.free()
 	# Model berrangka + animasi (idle/walk/attack/hurt/die) dari Blender.
-	for mdl in ["pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
+	for mdl in ["pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)
 		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
 		var lengkap := true

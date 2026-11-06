@@ -102,6 +102,11 @@ Diunduh dari GitHub ke `~/Claude/aset_cc0/` (lisensi CC0, Kay Lousberg; salinan 
 - `KayKit-Medieval-Hexagon-Pack-1.0`: pohon, hutan kecil, gunung, batu, dan tunggul di
   `client/assets/models/alam/` (satu palet warna `hexagons_medieval.png`).
 
+- NPC Nenek Penjual (dari `Mage.glb`) dan Petani (dari `Rogue.glb`) dibuat lewat
+  `tools/blender/kaykit_npc.py`: perlengkapan dibuang, warna atlas diubah per rona (jubah mawar,
+  rambut putih / tunik cokelat), topi jerami petani ditambah sebagai geometri kepala. Model
+  TripoSR lama disimpan di `~/Claude/npc/*_lama.glb`.
+
 Model pohon/batu/tanaman hasil TripoSR yang lama dipindah ke `~/Claude/backup/dekor_triposr/`
 (tidak dipakai lagi); alat `tools/blender/ringankan.py` tetap ada untuk model gambar-ke-3D lain.
 
