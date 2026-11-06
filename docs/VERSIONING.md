@@ -127,6 +127,11 @@ membawa pemain; bawaannya halaman Releases terbaru.
   `DefaultMinClient` tetap 0.18.0. Klien lama masih jalan, tetapi dialog NPC-nya hanya
   menampilkan misi pertama yang belum selesai, jadi misi baru butuh klien 0.20.0.
 
+- v0.21.0 memperlebar Desa Awal (15x20 -> 25x30; server menerima posisi sampai (24,29)), menambah 10 warga
+  desa yang berjalan bebas dengan dialog mengikuti alur cerita, dan mengganti model Nenek dan Petani dengan
+  model KayKit berrangka. API tidak berubah; `DefaultMinClient` tetap 0.18.0. Klien lama masih jalan, tetapi
+  pemain yang tersimpan di bagian desa yang baru (x >= 15 atau y >= 20) dipindahkan ke tempat bebas terdekat.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
