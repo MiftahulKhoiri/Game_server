@@ -453,7 +453,7 @@ func _run() -> void:
 	world2.queue_free()
 	await process_frame
 	var pb: Dictionary = await Api.battle_start()
-	_check(pb.ok and ["ular_hutan", "serigala_hutan", "babi_hutan"].has(str(pb.data.battle.enemy_id)), "musuh di hutan Perbatasan adalah hewan buas (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
+	_check(pb.ok and ["tikus_sawah", "belalang_raksasa", "ular_hutan", "serigala_hutan"].has(str(pb.data.battle.enemy_id)), "musuh di hutan Perbatasan adalah hewan hutan (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
 	if pb.ok:
 		for i in 40:  # kabur dari pertarungan acak (peluang 60%, cooldown 3 d) supaya tidak menggantung
 			var fl: Dictionary = await Api.battle_action("flee")
@@ -855,6 +855,11 @@ func _run() -> void:
 		var wr: Node = load("res://scenes/world3d.tscn").instantiate()
 		get_root().add_child(wr)
 		await process_frame
+		if mid == Maps.DEFAULT_MAP:
+			_check(not Maps.ROAMERS.has(mid) and wr._roamers.is_empty(), "Desa Awal aman: tak ada musuh berkeliaran")
+			wr.queue_free()
+			await process_frame
+			continue
 		var cfg: Dictionary = Maps.ROAMERS[mid]
 		_check(wr._roamers.size() >= mini(int(cfg.n), 5), "%s: musuh berkeliaran muncul (%d)" % [mid, wr._roamers.size()])
 		var bad_spot := 0
@@ -910,6 +915,165 @@ func _run() -> void:
 		wr.queue_free()
 		await process_frame
 	Session.offline = false
+	Session.player.state = saved_pose
+
+
+	print("== desa malam: menara lampu, lampu gapura dan rumah, rumah kepala suku, warga pulang")
+	var WB: GDScript = load("res://scripts/world_build.gd")
+	var Wg: GDScript = load("res://scripts/warga.gd")
+	var terrain: Node3D = WB.build(Maps.DEFAULT_MAP)
+	_check(terrain.has_meta("malam"), "desa punya lampu malam")
+	var lamp_reg: Dictionary = terrain.get_meta("malam")
+	_check((lamp_reg.lights as Array).size() >= 4, "lampu titik: menara, dua lampu gapura, rumah kepala suku (%d)" % (lamp_reg.lights as Array).size())
+	WB.set_night(terrain, 1.0)
+	_check((lamp_reg.lampu as StandardMaterial3D).emission_energy_multiplier > 0.5 and (lamp_reg.lights[0].node as OmniLight3D).visible and (lamp_reg.lights[0].node as OmniLight3D).light_energy > 0.5, "malam: lampu menyala")
+	WB.set_night(terrain, 0.0)
+	_check((lamp_reg.lampu as StandardMaterial3D).emission_energy_multiplier == 0.0 and not (lamp_reg.lights[0].node as OmniLight3D).visible, "siang: lampu padam")
+	var gate_lamps := 0
+	var tower_lamp := 0
+	for ch in terrain.get_children():
+		if ch.name.begins_with("LampuGapura"):
+			gate_lamps += 1
+		if ch.name == "LampuMenara":
+			tower_lamp += 1
+	_check(gate_lamps == 2 and tower_lamp == 1, "dua lampu di atas gapura dan satu lampu besar di menara (%d, %d)" % [gate_lamps, tower_lamp])
+	terrain.free()
+	var well_tiles := 0
+	for row in Maps.rows(Maps.DEFAULT_MAP):
+		well_tiles += row.count("W")
+	_check(well_tiles == 1 and Maps.tile_at(Maps.DEFAULT_MAP, 22, 13) == "W", "menara lampu berdiri di tengah alun-alun (petak W)")
+	_check(Maps.tile_at(Maps.DEFAULT_MAP, 40, 3) == "D" and Maps.tile_at(Maps.DEFAULT_MAP, 38, 1) == "H" and Maps.tile_at(Maps.DEFAULT_MAP, 42, 3) == "H", "rumah kepala suku 5x3 dengan pintu di (40,3)")
+	var chief := false
+	for def: Dictionary in Maps.WARGA:
+		if def.id == "kepala_suku" and def.rumah == Vector2i(40, 3):
+			chief = true
+		if def.has("rumah"):
+			var dr: Vector2i = def.rumah
+			_check(Maps.tile_at(Maps.DEFAULT_MAP, dr.x, dr.y) == "D" and Maps.warga_free(Maps.DEFAULT_MAP, Vector2(dr.x + 0.5, dr.y + 1.5)), "%s: pintu rumah D dan petak di depannya bisa dilewati" % def.id)
+	_check(chief, "ada Kepala Suku yang tinggal di rumahnya")
+	_check(not Atmo.is_night() or Atmo.hour_override < 0.0, "jam uji belum dipaksa")
+	Atmo.hour_override = 12.0
+	_check(not Atmo.is_night() and Atmo.night() < 0.1, "siang bolong: bukan malam, lampu padam")
+	Atmo.hour_override = 22.0
+	_check(Atmo.is_night() and Atmo.night() > 0.9, "jam 22: malam penuh")
+	var no_others: Array[Vector2] = []
+	var wb = null
+	var pj = null
+	for def: Dictionary in Maps.WARGA:
+		if def.id == "bu_sari":
+			wb = Wg.new(def, 3)
+		if def.id == "penjaga":
+			pj = Wg.new(def, 4)
+	var n_steps := 0
+	while not wb.inside and n_steps < 6000:
+		wb.step(0.05, Vector2(-80, -80), no_others, true)
+		n_steps += 1
+	_check(wb.inside and wb.pos.distance_to(Vector2(10.5, 2.5)) < 0.1, "Bu Sari berjalan pulang dan masuk lewat pintu rumahnya (%d langkah)" % n_steps)
+	for i in 200:
+		pj.step(0.05, Vector2(-80, -80), no_others, true)
+	_check(not pj.inside and pj.door.x < 0, "penjaga gerbang tetap berjaga sepanjang malam")
+	Atmo.hour_override = 12.0
+	wb.step(0.05, Vector2(-80, -80), no_others, false)
+	_check(not wb.inside and wb.pos.distance_to(Vector2(10.5, 3.5)) < 0.1, "pagi: warga keluar dari pintu rumahnya")
+	Atmo.hour_override = 22.0
+	Session.offline = true
+	Session.player.state.map = Maps.DEFAULT_MAP
+	Session.player.state.x = 22
+	Session.player.state.y = 20
+	Session.player.state.fx = 0.0
+	Session.player.state.fz = 0.0
+	var wn: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wn)
+	await process_frame
+	var inside_n := 0
+	var out_n := 0
+	var guard_out := false
+	for ww in wn._warga:
+		if ww.inside:
+			inside_n += 1
+			_check(not ww.node.visible, "%s di dalam rumah tidak terlihat" % ww.id)
+		else:
+			out_n += 1
+			if ww.id == "penjaga":
+				guard_out = true
+	_check(inside_n == 7 and guard_out and out_n == 5, "masuk desa saat malam: 7 warga di rumah, penjaga dan ayam tetap di luar (%d di dalam)" % inside_n)
+	_check(wn._npc_in_range() == "" or not wn._npc_in_range().begins_with("warga:bu_sari"), "warga di dalam rumah tidak bisa diajak bicara")
+	wn.queue_free()
+	await process_frame
+	Atmo.hour_override = -1.0
+	Session.offline = false
+
+	print("== pertarungan langsung di dunia (tanpa pindah layar)")
+	for i in 40:  # sisa pertarungan bos dari uji sebelumnya harus selesai dulu (kabur / kalah)
+		var left_b: Dictionary = await Api.battle_get()
+		if not left_b.ok:
+			break
+		await Api.battle_action("flee")
+		await create_timer(0.8).timeout
+	await Api.rest()  # pulihkan HP bila bisa (di desa), supaya uji menang tidak bergantung pada sisa HP
+	var me_fight: Dictionary = await Api.get_me()
+	Session.set_player(me_fight.data)
+	var fst: Dictionary = Session.player.state.duplicate(true)
+	fst.map = Maps.PERBATASAN
+	fst.x = 22
+	fst.y = 5
+	fst.fx = 22.5
+	fst.fz = 5.5
+	var saved_f: Dictionary = await Api.save(Session.player.version, fst)
+	_check(saved_f.ok, "posisi di hutan Perbatasan tersimpan")
+	if saved_f.ok:
+		Session.set_player(saved_f.data)
+		var wf: Node = load("res://scenes/world3d.tscn").instantiate()
+		get_root().add_child(wf)
+		await process_frame
+		await process_frame
+		wf._roam_grace = 999.0
+		_check(wf._roamers.size() >= 5, "hutan berisi musuh berkeliaran (%d)" % wf._roamers.size())
+		var foe = wf._roamers[0]
+		foe.pos = wf._pos + Vector2(1.3, 0.0)
+		var n_before: int = wf._roamers.size()
+		wf._fight.engage(foe, "attack")
+		var tf := Time.get_ticks_msec()
+		while not wf._fight.active and Time.get_ticks_msec() - tf < 6000:
+			await process_frame
+		_check(wf._fight.active and wf._fight.roamer == foe and foe.fight, "memukul musuh memulai pertarungan langsung di dunia")
+		_check(wf.is_inside_tree() and wf.get_node_or_null("WorldFight") == null and not wf._locked, "layar tetap dunia (tidak pindah ke layar pertarungan) dan pemain tetap bebas bergerak")
+		_check(foe.node.get_child_count() >= 5 and wf._fight._bar != null, "musuh punya bar nyawa melayang")
+		var fought := 0
+		tf = Time.get_ticks_msec()
+		while wf._fight.active and Time.get_ticks_msec() - tf < 90000:
+			wf._fight.player_action("attack")
+			fought += 1
+			await process_frame
+		_check(not wf._fight.active and wf._fight.last_result != "", "pertarungan langsung selesai (%s) setelah %d bingkai aksi" % [wf._fight.last_result, fought])
+		_check(Session.battle.is_empty(), "sesi tidak lagi menyimpan pertarungan")
+		var gone_f: Dictionary = await Api.battle_get()
+		_check(not gone_f.ok and gone_f.status == 404, "pertarungan terhapus di server")
+		if wf._fight.last_result == "won":
+			_check(not wf._roamers.has(foe) and foe.dying, "musuh yang kalah dilepas dari dunia")
+			var after_f: Dictionary = await Api.get_me()
+			_check(int(after_f.data.state.xp) > 0 or int(after_f.data.state.level) > 1, "menang memberi XP")
+			_check(int(after_f.data.state.hp) == Session.player.state.hp and int(after_f.data.version) == Session.player.version, "HP dan versi lokal sinkron dengan server")
+			_check(wf._roamers.size() == n_before - 1, "jumlah musuh berkurang satu")
+		# Kabur otomatis: menjauh dari musuh yang masih menempel.
+		if wf._fight.last_result != "lost":
+			var foe2 = wf._roamers[0]
+			foe2.chase_speed = 0.0
+			foe2.pos = wf._pos + Vector2(1.3, 0.0)
+			wf._fight.engage(foe2, "")
+			tf = Time.get_ticks_msec()
+			while not wf._fight.active and Time.get_ticks_msec() - tf < 6000:
+				await process_frame
+			_check(wf._fight.active, "pertarungan kedua dimulai lewat sentuhan")
+			wf._pos = foe2.pos + Vector2(7.0, 0.0)
+			tf = Time.get_ticks_msec()
+			while wf._fight.active and Time.get_ticks_msec() - tf < 30000:
+				await process_frame
+			_check(not wf._fight.active and ["fled", "lost", "won"].has(wf._fight.last_result), "menjauh dari musuh = mencoba kabur sampai selesai (%s)" % wf._fight.last_result)
+			var left2: Dictionary = await Api.battle_get()
+			_check(not left2.ok, "tak ada pertarungan menggantung di server")
+		wf.queue_free()
+		await process_frame
 	Session.player.state = saved_pose
 
 	print("== token salah")

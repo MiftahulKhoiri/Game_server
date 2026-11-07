@@ -18,6 +18,7 @@ const ActionButton = preload("res://scripts/action_button.gd")
 const Chest = preload("res://scripts/chest.gd")
 const HeroFx = preload("res://scripts/hero_fx.gd")
 const Roamer = preload("res://scripts/roamer.gd")
+const WorldFight = preload("res://scripts/world_fight.gd")
 const HudBars = preload("res://scripts/hud_bars.gd")
 
 const SPEED := 3.3  # petak per detik
@@ -84,6 +85,9 @@ var _npc_models: Dictionary = {}  # id NPC -> model 3D
 var _npc_time := 0.0
 var _warga: Array[Warga] = []        # warga desa yang berjalan bebas
 var _roamers: Array[Roamer] = []     # musuh yang berkeliaran di peta
+var _roam_cfg: Dictionary = {}       # pengaturan musuh peta ini (Maps.ROAMERS), untuk memunculkan pengganti
+var _roam_kinds: Array = []
+var _fight: WorldFight               # pertarungan langsung di dunia
 var _roam_grace := 0.0
 var _bars: HudBars
 
@@ -171,11 +175,14 @@ func _ready() -> void:
 	add_child(_save_timer)
 
 	_build_ui()
+	_fight = WorldFight.new()
+	add_child(_fight)
+	_fight.setup(self)
 	_refresh_hud()
 	_apply_transform()
 	_set_status("Mode uji (tidak disimpan)" if Session.offline else "Tersimpan")
 	if not Session.offline:
-		_resume_battle_if_any()  # mis. aplikasi ditutup di tengah pertarungan
+		_fight.resume()  # mis. aplikasi ditutup di tengah pertarungan: musuhnya muncul lagi di dekat pemain
 
 
 func _notification(what: int) -> void:
@@ -231,6 +238,7 @@ func _load_map(map_id: String) -> void:
 	_atmo_base = Atmosphere.capture(_env.environment, _sun)
 	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
 	Atmosphere.set_rain(_rain, map_id)
+	_update_lamps()
 	_sync_world()
 
 
@@ -298,6 +306,9 @@ func _spawn_warga(map_id: String) -> void:
 		_npc_root.add_child(holder)
 		w.node = holder
 		w.model = model
+		if w.door.x >= 0 and Atmosphere.outdoors(map_id) and Atmosphere.is_night():
+			w.inside = true  # masuk peta saat malam: penduduk sudah di rumah
+			w.pos = w.front()
 		w.apply()
 		_warga.append(w)
 
@@ -306,44 +317,69 @@ func _spawn_warga(map_id: String) -> void:
 func _spawn_roamers(map_id: String) -> void:
 	_roamers = []
 	_roam_grace = ROAM_GRACE
-	var cfg: Dictionary = Maps.ROAMERS.get(map_id, {})
-	if cfg.is_empty() or _npc_root == null:
+	_roam_cfg = Maps.ROAMERS.get(map_id, {})
+	_roam_kinds = []
+	if _roam_cfg.is_empty() or _npc_root == null:
 		return
 	var level := int(Session.player.state.level)
-	var kinds: Array = []
 	var weakest: Dictionary = {}
-	for k: Dictionary in cfg.kinds:
+	for k: Dictionary in _roam_cfg.kinds:
 		if int(k.lv) <= level:
-			kinds.append(k)
+			_roam_kinds.append(k)
 		if weakest.is_empty() or int(k.lv) < int(weakest.lv):
 			weakest = k
-	if kinds.is_empty():
-		kinds = [weakest]
+	if _roam_kinds.is_empty():
+		_roam_kinds = [weakest]
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var tries := 0
+	while _roamers.size() < int(_roam_cfg.n) and tries < 500:
+		tries += 1
+		var at := _roam_spot(map_id, rng)
+		if at == Vector2.ZERO:
+			break
+		var kind: Dictionary = _roam_kinds[rng.randi() % _roam_kinds.size()]
+		_roamers.append(_make_roamer(kind, map_id, at, int(rng.randi())))
+
+
+## Titik acak yang cocok untuk musuh berkeliaran: petak yang sesuai, jauh dari pemain dan musuh lain.
+## Vector2.ZERO bila tidak ada.
+func _roam_spot(map_id: String, rng: RandomNumberGenerator) -> Vector2:
 	var rows := Maps.rows(map_id)
 	var min_d := 10.0 if Maps.width(map_id) >= 30 else 6.0
 	var cands: Array[Vector2] = []
-	for y in range(int(cfg.min_y), rows.size()):
+	for y in range(int(_roam_cfg.min_y), rows.size()):
 		for x in rows[y].length():
-			if not str(cfg.tiles).contains(rows[y][x]):
+			if not str(_roam_cfg.tiles).contains(rows[y][x]):
 				continue
 			var c := Vector2(x + 0.5, y + 0.5)
 			if c.distance_to(_pos) >= min_d and Maps.roam_free(map_id, c):
 				cands.append(c)
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var tries := 0
-	while _roamers.size() < int(cfg.n) and not cands.is_empty() and tries < 500:
-		tries += 1
+	for _i in 40:
+		if cands.is_empty():
+			return Vector2.ZERO
 		var at: Vector2 = cands[rng.randi() % cands.size()]
 		var apart := true
 		for o in _roamers:
 			if o.pos.distance_to(at) < 3.5:
 				apart = false
 				break
-		if not apart:
-			continue
-		var kind: Dictionary = kinds[rng.randi() % kinds.size()]
-		_roamers.append(_make_roamer(kind, map_id, at, int(rng.randi())))
+		if apart:
+			return at
+	return Vector2.ZERO
+
+
+## Satu musuh pengganti muncul (dipanggil WorldFight setelah satu musuh tumbang).
+func respawn_roamer() -> void:
+	if _roam_cfg.is_empty() or _roam_kinds.is_empty() or _roamers.size() >= int(_roam_cfg.n):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var at := _roam_spot(_map_id, rng)
+	if at == Vector2.ZERO:
+		return
+	var kind: Dictionary = _roam_kinds[rng.randi() % _roam_kinds.size()]
+	_roamers.append(_make_roamer(kind, _map_id, at, int(rng.randi())))
 
 
 func _make_roamer(kind: Dictionary, map_id: String, at: Vector2, seed_value: int) -> Roamer:
@@ -386,33 +422,35 @@ func _make_roamer(kind: Dictionary, map_id: String, at: Vector2, seed_value: int
 	r.model = model
 	r.name_label = name_label
 	r.alert = bang
+	r.top = top
 	r.apply(false)
 	return r
 
 
-## Musuh berjalan, mengejar bila pemain mendekat, dan memulai pertarungan saat menyentuh.
+## Musuh berjalan, mengejar bila pemain mendekat, dan memulai pertarungan langsung saat menyentuh.
 func _update_roamers(delta: float) -> void:
 	if _roamers.is_empty() or _locked:
 		return
 	_roam_grace = maxf(0.0, _roam_grace - delta)
-	var can_aggro := _roam_grace <= 0.0 and not Session.offline
-	for r in _roamers:
+	var can_aggro := _roam_grace <= 0.0 and not Session.offline and not _fight.busy()
+	for r: Roamer in _roamers.duplicate():
 		var touched := r.step(delta, _pos, can_aggro)
 		r.apply(r.pos.distance_to(_pos) < ROAM_NEAR)
-		if touched:
-			_set_status("%s menyerang!" % r.label)
-			_start_encounter(false, r.id)
-			return
+		if touched and not _fight.busy():
+			_fight.engage(r)
 
 
-## Pukulan/tendangan mengenai musuh berkeliaran di depan: pertarungan dimulai dengan musuh itu.
-func _hit_roamer(reach: float, cos_min: float) -> bool:
+## Pukulan/tendangan mengenai musuh berkeliaran di depan: pertarungan langsung dimulai (bila belum)
+## dan aksinya (attack / skill1) dikirim ke server. Mengembalikan true bila ada musuh yang terkena.
+func _hit_roamer(reach: float, cos_min: float, action := "attack") -> bool:
 	if Session.offline or _locked or _roamers.is_empty():
 		return false
 	var f := _facing()
 	var best: Roamer = null
 	var best_d := reach + 0.4
 	for r in _roamers:
+		if r.dying:
+			continue
 		var off := r.pos - _pos
 		var d := off.length()
 		if d > reach + 0.4 or d >= best_d:
@@ -423,8 +461,14 @@ func _hit_roamer(reach: float, cos_min: float) -> bool:
 		best_d = d
 	if best == null:
 		return false
-	_set_status("%s terkena seranganmu!" % best.label)
-	_start_encounter(false, best.id)
+	if _fight.active:
+		if best == _fight.roamer:
+			_fight.player_action(action)
+			return true
+		return false  # sedang melawan musuh lain
+	if _fight.busy():
+		return true  # pertarungan sedang dimulai
+	_fight.engage(best, action)
 	return true
 
 
@@ -507,12 +551,18 @@ func _update_world_life(delta: float) -> void:
 		_atmo_acc = 0.0
 		Atmosphere.apply(_env.environment, _sun, _atmo_base, _map_id)
 		Atmosphere.set_rain(_rain, _map_id)
+		_update_lamps()
 		if _clock != null:
 			_clock.text = Atmosphere.label() if Atmosphere.outdoors(_map_id) else "Gua Batu"
 	if _rain != null:
 		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
 	_update_npcs(delta)
 	_update_roamers(delta)
+
+
+## Lampu menara, gapura, dan rumah menyala menjelang malam dan padam saat pagi.
+func _update_lamps() -> void:
+	WorldBuild.set_night(_terrain, Atmosphere.night() if Atmosphere.outdoors(_map_id) else 0.0)
 
 
 ## NPC menoleh ke pemain bila dekat; selain itu berjalan pelan di sekitar petaknya.
@@ -545,12 +595,13 @@ func _update_npcs(delta: float) -> void:
 
 ## Warga desa berjalan bebas, saling menghindar, dan menjauh dari pemain.
 func _update_warga(delta: float) -> void:
+	var night := Atmosphere.outdoors(_map_id) and Atmosphere.is_night()
 	for w in _warga:
 		var others: Array[Vector2] = []
 		for o in _warga:
-			if o != w:
+			if o != w and not o.inside:
 				others.append(o.pos)
-		w.step(delta, _pos, others)
+		w.step(delta, _pos, others, night)
 		w.apply()
 
 
@@ -597,6 +648,9 @@ func _after_step(moved: float) -> void:
 	var t := Movement.tile_of(_pos)
 	if t != _tile:
 		_tile = t
+		if _fight.active:
+			_set_status("Selesaikan pertarungan atau kabur dulu")
+			return
 		var ex := Maps.exit_at(_map_id, t.x, t.y)
 		if not ex.is_empty():
 			_go_to_map(str(ex.to), ex.at)
@@ -604,22 +658,20 @@ func _after_step(moved: float) -> void:
 		if not Session.offline and Maps.tile_at(_map_id, t.x, t.y) == Maps.BOSS_TILE:
 			_start_encounter(true)
 			return
-	if Session.offline or _locked:
+	if Session.offline or _locked or _fight.busy():
 		return
 	var tile := Maps.tile_at(_map_id, _tile.x, _tile.y)
-	if tile == "" or not Maps.ENCOUNTER_TILES.contains(tile):
-		return  # pertemuan hanya terjadi di ladang / kerikil
+	if tile == "" or not Maps.ENCOUNTER_TILES.contains(tile) or _map_id == Maps.DEFAULT_MAP:
+		return  # pertemuan hanya terjadi di ladang hutan / kerikil; Desa Awal aman
 	_step_acc += moved
 	while _step_acc >= 1.0:
 		_step_acc -= 1.0
 		if Session.safe_steps > 0:
 			Session.safe_steps -= 1
 		elif randf() < ENCOUNTER_CHANCE:
-			_start_encounter()
+			_fight.engage_random()
 			return
 
-
-# --- aksi: pukul, tendang, hindar, boost ---
 
 func _facing() -> Vector2:
 	return Vector2(sin(_yaw), cos(_yaw))
@@ -717,11 +769,11 @@ func _dash(dir: Vector2, dist: float, time: float) -> void:
 
 
 ## Satu ayunan: pukul benda dalam jangkauan, isi tenaga Boost, laporkan yang hancur ke server.
-func _swing(reach: float, cos_min: float, dmg: float, solid_n: int, grass_n: int) -> int:
-	if _hit_roamer(reach, cos_min):
+func _swing(reach: float, cos_min: float, dmg: float, solid_n: int, grass_n: int, action := "attack") -> int:
+	if _hit_roamer(reach, cos_min, action):
 		return 1
-	if _breakables == null:
-		return 0
+	if _breakables == null or _fight.busy():
+		return 0  # saat bertarung pukulan hanya untuk musuh (server menolak aksi dunia selama pertarungan)
 	if _boost_t > 0.0:
 		dmg *= 2.0
 	var list := _breakables.targets(_pos, _facing(), reach, cos_min, solid_n, grass_n)
@@ -772,15 +824,21 @@ func _do_kaki(held: float) -> void:
 		HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("7fd1ff"), 1.4, 0.3)
 		HeroFx.swoosh(self, Vector3(_pos.x, 0.35, _pos.y), _yaw, 1.8, Color("bfe8ff"))
 		await get_tree().create_timer(0.15).timeout
-		_swing(2.4, 0.0, 2.5, 2, 6)
+		_swing(2.4, 0.0, 2.5, 2, 6, "skill1")
 		_set_status("Tendang jauh!")
 	else:
 		_cd.kaki = 0.5
 		_cd_len.kaki = 0.5
 		_dash(_facing(), 0.2, 0.08)
 		HeroFx.swoosh(self, Vector3(_pos.x, 0.3, _pos.y), _yaw, 1.0, Color("bfe8ff"))
-		_swing(1.45, 0.1, 1.5, 1, 3)
+		_swing(1.45, 0.1, 1.5, 1, 3, "skill1")
 		_set_status("Tendang!")
+
+
+## Dalam pertarungan, menekan Perisai langsung bertahan di server (waktunya menentukan tangkisan sempurna).
+func _on_perisai_pressed() -> void:
+	if _fight != null and _fight.active and not _locked:
+		_fight.player_action("defend")
 
 
 func _do_perisai(held: float) -> void:
@@ -1024,6 +1082,8 @@ func _npc_in_range() -> String:
 			best_d = d
 			best = id
 	for w in _warga:  # warga desa: posisi hidup (mereka berjalan), id dialog berawalan "warga:"
+		if w.inside:
+			continue
 		var wd := _pos.distance_to(w.pos)
 		if wd <= best_d:
 			best_d = wd
@@ -1049,6 +1109,9 @@ func _chest_in_range() -> String:
 ## Tombolnya melayang tepat di atas nama orang/peti yang dituju (mengikuti kamera).
 func _update_talk_button() -> void:
 	if _talk_button == null:
+		return
+	if _fight != null and _fight.busy():
+		_talk_button.visible = false  # tidak bisa bicara / buka peti saat bertarung
 		return
 	var chest := _chest_in_range()
 	if chest != "" and not Session.offline:
@@ -1095,6 +1158,9 @@ func _place_talk_button(anchor: Vector3) -> void:
 
 func _talk() -> void:
 	if _locked:
+		return
+	if _fight != null and _fight.busy():
+		_set_status("Selesaikan pertarungan dulu")
 		return
 	var chest := _chest_in_range()
 	if chest != "" and not Session.offline:
@@ -1216,6 +1282,7 @@ func _build_ui() -> void:
 	_btn_boost = _add_action(layer, ActionButton.Icon.BOOST, "Boost", Vector2(576, 986), 52.0, Color("ffe14a"))
 	_btn_tangan.pressed.connect(_do_tangan)
 	_btn_kaki.released.connect(_do_kaki)
+	_btn_perisai.pressed.connect(_on_perisai_pressed)
 	_btn_perisai.released.connect(_do_perisai)
 	_btn_boost.pressed.connect(_do_boost)
 	_flush_timer = Timer.new()

@@ -366,6 +366,9 @@ func TestBattleActionErrors(t *testing.T) {
 		if br.Battle != nil && (br.Battle.CooldownMax[a] == 0 || len(br.Events) == 0) {
 			t.Errorf("%s: tampilan/kejadian kosong: %s", a, d)
 		}
+		if br.Battle == nil {
+			break // musuh kecil sudah tumbang oleh skill1: pertarungan selesai
+		}
 	}
 	if code, _, _ := battleCall(t, ts, "", "POST", "/v1/battle/start", nil); code != http.StatusUnauthorized {
 		t.Errorf("tanpa token harus 401, dapat %d", code)
@@ -585,8 +588,8 @@ func TestBattleEnemyDependsOnMap(t *testing.T) {
 		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
 	}
 	_, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
-	if start.Battle == nil || start.Battle.EnemyID != "ular_hutan" {
-		t.Errorf("level 1 di perbatasan harus bertemu ular hutan: %s", d)
+	if start.Battle == nil || (start.Battle.EnemyID != "ular_hutan" && start.Battle.EnemyID != "tikus_sawah" && start.Battle.EnemyID != "belalang_raksasa") {
+		t.Errorf("level 1 di perbatasan harus bertemu musuh kecil hutan: %s", d)
 	}
 }
 

@@ -15,6 +15,7 @@ const OTHER_GAP := 0.6     # jarak minimal ke warga lain
 const NOTICE := 2.6        # jarak warga yang berhenti mulai menoleh ke pemain
 const GREET := 1.9         # pemain sedekat ini: warga berhenti dan menoleh (supaya mudah diajak bicara)
 const TURN_RATE := 7.0
+const HOME_SPEED := 1.6    # pulang berjalan lebih cepat dari biasanya (pengali kecepatan)
 
 var id := ""              # kunci dialog (Maps.WARGA[].id)
 var map_id := ""
@@ -24,12 +25,16 @@ var speed := 0.7
 var pos := Vector2.ZERO
 var yaw := 0.0
 var walking := false
+var door := Vector2i(-1, -1)  # petak pintu rumahnya (D); (-1,-1) = tidak punya rumah (tetap di luar)
+var inside := false           # sedang di dalam rumah (malam): tidak terlihat dan tidak bisa diajak bicara
 var node: Node3D            # wadah di dunia (posisi); model di dalamnya yang berputar
 var model: Node3D
 
 var _target := Vector2.ZERO
 var _has_target := false
 var _wait := 0.0
+var _route: Array[Vector2] = []
+var _route_done := false
 var _rng := RandomNumberGenerator.new()
 
 
@@ -37,6 +42,8 @@ func _init(def: Dictionary, seed_value: int) -> void:
 	id = str(def.id)
 	map_id = str(def.map)
 	home = def.pos
+	if def.has("rumah"):
+		door = def.rumah
 	radius = float(def.radius)
 	speed = float(def.speed)
 	pos = home
@@ -58,9 +65,97 @@ func _pick_target() -> bool:
 	return false
 
 
-## Maju delta detik. `player` = posisi pemain, `others` = posisi warga lain.
-func step(delta: float, player: Vector2, others: Array[Vector2]) -> void:
+## Titik tepat di depan pintu rumah (petak di bawah D), tempat warga masuk dan keluar.
+func front() -> Vector2:
+	return Vector2(door.x + 0.5, door.y + 1.5)
+
+
+## Jalur petak (pusat petak) dari posisi sekarang ke depan pintu, lewat petak yang boleh dilalui warga.
+## Kosong bila tak ada jalur. Pencarian melebar (BFS) pada kisi petak, sekali saat warga mulai pulang.
+func _route_home() -> Array[Vector2]:
+	var goal := Vector2i(door.x, door.y + 1)
+	var start := Vector2i(int(floor(pos.x)), int(floor(pos.y)))
+	var prev := {start: start}
+	var queue: Array[Vector2i] = [start]
+	var qi := 0
+	var found := start == goal
+	while qi < queue.size() and not found:
+		var cur := queue[qi]
+		qi += 1
+		for d: Vector2i in [Vector2i.DOWN, Vector2i.UP, Vector2i.LEFT, Vector2i.RIGHT]:
+			var n := cur + d
+			if prev.has(n):
+				continue
+			if n != goal and not Maps.warga_free(map_id, Vector2(n.x + 0.5, n.y + 0.5)):
+				continue
+			prev[n] = cur
+			if n == goal:
+				found = true
+				break
+			queue.append(n)
+	var out: Array[Vector2] = []
+	if not found:
+		return out
+	if start == goal:
+		return [Vector2(goal.x + 0.5, goal.y + 0.5)]
+	var t := goal
+	while t != start:
+		out.push_front(Vector2(t.x + 0.5, t.y + 0.5))
+		t = prev[t]
+	return out
+
+
+## Berjalan pulang: ikuti jalur sampai depan pintu, lalu masuk (menghilang). Tidak menunggu pemain/warga lain
+## (jalur petak sudah bebas rintangan), supaya tidak macet.
+func _step_home(delta: float) -> void:
+	if not _route_done:
+		_route = _route_home()
+		_route_done = true
+		if _route.is_empty():
+			inside = true  # tak ada jalur: langsung dianggap sudah di dalam
+			return
+		_route.append(Vector2(door.x + 0.5, door.y + 0.5))  # langkah terakhir: masuk lewat pintu
+	_has_target = false
+	var goal: Vector2 = _route[0]
+	var to_goal := goal - pos
+	var dist := to_goal.length()
+	var stepd := speed * HOME_SPEED * delta
+	if dist <= stepd + 0.02:
+		pos = goal
+		_route.remove_at(0)
+		if _route.is_empty():
+			inside = true
+			walking = false
+			return
+	else:
+		pos += to_goal / dist * stepd
+	walking = true
+	if dist > 0.01:
+		yaw = lerp_angle(yaw, atan2(to_goal.x, to_goal.y), minf(1.0, delta * TURN_RATE * 1.5))
+
+
+## Pagi hari: keluar dari pintu dan mulai berjalan lagi.
+func leave_home() -> void:
+	inside = false
+	_route = []
+	_route_done = false
+	pos = front()
+	_has_target = false
+	_wait = _rng.randf_range(0.5, 4.0)
+
+
+## Maju delta detik. `player` = posisi pemain, `others` = posisi warga lain, `night` = sudah malam
+## (warga yang punya rumah pulang dan bermalam di dalam).
+func step(delta: float, player: Vector2, others: Array[Vector2], night := false) -> void:
 	walking = false
+	if door.x >= 0:
+		if night and not inside:
+			_step_home(delta)
+			return
+		if not night and inside:
+			leave_home()
+		if inside:
+			return
 	var want_yaw := yaw
 	var face_player := false
 	if pos.distance_to(player) < GREET:
@@ -112,6 +207,7 @@ func apply() -> void:
 	if node == null or not is_instance_valid(node):
 		return
 	node.position = Vector3(pos.x, 0.0, pos.y)
+	node.visible = not inside
 	if model != null and is_instance_valid(model):
 		model.rotation.y = yaw
 		if "moving" in model:

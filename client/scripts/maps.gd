@@ -6,7 +6,7 @@ extends RefCounted
 ##   .  rumput          =  jalan tanah        f  bunga (bisa dilewati)
 ##   T  ladang          B  jembatan           D  pintu rumah (bisa dilewati)
 ##   #  pohon           ~  air                H  tembok/atap rumah
-##   F  pagar           W  sumur              S  tembok batu (reruntuhan)
+##   F  pagar           W  menara lampu (tempat berkumpul)              S  tembok batu (reruntuhan)
 ##   P  pagar kayu besar keliling desa        N  menara gapura desa (dua petak di kiri dan kanan jalan keluar)
 ##   K  singgasana bos (bisa dilewati; menginjaknya memanggil bos)
 ##   M  tanah gunung    G  kerikil (ladang monster, bisa dilewati)    R  batu besar
@@ -48,9 +48,9 @@ const ENCOUNTER_TILES := "TG"
 ## keluarnya berdiri gapura bermenara (N).
 const DESA_AWAL: Array[String] = [
 	"PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-	"P..HHH...HHH...HHH...HHH...HHH...HHH...HHH..P",
-	"P..HDH...HDH...HDH...HDH...HDH...HDH...HDH..P",
-	"P..f=f...f=f...f=f...f=f...f=f...f=f...f=f..P",
+	"P..HHH...HHH...HHH...HHH...HHH...HHH..HHHHH.P",
+	"P..HDH...HDH...HDH...HDH...HDH...HDH..HHHHH.P",
+	"P..f=f...f=f...f=f...f=f...f=f...f=f..HHDHH.P",
 	"P...=.....=.....=.....=.....=.....=.....=...P",
 	"P...=.....=.....=.....=.....=.....=.....=...P",
 	"P..=======================================..P",
@@ -112,13 +112,17 @@ const NPCS := {
 ## jari-jari `radius` petak, hanya di petak jalan/rumput/bunga. `model` = id model 3D;
 ## `speed` = petak per detik; `id` = kunci dialognya di warga_dialog.gd. Tidak menghalangi pemain,
 ## berhenti dan menoleh bila pemain mendekat, dan bisa diajak bicara (tombol Bicara).
+## `rumah` = petak pintu (D) rumahnya: saat malam warga berjalan pulang ke sana dan menghilang ke dalam,
+## paginya keluar lagi. Warga tanpa `rumah` (penjaga gerbang, ayam) tetap di luar sepanjang malam;
+## penjaga gerbang selalu berjaga.
 const WARGA := [
-	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7},
-	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75},
-	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7},
-	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8},
-	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1},
-	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2},
+	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7, "rumah": Vector2i(10, 2)},
+	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75, "rumah": Vector2i(34, 2)},
+	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7, "rumah": Vector2i(13, 20)},
+	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(29, 39)},
+	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
+	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
+	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
 	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7},
@@ -152,18 +156,15 @@ static func warga_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
 	return true
 
 
-## Musuh yang berkeliaran di tiap peta. `id` harus musuh di internal/game/enemy.go yang memang muncul
+## Musuh yang berkeliaran di tiap peta. Desa Awal sengaja tanpa musuh: pertemuan pertama ada di hutan Perbatasan. `id` harus musuh di internal/game/enemy.go yang memang muncul
 ## di peta itu; `lv` = MinLevel-nya (musuh yang terlalu kuat untuk level pemain tidak dimunculkan,
 ## kecuali tidak ada yang lain). `n` = jumlah di peta, `tiles` = jenis petak tempat mereka muncul,
 ## `min_y` = batas utara (desa: menjauh dari rumah-rumah). Server tetap yang menentukan lawan sebenarnya.
 const ROAMERS := {
-	"desa_awal": {"n": 6, "tiles": ".fT", "min_y": 24, "kinds": [
+	"perbatasan": {"n": 16, "tiles": ".fT", "min_y": 3, "kinds": [
 		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1},
 		{"id": "belalang_raksasa", "name": "Kucing Liar", "lv": 1},
 		{"id": "ular_sawah", "name": "Rubah Sawah", "lv": 2},
-		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
-	]},
-	"perbatasan": {"n": 14, "tiles": ".fT", "min_y": 3, "kinds": [
 		{"id": "ular_hutan", "name": "Ular Hutan", "lv": 1},
 		{"id": "serigala_hutan", "name": "Serigala Hutan", "lv": 2},
 		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},

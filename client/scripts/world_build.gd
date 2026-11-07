@@ -24,6 +24,7 @@ const BANGUNAN_MODEL := {
 	"toko": "building_market_red",
 	"dapur": "building_tavern_red",
 	"rumah_sakit": "building_church_red",
+	"kepala_suku": "building_castle_red",
 }
 const JERAMI_MODEL := "building_grain"
 ## Pusat alas jerami di dalam kandang berpagar, per peta.
@@ -35,6 +36,7 @@ const BANGUNAN_KHUSUS := {
 		Vector2i(15, 1): "toko",
 		Vector2i(21, 1): "dapur",
 		Vector2i(27, 1): "rumah_sakit",
+		Vector2i(38, 1): "kepala_suku",
 	},
 }
 const TREE_SINGLE := ["tree_single_A", "tree_single_B"]
@@ -562,6 +564,12 @@ static func _add_gate(root: Node3D, tiles: Array[Vector2i]) -> void:
 				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz + 0.4))
 			for sx in [-0.46, 0.46]:  # dua daun pintu terbuka, menempel di dinding menara
 				_gate_part(root, _box(Vector3(0.07, 1.6, 0.48)), wood, Vector3(mx + sx, 0.85, cz - 0.3))
+			for lx in [-0.36, 0.36]:   # dua lampu di atas gapura, menyala otomatis saat malam
+				_gate_part(root, _cyl(0.02, 0.025, 0.42, 5), wood, Vector3(mx + lx, 2.88, cz))
+				var bulb := _gate_part(root, _sphere(0.15, 10), _lampu_mat(root), Vector3(mx + lx, 3.17, cz))
+				bulb.name = "LampuGapura"
+				_lampu_cahaya(root, Vector3(mx + lx, 3.2, cz - 0.2), 8.0, 2.0)
+			_glow_tanah(root, Vector3(mx, 0.07, cz - 1.8), 5.0)
 			var sign_board := _gate_part(root, _box(Vector3(0.96, 0.4, 0.05)), mat(Color("7a5530")), Vector3(mx, 2.15, cz - 0.55))
 			sign_board.name = "PapanGapura"
 			var label := Label3D.new()
@@ -737,6 +745,8 @@ static func build_arena(map_id: String) -> Node3D:
 			var q2 := _arena_pos(i, 150, 0.9, 9.5, 131)
 			if absf(q2.x) < 0.3 and q2.z > -0.3:
 				continue
+			if absf(q2.x) < 2.1 and absf(q2.z) < 1.3:
+				continue  # tempat petarung berdiri: rumput tidak boleh menutupi musuh pendek (babi hutan, tikus)
 			tufts.append(_xf(q2, Vector3.ONE * (1.0 + 0.6 * _jitter(i, 9, 132)), _jitter(i, 5, 133) * TAU))
 
 	for id: String in sway_by:
@@ -748,28 +758,58 @@ static func build_arena(map_id: String) -> Node3D:
 	return root
 
 
+## Menara lampu besar di tengah alun-alun: tempat warga berkumpul. Menyala saat malam.
 static func _add_well(root: Node3D, c: Vector3) -> void:
-	var ring := MeshInstance3D.new()
-	ring.mesh = _cyl(0.42, 0.45, 0.5, 14)
-	ring.material_override = mat(Color("7d7d85"))
-	ring.position = c + Vector3(0, 0.25, 0)
-	root.add_child(ring)
-	var water := MeshInstance3D.new()
-	water.mesh = _cyl(0.33, 0.33, 0.02, 14)
-	water.material_override = mat(Color("2a4f8a"), false, 0.2)
-	water.position = c + Vector3(0, 0.5, 0)
-	root.add_child(water)
-	for sx in [-0.4, 0.4]:
-		var post := MeshInstance3D.new()
-		post.mesh = _box(Vector3(0.07, 0.9, 0.07))
-		post.material_override = mat(Color("5b3b1e"))
-		post.position = c + Vector3(sx, 0.7, 0)
-		root.add_child(post)
-	var roof := MeshInstance3D.new()
-	roof.mesh = _box(Vector3(1.0, 0.07, 0.6))
-	roof.material_override = mat(Color("a33a3a"))
-	roof.position = c + Vector3(0, 1.18, 0)
-	root.add_child(roof)
+	var stone := _stone_mat(Color("c9c5b8"))
+	var stone_dark := _stone_mat(Color("9b978c"))
+	var wood := mat(Color("5b3b1e"))
+	var wood_l := mat(Color("7a5530"))
+	var red := mat(Color("a33a3a"))
+	var lamp := _lampu_mat(root)
+	# Lantai berkumpul: lingkaran batu rendah di sekeliling menara (bisa diinjak).
+	var pad := _gate_part(root, _cyl(2.5, 2.5, 0.05, 28), mat(Color("8a8678")), c + Vector3(0, 0.025, 0))
+	pad.name = "LantaiMenara"
+	_gate_part(root, _cyl(1.9, 1.9, 0.07, 28), mat(Color("a8a496")), c + Vector3(0, 0.03, 0))
+	# Alas batu menara (tetap di dalam satu petak agar tabrakan sama).
+	_gate_part(root, _cyl(0.56, 0.62, 0.35, 8), stone_dark, c + Vector3(0, 0.175, 0))
+	_gate_part(root, _cyl(0.46, 0.52, 0.9, 8), stone, c + Vector3(0, 0.8, 0))
+	# Rangka kayu: empat tiang dan cincin pengikat tiap 1,4 m.
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var leg := _gate_part(root, _box(Vector3(0.1, 4.9, 0.1)), wood, c + Vector3(sx * 0.3, 3.35, sz * 0.3))
+			leg.name = "TiangMenara"
+	for k in 4:
+		var y := 1.55 + float(k) * 1.4
+		_gate_part(root, _box(Vector3(0.74, 0.08, 0.74)), wood_l, c + Vector3(0, y, 0))
+		if k < 3:
+			var tilt := atan(0.6 / 1.4)
+			var diag_len := sqrt(0.6 * 0.6 + 1.4 * 1.4)
+			for sgn in [-1.0, 1.0]:
+				var dz := _gate_part(root, _box(Vector3(0.05, diag_len, 0.05)), wood_l, c + Vector3(0, y + 0.7, sgn * 0.3))
+				dz.rotation.z = tilt * sgn
+				var dx := _gate_part(root, _box(Vector3(0.05, diag_len, 0.05)), wood_l, c + Vector3(sgn * 0.3, y + 0.7, 0))
+				dx.rotation.x = -tilt * sgn
+	# Anjungan lampu di puncak.
+	var deck := _gate_part(root, _box(Vector3(1.5, 0.14, 1.5)), wood, c + Vector3(0, 5.85, 0))
+	deck.name = "AnjunganMenara"
+	for sx in [-0.68, 0.68]:
+		for sz in [-0.68, 0.68]:
+			_gate_part(root, _box(Vector3(0.07, 0.5, 0.07)), wood, c + Vector3(sx, 6.15, sz))
+	for sx in [-0.68, 0.68]:
+		_gate_part(root, _box(Vector3(0.05, 0.05, 1.4)), wood, c + Vector3(sx, 6.4, 0))
+		_gate_part(root, _box(Vector3(1.4, 0.05, 0.05)), wood, c + Vector3(0, 6.4, sx))
+	# Lampu besar: bola bercahaya dalam sangkar, beratap merah.
+	var glow := _gate_part(root, _sphere(0.5, 12), lamp, c + Vector3(0, 6.75, 0))
+	glow.name = "LampuMenara"
+	for sx in [-0.34, 0.34]:
+		for sz in [-0.34, 0.34]:
+			_gate_part(root, _box(Vector3(0.05, 1.0, 0.05)), wood, c + Vector3(sx, 6.75, sz))
+	_gate_part(root, _box(Vector3(0.82, 0.06, 0.82)), wood, c + Vector3(0, 6.2, 0))
+	var roof := _gate_part(root, _cyl(0.0, 0.85, 0.7, 4), red, c + Vector3(0, 7.58, 0))
+	roof.rotation.y = PI * 0.25
+	_gate_part(root, _cyl(0.025, 0.03, 0.45, 5), wood, c + Vector3(0, 8.1, 0))
+	_lampu_cahaya(root, c + Vector3(0, 6.75, 0), 13.0, 1.5)
+	_glow_tanah(root, c + Vector3(0, 0.09, 0), 6.0)
 
 
 static func _add_throne(root: Node3D, c: Vector3) -> void:
@@ -814,10 +854,10 @@ static func _jenis_bangunan(map_id: String, x0: int, z0: int) -> String:
 
 ## Pasang model bangunan KayKit (pintu menghadap selatan, +Z) memenuhi kelompok petak w x d.
 ## false bila modelnya tidak ada, supaya rumah kotak lama dipakai sebagai cadangan.
-static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx: float, cz: float, w: float, d: float) -> bool:
+static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx: float, cz: float, w: float, d: float) -> Dictionary:
 	var mesh := _dekor_mesh(BANGUNAN_MODEL[_jenis_bangunan(map_id, x0, z0)])
 	if mesh == null:
-		return false
+		return {}
 	var box := mesh.get_aabb()
 	var s := minf((w - 0.2) / box.size.x, (d - 0.2) / box.size.z) * BANGUNAN_SKALA
 	var inst := MeshInstance3D.new()
@@ -825,7 +865,8 @@ static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx:
 	inst.scale = Vector3(s, s, s)
 	inst.position = Vector3(cx - (box.position.x + box.size.x / 2.0) * s, -box.position.y * s, cz - (box.position.z + box.size.z / 2.0) * s)
 	root.add_child(inst)
-	return true
+	# Ukuran bangunan terpasang (untuk menempatkan lampu dan jendela di mukanya).
+	return {"cx": cx, "front_z": cz + box.size.z * s / 2.0, "half_w": box.size.x * s / 2.0, "height": box.size.y * s}
 
 
 ## Rumah: tiap kelompok petak H/D menjadi satu kotak dinding + atap pelana + pintu.
@@ -860,7 +901,14 @@ static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String
 		var d := float(z1 - z0 + 1)
 		var cx := x0 + w / 2.0
 		var cz := z0 + d / 2.0
-		if _pasang_bangunan(root, map_id, x0, z0, cx, cz, w, d):
+		var info := _pasang_bangunan(root, map_id, x0, z0, cx, cz, w, d)
+		if not info.is_empty():
+			var door := Vector2i(-1, -1)
+			for t: Vector2i in comp:
+				if rows[t.y][t.x] == "D":
+					door = t
+			if door.x >= 0:
+				_lampu_rumah(root, info, door, _jenis_bangunan(map_id, x0, z0))
 			continue
 		var walls := MeshInstance3D.new()
 		walls.mesh = _box(Vector3(w - 0.06, WALL_H, d - 0.06))
@@ -888,6 +936,134 @@ static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String
 				win.material_override = mat(Color("9fd0ff"), false, 0.2)
 				win.position = Vector3(t.x + 0.5, 0.95, t.y + 1.0 - 0.02)
 				root.add_child(win)
+
+
+# --- lampu malam ---
+# Bahan bercahaya dan lampu dikumpulkan di meta "malam" pada akar peta; world3d memanggil set_night()
+# dengan kekuatan malam 0..1 (lihat Atmosphere.night()), jadi semua menyala dan padam serempak.
+
+const LAMP_OFF := Color("6b5a3a")
+const LAMP_ON := Color("ffb040")
+
+
+static func _malam(root: Node3D) -> Dictionary:
+	if not root.has_meta("malam"):
+		var lampu := StandardMaterial3D.new()
+		lampu.albedo_color = LAMP_OFF
+		lampu.roughness = 0.5
+		lampu.emission_enabled = true
+		lampu.emission = Color("ffa83a")
+		lampu.emission_energy_multiplier = 0.0
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		glow.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var grad := Gradient.new()
+		grad.set_color(0, Color(1.0, 0.75, 0.4, 1.0))
+		grad.set_color(1, Color(1.0, 0.75, 0.4, 0.0))
+		var tex := GradientTexture2D.new()
+		tex.gradient = grad
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(1.0, 0.5)
+		tex.width = 64
+		tex.height = 64
+		glow.albedo_texture = tex
+		glow.albedo_color = Color(1, 1, 1, 0.0)
+		root.set_meta("malam", {"lampu": lampu, "glow": glow, "lights": []})
+	return root.get_meta("malam")
+
+
+static func _lampu_mat(root: Node3D) -> StandardMaterial3D:
+	return _malam(root).lampu
+
+
+## Lampu titik yang menyala saat malam (energi puncak `energy`).
+static func _lampu_cahaya(root: Node3D, pos: Vector3, range_m: float, energy: float) -> void:
+	var light := OmniLight3D.new()
+	light.light_color = Color("ffb35a")
+	light.light_energy = 0.0
+	light.omni_range = range_m
+	light.shadow_enabled = false
+	light.position = pos
+	light.visible = false
+	root.add_child(light)
+	var reg := _malam(root)
+	(reg.lights as Array).append({"node": light, "energy": energy})
+
+
+## Pendar hangat di tanah (satu bidang datar bercahaya tambahan), terlihat hanya saat malam.
+static func _glow_tanah(root: Node3D, pos: Vector3, size: float) -> void:
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(size, size)
+	var m := MeshInstance3D.new()
+	m.mesh = quad
+	m.material_override = _malam(root).glow
+	m.position = pos
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(m)
+
+
+## Nyalakan/padamkan semua lampu peta: n = 0 siang, 1 malam penuh.
+static func set_night(root: Node3D, n: float) -> void:
+	if root == null or not root.has_meta("malam"):
+		return
+	var reg: Dictionary = root.get_meta("malam")
+	var lampu: StandardMaterial3D = reg.lampu
+	lampu.albedo_color = LAMP_OFF.lerp(LAMP_ON, n)
+	lampu.emission_energy_multiplier = n * 1.5
+	var glow: StandardMaterial3D = reg.glow
+	glow.albedo_color = Color(1, 1, 1, n * 0.32)
+	for e: Dictionary in reg.lights:
+		var light := e.node as OmniLight3D
+		if is_instance_valid(light):
+			light.light_energy = n * float(e.energy)
+			light.visible = n > 0.02
+
+
+## Lampu rumah: lentera di kiri-kanan pintu, dua jendela hangat, dan pendar di tanah depan pintu.
+## `info` dari _pasang_bangunan; `door` = petak pintu (D); `kind` = jenis bangunan.
+static func _lampu_rumah(root: Node3D, info: Dictionary, door: Vector2i, kind: String) -> void:
+	var lamp := _lampu_mat(root)
+	var wood := mat(Color("4a2f1a"))
+	var dx := float(door.x) + 0.5
+	var fz: float = float(info.front_z)
+	var hw: float = float(info.half_w)
+	var h: float = float(info.height)
+	var big := kind == "kepala_suku"
+	var win_y := 0.34 * h
+	var win_dx := hw * (0.6 if big else 0.55)
+	for sx in [-1.0, 1.0]:
+		if not big:  # jendela hangat di kiri-kanan pintu (istana kepala suku punya jendelanya sendiri)
+			_gate_part(root, _box(Vector3(0.28, 0.34, 0.04)), lamp, Vector3(dx + sx * win_dx, win_y, fz + 0.02))
+			_gate_part(root, _box(Vector3(0.36, 0.05, 0.05)), wood, Vector3(dx + sx * win_dx, win_y + 0.2, fz + 0.03))
+			_gate_part(root, _box(Vector3(0.36, 0.05, 0.05)), wood, Vector3(dx + sx * win_dx, win_y - 0.2, fz + 0.03))
+		# lentera di sisi pintu
+		var lx := 0.9 if big else 0.68
+		_gate_part(root, _cyl(0.015, 0.015, 0.3, 4), wood, Vector3(dx + sx * lx, 1.12, fz + 0.1))
+		_gate_part(root, _box(Vector3(0.15, 0.2, 0.15)), lamp, Vector3(dx + sx * lx, 0.92, fz + 0.12))
+	_glow_tanah(root, Vector3(dx, 0.07, fz + 1.2), 5.2 if big else 3.8)
+	if big:
+		_lampu_cahaya(root, Vector3(dx, 1.6, fz + 0.8), 7.5, 1.7)
+		# Papan nama berdiri di depan rumah (tiang kayu + papan).
+		var sx := dx - 2.1
+		var sz := fz + 1.3
+		_gate_part(root, _cyl(0.04, 0.05, 1.3, 6), wood, Vector3(sx, 0.65, sz))
+		_gate_part(root, _box(Vector3(1.5, 0.42, 0.06)), mat(Color("7a5530")), Vector3(sx, 1.25, sz))
+		var label := Label3D.new()
+		label.text = "RUMAH\nKEPALA SUKU"
+		label.font = load("res://assets/fonts/LilitaOne-Regular.ttf")
+		label.font_size = 36
+		label.pixel_size = 0.0033
+		label.outline_size = 8
+		label.modulate = Color("ffe27a")
+		label.outline_modulate = Color("3a1d05")
+		label.position = Vector3(sx, 1.25, sz + 0.04)
+		root.add_child(label)
+	else:
+		_lampu_cahaya(root, Vector3(dx, 1.5, fz + 0.5), 4.2, 1.1)
+
 
 
 ## Obor di dinding gua: tiang kecil dengan nyala (cahaya titik hanya beberapa, agar ringan).

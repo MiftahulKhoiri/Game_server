@@ -13,6 +13,8 @@ const Maps = preload("res://scripts/maps.gd")
 const DAY_SECONDS := 720.0      # 12 menit nyata = 24 jam permainan
 const START_HOUR := 8.0         # permainan dimulai pagi hari
 const WEATHER_BLOCK_S := 150.0  # lama satu "blok" cuaca
+const NIGHT_FROM := 19.0       # warga masuk rumah
+const NIGHT_TO := 5.0          # warga keluar lagi
 const RAIN_PERCENT := 30        # peluang sebuah blok hujan (blok pertama selalu cerah)
 const RAIN_BLEND_S := 8.0       # lama peralihan cerah <-> hujan
 
@@ -41,6 +43,18 @@ static func hour() -> float:
 	if hour_override >= 0.0:
 		return hour_override
 	return fposmod(START_HOUR + float(Time.get_ticks_msec()) / 1000.0 / DAY_SECONDS * 24.0, 24.0)
+
+
+## Kekuatan malam untuk lampu: 0 siang .. 1 malam penuh (mengikuti langit di apply()). Gua punya obor sendiri.
+static func night() -> float:
+	var s := sin((hour() - 6.0) / 24.0 * TAU)
+	return 1.0 - smoothstep(-0.15, 0.4, s)
+
+
+## Waktu warga desa masuk rumah: dari jam 19.00 sampai 05.00.
+static func is_night() -> bool:
+	var h := hour()
+	return h >= NIGHT_FROM or h < NIGHT_TO
 
 
 ## Hujan sedang/akan turun pada blok waktu ini?

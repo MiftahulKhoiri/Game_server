@@ -22,11 +22,11 @@ type Enemy struct {
 const ZoneRetired = "pensiun"
 
 var enemies = []Enemy{
-	// Desa Awal: hewan kecil di ladang.
-	{ID: "tikus_sawah", Zones: []string{MapDesaAwal}, Name: "Ayam Liar", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10},
-	{ID: "belalang_raksasa", Zones: []string{MapDesaAwal}, Name: "Kucing Liar", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
-	{ID: "ular_sawah", Zones: []string{MapDesaAwal}, Name: "Rubah Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
-	{ID: "babi_hutan", Zones: []string{MapDesaAwal, MapPerbatasan}, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25},
+	// Hutan Perbatasan (sejak v0.32.0 desa aman dari musuh): hewan kecil yang paling mudah dikalahkan.
+	{ID: "tikus_sawah", Zones: []string{MapPerbatasan}, Name: "Ayam Liar", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10},
+	{ID: "belalang_raksasa", Zones: []string{MapPerbatasan}, Name: "Kucing Liar", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
+	{ID: "ular_sawah", Zones: []string{MapPerbatasan}, Name: "Rubah Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
+	{ID: "babi_hutan", Zones: []string{MapPerbatasan}, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25},
 	// Perbatasan (hutan): binatang buas.
 	{ID: "ular_hutan", Zones: []string{MapPerbatasan}, Name: "Ular Hutan", HP: 18, Attack: 6, Defense: 1, XP: 11, Gold: 5, MinLevel: 1, DropID: PotionID, DropPercent: 10},
 	{ID: "serigala_hutan", Zones: []string{MapPerbatasan}, Name: "Serigala Hutan", HP: 32, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 2, DropID: PotionID, DropPercent: 20},

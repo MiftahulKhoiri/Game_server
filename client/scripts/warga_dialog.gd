@@ -75,6 +75,17 @@ const WARGA := {
 		"Kalau kakak pulang dari gua, ceritakan padaku, ya!"],
 		["Hore, Kakak menang! Desa kita aman lagi!",
 		"Besok aku mau bermain sampai ke ladang. Sekarang tidak ada yang melarang!"]]},
+	"kepala_suku": {"name": "Kepala Suku", "stages": [
+		["Selamat datang di desaku, Ksatria. Dulu desa ini tenang, sekarang monster bermunculan di hutan perbatasan.",
+		"Temui Nenek di sebelah barat. Dia yang pertama membutuhkan bantuanmu."],
+		["Kamu sudah menolong Nenek, desa ini berhutang padamu. Petani punya kabar buruk soal goblin.",
+		"Setiap malam kami berkumpul di bawah menara lampu. Lampunya menjaga kami tetap berani."],
+		["Pasukan monster semakin dekat. Pastikan ramuan dan senjatamu siap sebelum ke gunung.",
+		"Rumahku selalu terbuka untukmu, Ksatria."],
+		["Gua itu sarang Raja Iblis. Aku percaya padamu, tetapi pulanglah dengan selamat.",
+		"Seluruh desa berdoa untukmu tiap malam di bawah menara lampu."],
+		["Desa ini aman lagi. Atas nama semua warga, terima kasih, Pelindung Kerajaan.",
+		"Malam ini kita berpesta di bawah menara lampu. Kamu tamu kehormatan kami."]]},
 	"penjaga": {"name": "Penjaga Gerbang", "stages": [
 		["Gerbang selatan menuju Perbatasan. Di luar penuh monster, pastikan HP-mu penuh sebelum berangkat.",
 		"Aku hanya diperintah menjaga gerbang. Tapi aku tahu desa ini butuh pahlawan."],

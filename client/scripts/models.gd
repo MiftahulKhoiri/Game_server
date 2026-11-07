@@ -135,6 +135,9 @@ static func _fix_materials(n: Node) -> void:
 			if sm.albedo_texture == null:
 				sm.vertex_color_use_as_albedo = true
 			sm.cull_mode = BaseMaterial3D.CULL_DISABLED
+			# beberapa glb (babi hutan) membawa alpha 0 + mode MASK -> model tak terlihat sama sekali
+			sm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			sm.albedo_color = Color(sm.albedo_color.r, sm.albedo_color.g, sm.albedo_color.b, 1.0)
 			sm.roughness = 0.9
 			sm.metallic = 0.0
 			mi.set_surface_override_material(i, sm)

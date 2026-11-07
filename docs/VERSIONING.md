@@ -203,6 +203,14 @@ membawa pemain; bawaannya halaman Releases terbaru.
   tombol Menu menjadi tombol gelembung biru mengilap (`menu_bubble.gd`). Hanya klien yang berubah;
   `DefaultMinClient` tetap 0.18.0.
 
+- v0.32.0 mengganti sumur desa dengan menara lampu besar (tempat berkumpul), memasang dua lampu di atas gapura
+  dan lampu di tiap rumah yang menyala otomatis saat malam (19:00-05:00), serta rumah kepala suku (kastil merah)
+  dengan dialognya. Saat malam warga pulang ke rumah masing-masing; satu pengawal tetap berjaga di gerbang.
+  Musuh dipindah dari Desa Awal ke hutan Perbatasan (zona musuh di server berubah, teks misi disesuaikan).
+  Perkelahian kini langsung di dunia seperti memukul batu/pohon, tanpa pindah layar (Tangan=serang, Kaki=skill,
+  Perisai=bertahan, Ramuan, Kabur); bos tetap memakai layar pertarungan. Perbaikan babi hutan yang tak terlihat
+  (material model transparan dipaksa solid). `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

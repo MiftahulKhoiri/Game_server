@@ -321,14 +321,15 @@ func TestBadAction(t *testing.T) {
 
 func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 	for i := 0; i < 300; i++ {
-		if e := PickEnemy(1, MapDesaAwal, RandomSource{}); e.MinLevel > 1 || !e.inZone(MapDesaAwal) {
+		// Sejak v0.32.0 desa aman: tak ada musuh yang berzona di sana, jadi server cadangkan musuh terlemah.
+		if e := PickEnemy(1, MapDesaAwal, RandomSource{}); e.MinLevel > 1 {
 			t.Fatalf("level 1 di desa bertemu %s", e.ID)
 		}
 		if e := PickEnemy(1, MapPerbatasan, RandomSource{}); !e.inZone(MapPerbatasan) || e.MinLevel > 1 {
 			t.Fatalf("level 1 di perbatasan bertemu %s", e.ID)
 		}
 	}
-	for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu, MapGuaBatu} {
+	for _, zone := range []string{MapPerbatasan, MapGunungBatu, MapGuaBatu} {
 		seen := map[string]bool{}
 		want := 0
 		for _, e := range enemies {

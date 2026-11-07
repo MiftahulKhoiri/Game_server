@@ -120,8 +120,8 @@ func _on_move_done() -> void:
 	if tile == Maps.BOSS_TILE:
 		_start_encounter(true)
 		return
-	if tile == "" or not Maps.ENCOUNTER_TILES.contains(tile):
-		return  # pertemuan hanya terjadi di ladang / kerikil
+	if tile == "" or not Maps.ENCOUNTER_TILES.contains(tile) or _map_id == Maps.DEFAULT_MAP:
+		return  # pertemuan hanya terjadi di ladang hutan / kerikil; Desa Awal aman
 	if Session.safe_steps > 0:
 		Session.safe_steps -= 1
 		return

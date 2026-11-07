@@ -35,10 +35,7 @@ static func burst(parent: Node3D, pos: Vector3, color: Color, amount := 10, spee
 	p.position = pos
 	p.emitting = true
 	parent.add_child(p)
-	var t := parent.get_tree().create_timer(1.1)
-	t.timeout.connect(func() -> void:
-		if is_instance_valid(p):
-			p.queue_free())
+	p.finished.connect(p.queue_free)
 
 
 ## Cincin yang melebar di tanah (ledakan Boost, tendangan jauh).

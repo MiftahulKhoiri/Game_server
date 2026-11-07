@@ -12,6 +12,7 @@ const LOSE := 8.0           # lebih jauh dari ini, pengejaran dilepas
 const CONTACT := 0.95       # sedekat ini = menyentuh pemain
 const WANDER_RADIUS := 4.0
 const TURN_RATE := 8.0
+const STAND := 1.15         # jarak berdiri musuh yang sedang bertarung dengan pemain (petak)
 
 var id := ""                # id musuh (server)
 var label := ""             # nama untuk ditampilkan
@@ -26,6 +27,11 @@ var node: Node3D            # wadah di dunia (posisi)
 var model: Node3D           # model di dalamnya (berputar)
 var alert: Node3D           # tanda seru di atas kepala saat mengejar
 var name_label: Node3D
+var top := 1.0              # tinggi badan (m), untuk menaruh bar nyawa dan angka kerusakan
+var fight := false          # sedang bertarung dengan pemain (pertarungan langsung di dunia)
+var warn := false           # tanda seru berkedip: sebentar lagi menyerang
+var stun := 0.0             # > 0: belum mau mengejar (habis ditinggal kabur / gagal memulai)
+var dying := false          # sudah kalah: tidak bergerak lagi
 
 var _target := Vector2.ZERO
 var _has_target := false
@@ -62,6 +68,14 @@ func _pick_target() -> bool:
 ## awal, di layar lain, atau mode uji). Mengembalikan true bila menyentuh pemain.
 func step(delta: float, player: Vector2, can_aggro: bool) -> bool:
 	walking = false
+	if dying:
+		return false
+	if stun > 0.0:
+		stun -= delta
+		can_aggro = false
+	if fight:
+		_step_fight(delta, player)
+		return false
 	var d := pos.distance_to(player)
 	if chasing and (not can_aggro or d > LOSE):
 		chasing = false
@@ -120,6 +134,28 @@ func step(delta: float, player: Vector2, can_aggro: bool) -> bool:
 	return false
 
 
+## Musuh yang sedang bertarung: menghadap pemain dan menempel di jaraknya (tanpa menyentuh = tanpa memulai lagi).
+func _step_fight(delta: float, player: Vector2) -> void:
+	var to := player - pos
+	var d := to.length()
+	var want := yaw
+	if d > 0.001:
+		want = atan2(to.x, to.y)
+	if d > STAND:
+		var move := to / d * minf(chase_speed * delta, d - STAND)
+		var nxt := pos + move
+		if Maps.roam_free(map_id, nxt):
+			pos = nxt
+			walking = true
+		elif Maps.roam_free(map_id, pos + Vector2(move.x, 0.0)):
+			pos += Vector2(move.x, 0.0)
+			walking = true
+		elif Maps.roam_free(map_id, pos + Vector2(0.0, move.y)):
+			pos += Vector2(0.0, move.y)
+			walking = true
+	yaw = lerp_angle(yaw, want, minf(1.0, delta * TURN_RATE))
+
+
 ## Menyalin keadaan ke node 3D. `near` = pemain cukup dekat untuk menampilkan nama.
 func apply(near: bool) -> void:
 	if node == null or not is_instance_valid(node):
@@ -130,6 +166,6 @@ func apply(near: bool) -> void:
 		if "moving" in model:
 			model.moving = walking
 	if alert != null and is_instance_valid(alert):
-		alert.visible = chasing
+		alert.visible = chasing or warn
 	if name_label != null and is_instance_valid(name_label):
-		name_label.visible = near and not chasing
+		name_label.visible = near and not chasing and not fight
