@@ -121,7 +121,7 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 | 401 | Token tidak valid |
 | 409 | Versi tidak cocok |
 | 426 | Versi aplikasi di bawah `min_client` |
-| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `gunung_batu`, `gua_batu`, Desa Awal 25x30, lainnya 15x20) |
+| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `gunung_batu`, `gua_batu`, Desa Awal 45x50, lainnya 15x20) |
 
 ## Pertarungan (v0.3.0)
 

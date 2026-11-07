@@ -23,9 +23,9 @@ const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
 const EXITS := {
-	"desa_awal": [{"pos": Vector2i(12, 29), "to": "perbatasan", "at": Vector2i(7, 1)}],
+	"desa_awal": [{"pos": Vector2i(22, 49), "to": "perbatasan", "at": Vector2i(7, 1)}],
 	"perbatasan": [
-		{"pos": Vector2i(7, 0), "to": "desa_awal", "at": Vector2i(12, 28)},
+		{"pos": Vector2i(7, 0), "to": "desa_awal", "at": Vector2i(22, 48)},
 		{"pos": Vector2i(7, 19), "to": "gunung_batu", "at": Vector2i(7, 1)},
 	],
 	"gunung_batu": [
@@ -40,40 +40,61 @@ const WALKABLE := ".=fTBDMGK"
 const BOSS_TILE := "K"
 const ENCOUNTER_TILES := "TG"
 
-## Desa Awal (25x30): empat rumah di utara, jalan raya timur-barat, alun-alun dengan sumur
-## di tengah, dua kandang berpagar di kiri-kanan alun-alun, sungai dengan jembatan, ladang
-## di selatan, dan gerbang keluar di bawah (menuju Perbatasan).
+## Desa Awal (45x50): tujuh rumah di utara, jalan raya timur-barat, alun-alun dengan sumur
+## di tengah, dua kandang berpagar di kiri-kanan alun-alun, empat rumah di tengah desa, sungai
+## dengan jembatan, empat ladang berpagar dan empat pondok tani di selatan, dua kolam, dan
+## gerbang keluar di bawah (menuju Perbatasan).
 const DESA_AWAL: Array[String] = [
-	"#########################",
-	"#..HHH..HHH...HHH..HHH..#",
-	"#..HDH..HDH...HDH..HDH..#",
-	"#..f=f..f=f...f=f..f=f..#",
-	"#...=..#.=.....=.#..=...#",
-	"#.#.=....=.....=....=.#.#",
-	"#..===================..#",
-	"#..===================..#",
-	"#........=======........#",
-	"#.FFFFFF.=======.FFFFFF.#",
-	"#.Ff..fF.===W===.F...fF.#",
-	"#.F......=======......F.#",
-	"#.F....F.=======.Ff...F.#",
-	"#.F..f.F....=....F.f..F.#",
-	"#.FFFFFF....=....FFFFFF.#",
-	"#...........=...........#",
-	"~~~~~~~~~~~~B~~~~~~~~~~~~",
-	"~~~~~~~~~~~~B~~~~~~~~~~~~",
-	"#...........=...........#",
-	"#.TTTTT.....=..#..TTTTT.#",
-	"#.TTTTT..#..=.....TTTTT.#",
-	"#.TTTTT.....=.....TTTTT.#",
-	"#.FFFFF.....=.....FFFFF.#",
-	"#....#......=...........#",
-	"#.#......#..=..#...#....#",
-	"#...........=.........#.#",
-	"#....f.#....=.........f.#",
-	"#...........=.....#.....#",
-	"#...........=.........f.#",
-	"############=############",
+	"#############################################",
+	"#..HHH...HHH...HHH...HHH...HHH...HHH...HHH..#",
+	"#..HDH...HDH...HDH...HDH...HDH...HDH...HDH..#",
+	"#..f=f...f=f...f=f...f=f...f=f...f=f...f=f..#",
+	"#...=.....=.....=.....=.....=.....=.....=...#",
+	"#...=.....=.....=.....=.....=.....=.....=...#",
+	"#..=======================================..#",
+	"#..=======================================..#",
+	"#..f....f........===========.....f....f.....#",
+	"#..FFFFFFFFF..#..===========.#.#fFFFFFFFFF..#",
+	"#..F.f..f..F.....===========.....F..f..f.F..#",
+	"#..F..f....F...#.===========...#.F.......F..#",
+	"#..F......fF.#...===========f#..fF......fF..#",
+	"#..F..f....f...#.=====W=====...#....ff..fF..#",
+	"#..F.f.....F.f...===========.....F.......F..#",
+	"#..F...f...F.#.#f===========f#.#.F.......F..#",
+	"#..FFFFFFFFF..f..===========.....FFFFFFFFF..#",
+	"#............f#..===========..#.............#",
+	"#..#..........f..===========.......#.....#..#",
+	"#....HHH..#.HHH.......=.......HHHf...HHH....#",
+	"#...fHDH....HDH.......=.......HDH.#..HDH.#..#",
+	"#..#.f=f..#ff=ff#.#...=...#.#.f=f....f=f....#",
+	"#.....=...f..=........=........=..#f..=..#..#",
+	"#.........f...........=.......f..........ff.#",
+	"~~~~~~~~~~~~~~~~~~~~~~B~~~~~~~~~~~~~~~~~~~~~~",
+	"~~~~~~~~~~~~~~~~~~~~~~B~~~~~~~~~~~~~~~~~~~~~~",
+	"#.......f....f........=...................f.#",
+	"#..FFFFFFFF..#.#.#.#..=.f...#.#.#.FFFFFFFF..#",
+	"#..FTTTTTTF.......f...=...#.......FTTTTTTF..#",
+	"#..FTTTTTT..#.HHH..#..=.....HHH.#..TTTTTTF..#",
+	"#..FTTTTTTF...HDH.....=..#..HDH...FTTTTTTF..#",
+	"#..FTTTTTTF.#.f=f..#..=..f..f=f.#.FTTTTTTF..#",
+	"#..FFFFFFFF...f=......=...#.f=....FFFFFFFF..#",
+	"#.......ff..#f...f.#..=...f.............f...#",
+	"#.....ff......#..#ff..=..#.#...#............#",
+	"#..FFFFFFFF.#......#..=......#....FFFFFFFF..#",
+	"#..FTTTTTTF....#.#....=..#.#...#..FTTTTTTF..#",
+	"#..FTTTTTT..#......#..=.......f....TTTTTTF..#",
+	"#..FTTTTTTF...HHH.....=.....HHH...FTTTTTTF..#",
+	"#..FTTTTTTF...HDH.#...=..#..HDH.#.FTTTTTTF..#",
+	"###FFFFFFFF.#.f=f.....=.....f=f...FFFFFFFF###",
+	"###............=..#.f.=..f#..=..#.........###",
+	"###........#.#........=...................###",
+	"###~~~~~~.......#.#...=..#....f.f#..~~~~~~###",
+	"###~~~~~~..#..#.......=....#.#.#f...~~~~~~###",
+	"###~~~~~~.f....f..#...=..#f.......f.~~~~~~###",
+	"###~~~~~~.......#f....=....#...#f#..~~~~~~###",
+	"###........#f.#....#..=..#...#f..........f###",
+	"###...................=...................###",
+	"######################=######################",
 ]
 
 
@@ -90,16 +111,17 @@ const NPCS := {
 ## `speed` = petak per detik; `id` = kunci dialognya di warga_dialog.gd. Tidak menghalangi pemain,
 ## berhenti dan menoleh bila pemain mendekat, dan bisa diajak bicara (tombol Bicara).
 const WARGA := [
-	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(8.5, 8.5), "radius": 5.0, "speed": 0.7},
-	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(16.5, 8.5), "radius": 5.0, "speed": 0.75},
-	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(14.5, 12.5), "radius": 5.0, "speed": 0.7},
-	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(10.5, 21.5), "radius": 6.0, "speed": 0.8},
-	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(11.5, 9.5), "radius": 4.5, "speed": 1.1},
-	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(13.5, 11.5), "radius": 4.5, "speed": 1.2},
-	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(12.5, 25.5), "radius": 3.5, "speed": 0.6},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(4.5, 12.5), "radius": 2.2, "speed": 0.6},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 10.5), "radius": 2.2, "speed": 0.7},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 2.2, "speed": 0.6},
+	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7},
+	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75},
+	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7},
+	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8},
+	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1},
+	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2},
+	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 11.5), "radius": 2.2, "speed": 0.7},
 ]
 
 ## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).

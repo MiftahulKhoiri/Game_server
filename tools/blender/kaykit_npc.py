@@ -151,8 +151,8 @@ px[px_idx, 3] = 1.0
 
 img.pixels.foreach_set(buf)
 img.update()
+img.pack()  # kemas SEBELUM ruang warna dikembalikan: mengubah ruang warna memuat ulang gambar dan membuang hasil edit
 img.colorspace_settings.name = orig_cs
-img.pack()
 patch_uv = (1 - PATCH / 2 / W, 1 - PATCH / 2 / H)
 
 

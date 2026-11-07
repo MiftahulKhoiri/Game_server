@@ -132,6 +132,12 @@ membawa pemain; bawaannya halaman Releases terbaru.
   model KayKit berrangka. API tidak berubah; `DefaultMinClient` tetap 0.18.0. Klien lama masih jalan, tetapi
   pemain yang tersimpan di bagian desa yang baru (x >= 15 atau y >= 20) dipindahkan ke tempat bebas terdekat.
 
+- v0.22.0 memperlebar Desa Awal lagi (25x30 -> 45x50; server menerima posisi sampai (44,49)) dengan sungai
+  berjembatan, ladang, kolam, dan 11 warga, serta memperbaiki model Nenek, Petani, dan warga yang tampil putih
+  polos (tekstur hilang saat diekspor dari Blender). API tidak berubah; `DefaultMinClient` tetap 0.18.0. Klien
+  lama masih jalan, tetapi pemain yang tersimpan di bagian desa yang baru (x >= 25 atau y >= 30) dipindahkan
+  ke tempat bebas terdekat.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

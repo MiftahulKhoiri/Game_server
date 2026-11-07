@@ -15,6 +15,20 @@ func _initialize() -> void:
 	quit(1 if _failed else 0)
 
 
+## Apakah ada mesh di bawah n yang materialnya punya tekstur warna dasar.
+func _punya_tekstur(n: Node) -> bool:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_active_material(i)
+			if m is BaseMaterial3D and (m as BaseMaterial3D).albedo_texture != null:
+				return true
+	for c in n.get_children():
+		if _punya_tekstur(c):
+			return true
+	return false
+
+
 func _check(cond: bool, label: String) -> void:
 	print(("  ok   " if cond else "  GAGAL ") + label)
 	if not cond:
@@ -47,14 +61,14 @@ func _run() -> void:
 	Session = root.get_node("Session")
 	print("== peta")
 	for y in Maps.height(Maps.DEFAULT_MAP):
-		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 25, "baris peta %d lebar 25" % y)
+		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 45, "baris peta %d lebar 45" % y)
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 0, 0), "pohon di tepi tidak bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, -1, 3), "luar peta tidak bisa dilewati")
-	_check(Maps.walkable(Maps.DEFAULT_MAP, 12, 16), "jembatan bisa dilewati")
-	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 16), "sungai tidak bisa dilewati")
-	_check(not Maps.walkable(Maps.DEFAULT_MAP, 12, 10), "sumur menghalangi")
-	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 9) and Maps.walkable(Maps.DEFAULT_MAP, 7, 11), "pagar kandang menghalangi, gerbang kandang terbuka")
+	_check(Maps.walkable(Maps.DEFAULT_MAP, 22, 24), "jembatan bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 24), "sungai tidak bisa dilewati")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 22, 13), "sumur menghalangi")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 9) and Maps.walkable(Maps.DEFAULT_MAP, 11, 13), "pagar kandang menghalangi, gerbang kandang terbuka")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 4, 2), "pintu rumah bisa dilewati")
 	_check_map_connected(Maps.DEFAULT_MAP)
 	_check_map_connected(Maps.PERBATASAN)
@@ -423,13 +437,13 @@ func _run() -> void:
 	var bm: Dictionary = (await Api.get_me()).data
 	Session.set_player(bm)
 	Session.player.state.map = Maps.DEFAULT_MAP
-	Session.player.state.x = 12
-	Session.player.state.y = 28
+	Session.player.state.x = 22
+	Session.player.state.y = 48
 	Session.safe_steps = 100000
 	var world2: Node2D = load("res://scenes/world.tscn").instantiate()
 	root.add_child(world2)
 	await process_frame
-	world2._try_move(Vector2i.DOWN)  # (12,28) -> (12,29) = pintu ke perbatasan
+	world2._try_move(Vector2i.DOWN)  # (22,48) -> (22,49) = pintu ke perbatasan
 	await create_timer(0.5).timeout
 	_check(Session.player.state.map == Maps.PERBATASAN and Session.player.state.y == 1, "melewati gerbang selatan masuk Perbatasan (7,1)")
 	await create_timer(2.5).timeout
@@ -514,6 +528,14 @@ func _run() -> void:
 		if node != null:
 			node.free()
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
+	# NPC dan warga KayKit harus membawa tekstur (tanpa tekstur modelnya tampil putih polos).
+	var polos: Array[String] = []
+	for mdl in ["nenek_penjual", "petani", "warga_ibu", "warga_ibu2", "warga_bapak", "warga_bapak2", "anak_desa"]:
+		var tn: Node3D = Models.create(mdl)
+		if not _punya_tekstur(tn):
+			polos.append(mdl)
+		tn.free()
+	_check(polos.is_empty(), "model NPC/warga bertekstur (tidak putih polos) %s" % str(polos))
 	# Model berrangka + animasi (idle/walk/attack/hurt/die) dari Blender.
 	for mdl in ["pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)

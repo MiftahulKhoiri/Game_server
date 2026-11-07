@@ -106,6 +106,9 @@ Diunduh dari GitHub ke `~/Claude/aset_cc0/` (lisensi CC0, Kay Lousberg; salinan 
   `tools/blender/kaykit_npc.py`: perlengkapan dibuang, warna atlas diubah per rona (jubah mawar,
   rambut putih / tunik cokelat), topi jerami petani ditambah sebagai geometri kepala. Model
   TripoSR lama disimpan di `~/Claude/npc/*_lama.glb`.
+  Warga desa memakai skrip yang sama (mode ibu, ibu2, bapak, bapak2, anak). Catatan: atlas yang sudah
+  diedit harus di-`pack()` SEBELUM ruang warnanya dikembalikan, kalau tidak GLB keluar tanpa tekstur dan
+  model tampil putih polos di game (dijaga oleh tes e2e "model NPC/warga bertekstur").
 
 Model pohon/batu/tanaman hasil TripoSR yang lama dipindah ke `~/Claude/backup/dekor_triposr/`
 (tidak dipakai lagi); alat `tools/blender/ringankan.py` tetap ada untuk model gambar-ke-3D lain.

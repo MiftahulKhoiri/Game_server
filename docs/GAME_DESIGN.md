@@ -196,7 +196,7 @@ berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai 
 
 | Peta | Isi | Pintu |
 |------|-----|-------|
-| Desa Awal (`desa_awal`, 25x30) | Empat rumah, alun-alun, dua kandang berpagar, sungai, ladang, Nenek dan Petani, serta 10 warga yang berjalan bebas (ibu, bapak, anak, penjaga, ayam) | Gerbang selatan (12,29) ke Perbatasan |
+| Desa Awal (`desa_awal`, 45x50) | Tujuh rumah utara, empat rumah tengah, alun-alun, dua kandang berpagar, sungai, empat ladang berpagar dan pondok tani, dua kolam, Nenek dan Petani, serta 11 warga yang berjalan bebas (ibu, bapak, anak, penjaga, ayam) | Gerbang selatan (22,49) ke Perbatasan |
 | Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
 | Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) ke Perbatasan; selatan (7,19) masuk Gua Batu |
 | Gua Batu (`gua_batu`) | Lorong gua, sarang Raja Goblin | Utara (7,0) kembali ke Gunung Batu |
