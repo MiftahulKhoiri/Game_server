@@ -71,7 +71,7 @@ func _ready() -> void:
 	holder.add_child(_main)
 	_main.add_child(_title("Menu"))
 	_main.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
-	_btn_tas = _button("Tas", func() -> void: inventory_requested.emit())
+	_btn_tas = _button("Ransel", func() -> void: inventory_requested.emit())
 	_main.add_child(_btn_tas)
 	_btn_toko = _button("Toko", func() -> void: shop_requested.emit())
 	_main.add_child(_btn_toko)

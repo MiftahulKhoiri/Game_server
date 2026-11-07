@@ -292,7 +292,7 @@ func _build_ui() -> void:
 	layer.add_child(shop)
 
 	var bag := Button.new()
-	bag.text = "Tas"
+	bag.text = "Ransel"
 	bag.position = Vector2(272, 1110)
 	bag.size = Vector2(112, 70)
 	bag.focus_mode = Control.FOCUS_NONE

@@ -742,7 +742,38 @@ func _run() -> void:
 	_check(wt._chest_nodes.size() == 3, "desa punya 3 peti harta")
 	_check(wt._btn_tangan != null and wt._btn_kaki != null and wt._btn_perisai != null and wt._btn_boost != null, "empat tombol aksi ada")
 	_check(wt._talk_button != null and not wt._talk_button.visible, "tombol Bicara tersembunyi bila tidak ada orang di dekat")
-	_check(wt._menu._btn_tas != null and wt._menu._btn_toko != null, "Tas dan Toko ada di menu")
+	_check(wt._menu._btn_tas != null and wt._menu._btn_toko != null, "Ransel dan Toko ada di menu")
+	print("== HUD: warna nyawa, nama, koin, tombol Bicara di atas NPC")
+	var HB: Script = load("res://scripts/hud_bars.gd")
+	var c_full: Color = HB.hp_color(1.0)
+	var c_half: Color = HB.hp_color(0.5)
+	var c_low: Color = HB.hp_color(0.1)
+	_check(c_full.g > 0.85 and c_full.r < 0.4 and c_full.b < 0.3, "nyawa 100%% hijau stabilo (%s)" % str(c_full))
+	_check(c_half.r > 0.9 and c_half.g > 0.75 and c_half.b < 0.3, "nyawa 50%% kuning (%s)" % str(c_half))
+	_check(c_low.r > 0.85 and c_low.g < 0.45, "nyawa 10%% merah/oranye (%s)" % str(c_low))
+	_check(HB.hp_color(0.75).g > HB.hp_color(0.4).g or HB.hp_color(0.75).r < HB.hp_color(0.4).r, "warna berubah bertahap antara penuh dan separuh")
+	var hb: Control = HB.new()
+	hb.set_identity("bagus", 47)
+	_check(hb.player_name == "bagus" and hb.gold == 47, "HUD menyimpan nama dan jumlah emas")
+	_check(hb.size.y >= HB.COIN_Y + 20.0, "HUD cukup tinggi untuk baris koin")
+	_check(HB.NAME_H <= HB.XP_Y - 4.0, "nama pemain berada di atas level")
+	hb.free()
+	var npc_id := ""
+	for nid: String in Maps.NPCS:
+		if Maps.NPCS[nid].map == wt._map_id:
+			npc_id = nid
+			break
+	_check(npc_id != "", "ada NPC di desa untuk dites")
+	if npc_id != "":
+		var nn: Dictionary = Maps.NPCS[npc_id]
+		wt._pos = Vector2(nn.pos) + Vector2(0.5, 1.2)
+		wt._apply_transform()
+		await process_frame
+		var tb: Button = wt._talk_button
+		_check(tb.visible and tb.text == "Bicara", "tombol Bicara muncul dekat NPC")
+		var head: Vector2 = wt._camera.unproject_position(wt._npc_anchor(npc_id))
+		_check(tb.position.y + tb.size.y <= head.y + 1.0, "tombol Bicara berada di atas kepala NPC (%.0f <= %.0f)" % [tb.position.y + tb.size.y, head.y])
+		_check(absf(tb.position.x + tb.size.x * 0.5 - head.x) < 120.0 or tb.position.x <= 9.0 or tb.position.x + tb.size.x >= 710.0, "tombol Bicara sejajar dengan NPC")
 	var tree: Dictionary = {}
 	for e: Dictionary in wt._breakables._entries:
 		if e.kind == "pohon" and e.tile.x < 3 and e.tile.y > 3 and e.tile.y < 40:

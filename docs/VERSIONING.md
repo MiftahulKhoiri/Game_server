@@ -188,6 +188,13 @@ membawa pemain; bawaannya halaman Releases terbaru.
   memilih sendiri. Teks misi dan dialog disesuaikan; item `taring_goblin` bernama "Taring Goblin".
   `DefaultMinClient` tetap 0.18.0.
 
+- v0.30.0 merapikan tampilan layar: tombol "Bicara"/"Buka peti" kini melayang tepat di atas nama NPC atau peti
+  yang dituju (mengikuti kamera); bar nyawa berubah warna seperti baterai (hijau stabilo saat penuh, kuning,
+  oranye, merah saat menipis); nama pemain berada di atas lencana level; jumlah emas ditampilkan dengan ikon
+  koin emas; ramuan dan barang lain tidak lagi ditulis di layar utama melainkan disimpan di **Ransel**
+  (sebelumnya "Tas") yang dibuka dari Menu, dan perolehan barang memunculkan petunjuk "Barang masuk Ransel".
+  Pesan server "tas penuh" menjadi "ransel penuh". Hanya klien yang berubah; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

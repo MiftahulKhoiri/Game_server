@@ -1,5 +1,5 @@
 extends Control
-## Tas: lihat barang, pakai ramuan, pasang/lepas perlengkapan, dan istirahat di desa.
+## Ransel: lihat barang, pakai ramuan, pasang/lepas perlengkapan, dan istirahat di desa.
 ## Semua aturan dijalankan SERVER (docs/API.md); layar ini hanya mengirim permintaan.
 
 const WORLD_SCENE := "res://scenes/world3d.tscn"
@@ -62,7 +62,7 @@ func _rebuild() -> void:
 
 	_add_header("Barang")
 	if st.inventory.is_empty():
-		_list.add_child(_make_label("Tas kosong.", 26))
+		_list.add_child(_make_label("Ransel kosong.", 26))
 	for item: Dictionary in st.inventory:
 		_add_item_row(str(item.id), int(item.qty))
 
@@ -173,7 +173,7 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 14)
 	margin.add_child(box)
 
-	box.add_child(_make_label("Tas", 44))
+	box.add_child(_make_label("Ransel", 44))
 	_summary = _make_label("", 28)
 	box.add_child(_summary)
 

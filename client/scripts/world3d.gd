@@ -89,7 +89,6 @@ var _bars: HudBars
 
 var _joy: Control
 var _cam_finger := -1
-var _hud: Label
 var _status: Label
 var _toast: Label
 var _talk_button: Button
@@ -878,6 +877,8 @@ func _show_loot(loot: Dictionary, chest: bool) -> void:
 	if parts.is_empty():
 		return
 	_show_toast(("Peti: " if chest else "") + "  ".join(parts))
+	if items is Array and not (items as Array).is_empty():
+		_set_status("Barang masuk Ransel (buka lewat Menu)")
 
 
 func _open_chest(cid: String) -> void:
@@ -1045,6 +1046,7 @@ func _chest_in_range() -> String:
 
 
 ## Tombol konteks: "Buka peti" dekat peti, "Bicara" dekat orang; selain itu tersembunyi.
+## Tombolnya melayang tepat di atas nama orang/peti yang dituju (mengikuti kamera).
 func _update_talk_button() -> void:
 	if _talk_button == null:
 		return
@@ -1053,11 +1055,42 @@ func _update_talk_button() -> void:
 		_talk_button.text = "Buka peti"
 		_talk_button.visible = true
 		_talk_button.disabled = false
+		var cn := _chest_nodes[chest] as Node3D
+		_place_talk_button(cn.position + Vector3(0, 1.5, 0))
 		return
 	var npc := _npc_in_range()
 	_talk_button.text = "Bicara"
 	_talk_button.visible = npc != ""
 	_talk_button.disabled = Session.offline
+	if npc != "":
+		_place_talk_button(_npc_anchor(npc))
+
+
+## Titik 3D di atas nama NPC/warga (tempat tombol Bicara melayang).
+func _npc_anchor(npc_id: String) -> Vector3:
+	if npc_id.begins_with(Warga.TALK_PREFIX):
+		var wid := npc_id.substr(Warga.TALK_PREFIX.length())
+		for w in _warga:
+			if w.id == wid:
+				return Vector3(w.pos.x, 1.4, w.pos.y)
+	var n: Dictionary = Maps.NPCS.get(npc_id, {})
+	if n.is_empty():
+		return Vector3(_pos.x, 1.9, _pos.y)
+	return Vector3(float(n.pos.x) + 0.5, 1.5, float(n.pos.y) + 0.5)
+
+
+## Menaruh tombol konteks di layar tepat di atas titik 3D; di luar layar/di belakang kamera
+## tombol ditahan di dalam layar (atau di posisi cadangan bawah bila titiknya di belakang).
+func _place_talk_button(anchor: Vector3) -> void:
+	var vs := get_viewport().get_visible_rect().size
+	var sz := _talk_button.size
+	if _camera == null or _camera.is_position_behind(anchor):
+		_talk_button.position = Vector2(vs.x * 0.5 - sz.x * 0.5, vs.y * 0.55)
+		return
+	var sp := _camera.unproject_position(anchor)
+	var x := clampf(sp.x - sz.x * 0.5, 8.0, vs.x - sz.x - 8.0)
+	var y := clampf(sp.y - sz.y - 4.0, 190.0, vs.y * 0.7)
+	_talk_button.position = Vector2(x, y)
 
 
 func _talk() -> void:
@@ -1142,15 +1175,8 @@ func _build_ui() -> void:
 	_bars.position = Vector2(20, 10)
 	layer.add_child(_bars)
 
-	_hud = Label.new()
-	_hud.position = Vector2(20, 116)
-	_hud.add_theme_font_size_override("font_size", 24)
-	_hud.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_hud.add_theme_constant_override("outline_size", 8)
-	layer.add_child(_hud)
-
 	_status = Label.new()
-	_status.position = Vector2(20, 180)
+	_status.position = Vector2(20, 196)
 	_status.size = Vector2(420, 60)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_font_size_override("font_size", 22)
@@ -1159,7 +1185,7 @@ func _build_ui() -> void:
 	layer.add_child(_status)
 
 	_clock = Label.new()
-	_clock.position = Vector2(20, 242)
+	_clock.position = Vector2(20, 258)
 	_clock.add_theme_font_size_override("font_size", 24)
 	_clock.add_theme_color_override("font_color", Color("ffe9b0"))
 	_clock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
@@ -1182,8 +1208,8 @@ func _build_ui() -> void:
 	layer.add_child(_joy)
 
 	_talk_button = _add_button(layer, "Bicara", 0, _talk)
-	_talk_button.position = Vector2(520, 868)
-	_talk_button.size = Vector2(180, 84)
+	_talk_button.position = Vector2(270, 500)
+	_talk_button.size = Vector2(180, 72)
 	_btn_tangan = _add_action(layer, ActionButton.Icon.TANGAN, "Tangan", Vector2(612, 1136), 72.0, Color("ffb347"))
 	_btn_kaki = _add_action(layer, ActionButton.Icon.KAKI, "Kaki", Vector2(492, 1212), 52.0, Color("7fd1ff"))
 	_btn_perisai = _add_action(layer, ActionButton.Icon.PERISAI, "Perisai", Vector2(478, 1090), 52.0, Color("8fe08f"))
@@ -1249,7 +1275,7 @@ func _add_action(layer: CanvasLayer, icon: int, title: String, center: Vector2, 
 	return b
 
 
-## Tas dan Toko dibuka dari Menu (menu menutup dulu, lalu pindah layar).
+## Ransel dan Toko dibuka dari Menu (menu menutup dulu, lalu pindah layar).
 func _open_from_menu(scene: String) -> void:
 	_menu.close()
 	_locked = false
@@ -1258,16 +1284,8 @@ func _open_from_menu(scene: String) -> void:
 
 func _refresh_hud() -> void:
 	var st: Dictionary = Session.player.state
-	var potions := 0
-	var diamonds := 0
-	for item: Dictionary in st.inventory:
-		if item.id == "ramuan":
-			potions = int(item.qty)
-		elif item.id == "berlian":
-			diamonds = int(item.qty)
-	var gems := "  Berlian %d" % diamonds if diamonds > 0 else ""
-	_hud.text = "%s\nEmas %d  Ramuan %d%s" % [Session.player.name, st.gold, potions, gems]
 	if _bars != null:
+		_bars.set_identity(str(Session.player.name), int(st.gold))
 		_bars.set_values(int(st.level), int(st.xp), 20 * int(st.level), int(st.hp), int(st.max_hp))
 
 

@@ -59,7 +59,7 @@ var (
 	ErrBadQty        = fmt.Errorf("jumlah harus 1..%d", MaxBuyQty)
 	ErrNoGold        = errors.New("emas tidak cukup")
 	ErrNotEnough     = errors.New("barang yang dimiliki tidak cukup")
-	ErrInventoryFull = errors.New("tas penuh")
+	ErrInventoryFull = errors.New("ransel penuh")
 	ErrEquipped      = errors.New("lepas dulu perlengkapan ini sebelum menjualnya")
 )
 
