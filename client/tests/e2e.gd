@@ -61,6 +61,7 @@ func _run() -> void:
 	Api = root.get_node("Api")
 	Session = root.get_node("Session")
 	print("== peta")
+	var WB: GDScript = load("res://scripts/world_build.gd")
 	for y in Maps.height(Maps.DEFAULT_MAP):
 		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 45, "baris peta %d lebar 45" % y)
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
@@ -78,6 +79,30 @@ func _run() -> void:
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 11, 29) and Maps.walkable(Maps.DEFAULT_MAP, 11, 37) and Maps.walkable(Maps.DEFAULT_MAP, 33, 29) and Maps.walkable(Maps.DEFAULT_MAP, 33, 37), "jembatan parit di depan pintu tiap ladang bisa dilewati")
 	_check(Maps.tile_at(Maps.DEFAULT_MAP, 24, 45) == "J" and Maps.tile_at(Maps.DEFAULT_MAP, 25, 46) == "J" and not Maps.walkable(Maps.DEFAULT_MAP, 24, 46), "pos jaga di timur gapura menghalangi jalan")
 	_check(Maps.tile_at(Maps.DEFAULT_MAP, 5, 10) == "C" and Maps.tile_at(Maps.DEFAULT_MAP, 39, 11) == "C", "kandang ayam di tiap kandang berpagar")
+	var tenda_ok := true
+	for rr: Dictionary in WB._kelompok(Maps.tiles_of(Maps.DEFAULT_MAP, "A")):
+		tenda_ok = tenda_ok and WB.arah_kecil("A", rr) == Vector2i(1, 0) and Maps.walkable(Maps.DEFAULT_MAP, rr.x1 + 1, rr.z0)
+	_check(tenda_ok, "pintu tenda basecamp menghadap timur (api unggun dan jalan utama) dan depannya terbuka")
+	var jalan_ok := true
+	var rumah_tanpa_jalan := ""
+	var rows_d := Maps.rows(Maps.DEFAULT_MAP)
+	var jalan_seed := Vector2i(22, 25)
+	var seen_j := {jalan_seed: true}
+	var q_j: Array[Vector2i] = [jalan_seed]
+	while not q_j.is_empty():
+		var cj: Vector2i = q_j.pop_back()
+		for dj: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var nj := cj + dj
+			if not seen_j.has(nj) and Maps.tile_at(Maps.DEFAULT_MAP, nj.x, nj.y) == "=":
+				seen_j[nj] = true
+				q_j.append(nj)
+	for zz in rows_d.size():
+		for xx in rows_d[zz].length():
+			if rows_d[zz][xx] == "D" and not seen_j.has(Vector2i(xx, zz + 1)):
+				jalan_ok = false
+				rumah_tanpa_jalan = "(%d,%d)" % [xx, zz]
+	_check(jalan_ok, "tiap rumah punya jalan tanah yang tersambung ke jalan utama %s" % rumah_tanpa_jalan)
+	_check(seen_j.has(Vector2i(23, 45)) or seen_j.has(Vector2i(22, 45)), "pos jaga dan basecamp juga tersambung ke jalan utama")
 	var camp := {"A": 0, "U": 0, "Q": 0, "Y": 0}
 	for row in Maps.rows(Maps.DEFAULT_MAP):
 		for ch in camp:
@@ -934,7 +959,6 @@ func _run() -> void:
 
 
 	print("== desa malam: menara lampu, lampu gapura dan rumah, rumah kepala suku, warga pulang")
-	var WB: GDScript = load("res://scripts/world_build.gd")
 	var Wg: GDScript = load("res://scripts/warga.gd")
 	var terrain: Node3D = WB.build(Maps.DEFAULT_MAP)
 	_check(terrain.has_meta("malam"), "desa punya lampu malam")
@@ -972,7 +996,8 @@ func _run() -> void:
 		if def.has("rumah"):
 			var dr: Vector2i = def.rumah
 			var pintu_ch := Maps.tile_at(Maps.DEFAULT_MAP, dr.x, dr.y)
-			_check(["D", "J", "C"].has(pintu_ch) and Maps.warga_free(Maps.DEFAULT_MAP, Vector2(dr.x + 0.5, dr.y + 1.5)), "%s: pintu (rumah D / pos jaga J / kandang C) dan petak di depannya bisa dilewati" % def.id)
+			var ar: Vector2i = def.get("arah", Vector2i(0, 1))
+			_check(["D", "J", "C"].has(pintu_ch) and Maps.warga_free(Maps.DEFAULT_MAP, Vector2(dr.x + 0.5 + ar.x, dr.y + 0.5 + ar.y)), "%s: pintu (rumah D / pos jaga J / kandang C) dan petak di depannya bisa dilewati" % def.id)
 	_check(chief, "ada Kepala Suku yang tinggal di rumahnya")
 	_check(not Atmo.is_night() or Atmo.hour_override < 0.0, "jam uji belum dipaksa")
 	Atmo.hour_override = 12.0
@@ -996,11 +1021,14 @@ func _run() -> void:
 		pj.step(0.05, Vector2(-80, -80), no_others, true)
 	var pos_jaga_pintu: Vector2i = Vector2i(-1, -1)
 	var kandang_pintu: Array[Vector2i] = []
+	var pos_jaga_arah := Vector2i(0, 0)
 	for rr: Dictionary in WB._kelompok(Maps.tiles_of(Maps.DEFAULT_MAP, "J")):
-		pos_jaga_pintu = WB.pintu_kecil(rr)
+		pos_jaga_arah = WB.arah_kecil("J", rr)
+		pos_jaga_pintu = WB.pintu_kecil(rr, pos_jaga_arah)
 	for rr: Dictionary in WB._kelompok(Maps.tiles_of(Maps.DEFAULT_MAP, "C")):
 		kandang_pintu.append(WB.pintu_kecil(rr))
-	_check(pj.door == pos_jaga_pintu and pj.door == Vector2i(24, 46), "penjaga pulang ke pintu pos jaga %s" % [pj.door])
+	_check(pj.door == pos_jaga_pintu and pj.door == Vector2i(24, 45) and pos_jaga_arah == Vector2i(-1, 0) and pj.arah == pos_jaga_arah and pj.terlihat, "pos jaga terbuka menghadap barat (ke jalan utama), pintu penjaga %s" % [pj.door])
+	_check(Maps.warga_free(Maps.DEFAULT_MAP, pj.front()) and absf(pj.front().x - 23.5) < 0.01, "petak depan pos jaga (23,45) bisa dilewati dan menempel jalan utama")
 	var ayam_ok := true
 	for def: Dictionary in Maps.WARGA:
 		if def.id == "ayam":
@@ -1010,7 +1038,7 @@ func _run() -> void:
 	while not pj.inside and pj_steps < 6000:
 		pj.step(0.05, Vector2(-80, -80), no_others, true)
 		pj_steps += 1
-	_check(pj.inside and pj.pos.distance_to(Vector2(24.5, 46.5)) < 0.1, "malam: penjaga masuk ke pos jaga (%d langkah)" % pj_steps)
+	_check(pj.inside and pj.pos.distance_to(Vector2(25.0, 45.5)) < 0.1 and absf(pj.yaw - atan2(-1.0, 0.0)) < 0.5, "malam: penjaga berdiri di bawah atap pos jaga menghadap jalan (%d langkah)" % pj_steps)
 	var ayam_masuk := 0
 	for def: Dictionary in Maps.WARGA:
 		if def.id == "ayam":
@@ -1041,12 +1069,17 @@ func _run() -> void:
 	for ww in wn._warga:
 		if ww.inside:
 			inside_n += 1
-			_check(not ww.node.visible, "%s di dalam rumah tidak terlihat" % ww.id)
+			_check(ww.terlihat or not ww.node.visible, "%s di dalam rumah tidak terlihat (penjaga di pos jaga terbuka tetap terlihat)" % ww.id)
 		else:
 			out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
 	_check(inside_n == 12 and not guard_out and out_n == 0, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
+	var guard_seen := false
+	for ww in wn._warga:
+		if ww.id == "penjaga":
+			guard_seen = ww.node.visible and ww.pos.distance_to(Vector2(25.0, 45.5)) < 0.1
+	_check(guard_seen, "penjaga terlihat berdiri di pos jaga saat malam")
 	_check(wn._npc_in_range() == "" or not wn._npc_in_range().begins_with("warga:bu_sari"), "warga di dalam rumah tidak bisa diajak bicara")
 	wn.queue_free()
 	await process_frame

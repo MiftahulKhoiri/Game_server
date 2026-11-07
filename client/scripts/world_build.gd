@@ -1089,11 +1089,27 @@ static func _tile(rows: Array[String], x: int, z: int) -> String:
 
 # --- bangunan kecil: pos jaga (J), kandang ayam (C), tenda (A), api unggun (U), dummy latihan (Q), tiang panji (Y) ---
 
-## Petak pintu bangunan kecil berpetak banyak (pos jaga, kandang ayam): baris paling bawah, kolom tengah
-## (kolom kiri-tengah bila lebarnya genap). Warga yang pulang ke sana (Maps.WARGA[].rumah) memakai petak ini.
-static func pintu_kecil(r: Dictionary) -> Vector2i:
+## Jalan utama desa (garis tengah x=22,5): pos jaga dan tenda basecamp menghadap ke sana.
+const JALAN_UTAMA_X := 22.5
+
+
+## Arah muka bangunan kecil (petak depan pintu = pintu + arah): pos jaga dan tenda menghadap jalan utama,
+## yang lain (kandang ayam) menghadap selatan.
+static func arah_kecil(ch: String, r: Dictionary) -> Vector2i:
+	if ch == "J" or ch == "A":
+		var cx := (float(r.x0) + float(r.x1) + 1.0) / 2.0
+		return Vector2i(-1, 0) if cx > JALAN_UTAMA_X else Vector2i(1, 0)
+	return Vector2i(0, 1)
+
+
+## Petak pintu bangunan kecil berpetak banyak (pos jaga, kandang ayam): di sisi muka (`ar`), kolom/baris tengah
+## (yang lebih kecil bila genap). Warga yang pulang ke sana (Maps.WARGA[].rumah) memakai petak ini.
+static func pintu_kecil(r: Dictionary, ar := Vector2i(0, 1)) -> Vector2i:
 	var w := int(r.x1) - int(r.x0) + 1
-	return Vector2i(int(r.x0) + int(floor((w - 1) / 2.0)), int(r.z1))
+	var d := int(r.z1) - int(r.z0) + 1
+	if ar.x != 0:
+		return Vector2i(int(r.x0) if ar.x < 0 else int(r.x1), int(r.z0) + int(floor((d - 1) / 2.0)))
+	return Vector2i(int(r.x0) + int(floor((w - 1) / 2.0)), int(r.z1) if ar.y > 0 else int(r.z0))
 
 
 ## Kelompok petak bertetangga (4 arah) -> daftar kotak pembatas {x0, z0, x1, z1}.
@@ -1160,36 +1176,49 @@ static func _atap(root: Node3D, w: float, d: float, tinggi: float, y: float, cx:
 	roof.rotation.y = PI / 2.0
 
 
-## Pos jaga di dekat gapura: bilik kayu beralas batu, atap merah, pintu menghadap selatan, jendela hangat
-## dan papan "POS JAGA". Penjaga masuk ke sini saat malam.
+## Wadah bangunan kecil yang diputar mengikuti arah mukanya: di dalamnya muka bangunan = +z lokal.
+static func _wadah(root: Node3D, cx: float, cz: float, ar: Vector2i) -> Node3D:
+	var h := Node3D.new()
+	h.position = Vector3(cx, 0.0, cz)
+	h.rotation.y = atan2(float(ar.x), float(ar.y))
+	root.add_child(h)
+	return h
+
+
+## Pos jaga di dekat gapura: bangunan terbuka, hanya atap merah, dinding belakang, dan empat tiang, menghadap
+## jalan utama. Papan "POS JAGA" di balok depan dan lentera yang menyala saat malam. Penjaga berdiri di dalamnya
+## saat malam (tetap terlihat).
 static func _pos_jaga(root: Node3D, r: Dictionary) -> void:
-	var w := float(r.x1 - r.x0 + 1)
-	var d := float(r.z1 - r.z0 + 1)
-	var cx: float = r.x0 + w / 2.0
-	var cz: float = r.z0 + d / 2.0
-	var dr := pintu_kecil(r)
-	var dx := dr.x + 0.5
-	var fz := cz + (d - 0.2) / 2.0
+	var tw := float(r.x1 - r.x0 + 1)
+	var td := float(r.z1 - r.z0 + 1)
+	var cx: float = r.x0 + tw / 2.0
+	var cz: float = r.z0 + td / 2.0
+	var ar := arah_kecil("J", r)
+	var lebar := td if ar.x != 0 else tw    # sisi sejajar muka
+	var dalam := tw if ar.x != 0 else td    # kedalaman (muka ke belakang)
+	var h := _wadah(root, cx, cz, ar)
 	var wood := mat(Color("8a5a2b"))
 	var dark := mat(Color("3d2815"))
-	_gate_part(root, _box(Vector3(w - 0.04, 0.3, d - 0.04)), _stone_mat(Color("b9b4a6")), Vector3(cx, 0.15, cz))
-	_gate_part(root, _box(Vector3(w - 0.2, 1.5, d - 0.2)), wood, Vector3(cx, 1.05, cz))
-	for sx in [-1.0, 1.0]:  # tiang sudut
+	var depan := dalam / 2.0
+	_gate_part(h, _box(Vector3(lebar - 0.04, 0.18, dalam - 0.04)), _stone_mat(Color("b9b4a6")), Vector3(0, 0.09, 0))
+	_gate_part(h, _box(Vector3(lebar - 0.1, 1.9, 0.14)), wood, Vector3(0, 1.13, -depan + 0.12))   # dinding belakang
+	for sx in [-1.0, 1.0]:   # empat tiang: dua di muka, dua di belakang
 		for sz in [-1.0, 1.0]:
-			_gate_part(root, _box(Vector3(0.12, 1.5, 0.12)), dark, Vector3(cx + sx * (w - 0.2) / 2.0, 1.05, cz + sz * (d - 0.2) / 2.0))
-	_atap(root, w + 0.7, d + 0.7, 0.9, 2.25, cx, cz, Color("a33a3a"))
-	_gate_part(root, _box(Vector3(0.55, 1.0, 0.06)), dark, Vector3(dx, 0.8, fz + 0.02))
-	var jx := float(r.x1) + 0.5 if dr.x == r.x0 else float(r.x0) + 0.5   # jendela di kolom tanpa pintu
-	var lamp := _lampu_mat(root)
-	_gate_part(root, _box(Vector3(0.38, 0.36, 0.04)), lamp, Vector3(jx, 1.1, fz + 0.02))
-	_gate_part(root, _box(Vector3(0.46, 0.05, 0.05)), dark, Vector3(jx, 1.32, fz + 0.03))
-	_gate_part(root, _box(Vector3(0.46, 0.05, 0.05)), dark, Vector3(jx, 0.88, fz + 0.03))
-	_gate_part(root, _box(Vector3(1.1, 0.3, 0.05)), mat(Color("7a5530")), Vector3(cx, 1.62, fz + 0.03))
-	_label_kecil(root, "POS JAGA", Vector3(cx, 1.62, fz + 0.065), 30, 0.0034)
-	_gate_part(root, _cyl(0.025, 0.03, 0.9, 5), dark, Vector3(cx + w / 2.0 - 0.05, 2.7, cz))   # tiang bendera di atap
-	_gate_part(root, _box(Vector3(0.4, 0.26, 0.03)), mat(Color("d93a3a")), Vector3(cx + w / 2.0 + 0.15, 2.95, cz))
-	_lampu_cahaya(root, Vector3(dx, 1.4, fz + 0.6), 4.5, 1.1)
-	_glow_tanah(root, Vector3(dx, 0.07, fz + 1.0), 3.2)
+			_gate_part(h, _box(Vector3(0.13, 2.05, 0.13)), dark, Vector3(sx * (lebar / 2.0 - 0.12), 1.2, sz * (depan - 0.12)))
+	_gate_part(h, _box(Vector3(lebar - 0.1, 0.12, 0.12)), dark, Vector3(0, 2.15, depan - 0.12))    # balok depan
+	_atap(h, lebar + 0.6, dalam + 0.7, 0.85, 2.6, 0.0, 0.0, Color("a33a3a"))
+	_gate_part(h, _box(Vector3(lebar * 0.62, 0.28, 0.05)), mat(Color("7a5530")), Vector3(0, 1.93, depan - 0.04))
+	_label_kecil(h, "POS JAGA", Vector3(0, 1.93, depan - 0.01), 30, 0.0034)
+	var bangku := _gate_part(h, _box(Vector3(lebar - 0.5, 0.1, 0.32)), wood, Vector3(0, 0.55, -depan + 0.36))   # bangku di belakang
+	bangku.name = "BangkuPos"
+	_gate_part(h, _cyl(0.02, 0.02, 0.4, 4), dark, Vector3(0, 2.0, depan - 0.3))
+	_gate_part(h, _sphere(0.13, 8), _lampu_mat(root), Vector3(0, 1.75, depan - 0.3))   # lentera gantung
+	_gate_part(h, _cyl(0.025, 0.03, 0.8, 5), dark, Vector3(lebar / 2.0 - 0.1, 3.05, -depan + 0.15))
+	_gate_part(h, _box(Vector3(0.03, 0.26, 0.4)), mat(Color("d93a3a")), Vector3(lebar / 2.0 - 0.1, 3.3, -depan + 0.35))
+	var ke_depan := Vector3(float(ar.x), 0.0, float(ar.y))
+	var lampu_dunia := Vector3(cx, 1.75, cz) + ke_depan * (depan - 0.3)
+	_lampu_cahaya(root, lampu_dunia, 5.0, 1.2)
+	_glow_tanah(root, Vector3(cx, 0.07, cz) + ke_depan * (depan + 0.7), 3.4)
 
 
 ## Kandang ayam: rumah kayu rendah di atas kaki, atap cokelat, pintu kecil dengan tangga papan, jendela hangat.
@@ -1225,21 +1254,25 @@ static func _kandang_ayam(root: Node3D, r: Dictionary) -> void:
 	_glow_tanah(root, Vector3(dx, 0.07, fz + 0.8), 2.4)
 
 
-## Tenda basecamp: atap segitiga warna-warni dengan pintu gelap yang menghadap selatan.
+## Tenda basecamp: atap segitiga warna-warni; pintu gelap menghadap jalan utama / api unggun.
 static func _tenda(root: Node3D, r: Dictionary, idx: int) -> void:
-	var w := float(r.x1 - r.x0 + 1)
-	var d := float(r.z1 - r.z0 + 1)
-	var cx: float = r.x0 + w / 2.0
-	var cz: float = r.z0 + d / 2.0
+	var tw := float(r.x1 - r.x0 + 1)
+	var td := float(r.z1 - r.z0 + 1)
+	var cx: float = r.x0 + tw / 2.0
+	var cz: float = r.z0 + td / 2.0
+	var ar := arah_kecil("A", r)
 	var warna: Color = [Color("c2503a"), Color("3a68b8"), Color("d9a23a")][idx % 3]
+	var h := _wadah(root, cx, cz, ar)
+	var lebar := td if ar.x != 0 else tw
+	var dalam := tw if ar.x != 0 else td
 	var prism := PrismMesh.new()
-	prism.size = Vector3(w + 0.1, 1.5, d + 0.1)
-	_gate_part(root, prism, mat(warna), Vector3(cx, 0.75, cz))
+	prism.size = Vector3(lebar + 0.1, 1.5, dalam + 0.1)
+	_gate_part(h, prism, mat(warna), Vector3(0, 0.75, 0))
 	var flap := PrismMesh.new()
-	flap.size = Vector3(w * 0.5, 1.0, 0.05)
-	_gate_part(root, flap, mat(Color("2b1d12")), Vector3(cx, 0.5, cz + (d + 0.1) / 2.0 + 0.005))
-	_gate_part(root, _cyl(0.02, 0.02, 0.5, 4), mat(Color("4a2f1a")), Vector3(cx, 1.7, cz))
-	_gate_part(root, _sphere(0.06, 6), mat(Color("ffd23a")), Vector3(cx, 1.97, cz))
+	flap.size = Vector3(lebar * 0.5, 1.0, 0.05)
+	_gate_part(h, flap, mat(Color("2b1d12")), Vector3(0, 0.5, (dalam + 0.1) / 2.0 + 0.005))
+	_gate_part(h, _cyl(0.02, 0.02, 0.5, 4), mat(Color("4a2f1a")), Vector3(0, 1.7, 0))
+	_gate_part(h, _sphere(0.06, 6), mat(Color("ffd23a")), Vector3(0, 1.97, 0))
 
 
 ## Api unggun: lingkaran batu, abu, tiga kayu bakar, nyala yang bergoyang; menerangi sekitar saat malam.

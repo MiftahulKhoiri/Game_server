@@ -308,7 +308,9 @@ func _spawn_warga(map_id: String) -> void:
 		w.model = model
 		if w.door.x >= 0 and Atmosphere.outdoors(map_id) and Atmosphere.is_night():
 			w.inside = true  # masuk peta saat malam: penduduk sudah di rumah
-			w.pos = w.front()
+			w.pos = w.spot() if w.terlihat else w.front()
+			if w.terlihat:
+				w.yaw = atan2(w.arah.x, w.arah.y)
 		w.apply()
 		_warga.append(w)
 
@@ -1082,7 +1084,7 @@ func _npc_in_range() -> String:
 			best_d = d
 			best = id
 	for w in _warga:  # warga desa: posisi hidup (mereka berjalan), id dialog berawalan "warga:"
-		if w.inside:
+		if w.inside and not w.terlihat:
 			continue
 		var wd := _pos.distance_to(w.pos)
 		if wd <= best_d:

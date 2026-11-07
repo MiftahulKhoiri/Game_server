@@ -26,6 +26,8 @@ var pos := Vector2.ZERO
 var yaw := 0.0
 var walking := false
 var door := Vector2i(-1, -1)  # petak pintu rumahnya (D); (-1,-1) = tidak punya rumah (tetap di luar)
+var arah := Vector2i(0, 1)    # arah muka rumah: petak depan pintu = door + arah (rumah biasa menghadap selatan)
+var terlihat := false         # tetap terlihat saat "di dalam" (penjaga berdiri di pos jaga yang terbuka)
 var inside := false           # sedang di dalam rumah (malam): tidak terlihat dan tidak bisa diajak bicara
 var node: Node3D            # wadah di dunia (posisi); model di dalamnya yang berputar
 var model: Node3D
@@ -44,6 +46,9 @@ func _init(def: Dictionary, seed_value: int) -> void:
 	home = def.pos
 	if def.has("rumah"):
 		door = def.rumah
+	if def.has("arah"):
+		arah = def.arah
+	terlihat = bool(def.get("terlihat", false))
 	radius = float(def.radius)
 	speed = float(def.speed)
 	pos = home
@@ -65,15 +70,22 @@ func _pick_target() -> bool:
 	return false
 
 
-## Titik tepat di depan pintu rumah (petak di bawah D), tempat warga masuk dan keluar.
+## Titik tepat di depan pintu rumah (petak di depan D menurut `arah`), tempat warga masuk dan keluar.
 func front() -> Vector2:
-	return Vector2(door.x + 0.5, door.y + 1.5)
+	return Vector2(door.x + 0.5 + arah.x, door.y + 0.5 + arah.y)
+
+
+## Tempat warga berhenti saat "di dalam": tengah petak pintu; untuk yang tetap terlihat (penjaga)
+## setengah petak lebih dalam, supaya berdiri di bawah atap pos jaga.
+func spot() -> Vector2:
+	var c := Vector2(door.x + 0.5, door.y + 0.5)
+	return c - Vector2(arah) * 0.5 if terlihat else c
 
 
 ## Jalur petak (pusat petak) dari posisi sekarang ke depan pintu, lewat petak yang boleh dilalui warga.
 ## Kosong bila tak ada jalur. Pencarian melebar (BFS) pada kisi petak, sekali saat warga mulai pulang.
 func _route_home() -> Array[Vector2]:
-	var goal := Vector2i(door.x, door.y + 1)
+	var goal := Vector2i(door.x + arah.x, door.y + arah.y)
 	var start := Vector2i(int(floor(pos.x)), int(floor(pos.y)))
 	var prev := {start: start}
 	var queue: Array[Vector2i] = [start]
@@ -114,7 +126,7 @@ func _step_home(delta: float) -> void:
 		if _route.is_empty():
 			inside = true  # tak ada jalur: langsung dianggap sudah di dalam
 			return
-		_route.append(Vector2(door.x + 0.5, door.y + 0.5))  # langkah terakhir: masuk lewat pintu
+		_route.append(spot())  # langkah terakhir: masuk lewat pintu
 	_has_target = false
 	var goal: Vector2 = _route[0]
 	var to_goal := goal - pos
@@ -126,6 +138,8 @@ func _step_home(delta: float) -> void:
 		if _route.is_empty():
 			inside = true
 			walking = false
+			if terlihat:
+				yaw = atan2(arah.x, arah.y)  # berdiri menghadap jalan
 			return
 	else:
 		pos += to_goal / dist * stepd
@@ -207,7 +221,7 @@ func apply() -> void:
 	if node == null or not is_instance_valid(node):
 		return
 	node.position = Vector3(pos.x, 0.0, pos.y)
-	node.visible = not inside
+	node.visible = terlihat or not inside
 	if model != null and is_instance_valid(model):
 		model.rotation.y = yaw
 		if "moving" in model:

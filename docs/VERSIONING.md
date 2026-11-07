@@ -224,6 +224,13 @@ membawa pemain; bawaannya halaman Releases terbaru.
   `A` tenda, `U` api unggun, `Q` dummy latihan, `Y` tiang panji. Hanya klien yang berubah; `DefaultMinClient`
   tetap 0.18.0.
 
+- v0.35.0 memperbaiki arah pintu di Desa Awal: pos jaga kini bangunan terbuka (atap, dinding belakang, empat
+  tiang) yang menghadap jalan utama, dan penjaga berdiri di dalamnya saat malam (tetap terlihat, bisa diajak
+  bicara); basecamp ditata ulang dengan dua tenda yang pintunya menghadap api unggun dan jalan utama; dan tiap
+  rumah/pondok/basecamp punya jalan tanah yang tersambung ke jalan utama (jalan baru di baris z=23, 33, 42, 45).
+  Data warga baru: `arah` (arah muka bangunan) dan `terlihat` (tetap terlihat di dalam). Hanya klien yang
+  berubah; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

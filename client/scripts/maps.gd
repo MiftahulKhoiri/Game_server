@@ -73,7 +73,7 @@ const DESA_AWAL: Array[String] = [
 	"P...fHDH....HDH.......=.......HDH.#..HDH.#..P",
 	"P..#.f=f..#ff=ff#.#...=...#.#.f=f....f=f....P",
 	"P.....=...f..=........=........=..#f..=..#..P",
-	"P.........f...........=.......f..........ff.P",
+	"P.....=================================..ff.P",
 	"P.......f.............=..............f......P",
 	"P....f.......f........=.......f.............P",
 	"P.~~~~~~~~~~.f........=..........~~~~~~~~~~.P",
@@ -83,7 +83,7 @@ const DESA_AWAL: Array[String] = [
 	"P.~FTTTTTTF~..HDH.....=..#..HDH..~FTTTTTTF~.P",
 	"P.~FTTTTTTF~#.f=f..#..=..f..f=f.#~FTTTTTTF~.P",
 	"P.~FFFFFFFF~..f=......=...#.f=...~FFFFFFFF~.P",
-	"P.~~~~~~~~~~#f...f.#..=...f......~~~~~~~~~~.P",
+	"P.~~~~~~~~~~#f.===============...~~~~~~~~~~.P",
 	"P.~~~~~~~~~~..#..#ff..=..#.#...#.~~~~~~~~~~.P",
 	"P.~FFFFFFFF~#......#..=......#...~FFFFFFFF~.P",
 	"P.~FTTTTTTF~...#.#....=..#.#...#.~FTTTTTTF~.P",
@@ -92,12 +92,12 @@ const DESA_AWAL: Array[String] = [
 	"P.~FTTTTTTF~..HDH.#...=..#..HDH.#~FTTTTTTF~.P",
 	"P#~FFFFFFFF~#.f=f.....=.....f=f..~FFFFFFFF~#P",
 	"P#~~~~~~~~~~...=..#.f.=..f#..=..#~~~~~~~~~~#P",
-	"P##...................=...................##P",
-	"P##~~~~~~..AA...AA....=..#....f.f#..~~~~~~##P",
-	"P##~~~~~~..AA...AA.Y..=....#.#.#f...~~~~~~##P",
-	"P##~~~~~~.............=.JJf.......f.~~~~~~##P",
-	"P##~~~~~~.....U...Q...=.JJ.#...#f#..~~~~~~##P",
-	"P##...................=......#f..........f##P",
+	"P##............===============............##P",
+	"P##~~~~~~..AA.........=..#....f.f#..~~~~~~##P",
+	"P##~~~~~~..AA.........=....#.#.#f...~~~~~~##P",
+	"P##~~~~~~......U=======.JJf.......f.~~~~~~##P",
+	"P##~~~~~~..AA......Y..=.JJ.#...#f#..~~~~~~##P",
+	"P##........AA....Q....=......#f..........f##P",
 	"P##...................=...................##P",
 	"PPPPPPPPPPPPPPPPPPPPNN=NNPPPPPPPPPPPPPPPPPPPP",
 ]
@@ -116,8 +116,10 @@ const NPCS := {
 ## `speed` = petak per detik; `id` = kunci dialognya di warga_dialog.gd. Tidak menghalangi pemain,
 ## berhenti dan menoleh bila pemain mendekat, dan bisa diajak bicara (tombol Bicara).
 ## `rumah` = petak pintu rumahnya (D rumah, J pos jaga, atau C kandang ayam): saat malam warga berjalan
-## pulang ke sana dan menghilang ke dalam, paginya keluar lagi. Penjaga gerbang masuk ke pos jaga, ayam
-## ke kandang ayam. Warga tanpa `rumah` tetap di luar.
+## pulang ke sana dan menghilang ke dalam, paginya keluar lagi. `arah` = arah muka bangunan (petak depan
+## pintu = rumah + arah; bawaan selatan). `terlihat` = tetap terlihat di dalam: penjaga gerbang berdiri
+## di pos jaga yang terbuka (hanya atap dan dinding belakang) menghadap jalan utama. Ayam masuk ke
+## kandang ayam. Warga tanpa `rumah` tetap di luar.
 const WARGA := [
 	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7, "rumah": Vector2i(10, 2)},
 	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75, "rumah": Vector2i(34, 2)},
@@ -126,7 +128,7 @@ const WARGA := [
 	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
 	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
-	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 46)},
+	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
