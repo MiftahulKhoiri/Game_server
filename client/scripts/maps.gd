@@ -8,6 +8,7 @@ extends RefCounted
 ##   #  pohon           ~  air                H  tembok/atap rumah
 ##   F  pagar           W  menara lampu (tempat berkumpul)              S  tembok batu (reruntuhan)
 ##   P  pagar kayu besar keliling desa        N  menara gapura (dua petak di kiri dan kanan jalan keluar; juga di tepi utara Perbatasan menuju desa)
+##   J  pos jaga   C  kandang ayam   A  tenda   U  api unggun   Q  dummy latihan   Y  tiang panji (basecamp)
 ##   K  singgasana bos (bisa dilewati; menginjaknya memanggil bos)
 ##   M  tanah gunung    G  kerikil (ladang monster, bisa dilewati)    R  batu besar
 ## Yang bisa dilewati: . = f T B D M G   (sisanya menghalangi)
@@ -41,11 +42,13 @@ const WALKABLE := ".=fTBDMGK"
 const BOSS_TILE := "K"
 const ENCOUNTER_TILES := "TG"
 
-## Desa Awal (45x50): tujuh rumah di utara, jalan raya timur-barat, alun-alun dengan sumur
-## di tengah, dua kandang berpagar di kiri-kanan alun-alun, empat rumah di tengah desa, sungai
-## dengan jembatan, empat ladang berpagar dan empat pondok tani di selatan, dua kolam, dan
-## gerbang keluar di bawah (menuju Perbatasan). Desa dikelilingi pagar kayu besar (P) dan di pintu
-## keluarnya berdiri gapura bermenara (N).
+## Desa Awal (45x50): tujuh rumah di utara, jalan raya timur-barat, alun-alun dengan menara lampu
+## di tengah, dua kandang berpagar (masing-masing dengan kandang ayam) di kiri-kanan alun-alun, empat
+## rumah di tengah desa, empat ladang berpagar yang masing-masing dikelilingi parit berjembatan
+## (sungai tidak membelah desa), empat pondok tani di selatan, dua kolam, basecamp pahlawan (tenda,
+## api unggun, dummy latihan) di barat gerbang, pos jaga di timur gerbang, dan gerbang keluar di
+## bawah (menuju Perbatasan). Desa dikelilingi pagar kayu besar (P) dan di pintu keluarnya berdiri
+## gapura bermenara (N).
 const DESA_AWAL: Array[String] = [
 	"PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 	"P..HHH...HHH...HHH...HHH...HHH...HHH..HHHHH.P",
@@ -57,8 +60,8 @@ const DESA_AWAL: Array[String] = [
 	"P..=======================================..P",
 	"P..f....f........===========.....f....f.....P",
 	"P..FFFFFFFFF..#..===========.#.#fFFFFFFFFF..P",
-	"P..F.f..f..F.....===========.....F..f..f.F..P",
-	"P..F..f....F...#.===========...#.F.......F..P",
+	"P..FCCC.f..F.....===========.....F..f.CCCF..P",
+	"P..FCCC....F...#.===========...#.F....CCCF..P",
 	"P..F......fF.#...===========f#..fF......fF..P",
 	"P..F..f....f...#.=====W=====...#....ff..fF..P",
 	"P..F.f.....F.f...===========.....F.......F..P",
@@ -71,30 +74,30 @@ const DESA_AWAL: Array[String] = [
 	"P..#.f=f..#ff=ff#.#...=...#.#.f=f....f=f....P",
 	"P.....=...f..=........=........=..#f..=..#..P",
 	"P.........f...........=.......f..........ff.P",
-	"~~~~~~~~~~~~~~~~~~~~~~B~~~~~~~~~~~~~~~~~~~~~~",
-	"~~~~~~~~~~~~~~~~~~~~~~B~~~~~~~~~~~~~~~~~~~~~~",
-	"P.......f....f........=...................f.P",
-	"P..FFFFFFFF..#.#.#.#..=.f...#.#.#.FFFFFFFF..P",
-	"P..FTTTTTTF.......f...=...#.......FTTTTTTF..P",
-	"P..FTTTTTT..#.HHH..#..=.....HHH.#..TTTTTTF..P",
-	"P..FTTTTTTF...HDH.....=..#..HDH...FTTTTTTF..P",
-	"P..FTTTTTTF.#.f=f..#..=..f..f=f.#.FTTTTTTF..P",
-	"P..FFFFFFFF...f=......=...#.f=....FFFFFFFF..P",
-	"P.......ff..#f...f.#..=...f.............f...P",
-	"P.....ff......#..#ff..=..#.#...#............P",
-	"P..FFFFFFFF.#......#..=......#....FFFFFFFF..P",
-	"P..FTTTTTTF....#.#....=..#.#...#..FTTTTTTF..P",
-	"P..FTTTTTT..#......#..=.......f....TTTTTTF..P",
-	"P..FTTTTTTF...HHH.....=.....HHH...FTTTTTTF..P",
-	"P..FTTTTTTF...HDH.#...=..#..HDH.#.FTTTTTTF..P",
-	"P##FFFFFFFF.#.f=f.....=.....f=f...FFFFFFFF##P",
-	"P##............=..#.f.=..f#..=..#.........##P",
-	"P##........#.#........=...................##P",
-	"P##~~~~~~.......#.#...=..#....f.f#..~~~~~~##P",
-	"P##~~~~~~..#..#.......=....#.#.#f...~~~~~~##P",
-	"P##~~~~~~.f....f..#...=..#f.......f.~~~~~~##P",
-	"P##~~~~~~.......#f....=....#...#f#..~~~~~~##P",
-	"P##........#f.#....#..=..#...#f..........f##P",
+	"P.......f.............=..............f......P",
+	"P....f.......f........=.......f.............P",
+	"P.~~~~~~~~~~.f........=..........~~~~~~~~~~.P",
+	"P.~FFFFFFFF~.#.#.#.#..=.f...#.#.#~FFFFFFFF~.P",
+	"P.~FTTTTTTF~......f...=...#......~FTTTTTTF~.P",
+	"P.~FTTTTTT.B..HHH..#..=.....HHH..B.TTTTTTF~.P",
+	"P.~FTTTTTTF~..HDH.....=..#..HDH..~FTTTTTTF~.P",
+	"P.~FTTTTTTF~#.f=f..#..=..f..f=f.#~FTTTTTTF~.P",
+	"P.~FFFFFFFF~..f=......=...#.f=...~FFFFFFFF~.P",
+	"P.~~~~~~~~~~#f...f.#..=...f......~~~~~~~~~~.P",
+	"P.~~~~~~~~~~..#..#ff..=..#.#...#.~~~~~~~~~~.P",
+	"P.~FFFFFFFF~#......#..=......#...~FFFFFFFF~.P",
+	"P.~FTTTTTTF~...#.#....=..#.#...#.~FTTTTTTF~.P",
+	"P.~FTTTTTT.B.......#..=.......f..B.TTTTTTF~.P",
+	"P.~FTTTTTTF~..HHH.....=.....HHH..~FTTTTTTF~.P",
+	"P.~FTTTTTTF~..HDH.#...=..#..HDH.#~FTTTTTTF~.P",
+	"P#~FFFFFFFF~#.f=f.....=.....f=f..~FFFFFFFF~#P",
+	"P#~~~~~~~~~~...=..#.f.=..f#..=..#~~~~~~~~~~#P",
+	"P##...................=...................##P",
+	"P##~~~~~~..AA...AA....=..#....f.f#..~~~~~~##P",
+	"P##~~~~~~..AA...AA.Y..=....#.#.#f...~~~~~~##P",
+	"P##~~~~~~.............=.JJf.......f.~~~~~~##P",
+	"P##~~~~~~.....U...Q...=.JJ.#...#f#..~~~~~~##P",
+	"P##...................=......#f..........f##P",
 	"P##...................=...................##P",
 	"PPPPPPPPPPPPPPPPPPPPNN=NNPPPPPPPPPPPPPPPPPPPP",
 ]
@@ -112,9 +115,9 @@ const NPCS := {
 ## jari-jari `radius` petak, hanya di petak jalan/rumput/bunga. `model` = id model 3D;
 ## `speed` = petak per detik; `id` = kunci dialognya di warga_dialog.gd. Tidak menghalangi pemain,
 ## berhenti dan menoleh bila pemain mendekat, dan bisa diajak bicara (tombol Bicara).
-## `rumah` = petak pintu (D) rumahnya: saat malam warga berjalan pulang ke sana dan menghilang ke dalam,
-## paginya keluar lagi. Warga tanpa `rumah` (penjaga gerbang, ayam) tetap di luar sepanjang malam;
-## penjaga gerbang selalu berjaga.
+## `rumah` = petak pintu rumahnya (D rumah, J pos jaga, atau C kandang ayam): saat malam warga berjalan
+## pulang ke sana dan menghilang ke dalam, paginya keluar lagi. Penjaga gerbang masuk ke pos jaga, ayam
+## ke kandang ayam. Warga tanpa `rumah` tetap di luar.
 const WARGA := [
 	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7, "rumah": Vector2i(10, 2)},
 	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75, "rumah": Vector2i(34, 2)},
@@ -123,11 +126,11 @@ const WARGA := [
 	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
 	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
-	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 11.5), "radius": 2.2, "speed": 0.7},
+	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 46)},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
+	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 13.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(39, 11)},
 ]
 
 ## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).
@@ -244,6 +247,17 @@ static func chest_at(map_id: String, x: int, y: int) -> String:
 		if c.map == map_id and c.pos == Vector2i(x, y):
 			return str(c.id)
 	return ""
+
+
+## Semua petak berlambang `ch` di peta (untuk menguji dan membangun bangunan kecil).
+static func tiles_of(map_id: String, ch: String) -> Array:
+	var out: Array = []
+	var baris := rows(map_id)
+	for z in baris.size():
+		for x in baris[z].length():
+			if baris[z][x] == ch:
+				out.append(Vector2i(x, z))
+	return out
 
 
 ## id NPC di petak (x, y), atau "" bila tidak ada.

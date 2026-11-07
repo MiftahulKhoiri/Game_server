@@ -216,6 +216,14 @@ membawa pemain; bawaannya halaman Releases terbaru.
   malam, dan jalan serta pohon latar di luar gapura. Batas desa dan hutan jadi jelas dan jalan pulang mudah
   dikenali. Hanya klien yang berubah; `DefaultMinClient` tetap 0.18.0.
 
+- v0.34.0 menata ulang Desa Awal: sungai tidak lagi membelah desa, tetapi hanya berupa parit yang mengelilingi
+  tiap ladang (dengan jembatan kayu di depan pintu ladang); pos jaga di timur gapura (penjaga masuk ke dalamnya
+  saat malam, jendelanya menyala); basecamp pahlawan di barat gerbang (dua tenda, api unggun yang menyala dan
+  bergoyang, dummy latihan, tiang panji dengan papan "BASECAMP PAHLAWAN"); dan kandang ayam di tiap kandang
+  berpagar (keempat ayam masuk ke kandang saat malam). Lambang peta baru: `J` pos jaga, `C` kandang ayam,
+  `A` tenda, `U` api unggun, `Q` dummy latihan, `Y` tiang panji. Hanya klien yang berubah; `DefaultMinClient`
+  tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

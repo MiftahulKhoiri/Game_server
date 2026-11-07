@@ -66,8 +66,23 @@ func _run() -> void:
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 0, 0), "pohon di tepi tidak bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, -1, 3), "luar peta tidak bisa dilewati")
-	_check(Maps.walkable(Maps.DEFAULT_MAP, 22, 24), "jembatan bisa dilewati")
-	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 24), "sungai tidak bisa dilewati")
+	var sungai_membelah := false
+	for yy in range(1, 43):
+		var seluruh_air := true
+		for xx in range(1, 44):
+			if Maps.tile_at(Maps.DEFAULT_MAP, xx, yy) != "~":
+				seluruh_air = false
+		sungai_membelah = sungai_membelah or seluruh_air
+	_check(not sungai_membelah and Maps.walkable(Maps.DEFAULT_MAP, 22, 24) and Maps.walkable(Maps.DEFAULT_MAP, 3, 24), "sungai tidak membelah desa: jalan tengah dan sisi barat tetap terbuka")
+	_check(not Maps.walkable(Maps.DEFAULT_MAP, 2, 30) and not Maps.walkable(Maps.DEFAULT_MAP, 6, 26) and not Maps.walkable(Maps.DEFAULT_MAP, 38, 33), "parit mengelilingi ladang tidak bisa dilewati")
+	_check(Maps.walkable(Maps.DEFAULT_MAP, 11, 29) and Maps.walkable(Maps.DEFAULT_MAP, 11, 37) and Maps.walkable(Maps.DEFAULT_MAP, 33, 29) and Maps.walkable(Maps.DEFAULT_MAP, 33, 37), "jembatan parit di depan pintu tiap ladang bisa dilewati")
+	_check(Maps.tile_at(Maps.DEFAULT_MAP, 24, 45) == "J" and Maps.tile_at(Maps.DEFAULT_MAP, 25, 46) == "J" and not Maps.walkable(Maps.DEFAULT_MAP, 24, 46), "pos jaga di timur gapura menghalangi jalan")
+	_check(Maps.tile_at(Maps.DEFAULT_MAP, 5, 10) == "C" and Maps.tile_at(Maps.DEFAULT_MAP, 39, 11) == "C", "kandang ayam di tiap kandang berpagar")
+	var camp := {"A": 0, "U": 0, "Q": 0, "Y": 0}
+	for row in Maps.rows(Maps.DEFAULT_MAP):
+		for ch in camp:
+			camp[ch] += row.count(ch)
+	_check(camp.A == 8 and camp.U == 1 and camp.Q == 1 and camp.Y == 1, "basecamp pahlawan: dua tenda, api unggun, dummy, tiang panji")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 22, 13), "sumur menghalangi")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 3, 9) and Maps.walkable(Maps.DEFAULT_MAP, 11, 13), "pagar kandang menghalangi, gerbang kandang terbuka")
 	_check(Maps.walkable(Maps.DEFAULT_MAP, 4, 2), "pintu rumah bisa dilewati")
@@ -956,7 +971,8 @@ func _run() -> void:
 			chief = true
 		if def.has("rumah"):
 			var dr: Vector2i = def.rumah
-			_check(Maps.tile_at(Maps.DEFAULT_MAP, dr.x, dr.y) == "D" and Maps.warga_free(Maps.DEFAULT_MAP, Vector2(dr.x + 0.5, dr.y + 1.5)), "%s: pintu rumah D dan petak di depannya bisa dilewati" % def.id)
+			var pintu_ch := Maps.tile_at(Maps.DEFAULT_MAP, dr.x, dr.y)
+			_check(["D", "J", "C"].has(pintu_ch) and Maps.warga_free(Maps.DEFAULT_MAP, Vector2(dr.x + 0.5, dr.y + 1.5)), "%s: pintu (rumah D / pos jaga J / kandang C) dan petak di depannya bisa dilewati" % def.id)
 	_check(chief, "ada Kepala Suku yang tinggal di rumahnya")
 	_check(not Atmo.is_night() or Atmo.hour_override < 0.0, "jam uji belum dipaksa")
 	Atmo.hour_override = 12.0
@@ -978,7 +994,34 @@ func _run() -> void:
 	_check(wb.inside and wb.pos.distance_to(Vector2(10.5, 2.5)) < 0.1, "Bu Sari berjalan pulang dan masuk lewat pintu rumahnya (%d langkah)" % n_steps)
 	for i in 200:
 		pj.step(0.05, Vector2(-80, -80), no_others, true)
-	_check(not pj.inside and pj.door.x < 0, "penjaga gerbang tetap berjaga sepanjang malam")
+	var pos_jaga_pintu: Vector2i = Vector2i(-1, -1)
+	var kandang_pintu: Array[Vector2i] = []
+	for rr: Dictionary in WB._kelompok(Maps.tiles_of(Maps.DEFAULT_MAP, "J")):
+		pos_jaga_pintu = WB.pintu_kecil(rr)
+	for rr: Dictionary in WB._kelompok(Maps.tiles_of(Maps.DEFAULT_MAP, "C")):
+		kandang_pintu.append(WB.pintu_kecil(rr))
+	_check(pj.door == pos_jaga_pintu and pj.door == Vector2i(24, 46), "penjaga pulang ke pintu pos jaga %s" % [pj.door])
+	var ayam_ok := true
+	for def: Dictionary in Maps.WARGA:
+		if def.id == "ayam":
+			ayam_ok = ayam_ok and kandang_pintu.has(def.rumah)
+	_check(ayam_ok and kandang_pintu.size() == 2, "tiap ayam punya pintu kandang ayam")
+	var pj_steps := 0
+	while not pj.inside and pj_steps < 6000:
+		pj.step(0.05, Vector2(-80, -80), no_others, true)
+		pj_steps += 1
+	_check(pj.inside and pj.pos.distance_to(Vector2(24.5, 46.5)) < 0.1, "malam: penjaga masuk ke pos jaga (%d langkah)" % pj_steps)
+	var ayam_masuk := 0
+	for def: Dictionary in Maps.WARGA:
+		if def.id == "ayam":
+			var ay = Wg.new(def, 9)
+			var n_ay := 0
+			while not ay.inside and n_ay < 6000:
+				ay.step(0.05, Vector2(-80, -80), no_others, true)
+				n_ay += 1
+			if ay.inside and ay.pos.distance_to(Vector2(def.rumah.x + 0.5, def.rumah.y + 0.5)) < 0.1:
+				ayam_masuk += 1
+	_check(ayam_masuk == 4, "malam: keempat ayam masuk ke kandang ayam (%d)" % ayam_masuk)
 	Atmo.hour_override = 12.0
 	wb.step(0.05, Vector2(-80, -80), no_others, false)
 	_check(not wb.inside and wb.pos.distance_to(Vector2(10.5, 3.5)) < 0.1, "pagi: warga keluar dari pintu rumahnya")
@@ -1003,7 +1046,7 @@ func _run() -> void:
 			out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
-	_check(inside_n == 7 and guard_out and out_n == 5, "masuk desa saat malam: 7 warga di rumah, penjaga dan ayam tetap di luar (%d di dalam)" % inside_n)
+	_check(inside_n == 12 and not guard_out and out_n == 0, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
 	_check(wn._npc_in_range() == "" or not wn._npc_in_range().begins_with("warga:bu_sari"), "warga di dalam rumah tidak bisa diajak bicara")
 	wn.queue_free()
 	await process_frame
