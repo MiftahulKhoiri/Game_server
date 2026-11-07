@@ -147,6 +147,11 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Daftar, dan Pengaturan tampil di atas diorama yang digelapkan. Hanya tampilan klien; server dan API tidak
   berubah, `DefaultMinClient` tetap 0.18.0.
 
+- v0.25.0 memakai gambar judul resmi ("PETUALANGAN - MEMBERANTAS MONSTER") sebagai kepala layar awal
+  (`client/assets/ui/judul.jpg`), memudar ke latar gelap di atas tombol Masuk, Daftar, dan Pengaturan. Diorama 3D
+  v0.24.0 tetap ada sebagai cadangan bila gambar tidak ditemukan. Hanya tampilan klien; server dan API tidak
+  berubah, `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

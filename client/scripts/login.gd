@@ -11,6 +11,9 @@ extends Control
 const Version = preload("res://scripts/version.gd")
 const Updater = preload("res://scripts/updater.gd")
 const JudulLatar = preload("res://scripts/judul_latar.gd")
+const JUDUL_GAMBAR := "res://assets/ui/judul.jpg"  # gambar judul 3:2; bila tidak ada, dipakai diorama 3D
+const JUDUL_TINGGI := 480.0  # tinggi gambar judul di layar 720 lebar
+const TEPI := Color("382e2c")  # warna tepi bawah gambar judul
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const MIN_PASSWORD := 8
 const KB_MARGIN := 28.0  # jarak isian dari tepi atas papan ketik
@@ -18,7 +21,8 @@ const GREEN := Color("8fe388")
 const RED := Color("ff6b6b")
 const YELLOW := Color("f0d040")
 
-var _latar: SubViewportContainer  # diorama 3D di belakang Beranda
+var _latar: SubViewportContainer  # diorama 3D di belakang Beranda (hanya bila gambar judul tidak ada)
+var _judul_gambar := false
 var _dim: ColorRect                # menggelapkan diorama di halaman selain Beranda
 var _scroll: ScrollContainer
 var _box: VBoxContainer
@@ -88,9 +92,12 @@ func _ready() -> void:
 	bg.color = Color("1b2a1f")
 	add_child(bg)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_latar = JudulLatar.new()
-	add_child(_latar)
-	_latar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if ResourceLoader.exists(JUDUL_GAMBAR):
+		_pasang_gambar_judul(bg)
+	else:
+		_latar = JudulLatar.new()
+		add_child(_latar)
+		_latar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dim = ColorRect.new()
 	_dim.color = Color(0.03, 0.04, 0.08, 0.82)
 	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -182,12 +189,17 @@ func _filler() -> Control:
 
 func _build_home() -> void:
 	var p := _new_page("home", "")
-	var top := Control.new()
-	top.custom_minimum_size = Vector2(0, 24)
-	p.add_child(top)
-	p.add_child(_title_label("PETUALANGAN", 78, 14))
-	p.add_child(_ribbon("MEMBERANTAS MONSTER"))
-	p.add_child(_filler())  # diorama 3D tampil di ruang ini
+	if _judul_gambar:
+		var ruang := Control.new()  # gambar judul menempati bagian atas layar
+		ruang.custom_minimum_size = Vector2(0, JUDUL_TINGGI - 48.0 + 20.0)
+		p.add_child(ruang)
+	else:
+		var top := Control.new()
+		top.custom_minimum_size = Vector2(0, 24)
+		p.add_child(top)
+		p.add_child(_title_label("PETUALANGAN", 78, 14))
+		p.add_child(_ribbon("MEMBERANTAS MONSTER"))
+		p.add_child(_filler())  # diorama 3D tampil di ruang ini
 
 	_btn_continue = _make_button("Lanjutkan petualangan")
 	_btn_continue.pressed.connect(_on_continue)
@@ -212,6 +224,50 @@ func _build_home() -> void:
 	_home_status.add_theme_color_override("font_outline_color", Color("1a0d05"))
 	_home_status.add_theme_constant_override("outline_size", 6)
 	p.add_child(_home_status)
+
+
+## Gambar judul di bagian atas (selebar layar), memudar halus ke latar gelap di bawahnya.
+func _pasang_gambar_judul(bg: ColorRect) -> void:
+	_judul_gambar = true
+	bg.color = TEPI
+	var turun := Gradient.new()  # latar gelap makin pekat ke bawah
+	turun.set_color(0, TEPI)
+	turun.set_color(1, Color("100c0b"))
+	var gt := GradientTexture2D.new()
+	gt.gradient = turun
+	gt.fill_from = Vector2(0, 0)
+	gt.fill_to = Vector2(0, 1)
+	var dasar := TextureRect.new()
+	dasar.texture = gt
+	dasar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	dasar.stretch_mode = TextureRect.STRETCH_SCALE
+	dasar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(dasar)
+	dasar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var img := TextureRect.new()
+	img.texture = load(JUDUL_GAMBAR) as Texture2D
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(img)
+	img.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	img.offset_bottom = JUDUL_TINGGI
+	var pudar := Gradient.new()  # tepi bawah gambar menyatu dengan latar
+	pudar.set_color(0, Color(TEPI, 0.0))
+	pudar.set_color(1, TEPI)
+	var gp := GradientTexture2D.new()
+	gp.gradient = pudar
+	gp.fill_from = Vector2(0, 0)
+	gp.fill_to = Vector2(0, 1)
+	var tepi := TextureRect.new()
+	tepi.texture = gp
+	tepi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tepi.stretch_mode = TextureRect.STRETCH_SCALE
+	tepi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(tepi)
+	tepi.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	tepi.offset_top = JUDUL_TINGGI - 90.0
+	tepi.offset_bottom = JUDUL_TINGGI + 2.0
 
 
 ## Judul emas bertepi cokelat tua dengan bayangan, ala logo RPG.
@@ -415,7 +471,8 @@ func _show_page(id: String) -> void:
 	_page = id
 	if _dim != null:
 		_dim.visible = id != "home"
-		_latar.set_aktif(id == "home")
+		if _latar != null:
+			_latar.set_aktif(id == "home")
 	for k: String in _pages:
 		(_pages[k] as Control).visible = (k == id)
 	_scroll.scroll_vertical = 0
