@@ -341,7 +341,7 @@ static func build(map_id: String) -> Node3D:
 
 	# Alas luas di bawah peta, supaya tidak ada ruang kosong di tepi layar.
 	var floor_mesh := PlaneMesh.new()
-	floor_mesh.size = Vector2(80, 80)
+	floor_mesh.size = Vector2(maxf(80.0, w + 40.0), 80)
 	var floor_node := MeshInstance3D.new()
 	floor_node.mesh = floor_mesh
 	floor_node.material_override = mat(Color("34302b") if mountain else Color("3f8f3a"))
@@ -465,7 +465,7 @@ static func build(map_id: String) -> Node3D:
 				"H", "D":
 					house_tiles.append(Vector2i(x, z))
 				"P":
-					_add_palisade_tile(x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
+					_add_palisade_tile(rows, x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
 				"N":
 					gate_tiles.append(Vector2i(x, z))
 				"W":
@@ -519,9 +519,11 @@ static func build(map_id: String) -> Node3D:
 
 ## Satu petak pagar kayu besar: empat batang runcing setinggi 1,6-2,0 dengan dua palang di sisi dalam.
 ## Pagar di tepi atas/bawah memanjang ke arah x, di tepi kiri/kanan ke arah z.
-static func _add_palisade_tile(x: int, z: int, w: int, h: int, c: Vector3, log_x: Array[Transform3D], log_c: Array[Color], tip_x: Array[Transform3D], tip_c: Array[Color], rail_x: Array[Transform3D]) -> void:
-	var vertical := (x == 0 or x == w - 1) and z > 0 and z < h - 1
-	var inward := Vector3(-1.0 if x == w - 1 else 1.0, 0, 0) if vertical else Vector3(0, 0, -1.0 if z == h - 1 else 1.0)
+static func _add_palisade_tile(rows: Array[String], x: int, z: int, w: int, h: int, c: Vector3, log_x: Array[Transform3D], log_c: Array[Color], tip_x: Array[Transform3D], tip_c: Array[Color], rail_x: Array[Transform3D]) -> void:
+	# Pagar tegak (kiri/kanan) bila tetangga kiri-kanannya bukan pagar/gapura; Desa Awal lebih lebar dari
+	# pagarnya (wilayah timur), jadi tepi timur desa tidak lagi di x = w - 1.
+	var vertical := z > 0 and z < h - 1 and not (_tile_pagar(rows, x - 1, z) or _tile_pagar(rows, x + 1, z))
+	var inward := Vector3(1.0 if float(x) < float(w) * 0.25 else -1.0, 0, 0) if vertical else Vector3(0, 0, 1.0 if float(z) < float(h) * 0.5 else -1.0)
 	var along := Vector3(0, 0, 1) if vertical else Vector3(1, 0, 0)
 	for i in 4:
 		var off := (float(i) - 1.5) * 0.25
@@ -535,7 +537,9 @@ static func _add_palisade_tile(x: int, z: int, w: int, h: int, c: Vector3, log_x
 		tip_c.append(col.lightened(0.14))
 	var rot := PI * 0.5 if vertical else 0.0
 	for ry in [0.55, 1.15]:
-		rail_x.append(_xf(c + inward * 0.17 + Vector3(0, ry, 0), Vector3(1.0, 0.11, 0.09), rot))
+		# Skala lokal (setelah putar): _xf menerapkan skala pada sumbu dunia, itu yang membuat palang
+		# pagar kiri/kanan (diputar 90 derajat) pendek dan salah arah.
+		rail_x.append(Transform3D(Basis.from_euler(Vector3(0, rot, 0)) * Basis.from_scale(Vector3(1.0, 0.11, 0.09)), c + inward * 0.17 + Vector3(0, ry, 0)))
 
 
 ## Gapura desa: tiap dua petak 'N' yang bersebelahan menjadi menara batu beratap merah; bila di
@@ -1079,6 +1083,11 @@ static func _lampu_rumah(root: Node3D, info: Dictionary, door: Vector2i, kind: S
 	else:
 		_lampu_cahaya(root, Vector3(dx, 1.5, fz + 0.5), 4.2, 1.1)
 
+
+
+static func _tile_pagar(rows: Array[String], x: int, z: int) -> bool:
+	var t := _tile(rows, x, z)
+	return t == "P" or t == "N"
 
 
 static func _tile(rows: Array[String], x: int, z: int) -> String:

@@ -63,7 +63,7 @@ func _run() -> void:
 	print("== peta")
 	var WB: GDScript = load("res://scripts/world_build.gd")
 	for y in Maps.height(Maps.DEFAULT_MAP):
-		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 45, "baris peta %d lebar 45" % y)
+		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 85, "baris peta %d lebar 85" % y)
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, 0, 0), "pohon di tepi tidak bisa dilewati")
 	_check(not Maps.walkable(Maps.DEFAULT_MAP, -1, 3), "luar peta tidak bisa dilewati")
@@ -779,7 +779,7 @@ func _run() -> void:
 	get_root().add_child(wt)
 	await process_frame
 	_check(wt._breakables != null and wt._breakables.count() > 100, "desa punya ratusan benda yang bisa dihancurkan (%d)" % wt._breakables.count())
-	_check(wt._chest_nodes.size() == 3, "desa punya 3 peti harta")
+	_check(wt._chest_nodes.size() == 9, "desa punya 9 peti harta (3 di desa, 6 di hutan timur)")
 	_check(wt._btn_tangan != null and wt._btn_kaki != null and wt._btn_perisai != null and wt._btn_boost != null, "empat tombol aksi ada")
 	_check(wt._talk_button != null and not wt._talk_button.visible, "tombol Bicara tersembunyi bila tidak ada orang di dekat")
 	_check(wt._menu._btn_tas != null and wt._menu._btn_toko != null, "Ransel dan Toko ada di menu")
@@ -789,7 +789,7 @@ func _run() -> void:
 	var dh := Maps.height("desa_awal")
 	var ring_ok := true
 	var ring_blocked := true
-	for rx in dw:
+	for rx in 45:  # pagar desa: tepi barat, utara, selatan (wilayah timur x >= 45 tidak berpagar)
 		for ry in [0, dh - 1]:
 			var ch := drows[ry][rx]
 			if ch != "P" and ch != "N" and not (rx == 22 and ry == dh - 1):
@@ -797,12 +797,29 @@ func _run() -> void:
 			if ch == "P" or ch == "N":
 				ring_blocked = ring_blocked and not Maps.walkable("desa_awal", rx, ry)
 	for ry in range(1, dh - 1):
-		for rx in [0, dw - 1]:
+		for rx in [0, 44]:
 			var ch2 := drows[ry][rx]
-			if ch2 != "P" and ch2 != "~":
+			var celah_timur: bool = rx == 44 and ry >= 21 and ry <= 25  # celah pagar timur dan dua tiang batunya
+			if ch2 != "P" and ch2 != "~" and not celah_timur:
 				ring_ok = false
 			if ch2 == "P":
 				ring_blocked = ring_blocked and not Maps.walkable("desa_awal", rx, ry)
+	_check(dw == 85 and Maps.walkable("desa_awal", 44, 22) and Maps.walkable("desa_awal", 44, 23) and Maps.walkable("desa_awal", 44, 24) and not Maps.walkable("desa_awal", 44, 21) and not Maps.walkable("desa_awal", 44, 25), "celah pagar timur (z 22..24) terbuka, diapit dua tiang batu")
+	_check(drows[23][44] == "=" and drows[23][60] == "=" and drows[23][81] == "=", "jalan setapak dari celah timur menembus hutan")
+	var ujung_ok := true
+	for ctr: Dictionary in Maps.chests_in("desa_awal"):
+		if int(ctr.pos.x) >= 45:
+			ujung_ok = ujung_ok and Maps.walkable("desa_awal", ctr.pos.x, ctr.pos.y)
+	_check(ujung_ok, "keenam peti hutan timur ada di petak yang bisa dilewati (dan tersambung, lihat uji sambungan peta)")
+	var pohon_timur := 0
+	var batu_timur := 0
+	for ry2 in dh:
+		for rx2 in range(45, dw):
+			if drows[ry2][rx2] == "#":
+				pohon_timur += 1
+			elif drows[ry2][rx2] == "R":
+				batu_timur += 1
+	_check(pohon_timur > 400 and batu_timur > 40, "hutan timur punya banyak pohon (%d) dan batu (%d) untuk dipanen" % [pohon_timur, batu_timur])
 	_check(ring_ok, "tepi Desa Awal berupa pagar kayu (P), gapura (N), jalan keluar, atau sungai")
 	_check(ring_blocked, "pagar dan menara gapura menghalangi jalan")
 	_check(drows[dh - 1][22] == "=" and Maps.walkable("desa_awal", 22, dh - 1), "jalan keluar di antara menara gapura bisa dilewati")
@@ -864,17 +881,49 @@ func _run() -> void:
 		wt._cd.tangan = 0.0
 		wt._do_tangan()
 		swings += 1
-	_check(tree.gone and swings == 3 and wt._combo == 3, "kombo 3 jurus menumbangkan pohon (%d pukulan)" % swings)
+		await create_timer(0.8).timeout  # pukulan mengenai di tengah gerakan (hits)
+	_check(tree.gone and swings == 2 and wt._combo == 2, "tinju dobel + tebas dobel menumbangkan pohon (%d tombol)" % swings)
+	_check(wt.COMBO.size() == 3 and wt.COMBO[0].anim == "tinju" and wt.COMBO[1].anim == "tebas" and wt.COMBO[2].anim == "tusuk", "tombol Tangan: 1 tinju, 2 tebas, 3 tusuk")
+	_check((wt.COMBO[0].hits as Array).size() == 2 and (wt.COMBO[1].hits as Array).size() == 2 and (wt.KICKS[1].hits as Array).size() == 2, "tinju, tebas, dan tendangan dobel masing-masing dua pukulan")
+	_check(wt.KICKS.size() == 2 and wt.KICKS[0].anim == "tendang" and wt.KICKS[1].anim == "tendang2", "tombol Kaki: 1 tendang, 2 tendangan dobel")
+	wt._combo = 0
+	wt._combo_t = 0.0
+	wt._cd.kaki = 0.0
+	wt._do_kaki()
+	_check(wt._kick == 1, "tendangan pertama = tendang")
+	wt._cd.kaki = 0.0
+	wt._do_kaki()
+	_check(wt._kick == 2, "tendangan kedua cepat = tendangan dobel")
+	await create_timer(1.0).timeout
+	_check(wt._btn_lompat != null and wt._btn_lompat.title == "Lompat", "tombol Lompat ada")
+	wt._cd.lompat = 0.0
+	wt._jump_t = 0.0
+	wt._do_lompat()
+	_check(wt._jump_t > 0.0 and is_equal_approx(wt._jump_height(), 0.0), "lompat dimulai dari tanah")
+	for k in 20:
+		await process_frame
+	wt._jump_t = wt.JUMP_TIME * 0.5
+	_check(wt._jump_height() > 0.9 * wt.JUMP_HEIGHT, "puncak lompat setinggi %.2f" % wt._jump_height())
+	wt._jump_t = 0.0
+	wt._tap_t = -10.0
+	wt._guard = false
+	wt._cd.hindar = 0.0
+	var pg: Vector2 = wt._pos
+	wt._on_perisai_pressed()
+	_check(wt._guard and wt._guard_t > 0.0, "ketuk Perisai sekali mengangkat perisai")
+	wt._yaw = 0.0
+	await process_frame
+	_check((wt._pos - pg).length() < 0.001, "perisai terangkat: pahlawan tetap di tempat")
 	_check(tree.rubble != null, "pohon yang tumbang meninggalkan tunggul")
 	wt._energy = 100.0
 	wt._do_boost()
 	_check(wt._boost_t > 0.0 and wt._energy == 0.0, "Boost penuh meledak dan memulai mode Boost")
 	wt._cd.hindar = 0.0
 	var p0: Vector2 = wt._pos
-	wt._do_perisai(0.0)
+	wt._on_perisai_pressed()  # ketukan kedua cepat setelah yang pertama di atas
 	for k in 20:
 		await process_frame
-	_check((wt._pos - p0).length() > 0.5, "ketuk Perisai membuat pahlawan menghindar")
+	_check((wt._pos - p0).length() > 0.5 and not wt._guard, "ketuk Perisai dua kali cepat = menghindar (perisai turun)")
 	wt.queue_free()
 	await process_frame
 	Session.offline = false

@@ -237,6 +237,15 @@ membawa pemain; bawaannya halaman Releases terbaru.
   `client/export_presets.cfg` dan `config/icon` di `project.godot`. Hanya klien yang berubah;
   `DefaultMinClient` tetap 0.18.0.
 
+- v0.37.0 memperluas peta Desa Awal jadi 85x50: pagar timur punya celah di jalan utama menuju hutan belantara
+  timur (jalan setapak utara-selatan, 3 kolam, kebun buah, reruntuhan, tambang batu, hutan selatan; banyak pohon,
+  batu, dan rumput yang bisa dihancurkan untuk emas/ramuan/berlian, plus 6 peti baru `timur_1..6`). Server ikut
+  berubah (`worldMaps` desa_awal lebar 85, peti baru di `loot.go`). Pagar kiri/kanan diperbaiki (palang kini
+  searah pagar, bukan salah posisi). Tombol aksi baru: **Lompat**; **Tangan** 1x tinju dobel, 2x tebas dobel,
+  3x tusuk; **Kaki** 1x tendang, 2x tendangan dobel (gerakan kaki sungguhan, bukan tebasan); **Perisai** 1x
+  angkat perisai dan tetap di tempat, 2x cepat menghindar. Gerakan tubuh lewat `hero_actions.gd`
+  (SkeletonModifier3D di atas klip idle/jalan). `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

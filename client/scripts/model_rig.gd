@@ -12,7 +12,11 @@ var moving := false
 var anim_player: AnimationPlayer = null
 var base_y := 0.0
 
+const HeroActions = preload("res://scripts/hero_actions.gd")
+
 var _rest: Dictionary = {}  # nama pivot -> rotasi awal
+var _actions: SkeletonModifier3D = null   # gerakan tubuh pahlawan (hero_actions.gd), dibuat saat pertama dipakai
+var _actions_checked := false
 var _t := 0.0
 var _attack := 0.0
 var _hurt := 0.0
@@ -46,6 +50,28 @@ func play_attack() -> void:
 	_attack = ATTACK_TIME
 	if anim_player != null and _anim_names.has("attack"):
 		anim_player.play(_anim_names.attack)
+
+
+## Gerakan tubuh pahlawan berangka KayKit (tinju, tebas, tusuk, tendang, tendang2, lompat, tangkis).
+## Model lain (tanpa tulang itu) memakai klip serang biasa. Mengembalikan true bila gerakannya berjalan.
+func play_action(action: String) -> bool:
+	if not _actions_checked:
+		_actions_checked = true
+		for n in find_children("*", "Skeleton3D", true, false):
+			var sk := n as Skeleton3D
+			if sk != null and sk.find_bone("upperarm.r") >= 0:
+				_actions = HeroActions.new()
+				sk.add_child(_actions)
+				break
+	if _actions == null:
+		play_attack()
+		return false
+	return _actions.call("play", action)
+
+
+func stop_action() -> void:
+	if _actions != null:
+		_actions.call("stop")
 
 
 func play_hurt() -> void:

@@ -1,12 +1,12 @@
 extends Control
-## Tombol aksi bulat di dunia 3D (Tangan, Kaki, Perisai, Boost). Ikonnya digambar dengan kode.
+## Tombol aksi bulat di dunia 3D (Tangan, Kaki, Perisai, Boost, Lompat). Ikonnya digambar dengan kode.
 ## Memakai sentuhan mentah seperti joystick, jadi bisa ditekan sambil jari lain menggerakkan joystick.
 ## `pressed` saat disentuh, `released(held)` saat dilepas (held = lama ditahan, detik).
 
 signal pressed
 signal released(held: float)
 
-enum Icon { TANGAN, KAKI, PERISAI, BOOST }
+enum Icon { TANGAN, KAKI, PERISAI, BOOST, LOMPAT }
 
 var icon := Icon.TANGAN
 var title := ""
@@ -147,6 +147,15 @@ func _draw_icon(c: Vector2, k: float) -> void:
 			draw_polyline(pts2, line, 1.8 * k)
 			draw_line(c + Vector2(0, -26) * k, c + Vector2(0, 30) * k, line, 1.6 * k)
 			draw_line(c + Vector2(-24, -4) * k, c + Vector2(24, -4) * k, line, 1.6 * k)
+		Icon.LOMPAT:  # panah ke atas di atas alas
+			var up := PackedVector2Array([Vector2(0, -32), Vector2(24, -6), Vector2(9, -6), Vector2(9, 14), Vector2(-9, 14), Vector2(-9, -6), Vector2(-24, -6)])
+			var pts4 := PackedVector2Array()
+			for p in up:
+				pts4.append(c + p * k)
+			draw_colored_polygon(pts4, fill)
+			pts4.append(pts4[0])
+			draw_polyline(pts4, line, 1.8 * k)
+			draw_line(c + Vector2(-20, 26) * k, c + Vector2(20, 26) * k, line, 3.0 * k)
 		Icon.BOOST:  # petir
 			var bolt := PackedVector2Array([Vector2(8, -32), Vector2(-18, 4), Vector2(-3, 4), Vector2(-10, 32), Vector2(20, -8), Vector2(4, -8)])
 			var pts3 := PackedVector2Array()

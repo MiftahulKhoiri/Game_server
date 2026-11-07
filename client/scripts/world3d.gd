@@ -37,17 +37,27 @@ const INVENTORY_SCENE := "res://scenes/inventory.tscn"
 const DIALOG_SCENE := "res://scenes/dialog.tscn"
 const LOGIN_SCENE := "res://scenes/login.tscn"
 
-# Aksi dunia: Tangan (kombo 3 jurus), Kaki (pendek / tahan = jauh), Perisai (ketuk = menghindar,
-# tahan = bertahan), Boost (isi dari memukul, lalu ledakan + mode boost).
-const COMBO_WINDOW := 0.75
+# Aksi dunia (sejak v0.37.0):
+#   Tangan: 1x tinju dobel, 2x tebas dobel, 3x tusuk (kombo; kembali ke tinju setelah jeda).
+#   Kaki: 1x tendang, 2x tendangan dobel (dua kali menendang).
+#   Perisai: 1x angkat perisai (tetap di tempat), 2x cepat = menghindar (berguling).
+#   Lompat: melompat. Boost: isi dari memukul, lalu ledakan + mode Boost.
+# `hits` = detik setelah tombol ditekan saat tiap pukulan/tendangan mengenai (selaras dengan gerakan tubuh).
+const COMBO_WINDOW := 1.1
 const COMBO := [
-	{"nama": "Pukul", "reach": 1.5, "cos": 0.25, "dmg": 1.0, "solid": 1, "grass": 2, "cd": 0.3, "len": 0.9, "roll": 0.0},
-	{"nama": "Tinju", "reach": 1.6, "cos": 0.25, "dmg": 1.5, "solid": 1, "grass": 3, "cd": 0.34, "len": 1.0, "roll": 0.0},
-	{"nama": "Tebas pedang", "reach": 2.0, "cos": -0.3, "dmg": 2.0, "solid": 2, "grass": 5, "cd": 0.5, "len": 1.5, "roll": 0.8},
+	{"nama": "Tinju dobel", "anim": "tinju", "reach": 1.5, "cos": 0.25, "dmg": 1.0, "solid": 1, "grass": 2, "cd": 0.62, "len": 0.9, "roll": 0.0, "dash": 0.16, "hits": [0.14, 0.4]},
+	{"nama": "Tebas dobel", "anim": "tebas", "reach": 2.0, "cos": -0.3, "dmg": 1.6, "solid": 2, "grass": 5, "cd": 0.8, "len": 1.5, "roll": 0.8, "dash": 0.2, "hits": [0.27, 0.65]},
+	{"nama": "Tusuk", "anim": "tusuk", "reach": 2.7, "cos": 0.55, "dmg": 3.0, "solid": 2, "grass": 4, "cd": 0.62, "len": 2.2, "roll": 0.0, "dash": 0.5, "hits": [0.27]},
 ]
-const KICK_HOLD := 0.45        # tahan Kaki selama ini = tendangan jauh
-const GUARD_HOLD := 0.25       # tahan Perisai selama ini = bertahan (kurang dari ini = menghindar)
-const GUARD_SLOW := 0.6        # kecepatan jalan saat bertahan
+const KICKS := [
+	{"nama": "Tendang", "anim": "tendang", "reach": 1.55, "cos": 0.1, "dmg": 1.5, "solid": 1, "grass": 3, "cd": 0.5, "hits": [0.15], "dash": 0.2},
+	{"nama": "Tendangan dobel", "anim": "tendang2", "reach": 1.7, "cos": 0.0, "dmg": 1.7, "solid": 2, "grass": 4, "cd": 0.95, "hits": [0.14, 0.62], "dash": 0.3},
+]
+const KICK_WINDOW := 1.0
+const DOUBLE_TAP := 0.4        # dua ketukan Perisai secepat ini = menghindar
+const GUARD_TIME := 1.6        # sekali ketuk Perisai: perisai terangkat selama ini (tetap di tempat)
+const JUMP_TIME := 0.75
+const JUMP_HEIGHT := 1.0
 const BOOST_TIME := 8.0
 const BOOST_SPEED := 1.35
 const ENERGY_PER_HIT := 5.0
@@ -109,10 +119,17 @@ var _btn_tangan: ActionButton
 var _btn_kaki: ActionButton
 var _btn_perisai: ActionButton
 var _btn_boost: ActionButton
-var _cd := {"tangan": 0.0, "kaki": 0.0, "hindar": 0.0}
-var _cd_len := {"tangan": 0.3, "kaki": 0.5, "hindar": 0.9}
+var _btn_lompat: ActionButton
+var _cd := {"tangan": 0.0, "kaki": 0.0, "hindar": 0.0, "lompat": 0.0}
+var _cd_len := {"tangan": 0.3, "kaki": 0.5, "hindar": 0.9, "lompat": 0.85}
 var _combo := 0
 var _combo_t := 0.0
+var _kick := 0           # urutan tendangan (1 = tendang, 2 = dobel)
+var _kick_t := 0.0
+var _guard_t := 0.0      # sisa waktu perisai terangkat
+var _tap_t := -10.0      # kapan Perisai terakhir diketuk (detik, jam lokal)
+var _jump_t := 0.0       # sisa waktu lompat (0 = di tanah)
+var _shadow_disc: MeshInstance3D
 var _energy := 0.0
 var _boost_t := 0.0
 var _guard := false
@@ -474,7 +491,7 @@ func _hit_roamer(reach: float, cos_min: float, action := "attack") -> bool:
 	return true
 
 
-func _add_shadow(parent: Node3D, radius: float) -> void:
+func _add_shadow(parent: Node3D, radius: float) -> MeshInstance3D:
 	var disc := MeshInstance3D.new()
 	var m := CylinderMesh.new()
 	m.top_radius = radius
@@ -490,6 +507,7 @@ func _add_shadow(parent: Node3D, radius: float) -> void:
 	disc.position.y = 0.02
 	disc.scale = Vector3.ONE / parent.scale.x  # model sudah diskalakan; bayangan tetap berukuran dunia
 	parent.add_child(disc)
+	return disc
 
 
 ## Pindah ke peta lain; posisi baru disimpan seperti gerakan biasa.
@@ -520,6 +538,9 @@ func _process(delta: float) -> void:
 		return
 	var before := _pos
 	var input := _input_vector()
+	if _guard:
+		input = Vector2.ZERO  # perisai terangkat: tetap di tempat
+	_tick_jump(delta)
 	var walking := false
 	if input.length() > 0.08:
 		var fwd := Vector2(-sin(_cam_yaw), -cos(_cam_yaw))
@@ -613,9 +634,12 @@ func _set_moving(v: bool) -> void:
 
 
 func _apply_transform() -> void:
-	_player.position = Vector3(_pos.x, 0.0, _pos.y)
+	var jy := _jump_height()
+	_player.position = Vector3(_pos.x, jy, _pos.y)
 	_player.rotation.y = _yaw
-	var target := Vector3(_pos.x, 0.8, _pos.y)
+	if _shadow_disc != null:
+		_shadow_disc.position.y = 0.02 - jy / maxf(0.01, _player.scale.x)  # bayangan tetap di tanah
+	var target := Vector3(_pos.x, 0.8 + jy * 0.5, _pos.y)
 	var offset := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch)) * CAM_DIST
 	_camera.position = target + offset
 	if _shake > 0.0:
@@ -681,8 +705,6 @@ func _facing() -> Vector2:
 
 func _speed_mul() -> float:
 	var m := 1.0
-	if _guard:
-		m *= GUARD_SLOW
 	if _boost_t > 0.0:
 		m *= BOOST_SPEED
 	return m
@@ -701,19 +723,22 @@ func _tick_actions(delta: float) -> void:
 	_combo_t = maxf(0.0, _combo_t - delta)
 	if _combo_t <= 0.0:
 		_combo = 0
+	_kick_t = maxf(0.0, _kick_t - delta)
+	if _kick_t <= 0.0:
+		_kick = 0
 	_shake = maxf(0.0, _shake - delta)
 	if _btn_tangan == null:
 		return
 	_btn_tangan.cooldown = float(_cd.tangan) / float(_cd_len.tangan)
 	_btn_kaki.cooldown = float(_cd.kaki) / float(_cd_len.kaki)
 	_btn_perisai.cooldown = float(_cd.hindar) / float(_cd_len.hindar)
-	_btn_kaki.charge = clampf(_btn_kaki.held_time() / KICK_HOLD, 0.0, 1.0) if _btn_kaki.is_held() else 0.0
-	var want_guard := _btn_perisai.is_held() and _btn_perisai.held_time() >= GUARD_HOLD and not _locked
-	if want_guard != _guard:
-		_guard = want_guard
-		_btn_perisai.active = want_guard
-		if _aura_guard != null:
-			_aura_guard.visible = want_guard
+	_btn_lompat.cooldown = float(_cd.lompat) / float(_cd_len.lompat)
+	if _guard:
+		if _btn_perisai.is_held() and _guard_t < 0.25:
+			_guard_t = 0.25  # jari masih menahan Perisai: perisai tetap terangkat
+		_guard_t -= delta
+		if _guard_t <= 0.0 or _locked:
+			_lower_guard()
 	if _boost_t > 0.0:
 		_boost_t -= delta
 		_btn_boost.charge = clampf(_boost_t / BOOST_TIME, 0.0, 1.0)
@@ -792,60 +817,105 @@ func _rig_attack() -> void:
 		_player.call("play_attack")
 
 
+## Tinju dobel -> tebas dobel -> tusuk. Tiap pukulan mengenai pada detik `hits` (selaras dengan gerakan tubuh).
 func _do_tangan() -> void:
 	if _locked or float(_cd.tangan) > 0.0:
 		return
+	_lower_guard()
 	_combo = _combo + 1 if (_combo_t > 0.0 and _combo < COMBO.size()) else 1
 	_combo_t = COMBO_WINDOW
 	var sp: Dictionary = COMBO[_combo - 1]
 	_cd.tangan = float(sp.cd)
 	_cd_len.tangan = float(sp.cd)
 	_aim_assist(float(sp.reach))
-	_rig_attack()
-	_dash(_facing(), 0.16, 0.08)
-	HeroFx.swoosh(self, Vector3(_pos.x, 0.65, _pos.y), _yaw, float(sp.len), Color("fff2c0"), float(sp.roll))
-	_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass))
+	_rig_action(str(sp.anim))
+	_dash(_facing(), float(sp.dash), 0.1)
 	_set_status(str(sp.nama) + ("!" if _combo == COMBO.size() else ""))
+	var hits: Array = sp.hits
+	for h in hits.size():
+		await get_tree().create_timer(float(hits[h]) - (float(hits[h - 1]) if h > 0 else 0.0)).timeout
+		if not is_inside_tree() or _locked:
+			return
+		HeroFx.swoosh(self, Vector3(_pos.x, 0.65, _pos.y), _yaw, float(sp.len), Color("fff2c0"), float(sp.roll))
+		_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass))
 
 
-func _do_kaki(held: float) -> void:
+## 1x tendang, 2x (dalam jeda singkat) tendangan dobel: dua kali menendang.
+func _do_kaki(_held := 0.0) -> void:
 	if _locked or float(_cd.kaki) > 0.0:
 		return
-	var far := held >= KICK_HOLD
-	_aim_assist(2.4 if far else 1.45)
-	var body := _body()
-	if body != null:
-		var tw := create_tween()
-		tw.tween_property(body, "rotation:x", -0.55, 0.07)
-		tw.tween_property(body, "rotation:x", 0.0, 0.18)
-	_rig_attack()
-	if far:
-		_cd.kaki = 1.1
-		_cd_len.kaki = 1.1
-		_dash(_facing(), 1.8, 0.16)
-		HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("7fd1ff"), 1.4, 0.3)
-		HeroFx.swoosh(self, Vector3(_pos.x, 0.35, _pos.y), _yaw, 1.8, Color("bfe8ff"))
-		await get_tree().create_timer(0.15).timeout
-		_swing(2.4, 0.0, 2.5, 2, 6, "skill1")
-		_set_status("Tendang jauh!")
-	else:
-		_cd.kaki = 0.5
-		_cd_len.kaki = 0.5
-		_dash(_facing(), 0.2, 0.08)
+	_lower_guard()
+	_kick = _kick + 1 if (_kick_t > 0.0 and _kick < KICKS.size()) else 1
+	_kick_t = KICK_WINDOW
+	var sp: Dictionary = KICKS[_kick - 1]
+	_cd.kaki = float(sp.cd)
+	_cd_len.kaki = float(sp.cd)
+	_aim_assist(float(sp.reach))
+	_rig_action(str(sp.anim))
+	_dash(_facing(), float(sp.dash), 0.1)
+	_set_status(str(sp.nama) + "!")
+	var prev := 0.0
+	var hits: Array = sp.hits
+	for h in hits.size():
+		await get_tree().create_timer(float(hits[h]) - prev).timeout
+		prev = float(hits[h])
+		if not is_inside_tree() or _locked:
+			return
 		HeroFx.swoosh(self, Vector3(_pos.x, 0.3, _pos.y), _yaw, 1.0, Color("bfe8ff"))
-		_swing(1.45, 0.1, 1.5, 1, 3, "skill1")
-		_set_status("Tendang!")
+		HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("7fd1ff"), 1.0, 0.25)
+		_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass), "skill1")
 
 
-## Dalam pertarungan, menekan Perisai langsung bertahan di server (waktunya menentukan tangkisan sempurna).
+## Ketuk Perisai sekali: perisai terangkat dan pahlawan tetap di tempat. Ketuk dua kali cepat: menghindar.
 func _on_perisai_pressed() -> void:
-	if _fight != null and _fight.active and not _locked:
+	if _locked:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _tap_t <= DOUBLE_TAP and float(_cd.hindar) <= 0.0:
+		_tap_t = -10.0
+		_lower_guard()
+		_do_dodge()
+		return
+	_tap_t = now
+	_raise_guard()
+	# Dalam pertarungan, mengangkat perisai langsung bertahan di server (waktunya menentukan tangkisan sempurna).
+	if _fight != null and _fight.active:
 		_fight.player_action("defend")
 
 
-func _do_perisai(held: float) -> void:
-	if _locked or held >= GUARD_HOLD or float(_cd.hindar) > 0.0:
-		return  # ditahan = bertahan (diurus _tick_actions), bukan menghindar
+func _raise_guard() -> void:
+	_guard = true
+	_guard_t = GUARD_TIME
+	_btn_perisai.active = true
+	if _aura_guard != null:
+		_aura_guard.visible = true
+	_rig_action("tangkis")
+	_set_status("Perisai terangkat. Ketuk dua kali untuk menghindar")
+
+
+func _lower_guard() -> void:
+	if not _guard:
+		return
+	_guard = false
+	_guard_t = 0.0
+	if _btn_perisai != null:
+		_btn_perisai.active = false
+	if _aura_guard != null:
+		_aura_guard.visible = false
+	var rig := _player as Node
+	if rig != null and rig.has_method("stop_action"):
+		rig.call("stop_action")
+
+
+## Alias papan ketik/uji: sama dengan satu ketukan Perisai.
+func _do_perisai(_held := 0.0) -> void:
+	_on_perisai_pressed()
+
+
+## Menghindar: melompat/berguling ke arah joystick (tanpa arah joystick: mundur).
+func _do_dodge() -> void:
+	if _locked or float(_cd.hindar) > 0.0:
+		return
 	_cd.hindar = 0.9
 	_cd_len.hindar = 0.9
 	var input := _input_vector()
@@ -864,6 +934,40 @@ func _do_perisai(held: float) -> void:
 		tw.tween_property(body, "rotation:x", TAU * (1.0 if rot_sign >= 0.0 else -1.0), 0.24)
 		tw.tween_callback(func() -> void: body.rotation.x = 0.0)
 	_set_status("Menghindar!")
+
+
+# --- lompat ---
+
+func _do_lompat() -> void:
+	if _locked or _jump_t > 0.0 or float(_cd.lompat) > 0.0:
+		return
+	_jump_t = JUMP_TIME
+	_cd.lompat = 0.85
+	_cd_len.lompat = 0.85
+	_rig_action("lompat")
+	HeroFx.burst(self, Vector3(_pos.x, 0.1, _pos.y), Color("d9c8a0"), 6, 1.2)
+
+
+func _tick_jump(delta: float) -> void:
+	if _jump_t <= 0.0:
+		return
+	_jump_t = maxf(0.0, _jump_t - delta)
+	if _jump_t <= 0.0:
+		HeroFx.burst(self, Vector3(_pos.x, 0.1, _pos.y), Color("d9c8a0"), 5, 1.0)
+
+
+## Tinggi pahlawan di atas tanah: parabola selama lompat.
+func _jump_height() -> float:
+	if _jump_t <= 0.0:
+		return 0.0
+	var u := 1.0 - _jump_t / JUMP_TIME
+	return JUMP_HEIGHT * 4.0 * u * (1.0 - u)
+
+
+## Gerakan tubuh pahlawan (hero_actions.gd); model tanpa rangka itu memakai klip serang biasa.
+func _rig_action(anim: String) -> void:
+	if _player != null and _player.has_method("play_action"):
+		_player.call("play_action", anim)
 
 
 func _do_boost() -> void:
@@ -996,7 +1100,8 @@ func _input(event: InputEvent) -> void:
 		match (event as InputEventKey).keycode:
 			KEY_J: _do_tangan()
 			KEY_K: _do_kaki(0.0)
-			KEY_L: _do_perisai(0.0)
+			KEY_L: _do_perisai()
+			KEY_SPACE: _do_lompat()
 			KEY_U: _do_boost()
 	# Geser layar (di luar joystick dan tombol) untuk memutar kamera.
 	if event is InputEventScreenTouch:
@@ -1282,10 +1387,11 @@ func _build_ui() -> void:
 	_btn_kaki = _add_action(layer, ActionButton.Icon.KAKI, "Kaki", Vector2(492, 1212), 52.0, Color("7fd1ff"))
 	_btn_perisai = _add_action(layer, ActionButton.Icon.PERISAI, "Perisai", Vector2(478, 1090), 52.0, Color("8fe08f"))
 	_btn_boost = _add_action(layer, ActionButton.Icon.BOOST, "Boost", Vector2(576, 986), 52.0, Color("ffe14a"))
+	_btn_lompat = _add_action(layer, ActionButton.Icon.LOMPAT, "Lompat", Vector2(672, 1030), 44.0, Color("e8b4ff"))
 	_btn_tangan.pressed.connect(_do_tangan)
-	_btn_kaki.released.connect(_do_kaki)
+	_btn_kaki.pressed.connect(_do_kaki)
 	_btn_perisai.pressed.connect(_on_perisai_pressed)
-	_btn_perisai.released.connect(_do_perisai)
+	_btn_lompat.pressed.connect(_do_lompat)
 	_btn_boost.pressed.connect(_do_boost)
 	_flush_timer = Timer.new()
 	_flush_timer.one_shot = true
@@ -1387,7 +1493,7 @@ func _make_player() -> void:
 	var old := _player
 	_player = Models.create(str(Heroes.current().id))
 	add_child(_player)
-	_add_shadow(_player, 0.3)
+	_shadow_disc = _add_shadow(_player, 0.3)
 	if _aura_guard == null:
 		_aura_guard = HeroFx.aura(Color(0.35, 0.65, 1.0, 0.28))
 		add_child(_aura_guard)

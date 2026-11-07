@@ -18,7 +18,7 @@ type MapInfo struct {
 }
 
 var worldMaps = map[string]MapInfo{
-	MapDesaAwal:   {Width: 45, Height: 50},
+	MapDesaAwal:   {Width: 85, Height: 50},
 	MapPerbatasan: {Width: 45, Height: 50},
 	MapGunungBatu: {Width: 45, Height: 50},
 	MapGuaBatu:    {Width: 15, Height: 20},
