@@ -10,6 +10,7 @@ extends Control
 
 const Version = preload("res://scripts/version.gd")
 const Updater = preload("res://scripts/updater.gd")
+const JudulLatar = preload("res://scripts/judul_latar.gd")
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const MIN_PASSWORD := 8
 const KB_MARGIN := 28.0  # jarak isian dari tepi atas papan ketik
@@ -17,6 +18,8 @@ const GREEN := Color("8fe388")
 const RED := Color("ff6b6b")
 const YELLOW := Color("f0d040")
 
+var _latar: SubViewportContainer  # diorama 3D di belakang Beranda
+var _dim: ColorRect                # menggelapkan diorama di halaman selain Beranda
 var _scroll: ScrollContainer
 var _box: VBoxContainer
 var _kb_spacer: Control  # ruang kosong di dasar isi setinggi papan ketik, supaya isian bisa digulir naik
@@ -85,6 +88,14 @@ func _ready() -> void:
 	bg.color = Color("1b2a1f")
 	add_child(bg)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_latar = JudulLatar.new()
+	add_child(_latar)
+	_latar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim = ColorRect.new()
+	_dim.color = Color(0.03, 0.04, 0.08, 0.82)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dim)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_scroll = ScrollContainer.new()  # layar kecil / papan ketik terbuka: isi bisa digulir
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -171,13 +182,12 @@ func _filler() -> Control:
 
 func _build_home() -> void:
 	var p := _new_page("home", "")
-	p.add_child(_filler())
-	var title := _make_label("Game Petualang", 60)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	p.add_child(title)
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 30)
-	p.add_child(gap)
+	var top := Control.new()
+	top.custom_minimum_size = Vector2(0, 24)
+	p.add_child(top)
+	p.add_child(_title_label("PETUALANGAN", 78, 14))
+	p.add_child(_ribbon("MEMBERANTAS MONSTER"))
+	p.add_child(_filler())  # diorama 3D tampil di ruang ini
 
 	_btn_continue = _make_button("Lanjutkan petualangan")
 	_btn_continue.pressed.connect(_on_continue)
@@ -195,10 +205,69 @@ func _build_home() -> void:
 	_btn_settings = _make_button("Pengaturan")
 	_btn_settings.pressed.connect(func() -> void: _show_page("settings"))
 	p.add_child(_btn_settings)
+	for b: Button in [_btn_continue, b_login, b_reg, _btn_settings]:
+		_style_home_button(b)
 
 	_home_status = _make_status()
+	_home_status.add_theme_color_override("font_outline_color", Color("1a0d05"))
+	_home_status.add_theme_constant_override("outline_size", 6)
 	p.add_child(_home_status)
-	p.add_child(_filler())
+
+
+## Judul emas bertepi cokelat tua dengan bayangan, ala logo RPG.
+func _title_label(text: String, size: int, outline: int) -> Label:
+	var l := _make_label(text, size)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_color_override("font_color", Color("ffc933"))
+	l.add_theme_color_override("font_outline_color", Color("4a2308"))
+	l.add_theme_constant_override("outline_size", outline)
+	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.65))
+	l.add_theme_constant_override("shadow_offset_x", 0)
+	l.add_theme_constant_override("shadow_offset_y", 8)
+	return l
+
+
+## Pita merah bertepi emas berisi teks krem.
+func _ribbon(text: String) -> Control:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("b3202a")
+	sb.border_color = Color("e8b53a")
+	sb.set_border_width_all(5)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 8
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 8
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var l := _make_label(text, 36)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_color_override("font_color", Color("fff1d0"))
+	l.add_theme_color_override("font_outline_color", Color("4a0d12"))
+	l.add_theme_constant_override("outline_size", 6)
+	pc.add_child(l)
+	return pc
+
+
+## Tombol Beranda: kayu gelap berbingkai emas, supaya serasi dengan judul.
+func _style_home_button(b: Button) -> void:
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.17, 0.09, 0.05, 0.88)
+		if state == "pressed":
+			sb.bg_color = Color(0.32, 0.15, 0.08, 0.95)
+		elif state == "hover":
+			sb.bg_color = Color(0.24, 0.12, 0.07, 0.92)
+		sb.border_color = Color("e8b53a")
+		sb.set_border_width_all(4)
+		sb.set_corner_radius_all(14)
+		b.add_theme_stylebox_override(state, sb)
+	b.add_theme_color_override("font_color", Color("ffe9b0"))
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_color_override("font_pressed_color", Color("ffc933"))
 
 
 func _build_login() -> void:
@@ -344,6 +413,9 @@ func _build_settings() -> void:
 
 func _show_page(id: String) -> void:
 	_page = id
+	if _dim != null:
+		_dim.visible = id != "home"
+		_latar.set_aktif(id == "home")
 	for k: String in _pages:
 		(_pages[k] as Control).visible = (k == id)
 	_scroll.scroll_vertical = 0

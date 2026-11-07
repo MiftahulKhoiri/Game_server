@@ -142,6 +142,11 @@ membawa pemain; bawaannya halaman Releases terbaru.
   (dua bentuk), toko, dapur (kedai), dan rumah sakit (gereja), serta alas jerami di dua kandang berpagar. Hanya
   tampilan klien; server dan API tidak berubah, `DefaultMinClient` tetap 0.18.0.
 
+- v0.24.0 mengganti layar awal (Beranda) dengan diorama 3D senja: pahlawan berjubah di atas batu, pemanah, monster
+  mengepung, dan istana jauh, dengan judul emas "PETUALANGAN" dan pita merah "MEMBERANTAS MONSTER". Halaman Masuk,
+  Daftar, dan Pengaturan tampil di atas diorama yang digelapkan. Hanya tampilan klien; server dan API tidak
+  berubah, `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
