@@ -211,6 +211,11 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Perisai=bertahan, Ramuan, Kabur); bos tetap memakai layar pertarungan. Perbaikan babi hutan yang tak terlihat
   (material model transparan dipaksa solid). `DefaultMinClient` tetap 0.18.0.
 
+- v0.33.0 memasang gapura bermenara "DESA AWAL" di tepi utara hutan Perbatasan, tepat di jalan menuju Desa Awal,
+  lengkap dengan pagar kayu di kiri-kanannya, papan nama yang menghadap ke hutan, dua lampu yang menyala saat
+  malam, dan jalan serta pohon latar di luar gapura. Batas desa dan hutan jadi jelas dan jalan pulang mudah
+  dikenali. Hanya klien yang berubah; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

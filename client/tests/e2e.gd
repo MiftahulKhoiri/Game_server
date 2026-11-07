@@ -938,6 +938,13 @@ func _run() -> void:
 			tower_lamp += 1
 	_check(gate_lamps == 2 and tower_lamp == 1, "dua lampu di atas gapura dan satu lampu besar di menara (%d, %d)" % [gate_lamps, tower_lamp])
 	terrain.free()
+	var pb_terrain: Node3D = WB.build(Maps.PERBATASAN)
+	var pb_gate_lamps := 0
+	for ch in pb_terrain.get_children():
+		if ch.name.begins_with("LampuGapura"):
+			pb_gate_lamps += 1
+	_check(Maps.tile_at(Maps.PERBATASAN, 20, 0) == "N" and Maps.tile_at(Maps.PERBATASAN, 22, 0) == "=" and Maps.tile_at(Maps.PERBATASAN, 24, 0) == "N" and pb_terrain.has_node("PapanGapura") and pb_gate_lamps == 2, "Perbatasan punya gapura menuju desa di (22,0) dengan dua lampu (%d)" % pb_gate_lamps)
+	pb_terrain.free()
 	var well_tiles := 0
 	for row in Maps.rows(Maps.DEFAULT_MAP):
 		well_tiles += row.count("W")

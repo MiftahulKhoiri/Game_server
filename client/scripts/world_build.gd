@@ -492,9 +492,11 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _cyl(0.0, 0.125, 0.3, 7), mat(Color.WHITE, true), pal_tip_x, pal_tip_c)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("4d3520")), pal_rail_x)
 	if not gate_tiles.is_empty():
-		_add_gate(root, gate_tiles)
+		_add_gate(root, gate_tiles, map_id)
 	if map_id == Maps.DEFAULT_MAP:
 		_add_outskirts(root, w, h)
+	elif map_id == Maps.PERBATASAN:
+		_add_outskirts(root, w, h, true)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5e4326")), furrow_x, [], false)
 	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x, [], false)
 	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c, false)
@@ -528,7 +530,7 @@ static func _add_palisade_tile(x: int, z: int, w: int, h: int, c: Vector3, log_x
 
 ## Gapura desa: tiap dua petak 'N' yang bersebelahan menjadi menara batu beratap merah; bila di
 ## antara dua menara ada satu petak jalan, di atasnya dipasang jembatan batu + balok kayu + papan nama.
-static func _add_gate(root: Node3D, tiles: Array[Vector2i]) -> void:
+static func _add_gate(root: Node3D, tiles: Array[Vector2i], map_id: String = "") -> void:
 	var tset := {}
 	for t in tiles:
 		tset[t] = true
@@ -543,6 +545,9 @@ static func _add_gate(root: Node3D, tiles: Array[Vector2i]) -> void:
 	for t in lefts:
 		var cx := float(t.x) + 1.0
 		var cz := float(t.y) + 0.5
+		# Gapura di tepi utara (Perbatasan, menuju desa) menghadap selatan; gapura desa menghadap utara.
+		var sd := 1.0 if t.y == 0 else -1.0
+		var nama := "DESA AWAL"
 		_gate_part(root, _box(Vector3(2.1, 0.5, 1.12)), stone_dark, Vector3(cx, 0.25, cz))
 		_gate_part(root, _box(Vector3(2.0, 2.5, 1.05)), stone, Vector3(cx, 1.25, cz))
 		_gate_part(root, _box(Vector3(2.12, 0.18, 1.17)), stone_dark, Vector3(cx, 2.58, cz))
@@ -563,25 +568,25 @@ static func _add_gate(root: Node3D, tiles: Array[Vector2i]) -> void:
 				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz - 0.4))
 				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz + 0.4))
 			for sx in [-0.46, 0.46]:  # dua daun pintu terbuka, menempel di dinding menara
-				_gate_part(root, _box(Vector3(0.07, 1.6, 0.48)), wood, Vector3(mx + sx, 0.85, cz - 0.3))
+				_gate_part(root, _box(Vector3(0.07, 1.6, 0.48)), wood, Vector3(mx + sx, 0.85, cz + sd * 0.3))
 			for lx in [-0.36, 0.36]:   # dua lampu di atas gapura, menyala otomatis saat malam
 				_gate_part(root, _cyl(0.02, 0.025, 0.42, 5), wood, Vector3(mx + lx, 2.88, cz))
 				var bulb := _gate_part(root, _sphere(0.15, 10), _lampu_mat(root), Vector3(mx + lx, 3.17, cz))
 				bulb.name = "LampuGapura"
-				_lampu_cahaya(root, Vector3(mx + lx, 3.2, cz - 0.2), 8.0, 2.0)
-			_glow_tanah(root, Vector3(mx, 0.07, cz - 1.8), 5.0)
-			var sign_board := _gate_part(root, _box(Vector3(0.96, 0.4, 0.05)), mat(Color("7a5530")), Vector3(mx, 2.15, cz - 0.55))
+				_lampu_cahaya(root, Vector3(mx + lx, 3.2, cz + sd * 0.2), 8.0, 2.0)
+			_glow_tanah(root, Vector3(mx, 0.07, cz + sd * 1.8), 5.0)
+			var sign_board := _gate_part(root, _box(Vector3(0.96, 0.4, 0.05)), mat(Color("7a5530")), Vector3(mx, 2.15, cz + sd * 0.55))
 			sign_board.name = "PapanGapura"
 			var label := Label3D.new()
-			label.text = "DESA AWAL"
+			label.text = nama
 			label.font = load("res://assets/fonts/LilitaOne-Regular.ttf")
 			label.font_size = 40
 			label.pixel_size = 0.0034
 			label.outline_size = 9
 			label.modulate = Color("ffe27a")
 			label.outline_modulate = Color("3a1d05")
-			label.rotation.y = PI
-			label.position = Vector3(mx, 2.15, cz - 0.585)
+			label.rotation.y = PI if sd < 0.0 else 0.0
+			label.position = Vector3(mx, 2.15, cz + sd * 0.585)
 			root.add_child(label)
 
 
@@ -605,11 +610,11 @@ static func _gate_part(root: Node3D, mesh: Mesh, material: Material, pos: Vector
 
 ## Di luar pagar Desa Awal: jalan tanah sambungan dari gapura dan deretan pohon sebagai latar
 ## (tanpa tabrakan, tidak bisa dihancurkan). Dibuat murah: beberapa ratus pohon dalam satu-dua draw call.
-static func _add_outskirts(root: Node3D, w: int, h: int) -> void:
+static func _add_outskirts(root: Node3D, w: int, h: int, utara: bool = false) -> void:
 	var road_x: Array[Transform3D] = []
 	var road_c: Array[Color] = []
-	for k in range(0, 5):  # jalan lanjutan di bawah gapura
-		road_x.append(_xf(Vector3(22.5, 0.0, float(h) + 0.5 + k)))
+	for k in range(0, 5):  # jalan lanjutan di luar gapura (selatan desa, atau utara Perbatasan)
+		road_x.append(_xf(Vector3(22.5, 0.0, (-0.5 - k) if utara else (float(h) + 0.5 + k))))
 		road_c.append(ground_color("="))
 	var quad := PlaneMesh.new()
 	quad.size = Vector2(1.0, 1.0)
@@ -626,8 +631,8 @@ static func _add_outskirts(root: Node3D, w: int, h: int) -> void:
 		for x in range(-margin, w + margin):
 			if x >= 0 and x < w and z >= 0 and z < h:
 				continue
-			if x >= 20 and x <= 24 and z >= h:
-				continue  # lorong jalan di bawah gapura
+			if x >= 20 and x <= 24 and ((z < 0) if utara else (z >= h)):
+				continue  # lorong jalan di luar gapura
 			if _jitter(x + 300, z + 300, 81) > 0.42:
 				continue
 			var j := _jitter(x + 300, z + 300, 82)

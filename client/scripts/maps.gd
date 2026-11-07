@@ -7,7 +7,7 @@ extends RefCounted
 ##   T  ladang          B  jembatan           D  pintu rumah (bisa dilewati)
 ##   #  pohon           ~  air                H  tembok/atap rumah
 ##   F  pagar           W  menara lampu (tempat berkumpul)              S  tembok batu (reruntuhan)
-##   P  pagar kayu besar keliling desa        N  menara gapura desa (dua petak di kiri dan kanan jalan keluar)
+##   P  pagar kayu besar keliling desa        N  menara gapura (dua petak di kiri dan kanan jalan keluar; juga di tepi utara Perbatasan menuju desa)
 ##   K  singgasana bos (bisa dilewati; menginjaknya memanggil bos)
 ##   M  tanah gunung    G  kerikil (ladang monster, bisa dilewati)    R  batu besar
 ## Yang bisa dilewati: . = f T B D M G   (sisanya menghalangi)
@@ -268,7 +268,7 @@ static func npc_near(map_id: String, x: int, y: int) -> String:
 ## tujuh bukaan (ladang monster), dua reruntuhan benteng, dua kolam, dan lima peti harta.
 ## Jalan di selatan naik ke Gunung Batu.
 const PERBATASAN_ROWS: Array[String] = [
-	"######################=######################",
+	"##############PPPPPPNN=NNPPPPPP##############",
 	"#..###...........f....=.......#.............#",
 	"#......TTTTTT....##...=......####....#......#",
 	"#....f.TTTTTT..#####...=.....####.........f.#",
