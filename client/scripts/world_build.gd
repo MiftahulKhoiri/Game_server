@@ -12,6 +12,28 @@ const TREE_H := 2.0
 ## Model alam bergaya low-poly dari KayKit (CC0, Kay Lousberg) di assets/models/alam/.
 ## Bila berkasnya tidak ada, dipakai bentuk dasar seperti semula.
 const ALAM_DIR := "res://assets/models/alam/"
+
+## Model bangunan KayKit (CC0, atap merah-cokelat) untuk rumah-rumah di desa. Paket ini tidak punya
+## model kandang, jadi kandang berpagar di Desa Awal diberi alas jerami (building_grain).
+const BANGUNAN_MODEL := {
+	"rumah_a": "building_home_A_red",
+	"rumah_b": "building_home_B_red",
+	"toko": "building_market_red",
+	"dapur": "building_tavern_red",
+	"rumah_sakit": "building_church_red",
+}
+const JERAMI_MODEL := "building_grain"
+## Pusat alas jerami di dalam kandang berpagar, per peta.
+const JERAMI_KANDANG := {"desa_awal": [Vector2(7.5, 12.5), Vector2(37.5, 12.5)]}
+## Jenis bangunan khusus per peta; kunci = petak kiri-atas kelompok H/D. Sisanya rumah pribadi
+## yang bergantian rumah_a / rumah_b.
+const BANGUNAN_KHUSUS := {
+	"desa_awal": {
+		Vector2i(15, 1): "toko",
+		Vector2i(21, 1): "dapur",
+		Vector2i(27, 1): "rumah_sakit",
+	},
+}
 const TREE_SINGLE := ["tree_single_A", "tree_single_B"]
 const TREE_GROVE := ["trees_A_small", "trees_A_medium", "trees_B_small", "trees_B_medium"]
 const MOUNTAINS := ["mountain_A", "mountain_B", "mountain_C"]
@@ -416,7 +438,8 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5e4326")), furrow_x)
 	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x)
 	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c)
-	_add_houses(root, house_tiles, rows)
+	_add_houses(root, house_tiles, rows, map_id)
+	_add_jerami(root, map_id)
 	if cave:
 		_add_torches(root, rows)
 	return root
@@ -581,8 +604,46 @@ static func _add_throne(root: Node3D, c: Vector3) -> void:
 	root.add_child(crown)
 
 
+## Alas jerami pipih di dalam kandang berpagar (bisa diinjak ayam dan pemain).
+static func _add_jerami(root: Node3D, map_id: String) -> void:
+	var mesh := _dekor_mesh(JERAMI_MODEL)
+	if mesh == null or not JERAMI_KANDANG.has(map_id):
+		return
+	var box := mesh.get_aabb()
+	for c: Vector2 in JERAMI_KANDANG[map_id]:
+		var inst := MeshInstance3D.new()
+		inst.mesh = mesh
+		inst.scale = Vector3(2.4, 0.25, 2.4)
+		inst.position = Vector3(c.x - (box.position.x + box.size.x / 2.0) * 2.4, -box.position.y * 0.25, c.y - (box.position.z + box.size.z / 2.0) * 2.4)
+		root.add_child(inst)
+
+
+## Jenis bangunan untuk kelompok H/D yang petak kiri-atasnya (x0, z0).
+static func _jenis_bangunan(map_id: String, x0: int, z0: int) -> String:
+	var khusus: Dictionary = BANGUNAN_KHUSUS.get(map_id, {})
+	if khusus.has(Vector2i(x0, z0)):
+		return khusus[Vector2i(x0, z0)]
+	return "rumah_a" if _jitter(x0, z0, 5) < 0.5 else "rumah_b"
+
+
+## Pasang model bangunan KayKit (pintu menghadap selatan, +Z) memenuhi kelompok petak w x d.
+## false bila modelnya tidak ada, supaya rumah kotak lama dipakai sebagai cadangan.
+static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx: float, cz: float, w: float, d: float) -> bool:
+	var mesh := _dekor_mesh(BANGUNAN_MODEL[_jenis_bangunan(map_id, x0, z0)])
+	if mesh == null:
+		return false
+	var box := mesh.get_aabb()
+	var s := minf((w - 0.2) / box.size.x, (d - 0.2) / box.size.z)
+	var inst := MeshInstance3D.new()
+	inst.mesh = mesh
+	inst.scale = Vector3(s, s, s)
+	inst.position = Vector3(cx - (box.position.x + box.size.x / 2.0) * s, -box.position.y * s, cz - (box.position.z + box.size.z / 2.0) * s)
+	root.add_child(inst)
+	return true
+
+
 ## Rumah: tiap kelompok petak H/D menjadi satu kotak dinding + atap pelana + pintu.
-static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String]) -> void:
+static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String], map_id: String = "") -> void:
 	var seen: Dictionary = {}
 	for start in tiles:
 		if seen.has(start):
@@ -613,6 +674,8 @@ static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String
 		var d := float(z1 - z0 + 1)
 		var cx := x0 + w / 2.0
 		var cz := z0 + d / 2.0
+		if _pasang_bangunan(root, map_id, x0, z0, cx, cz, w, d):
+			continue
 		var walls := MeshInstance3D.new()
 		walls.mesh = _box(Vector3(w - 0.06, WALL_H, d - 0.06))
 		walls.material_override = mat(Color("d9c8a0"))

@@ -138,6 +138,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
   lama masih jalan, tetapi pemain yang tersimpan di bagian desa yang baru (x >= 25 atau y >= 30) dipindahkan
   ke tempat bebas terdekat.
 
+- v0.23.0 mengganti rumah kotak di desa dengan model bangunan KayKit (CC0, atap merah-cokelat): rumah pribadi
+  (dua bentuk), toko, dapur (kedai), dan rumah sakit (gereja), serta alas jerami di dua kandang berpagar. Hanya
+  tampilan klien; server dan API tidak berubah, `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
