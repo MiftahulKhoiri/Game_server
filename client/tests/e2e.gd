@@ -743,6 +743,44 @@ func _run() -> void:
 	_check(wt._btn_tangan != null and wt._btn_kaki != null and wt._btn_perisai != null and wt._btn_boost != null, "empat tombol aksi ada")
 	_check(wt._talk_button != null and not wt._talk_button.visible, "tombol Bicara tersembunyi bila tidak ada orang di dekat")
 	_check(wt._menu._btn_tas != null and wt._menu._btn_toko != null, "Ransel dan Toko ada di menu")
+	print("== Desa: pagar kayu keliling dan gapura")
+	var drows: Array[String] = Maps.rows("desa_awal")
+	var dw := Maps.width("desa_awal")
+	var dh := Maps.height("desa_awal")
+	var ring_ok := true
+	var ring_blocked := true
+	for rx in dw:
+		for ry in [0, dh - 1]:
+			var ch := drows[ry][rx]
+			if ch != "P" and ch != "N" and not (rx == 22 and ry == dh - 1):
+				ring_ok = false
+			if ch == "P" or ch == "N":
+				ring_blocked = ring_blocked and not Maps.walkable("desa_awal", rx, ry)
+	for ry in range(1, dh - 1):
+		for rx in [0, dw - 1]:
+			var ch2 := drows[ry][rx]
+			if ch2 != "P" and ch2 != "~":
+				ring_ok = false
+			if ch2 == "P":
+				ring_blocked = ring_blocked and not Maps.walkable("desa_awal", rx, ry)
+	_check(ring_ok, "tepi Desa Awal berupa pagar kayu (P), gapura (N), jalan keluar, atau sungai")
+	_check(ring_blocked, "pagar dan menara gapura menghalangi jalan")
+	_check(drows[dh - 1][22] == "=" and Maps.walkable("desa_awal", 22, dh - 1), "jalan keluar di antara menara gapura bisa dilewati")
+	_check(drows[dh - 1][20] == "N" and drows[dh - 1][21] == "N" and drows[dh - 1][23] == "N" and drows[dh - 1][24] == "N", "dua menara mengapit jalan keluar")
+	_check(Maps.walkable("desa_awal", 22, dh - 2), "jalan menuju gapura terbuka")
+	var spawn_ok := true
+	for e: Dictionary in Maps.EXITS.get("perbatasan", []):
+		if e.to == "desa_awal":
+			spawn_ok = Maps.walkable("desa_awal", e.at.x, e.at.y)
+	_check(spawn_ok, "pemain yang kembali dari Perbatasan muncul di jalan depan gapura")
+	var pal_world: Node3D = load("res://scripts/world_build.gd").build("desa_awal")
+	_check(pal_world != null and pal_world.get_child_count() > 20, "dunia Desa Awal dengan pagar dan gapura terbangun")
+	var has_sign := false
+	for ch3 in pal_world.get_children():
+		if ch3 is Label3D and (ch3 as Label3D).text == "DESA AWAL":
+			has_sign = true
+	_check(has_sign, "gapura punya papan nama DESA AWAL")
+	pal_world.free()
 	print("== HUD: warna nyawa, nama, koin, tombol Bicara di atas NPC")
 	var HB: Script = load("res://scripts/hud_bars.gd")
 	var c_full: Color = HB.hp_color(1.0)
@@ -776,7 +814,7 @@ func _run() -> void:
 		_check(absf(tb.position.x + tb.size.x * 0.5 - head.x) < 120.0 or tb.position.x <= 9.0 or tb.position.x + tb.size.x >= 710.0, "tombol Bicara sejajar dengan NPC")
 	var tree: Dictionary = {}
 	for e: Dictionary in wt._breakables._entries:
-		if e.kind == "pohon" and e.tile.x < 3 and e.tile.y > 3 and e.tile.y < 40:
+		if e.kind == "pohon" and e.tile.x < 10 and e.tile.y > 3 and e.tile.y < 44 and Maps.walkable(wt._map_id, e.tile.x + 1, e.tile.y) and Maps.walkable(wt._map_id, e.tile.x + 2, e.tile.y):
 			tree = e
 			break
 	wt._pos = Vector2(tree.pos.x + 1.0, tree.pos.y)

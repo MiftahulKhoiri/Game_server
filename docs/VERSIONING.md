@@ -195,6 +195,14 @@ membawa pemain; bawaannya halaman Releases terbaru.
   (sebelumnya "Tas") yang dibuka dari Menu, dan perolehan barang memunculkan petunjuk "Barang masuk Ransel".
   Pesan server "tas penuh" menjadi "ransel penuh". Hanya klien yang berubah; `DefaultMinClient` tetap 0.18.0.
 
+- v0.31.0 memasang pagar kayu besar (lambang peta `P`: batang runcing setinggi 1,6-2 petak dengan palang) di
+  seluruh tepi Desa Awal, menggantikan deretan pohon di tepi (sungai tetap mengalir keluar), dan gapura
+  bermenara (`N`: dua menara batu beratap merah mengapit jalan keluar, jembatan batu, papan "DESA AWAL").
+  Di luar pagar ada jalan lanjutan dan pohon latar tanpa tabrakan. HUD diperkecil (bar nyawa, level, koin);
+  nama pemain memakai font game Lilita One (SIL OFL, `client/assets/fonts/`) berwarna emas bertepi cokelat;
+  tombol Menu menjadi tombol gelembung biru mengilap (`menu_bubble.gd`). Hanya klien yang berubah;
+  `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

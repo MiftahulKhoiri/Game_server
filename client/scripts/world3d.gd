@@ -1176,7 +1176,7 @@ func _build_ui() -> void:
 	layer.add_child(_bars)
 
 	_status = Label.new()
-	_status.position = Vector2(20, 196)
+	_status.position = Vector2(20, 150)
 	_status.size = Vector2(420, 60)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_font_size_override("font_size", 22)
@@ -1185,7 +1185,7 @@ func _build_ui() -> void:
 	layer.add_child(_status)
 
 	_clock = Label.new()
-	_clock.position = Vector2(20, 258)
+	_clock.position = Vector2(20, 214)
 	_clock.add_theme_font_size_override("font_size", 24)
 	_clock.add_theme_color_override("font_color", Color("ffe9b0"))
 	_clock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
@@ -1224,12 +1224,9 @@ func _build_ui() -> void:
 	add_child(_flush_timer)
 	_update_talk_button()
 
-	var menu_btn := Button.new()
-	menu_btn.text = "Menu"
-	menu_btn.position = Vector2(560, 16)
-	menu_btn.size = Vector2(144, 72)
-	menu_btn.focus_mode = Control.FOCUS_NONE
-	menu_btn.add_theme_font_size_override("font_size", 30)
+	var menu_btn := MenuBubble.new()
+	menu_btn.position = Vector2(574, 12)
+	menu_btn.size = Vector2(134, 60)
 	menu_btn.pressed.connect(_toggle_menu)
 	layer.add_child(menu_btn)
 	_buttons.append(menu_btn)

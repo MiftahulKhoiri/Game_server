@@ -363,6 +363,12 @@ static func build(map_id: String) -> Node3D:
 	var flower_x: Array[Transform3D] = []
 	var flower_c: Array[Color] = []
 	var house_tiles: Array[Vector2i] = []
+	var gate_tiles: Array[Vector2i] = []
+	var pal_log_x: Array[Transform3D] = []   # pagar kayu besar: batang runcing
+	var pal_log_c: Array[Color] = []
+	var pal_tip_x: Array[Transform3D] = []
+	var pal_tip_c: Array[Color] = []
+	var pal_rail_x: Array[Transform3D] = []
 	var use_trees := _dekor_mesh(TREE_SINGLE[0]) != null
 	var use_rocks := _dekor_mesh(MOUNTAINS[0]) != null
 	var sway_by: Dictionary = {}     # pohon: id model -> daftar transform (goyang angin)
@@ -449,6 +455,10 @@ static func build(map_id: String) -> Node3D:
 					_hias_rumput(tufts, static_by, map_id, rows, x, z, c)
 				"H", "D":
 					house_tiles.append(Vector2i(x, z))
+				"P":
+					_add_palisade_tile(x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
+				"N":
+					gate_tiles.append(Vector2i(x, z))
 				"W":
 					_add_well(root, c)
 				"K":
@@ -476,6 +486,13 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _box(Vector3(0.8, 0.07, 1.0)), mat(Color("9a6b3c")), plank_x, [], false)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5b3b1e")), post_x)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("7a5530")), rail_x)
+	_multi(root, _cyl(0.105, 0.125, 1.0, 7), mat(Color.WHITE, true), pal_log_x, pal_log_c)
+	_multi(root, _cyl(0.0, 0.125, 0.3, 7), mat(Color.WHITE, true), pal_tip_x, pal_tip_c)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("4d3520")), pal_rail_x)
+	if not gate_tiles.is_empty():
+		_add_gate(root, gate_tiles)
+	if map_id == Maps.DEFAULT_MAP:
+		_add_outskirts(root, w, h)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5e4326")), furrow_x, [], false)
 	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x, [], false)
 	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c, false)
@@ -484,6 +501,134 @@ static func build(map_id: String) -> Node3D:
 	if cave:
 		_add_torches(root, rows)
 	return root
+
+
+## Satu petak pagar kayu besar: empat batang runcing setinggi 1,6-2,0 dengan dua palang di sisi dalam.
+## Pagar di tepi atas/bawah memanjang ke arah x, di tepi kiri/kanan ke arah z.
+static func _add_palisade_tile(x: int, z: int, w: int, h: int, c: Vector3, log_x: Array[Transform3D], log_c: Array[Color], tip_x: Array[Transform3D], tip_c: Array[Color], rail_x: Array[Transform3D]) -> void:
+	var vertical := (x == 0 or x == w - 1) and z > 0 and z < h - 1
+	var inward := Vector3(-1.0 if x == w - 1 else 1.0, 0, 0) if vertical else Vector3(0, 0, -1.0 if z == h - 1 else 1.0)
+	var along := Vector3(0, 0, 1) if vertical else Vector3(1, 0, 0)
+	for i in 4:
+		var off := (float(i) - 1.5) * 0.25
+		var j := _jitter(x * 4 + i, z, 71)
+		var top := 1.55 + 0.5 * j
+		var col := Color("805530").lerp(Color("b5824a"), _jitter(x * 4 + i, z, 72))
+		var pos := c + along * off + Vector3(0, top * 0.5, 0)
+		log_x.append(_xf(pos, Vector3(1.0, top, 1.0)))
+		log_c.append(col)
+		tip_x.append(_xf(c + along * off + Vector3(0, top + 0.12, 0)))
+		tip_c.append(col.lightened(0.14))
+	var rot := PI * 0.5 if vertical else 0.0
+	for ry in [0.55, 1.15]:
+		rail_x.append(_xf(c + inward * 0.17 + Vector3(0, ry, 0), Vector3(1.0, 0.11, 0.09), rot))
+
+
+## Gapura desa: tiap dua petak 'N' yang bersebelahan menjadi menara batu beratap merah; bila di
+## antara dua menara ada satu petak jalan, di atasnya dipasang jembatan batu + balok kayu + papan nama.
+static func _add_gate(root: Node3D, tiles: Array[Vector2i]) -> void:
+	var tset := {}
+	for t in tiles:
+		tset[t] = true
+	var lefts: Array[Vector2i] = []
+	for t in tiles:
+		if tset.has(t + Vector2i(1, 0)) and not tset.has(t + Vector2i(-1, 0)):
+			lefts.append(t)
+	var stone := _stone_mat(Color("c9c5b8"))
+	var stone_dark := _stone_mat(Color("9b978c"))
+	var wood := mat(Color("5b3b1e"))
+	var roof_m := mat(Color("a33a3a"))
+	for t in lefts:
+		var cx := float(t.x) + 1.0
+		var cz := float(t.y) + 0.5
+		_gate_part(root, _box(Vector3(2.1, 0.5, 1.12)), stone_dark, Vector3(cx, 0.25, cz))
+		_gate_part(root, _box(Vector3(2.0, 2.5, 1.05)), stone, Vector3(cx, 1.25, cz))
+		_gate_part(root, _box(Vector3(2.12, 0.18, 1.17)), stone_dark, Vector3(cx, 2.58, cz))
+		for sx in [-0.5, 0.5]:   # celah panah di sisi utara dan selatan
+			_gate_part(root, _box(Vector3(0.11, 0.5, 0.04)), mat(Color("23242a")), Vector3(cx + sx, 1.7, cz - 0.54))
+			_gate_part(root, _box(Vector3(0.11, 0.5, 0.04)), mat(Color("23242a")), Vector3(cx + sx, 1.7, cz + 0.54))
+		var roof := _gate_part(root, _cyl(0.0, 0.78, 1.0, 4), roof_m, Vector3(cx, 3.17, cz))
+		roof.rotation.y = PI * 0.25
+		roof.scale = Vector3(1.42, 1.0, 0.76)
+		_gate_part(root, _cyl(0.025, 0.03, 0.7, 5), wood, Vector3(cx, 3.95, cz))
+		_gate_part(root, _box(Vector3(0.42, 0.26, 0.03)), mat(Color("d93a3a")), Vector3(cx + 0.22, 4.1, cz))
+		if tset.has(t + Vector2i(3, 0)) and not tset.has(t + Vector2i(2, 0)):
+			var mx := float(t.x) + 2.5   # petak jalan di antara dua menara
+			_gate_part(root, _box(Vector3(1.04, 0.7, 1.05)), stone, Vector3(mx, 2.15, cz))
+			_gate_part(root, _box(Vector3(1.06, 0.14, 1.17)), stone_dark, Vector3(mx, 2.58, cz))
+			_gate_part(root, _box(Vector3(1.06, 0.2, 0.9)), wood, Vector3(mx, 1.72, cz))
+			for k in [-0.4, 0.0, 0.4]:   # merlon di atas jembatan
+				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz - 0.4))
+				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz + 0.4))
+			for sx in [-0.46, 0.46]:  # dua daun pintu terbuka, menempel di dinding menara
+				_gate_part(root, _box(Vector3(0.07, 1.6, 0.48)), wood, Vector3(mx + sx, 0.85, cz - 0.3))
+			var sign_board := _gate_part(root, _box(Vector3(0.96, 0.4, 0.05)), mat(Color("7a5530")), Vector3(mx, 2.15, cz - 0.55))
+			sign_board.name = "PapanGapura"
+			var label := Label3D.new()
+			label.text = "DESA AWAL"
+			label.font = load("res://assets/fonts/LilitaOne-Regular.ttf")
+			label.font_size = 40
+			label.pixel_size = 0.0034
+			label.outline_size = 9
+			label.modulate = Color("ffe27a")
+			label.outline_modulate = Color("3a1d05")
+			label.rotation.y = PI
+			label.position = Vector3(mx, 2.15, cz - 0.585)
+			root.add_child(label)
+
+
+## Batu gapura: sedikit memancarkan cahaya agar sisi yang membelakangi matahari tidak gelap pekat.
+static func _stone_mat(color: Color) -> StandardMaterial3D:
+	var m := mat(color)
+	m.emission_enabled = true
+	m.emission = color.darkened(0.3)
+	m.emission_energy_multiplier = 0.85
+	return m
+
+
+static func _gate_part(root: Node3D, mesh: Mesh, material: Material, pos: Vector3) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	m.mesh = mesh
+	m.material_override = material
+	m.position = pos
+	root.add_child(m)
+	return m
+
+
+## Di luar pagar Desa Awal: jalan tanah sambungan dari gapura dan deretan pohon sebagai latar
+## (tanpa tabrakan, tidak bisa dihancurkan). Dibuat murah: beberapa ratus pohon dalam satu-dua draw call.
+static func _add_outskirts(root: Node3D, w: int, h: int) -> void:
+	var road_x: Array[Transform3D] = []
+	var road_c: Array[Color] = []
+	for k in range(0, 5):  # jalan lanjutan di bawah gapura
+		road_x.append(_xf(Vector3(22.5, 0.0, float(h) + 0.5 + k)))
+		road_c.append(ground_color("="))
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(1.0, 1.0)
+	_multi(root, quad, mat(Color.WHITE, true), road_x, road_c, false)
+	var ids: Array[String] = []
+	for id: String in TREE_SINGLE + TREE_GROVE:
+		if _dekor_mesh(id) != null:
+			ids.append(id)
+	if ids.is_empty():
+		return
+	var by: Dictionary = {}
+	var margin := 5
+	for z in range(-margin, h + margin):
+		for x in range(-margin, w + margin):
+			if x >= 0 and x < w and z >= 0 and z < h:
+				continue
+			if x >= 20 and x <= 24 and z >= h:
+				continue  # lorong jalan di bawah gapura
+			if _jitter(x + 300, z + 300, 81) > 0.42:
+				continue
+			var j := _jitter(x + 300, z + 300, 82)
+			var o := Vector3(_jitter(x + 300, z + 300, 83) - 0.5, 0.0, _jitter(x + 300, z + 300, 84) - 0.5) * 0.9
+			var id: String = ids[int(_jitter(x + 300, z + 300, 85) * 1000.0) % ids.size()]
+			var sc := (1.3 + 0.5 * j) if id in TREE_SINGLE else (1.0 + 0.3 * j)
+			_tambah(by, id, _xf(Vector3(x + 0.5, 0.0, z + 0.5) + o , Vector3.ONE * sc, _jitter(x + 300, z + 300, 86) * TAU))
+	for id: String in by:
+		_multi(root, _dekor_mesh(id), _sway_material(), by[id], [], false)
 
 
 ## Titik di sekeliling arena pertarungan (pusat 0,0,0; kamera di +Z; tokoh di x = -1 dan 1).
