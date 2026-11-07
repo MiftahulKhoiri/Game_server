@@ -42,6 +42,8 @@ var items = []ItemDef{
 	{ID: "taring_goblin", Name: "Taring Orc", Kind: KindMaterial, SellPrice: 12},
 	{ID: "koin_kuno", Name: "Koin Kuno", Kind: KindTreasure, SellPrice: 25},
 	{ID: "permata_merah", Name: "Permata Merah", Kind: KindTreasure, SellPrice: 60},
+	{ID: DiamondID, Name: "Berlian", Kind: KindTreasure, SellPrice: 100},
+	{ID: PowerPotionID, Name: "Ramuan Kekuatan", Kind: KindConsumable, SellPrice: 20},
 	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Slot: SlotWeapon, Attack: 3},
 	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Slot: SlotWeapon, Attack: 6},
 	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual

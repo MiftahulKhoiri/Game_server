@@ -104,6 +104,21 @@ func quest_claim(quest: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/quests/claim", {"quest": quest}, true)
 
 
+## Benda dunia yang sedang hancur dan peti yang sudah dibuka di sebuah peta.
+func world_state(map_id: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/world?map=" + map_id.uri_encode(), null, true)
+
+
+## Melaporkan benda yang dihancurkan (maks. 12). `objects`: [{kind, x, z}]. Server mengundi hadiahnya.
+func world_break(map_id: String, pos: Vector2, yaw: float, objects: Array) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/world/break", {"map": map_id, "fx": pos.x, "fz": pos.y, "yaw": yaw, "objects": objects}, true)
+
+
+## Membuka peti harta (pemain harus dekat).
+func world_chest(chest_id: String, map_id: String, pos: Vector2, yaw: float) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/world/chest", {"id": chest_id, "map": map_id, "fx": pos.x, "fz": pos.y, "yaw": yaw}, true)
+
+
 ## Daftar barang dan harga toko.
 func shop_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/shop", null, true)

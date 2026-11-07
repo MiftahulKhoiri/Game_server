@@ -277,6 +277,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		cd()
 		if rng.Intn(100) < FleeChance {
 			res.Status = StatusFled
+			p.State.endBattleBuffs()
 			logf("Kamu berhasil kabur.")
 			return res, nil
 		}
@@ -336,6 +337,7 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	st := &p.State
 	rw := &Rewards{XP: e.XP, Gold: e.Gold}
 	res.Status = StatusWon
+	st.endBattleBuffs()
 	res.Rewards = rw
 	res.Log = append(res.Log, fmt.Sprintf("%s kalah! +%d XP, +%d emas.", b.EnemyName, e.XP, e.Gold))
 
@@ -367,6 +369,7 @@ func (b *Battle) lose(p *Player, res *Result) {
 	st.HP = max(1, st.MaxHP/2)
 	st.Map, st.X, st.Y = SpawnMap, SpawnX, SpawnY
 	st.PlaceAtTileCenter()
+	st.endBattleBuffs()
 	res.Status = StatusLost
 	res.Log = append(res.Log, fmt.Sprintf("Kamu pingsan... dibawa pulang ke desa (emas hilang: %d).", lost))
 }

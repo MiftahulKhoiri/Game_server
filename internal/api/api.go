@@ -83,6 +83,9 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/rest", s.auth(s.restAction()))
 	mux.Handle("GET /v1/heroes", s.auth(http.HandlerFunc(s.getHeroes)))
 	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
+	mux.Handle("GET /v1/world", s.auth(http.HandlerFunc(s.worldState)))
+	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
+	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.Buy))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.Sell))))
@@ -543,7 +546,7 @@ func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*g
 func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
-		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero,
+		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
 	} {
 		if errors.Is(err, e) {
 			return true

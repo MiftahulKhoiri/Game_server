@@ -11,7 +11,7 @@ const MAX_STEP := 0.2  # langkah dipecah agar tidak menembus petak tipis saat la
 
 
 static func tile_blocked(map_id: String, tx: int, tz: int) -> bool:
-	return not Maps.walkable(map_id, tx, tz) or Maps.npc_at(map_id, tx, tz) != ""
+	return not Maps.walkable(map_id, tx, tz) or Maps.npc_at(map_id, tx, tz) != "" or Maps.chest_at(map_id, tx, tz) != ""
 
 
 ## true bila pemain berpusat di p (x, z) menyentuh petak yang terhalang.

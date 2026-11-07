@@ -48,6 +48,14 @@ type State struct {
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
 	Quests []QuestProgress `json:"quests,omitempty"`
+	// Broken: benda dunia yang dihancurkan ("peta|jenis|x|z" -> detik Unix), tumbuh lagi setelah BreakRespawnSec.
+	Broken map[string]int64 `json:"broken,omitempty"`
+	// Chests: peti harta yang sudah dibuka (id -> detik Unix), terisi lagi setelah ChestRespawnSec.
+	Chests map[string]int64 `json:"chests,omitempty"`
+	// LastWorldMs: waktu permintaan hadiah dunia terakhir (milidetik), untuk membatasi kecepatan.
+	LastWorldMs int64 `json:"last_world_ms,omitempty"`
+	// PowerLeft: sisa pertarungan dengan Ramuan Kekuatan aktif.
+	PowerLeft int `json:"power_left,omitempty"`
 }
 
 // Player adalah pemain lengkap beserta metadata penyimpanannya.
@@ -135,6 +143,10 @@ func (s State) Validate() error {
 		return errors.New("posisi tidak boleh negatif")
 	case !finite(s.FX) || !finite(s.FZ) || !finite(s.Yaw):
 		return errors.New("posisi halus harus bilangan biasa")
+	case len(s.Broken) > maxBrokenKept+MaxBreakBatch || len(s.Chests) > len(chests):
+		return errors.New("catatan dunia terlalu banyak")
+	case s.PowerLeft < 0 || s.PowerLeft > PowerBattles:
+		return errors.New("sisa ramuan kekuatan tidak sah")
 	case len(s.Inventory) > MaxInventory:
 		return fmt.Errorf("inventori maksimal %d tumpukan", MaxInventory)
 	}

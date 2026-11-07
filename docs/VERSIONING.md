@@ -159,6 +159,16 @@ membawa pemain; bawaannya halaman Releases terbaru.
   sekitar 85 ribu menjadi 30 ribu. MSAA pertarungan hanya di kualitas Tinggi. Server dan API tidak berubah,
   `DefaultMinClient` tetap 0.18.0.
 
+- v0.27.0 memindahkan tombol Tas dan Toko ke Menu, menampilkan tombol Bicara hanya saat dekat warga (atau
+  "Buka peti" saat dekat peti), dan mengganti area itu dengan empat tombol aksi: Tangan (pukul, tinju, tebas
+  pedang, kombo 3 ayunan), Kaki (tendang pendek/jauh), Perisai (menghindar/bertahan), dan Boost (keahlian
+  super, butuh energi penuh). Pohon, batu, dan rumput kini bisa dihancurkan dan memberi hadiah acak (emas,
+  ramuan, Berlian, Ramuan Kekuatan); tumbuh kembali setelah 10 menit. Ada peti harta karun di tiap blok peta
+  (9 peti, bonus besar, isi ulang 30 menit). Item baru: `berlian` dan `ramuan_kekuatan` (+30% serangan untuk
+  3 pertarungan berikutnya). Endpoint baru: `GET /v1/world`, `POST /v1/world/break`, `POST /v1/world/chest`.
+  Server yang mengundi hadiah; `DefaultMinClient` tetap 0.18.0 (klien lama tetap jalan, hanya tidak bisa
+  menghancurkan objek).
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

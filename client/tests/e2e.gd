@@ -3,6 +3,7 @@ extends SceneTree
 ## (butuh server Go yang hidup di GAME_URL, bawaan http://127.0.0.1:8099).
 
 const Maps = preload("res://scripts/maps.gd")
+const Movement = preload("res://scripts/movement.gd")
 const Version = preload("res://scripts/version.gd")
 
 var _failed := false
@@ -697,6 +698,75 @@ func _run() -> void:
 	_check(not w3._profile.is_open and not w3._locked, "tombol kembali menutup Profil dan gerak berlanjut")
 	Session.offline = false
 	w3.queue_free()
+	await process_frame
+	Session.offline = false
+
+	print("== hadiah dunia, peti, tombol aksi")
+	var hn := "Pemburu%d" % (Time.get_ticks_usec() % 100000)
+	var hreg: Dictionary = await Api.register(hn, hn.to_lower() + "@contoh.id", pw)
+	_check(hreg.ok, "daftar pemain pemburu")
+	if hreg.ok:
+		var saved_token: String = Api.token
+		Api.token = str(hreg.data.token)
+		var ws: Dictionary = await Api.world_state("desa_awal")
+		_check(ws.ok and (ws.data.items as Array).is_empty(), "GET /v1/world awalnya kosong")
+		var far_chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(5.5, 5.5), 0.0)
+		_check(not far_chest.ok and far_chest.status == 422, "peti dari jauh ditolak 422")
+		var chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(43.5, 9.0), 0.0)
+		_check(chest.ok and int(chest.data.loot.gold) > 0, "membuka peti memberi emas")
+		if chest.ok:
+			_check(int(chest.data.player.state.gold) == int(chest.data.loot.gold), "emas peti masuk ke pemain")
+			var diamonds := 0
+			for it: Dictionary in chest.data.player.state.inventory:
+				if it.id == "berlian":
+					diamonds += int(it.qty)
+			_check(diamonds == 0, "peti tingkat 1 tanpa berlian")
+		var empty_chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(43.5, 9.0), 0.0)
+		_check(not empty_chest.ok and empty_chest.status == 422, "peti yang sama tidak bisa dibuka lagi 422")
+		await create_timer(0.2).timeout
+		var brk: Dictionary = await Api.world_break("desa_awal", Vector2(43.5, 9.0), 0.0, [{"kind": "pohon", "x": 44, "z": 9}])
+		_check(brk.ok and int(brk.data.loot.broken) == 1, "menghancurkan pohon tercatat")
+		var h_bad_kind: Dictionary = await Api.world_break("desa_awal", Vector2(43.5, 9.0), 0.0, [{"kind": "naga", "x": 44, "z": 9}])
+		_check(not h_bad_kind.ok and h_bad_kind.status == 422, "jenis benda salah ditolak 422")
+		var ws2: Dictionary = await Api.world_state("desa_awal")
+		_check(ws2.ok and (ws2.data.items as Array).size() == 2, "dunia mencatat peti terbuka dan pohon hancur")
+		Api.token = saved_token
+	for c: Dictionary in Maps.CHESTS:
+		_check(Maps.walkable(str(c.map), c.pos.x, c.pos.y), "peti %s berada di petak yang bisa dilewati" % c.id)
+		_check(Movement.tile_blocked(str(c.map), c.pos.x, c.pos.y), "peti %s menghalangi jalan" % c.id)
+	var wt: Node = load("res://scenes/world3d.tscn").instantiate()
+	Session.offline = true
+	get_root().add_child(wt)
+	await process_frame
+	_check(wt._breakables != null and wt._breakables.count() > 100, "desa punya ratusan benda yang bisa dihancurkan (%d)" % wt._breakables.count())
+	_check(wt._chest_nodes.size() == 3, "desa punya 3 peti harta")
+	_check(wt._btn_tangan != null and wt._btn_kaki != null and wt._btn_perisai != null and wt._btn_boost != null, "empat tombol aksi ada")
+	_check(wt._talk_button != null and not wt._talk_button.visible, "tombol Bicara tersembunyi bila tidak ada orang di dekat")
+	_check(wt._menu._btn_tas != null and wt._menu._btn_toko != null, "Tas dan Toko ada di menu")
+	var tree: Dictionary = {}
+	for e: Dictionary in wt._breakables._entries:
+		if e.kind == "pohon" and e.tile.x < 3 and e.tile.y > 3 and e.tile.y < 40:
+			tree = e
+			break
+	wt._pos = Vector2(tree.pos.x + 1.0, tree.pos.y)
+	wt._yaw = atan2(-1.0, 0.0)
+	var swings := 0
+	while not tree.gone and swings < 8:
+		wt._cd.tangan = 0.0
+		wt._do_tangan()
+		swings += 1
+	_check(tree.gone and swings == 3 and wt._combo == 3, "kombo 3 jurus menumbangkan pohon (%d pukulan)" % swings)
+	_check(tree.rubble != null, "pohon yang tumbang meninggalkan tunggul")
+	wt._energy = 100.0
+	wt._do_boost()
+	_check(wt._boost_t > 0.0 and wt._energy == 0.0, "Boost penuh meledak dan memulai mode Boost")
+	wt._cd.hindar = 0.0
+	var p0: Vector2 = wt._pos
+	wt._do_perisai(0.0)
+	for k in 20:
+		await process_frame
+	_check((wt._pos - p0).length() > 0.5, "ketuk Perisai membuat pahlawan menghindar")
+	wt.queue_free()
 	await process_frame
 	Session.offline = false
 

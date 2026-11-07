@@ -6,6 +6,8 @@ extends CanvasLayer
 
 signal resumed
 signal profile_requested
+signal inventory_requested
+signal shop_requested
 signal go_home
 signal logout
 signal quit_game
@@ -26,6 +28,8 @@ var _quality_buttons: Array[Button] = []
 var _quality_hint: Label
 var _sens_value: Label
 var _btn_logout: Button
+var _btn_tas: Button
+var _btn_toko: Button
 var _confirm_key := ""
 var _confirm_btn: Button
 var _confirm_text := ""
@@ -67,6 +71,10 @@ func _ready() -> void:
 	holder.add_child(_main)
 	_main.add_child(_title("Menu"))
 	_main.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
+	_btn_tas = _button("Tas", func() -> void: inventory_requested.emit())
+	_main.add_child(_btn_tas)
+	_btn_toko = _button("Toko", func() -> void: shop_requested.emit())
+	_main.add_child(_btn_toko)
 	_main.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
 	_main.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
 	_main.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
@@ -124,6 +132,8 @@ func open() -> void:
 	_reset_confirm()
 	_show_page(true)
 	_btn_logout.disabled = Session.offline
+	_btn_tas.disabled = Session.offline  # tas dan toko butuh server
+	_btn_toko.disabled = Session.offline
 	visible = true
 	is_open = true
 

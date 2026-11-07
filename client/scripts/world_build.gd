@@ -237,12 +237,14 @@ const MULTI_KECIL := 48  # jumlah di bawah ini tidak perlu dipecah
 
 
 ## `bayangan` false untuk benda kecil/rendah (rumput, kerikil, alas) agar lintasan bayangan ringan.
-static func _multi(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color] = [], bayangan := true) -> void:
+## `reg` + `kind`: bila diisi, tiap benda dicatat ({kind, model, mm, idx, xf}) agar bisa dihancurkan
+## (lihat breakables.gd).
+static func _multi(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color] = [], bayangan := true, reg: Array = [], kind := "", model_id := "") -> void:
 	if xforms.is_empty():
 		return
 	var pakai_warna := not colors.is_empty()
 	if xforms.size() <= MULTI_KECIL:
-		_multi_satu(root, mesh, material, xforms, colors, bayangan)
+		_multi_satu(root, mesh, material, xforms, colors, bayangan, reg, kind, model_id)
 		return
 	var sel: Dictionary = {}  # Vector2i -> indeks benda
 	for i in xforms.size():
@@ -258,10 +260,10 @@ static func _multi(root: Node3D, mesh: Mesh, material: Material, xforms: Array[T
 			xs.append(xforms[i])
 			if pakai_warna:
 				cs.append(colors[i])
-		_multi_satu(root, mesh, material, xs, cs, bayangan)
+		_multi_satu(root, mesh, material, xs, cs, bayangan, reg, kind, model_id)
 
 
-static func _multi_satu(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color], bayangan: bool) -> void:
+static func _multi_satu(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color], bayangan: bool, reg: Array = [], kind := "", model_id := "") -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = not colors.is_empty()
@@ -271,6 +273,8 @@ static func _multi_satu(root: Node3D, mesh: Mesh, material: Material, xforms: Ar
 		mm.set_instance_transform(i, xforms[i])
 		if mm.use_colors:
 			mm.set_instance_color(i, colors[i])
+		if kind != "":
+			reg.append({"kind": kind, "model": model_id, "mm": mm, "idx": i, "xf": xforms[i]})
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = material
@@ -460,11 +464,14 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _cyl(0.12, 0.14, 0.9, 6), mat(Color("5b3b1e")), trunk_x)
 	_multi(root, _sphere(0.5, 9), mat(Color.WHITE, true), leaf_x, leaf_c)
 	_multi(root, _sphere(0.6, 7), mat(Color.WHITE, true, 1.0), rock_x, rock_c)
+	var breakables: Array = []  # benda yang bisa dihancurkan (lihat breakables.gd)
 	for id: String in sway_by:
-		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id])
+		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id], [], true, breakables, "pohon", id)
 	for id: String in static_by:
-		_multi(root, _dekor_mesh(id), null, static_by[id])
-	_multi(root, _tuft_mesh(), _grass_material(), tufts, [], false)
+		var bk := "batu" if (id in ROCKS or id in MOUNTAINS) else ""
+		_multi(root, _dekor_mesh(id), null, static_by[id], [], true, breakables, bk, id)
+	_multi(root, _tuft_mesh(), _grass_material(), tufts, [], false, breakables, "rumput")
+	root.set_meta("breakables", breakables)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("8d8d95")), stone_x)
 	_multi(root, _box(Vector3(0.8, 0.07, 1.0)), mat(Color("9a6b3c")), plank_x, [], false)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5b3b1e")), post_x)

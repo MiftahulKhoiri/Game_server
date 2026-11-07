@@ -34,7 +34,11 @@ func (s State) itemQty(id string) int {
 // Attack adalah serangan total: dari level ditambah bonus senjata.
 func (s State) Attack() int {
 	def, _ := ItemByID(s.Equipment.Weapon)
-	return AttackForLevel(s.Level) + def.Attack
+	atk := AttackForLevel(s.Level) + def.Attack
+	if s.PowerLeft > 0 {
+		atk = atk * PowerPercent / 100
+	}
+	return atk
 }
 
 // Defense adalah pertahanan total: dari level ditambah bonus pelindung.
@@ -86,6 +90,9 @@ func (s *State) Unequip(slot string) error {
 
 // UseItem memakai barang di luar pertarungan. Saat ini hanya ramuan.
 func (s *State) UseItem(id string) error {
+	if id == PowerPotionID {
+		return s.UsePowerPotion()
+	}
 	if id != PotionID {
 		if _, ok := ItemByID(id); !ok {
 			return ErrUnknownItem

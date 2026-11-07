@@ -84,6 +84,8 @@ func _add_item_row(id: String, qty: int) -> void:
 	if id == "ramuan":
 		var full := int(Session.player.state.hp) >= int(Session.player.state.max_hp)
 		row.add_child(_make_button("Pakai", _on_use.bind(id), full, 130))
+	elif id == "ramuan_kekuatan":
+		row.add_child(_make_button("Minum", _on_use.bind(id), false, 130))
 	elif kind == "equipment":
 		var worn := _is_worn(id)
 		row.add_child(_make_button("Dipakai" if worn else "Pakai", _on_equip.bind(id), worn, 150))
@@ -98,7 +100,7 @@ func _is_worn(id: String) -> bool:
 # --- aksi ---
 
 func _on_use(id: String) -> void:
-	await _act(Api.inventory_use.bind(id), "Ramuan diminum.")
+	await _act(Api.inventory_use.bind(id), "Kekuatan naik untuk 3 pertarungan berikutnya." if id == "ramuan_kekuatan" else "Ramuan diminum.")
 
 
 func _on_equip(id: String) -> void:

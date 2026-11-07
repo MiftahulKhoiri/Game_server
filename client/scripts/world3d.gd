@@ -13,6 +13,10 @@ const ProfileScreen = preload("res://scripts/profile.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const Warga = preload("res://scripts/warga.gd")
+const Breakables = preload("res://scripts/breakables.gd")
+const ActionButton = preload("res://scripts/action_button.gd")
+const Chest = preload("res://scripts/chest.gd")
+const HeroFx = preload("res://scripts/hero_fx.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -29,6 +33,25 @@ const SHOP_SCENE := "res://scenes/shop.tscn"
 const INVENTORY_SCENE := "res://scenes/inventory.tscn"
 const DIALOG_SCENE := "res://scenes/dialog.tscn"
 const LOGIN_SCENE := "res://scenes/login.tscn"
+
+# Aksi dunia: Tangan (kombo 3 jurus), Kaki (pendek / tahan = jauh), Perisai (ketuk = menghindar,
+# tahan = bertahan), Boost (isi dari memukul, lalu ledakan + mode boost).
+const COMBO_WINDOW := 0.75
+const COMBO := [
+	{"nama": "Pukul", "reach": 1.5, "cos": 0.25, "dmg": 1.0, "solid": 1, "grass": 2, "cd": 0.3, "len": 0.9, "roll": 0.0},
+	{"nama": "Tinju", "reach": 1.6, "cos": 0.25, "dmg": 1.5, "solid": 1, "grass": 3, "cd": 0.34, "len": 1.0, "roll": 0.0},
+	{"nama": "Tebas pedang", "reach": 2.0, "cos": -0.3, "dmg": 2.0, "solid": 2, "grass": 5, "cd": 0.5, "len": 1.5, "roll": 0.8},
+]
+const KICK_HOLD := 0.45        # tahan Kaki selama ini = tendangan jauh
+const GUARD_HOLD := 0.25       # tahan Perisai selama ini = bertahan (kurang dari ini = menghindar)
+const GUARD_SLOW := 0.6        # kecepatan jalan saat bertahan
+const BOOST_TIME := 8.0
+const BOOST_SPEED := 1.35
+const ENERGY_PER_HIT := 5.0
+const ENERGY_PER_BREAK := 9.0
+const BREAK_FLUSH := 0.25      # kumpulkan benda hancur sebentar lalu lapor ke server sekaligus
+const CHEST_RANGE := 1.9
+const ITEM_NAMES := {"ramuan": "Ramuan", "berlian": "Berlian", "ramuan_kekuatan": "Ramuan Kekuatan"}
 
 var _map_id := Maps.DEFAULT_MAP
 var _pos := Vector2(5.5, 5.5)  # (x, z) di dunia
@@ -66,6 +89,32 @@ var _talk_button: Button
 var _buttons: Array[Button] = []
 var _menu: CanvasLayer
 var _profile: CanvasLayer
+
+var _breakables: Breakables
+var _chest_nodes: Dictionary = {}   # id peti -> Chest
+var _chest_open: Dictionary = {}    # id peti -> true (sudah dibuka, belum terisi lagi)
+var _chest_busy := false
+var _act_buttons: Array = []
+var _btn_tangan: ActionButton
+var _btn_kaki: ActionButton
+var _btn_perisai: ActionButton
+var _btn_boost: ActionButton
+var _cd := {"tangan": 0.0, "kaki": 0.0, "hindar": 0.0}
+var _cd_len := {"tangan": 0.3, "kaki": 0.5, "hindar": 0.9}
+var _combo := 0
+var _combo_t := 0.0
+var _energy := 0.0
+var _boost_t := 0.0
+var _guard := false
+var _dash_vel := Vector2.ZERO
+var _dash_t := 0.0
+var _shake := 0.0
+var _hint_t := 0.0
+var _aura_guard: MeshInstance3D
+var _aura_boost: MeshInstance3D
+var _pending: Array = []
+var _breaking := false
+var _flush_timer: Timer
 
 
 func _ready() -> void:
@@ -141,10 +190,14 @@ func _load_map(map_id: String) -> void:
 		_npc_root.queue_free()
 	_terrain = WorldBuild.build(map_id)
 	add_child(_terrain)
+	_breakables = Breakables.new()
+	_breakables.setup(_terrain, _terrain)
+	_spawn_chests(map_id)
 	_npc_root = Node3D.new()
 	_npc_root.name = "NPC"
 	add_child(_npc_root)
 	_npc_models = {}
+	_pending.clear()
 	for id: String in Maps.NPCS:
 		var n: Dictionary = Maps.NPCS[id]
 		if n.map != map_id:
@@ -171,6 +224,46 @@ func _load_map(map_id: String) -> void:
 	_atmo_base = Atmosphere.capture(_env.environment, _sun)
 	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
 	Atmosphere.set_rain(_rain, map_id)
+	_sync_world()
+
+
+## Peti harta di peta ini (isi diundi server saat dibuka).
+func _spawn_chests(map_id: String) -> void:
+	_chest_nodes = {}
+	_chest_open = {}
+	for c: Dictionary in Maps.chests_in(map_id):
+		var node := Chest.new()
+		node.build(str(c.id), int(c.tier))
+		node.position = Vector3(c.pos.x + 0.5, 0.0, c.pos.y + 0.5)
+		_terrain.add_child(node)
+		_chest_nodes[str(c.id)] = node
+
+
+## Minta daftar benda hancur dan peti terbuka ke server, lalu sesuaikan tampilan peta.
+func _sync_world() -> void:
+	if Session.offline:
+		return
+	var mid := _map_id
+	var res: Dictionary = await Api.world_state(mid)
+	if not res.ok or mid != _map_id or _breakables == null:
+		return
+	var items: Array = res.data.get("items", [])
+	_breakables.apply_server(items)
+	for it: Dictionary in items:
+		var cid := str(it.get("id", ""))
+		if cid != "" and _chest_nodes.has(cid):
+			_chest_open[cid] = true
+			(_chest_nodes[cid] as Chest).set_open(true, false)
+			_reopen_later(cid, float(it.get("left", 0)))
+
+
+## Peti terisi lagi setelah `left` detik.
+func _reopen_later(cid: String, left: float) -> void:
+	var mid := _map_id
+	await get_tree().create_timer(maxf(left, 1.0)).timeout
+	if mid == _map_id and _chest_nodes.has(cid):
+		_chest_open.erase(cid)
+		(_chest_nodes[cid] as Chest).set_open(false)
 
 
 ## Warga desa: wadah Node3D (bergerak) berisi model (berputar), bayangan, dan nama.
@@ -240,24 +333,30 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 
 func _process(delta: float) -> void:
 	_update_world_life(delta)
+	_tick_actions(delta)
 	var rig := _player as Node
 	if _locked:
 		_set_moving(false)
 		return
+	var before := _pos
 	var input := _input_vector()
-	var moved := 0.0
+	var walking := false
 	if input.length() > 0.08:
 		var fwd := Vector2(-sin(_cam_yaw), -cos(_cam_yaw))
 		var right := Vector2(cos(_cam_yaw), -sin(_cam_yaw))
 		var dir := fwd * input.y + right * input.x
 		if dir.length() > 1.0:
 			dir = dir.normalized()
-		var np := Movement.move(_map_id, _pos, dir * SPEED * delta)
-		moved = (np - _pos).length()
-		_pos = np
+		_pos = Movement.move(_map_id, _pos, dir * SPEED * _speed_mul() * delta)
+		walking = true
 		if dir.length() > 0.05:
 			_yaw = lerp_angle(_yaw, atan2(dir.x, dir.y), minf(1.0, delta * 14.0))
-	_set_moving(moved > 0.0001)
+	if _dash_t > 0.0:
+		var step := minf(delta, _dash_t)
+		_dash_t -= step
+		_pos = Movement.move(_map_id, _pos, _dash_vel * step)
+	var moved := (_pos - before).length()
+	_set_moving(walking and moved > 0.0001)
 	if rig != null:
 		_apply_transform()
 	if moved > 0.0001:
@@ -331,7 +430,12 @@ func _apply_transform() -> void:
 	var target := Vector3(_pos.x, 0.8, _pos.y)
 	var offset := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch)) * CAM_DIST
 	_camera.position = target + offset
+	if _shake > 0.0:
+		_camera.position += Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5) * _shake * 0.5
 	_camera.look_at(target, Vector3.UP)
+	for a: MeshInstance3D in [_aura_guard, _aura_boost]:
+		if a != null:
+			a.position = Vector3(_pos.x, 0.55, _pos.y)
 	_update_talk_button()
 
 
@@ -380,6 +484,288 @@ func _after_step(moved: float) -> void:
 			return
 
 
+# --- aksi: pukul, tendang, hindar, boost ---
+
+func _facing() -> Vector2:
+	return Vector2(sin(_yaw), cos(_yaw))
+
+
+func _speed_mul() -> float:
+	var m := 1.0
+	if _guard:
+		m *= GUARD_SLOW
+	if _boost_t > 0.0:
+		m *= BOOST_SPEED
+	return m
+
+
+## Tubuh model pahlawan (anak rig), dipakai untuk gerakan tambahan seperti menendang dan berguling.
+func _body() -> Node3D:
+	if _player != null and _player.get_child_count() > 0:
+		return _player.get_child(0) as Node3D
+	return null
+
+
+func _tick_actions(delta: float) -> void:
+	for k: String in _cd:
+		_cd[k] = maxf(0.0, float(_cd[k]) - delta)
+	_combo_t = maxf(0.0, _combo_t - delta)
+	if _combo_t <= 0.0:
+		_combo = 0
+	_shake = maxf(0.0, _shake - delta)
+	if _btn_tangan == null:
+		return
+	_btn_tangan.cooldown = float(_cd.tangan) / float(_cd_len.tangan)
+	_btn_kaki.cooldown = float(_cd.kaki) / float(_cd_len.kaki)
+	_btn_perisai.cooldown = float(_cd.hindar) / float(_cd_len.hindar)
+	_btn_kaki.charge = clampf(_btn_kaki.held_time() / KICK_HOLD, 0.0, 1.0) if _btn_kaki.is_held() else 0.0
+	var want_guard := _btn_perisai.is_held() and _btn_perisai.held_time() >= GUARD_HOLD and not _locked
+	if want_guard != _guard:
+		_guard = want_guard
+		_btn_perisai.active = want_guard
+		if _aura_guard != null:
+			_aura_guard.visible = want_guard
+	if _boost_t > 0.0:
+		_boost_t -= delta
+		_btn_boost.charge = clampf(_boost_t / BOOST_TIME, 0.0, 1.0)
+		_btn_boost.active = true
+		_btn_boost.glow = false
+		if _aura_boost != null:
+			_aura_boost.visible = true
+			_aura_boost.scale = Vector3.ONE * (1.0 + 0.08 * sin(Time.get_ticks_msec() / 90.0))
+		if _boost_t <= 0.0:
+			_end_boost()
+	if _shake > 0.0 and _player != null:
+		_apply_transform()
+	_hint_t -= delta
+	if _hint_t <= 0.0:
+		_hint_t = 0.3
+		for id: String in _chest_nodes:
+			var n := _chest_nodes[id] as Chest
+			n.set_hint(_pos.distance_to(Vector2(n.position.x, n.position.z)) < 4.0)
+		_update_talk_button()
+
+
+func _end_boost() -> void:
+	_boost_t = 0.0
+	_btn_boost.active = false
+	_btn_boost.charge = _energy / 100.0
+	_btn_boost.glow = _energy >= 100.0
+	if _aura_boost != null:
+		_aura_boost.visible = false
+
+
+func _add_energy(v: float) -> void:
+	if _boost_t > 0.0:
+		return
+	_energy = minf(100.0, _energy + v)
+	_btn_boost.charge = _energy / 100.0
+	_btn_boost.glow = _energy >= 100.0
+
+
+## Putar menghadap benda terdekat di depan, supaya pukulan tidak harus pas membidik.
+func _aim_assist(reach: float) -> void:
+	if _breakables == null:
+		return
+	var near := _breakables.targets(_pos, _facing(), reach * 1.3, -0.2, 1, 0)
+	if near.is_empty():
+		return
+	var off: Vector2 = (near[0] as Dictionary).pos - _pos
+	_yaw = atan2(off.x, off.y)
+
+
+func _dash(dir: Vector2, dist: float, time: float) -> void:
+	if dir == Vector2.ZERO:
+		return
+	_dash_vel = dir.normalized() * dist / time
+	_dash_t = time
+
+
+## Satu ayunan: pukul benda dalam jangkauan, isi tenaga Boost, laporkan yang hancur ke server.
+func _swing(reach: float, cos_min: float, dmg: float, solid_n: int, grass_n: int) -> int:
+	if _breakables == null:
+		return 0
+	if _boost_t > 0.0:
+		dmg *= 2.0
+	var list := _breakables.targets(_pos, _facing(), reach, cos_min, solid_n, grass_n)
+	if list.is_empty():
+		return 0
+	var broken := _breakables.strike(list, dmg)
+	_add_energy(ENERGY_PER_HIT * minf(list.size(), 3.0) + ENERGY_PER_BREAK * broken.size())
+	_queue_breaks(broken)
+	return list.size()
+
+
+func _rig_attack() -> void:
+	if _player != null and _player.has_method("play_attack"):
+		_player.call("play_attack")
+
+
+func _do_tangan() -> void:
+	if _locked or float(_cd.tangan) > 0.0:
+		return
+	_combo = _combo + 1 if (_combo_t > 0.0 and _combo < COMBO.size()) else 1
+	_combo_t = COMBO_WINDOW
+	var sp: Dictionary = COMBO[_combo - 1]
+	_cd.tangan = float(sp.cd)
+	_cd_len.tangan = float(sp.cd)
+	_aim_assist(float(sp.reach))
+	_rig_attack()
+	_dash(_facing(), 0.16, 0.08)
+	HeroFx.swoosh(self, Vector3(_pos.x, 0.65, _pos.y), _yaw, float(sp.len), Color("fff2c0"), float(sp.roll))
+	_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass))
+	_set_status(str(sp.nama) + ("!" if _combo == COMBO.size() else ""))
+
+
+func _do_kaki(held: float) -> void:
+	if _locked or float(_cd.kaki) > 0.0:
+		return
+	var far := held >= KICK_HOLD
+	_aim_assist(2.4 if far else 1.45)
+	var body := _body()
+	if body != null:
+		var tw := create_tween()
+		tw.tween_property(body, "rotation:x", -0.55, 0.07)
+		tw.tween_property(body, "rotation:x", 0.0, 0.18)
+	_rig_attack()
+	if far:
+		_cd.kaki = 1.1
+		_cd_len.kaki = 1.1
+		_dash(_facing(), 1.8, 0.16)
+		HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("7fd1ff"), 1.4, 0.3)
+		HeroFx.swoosh(self, Vector3(_pos.x, 0.35, _pos.y), _yaw, 1.8, Color("bfe8ff"))
+		await get_tree().create_timer(0.15).timeout
+		_swing(2.4, 0.0, 2.5, 2, 6)
+		_set_status("Tendang jauh!")
+	else:
+		_cd.kaki = 0.5
+		_cd_len.kaki = 0.5
+		_dash(_facing(), 0.2, 0.08)
+		HeroFx.swoosh(self, Vector3(_pos.x, 0.3, _pos.y), _yaw, 1.0, Color("bfe8ff"))
+		_swing(1.45, 0.1, 1.5, 1, 3)
+		_set_status("Tendang!")
+
+
+func _do_perisai(held: float) -> void:
+	if _locked or held >= GUARD_HOLD or float(_cd.hindar) > 0.0:
+		return  # ditahan = bertahan (diurus _tick_actions), bukan menghindar
+	_cd.hindar = 0.9
+	_cd_len.hindar = 0.9
+	var input := _input_vector()
+	var dir := -_facing()  # tanpa arah joystick: melompat mundur
+	if input.length() > 0.08:
+		var fwd := Vector2(-sin(_cam_yaw), -cos(_cam_yaw))
+		var right := Vector2(cos(_cam_yaw), -sin(_cam_yaw))
+		dir = fwd * input.y + right * input.x
+	_dash(dir, 2.1, 0.22)
+	HeroFx.burst(self, Vector3(_pos.x, 0.1, _pos.y), Color("d9c8a0"), 6, 1.4)
+	var body := _body()
+	if body != null:
+		var side := dir.normalized()
+		var rot_sign := signf(side.dot(_facing()))
+		var tw := create_tween()
+		tw.tween_property(body, "rotation:x", TAU * (1.0 if rot_sign >= 0.0 else -1.0), 0.24)
+		tw.tween_callback(func() -> void: body.rotation.x = 0.0)
+	_set_status("Menghindar!")
+
+
+func _do_boost() -> void:
+	if _locked or _boost_t > 0.0:
+		return
+	if _energy < 100.0:
+		_set_status("Boost belum penuh: %d%%" % int(_energy))
+		return
+	_energy = 0.0
+	_boost_t = BOOST_TIME
+	_btn_boost.glow = false
+	_rig_attack()
+	_shake = 0.35
+	HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("ffb347"), 3.6, 0.5)
+	HeroFx.burst(self, Vector3(_pos.x, 0.5, _pos.y), Color("ffd25a"), 24, 4.0)
+	if _breakables != null:
+		var list := _breakables.targets(_pos, Vector2.ZERO, 3.4, -1.0, 99, 99)
+		_queue_breaks(_breakables.strike(list, 99.0))
+	_show_toast("BOOST!")
+	_set_status("Mode Boost: lebih cepat, pukulan dua kali lipat")
+
+
+# --- hadiah dunia ---
+
+func _queue_breaks(broken: Array) -> void:
+	if broken.is_empty() or Session.offline:
+		return
+	for e: Dictionary in broken:
+		var t: Vector2i = e.tile
+		var item := {"kind": str(e.kind), "x": t.x, "z": t.y}
+		if not _pending.has(item):
+			_pending.append(item)
+	if _flush_timer != null and _flush_timer.is_stopped():
+		_flush_timer.start(BREAK_FLUSH)
+
+
+func _flush_breaks() -> void:
+	if _pending.is_empty():
+		return
+	if _breaking or _locked:
+		_flush_timer.start(BREAK_FLUSH)
+		return
+	var batch: Array = _pending.slice(0, 12)
+	_pending = _pending.slice(batch.size())
+	_breaking = true
+	var res: Dictionary = await Api.world_break(_map_id, _pos, _yaw, batch)
+	_breaking = false
+	if res.ok:
+		Session.merge_server_player(res.data.player)
+		_refresh_hud()
+		_show_loot(res.data.loot, false)
+	elif res.status == 409:
+		_pending.clear()  # sedang bertarung di server: benda tetap hancur, tanpa hadiah
+	if not _pending.is_empty():
+		_flush_timer.start(BREAK_FLUSH)
+
+
+## Satu baris hadiah ("+12 emas  +Berlian") di tengah layar.
+func _show_loot(loot: Dictionary, chest: bool) -> void:
+	var parts: Array[String] = []
+	var gold := int(loot.get("gold", 0))
+	if gold > 0:
+		parts.append("+%d emas" % gold)
+	var items: Variant = loot.get("items")
+	if items is Array:
+		for it: Dictionary in items:
+			var nm := str(ITEM_NAMES.get(str(it.id), str(it.id)))
+			parts.append("+%s" % nm if int(it.qty) <= 1 else "+%d %s" % [int(it.qty), nm])
+	if parts.is_empty():
+		return
+	_show_toast(("Peti: " if chest else "") + "  ".join(parts))
+
+
+func _open_chest(cid: String) -> void:
+	if _chest_busy or _locked:
+		return
+	_chest_busy = true
+	var res: Dictionary = await Api.world_chest(cid, _map_id, _pos, _yaw)
+	_chest_busy = false
+	var node := _chest_nodes.get(cid) as Chest
+	if res.ok:
+		Session.merge_server_player(res.data.player)
+		_refresh_hud()
+		_chest_open[cid] = true
+		if node != null:
+			node.set_open(true)
+			HeroFx.burst(self, node.position + Vector3(0, 0.5, 0), Color("ffd24a"), 26, 3.4)
+			HeroFx.ring(self, node.position, Color("ffd24a"), 2.0, 0.6)
+		_shake = 0.2
+		_show_loot(res.data.loot, true)
+		_reopen_later(cid, 1800.0)
+	else:
+		if node != null and str(res.error).contains("kosong"):
+			_chest_open[cid] = true
+			node.set_open(true, false)
+			_reopen_later(cid, 60.0)
+		_show_toast(str(res.error))
+
+
 # --- masukan ---
 
 func _input_vector() -> Vector2:
@@ -405,6 +791,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if _locked:
 		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		match (event as InputEventKey).keycode:
+			KEY_J: _do_tangan()
+			KEY_K: _do_kaki(0.0)
+			KEY_L: _do_perisai(0.0)
+			KEY_U: _do_boost()
 	# Geser layar (di luar joystick dan tombol) untuk memutar kamera.
 	if event is InputEventScreenTouch:
 		var te := event as InputEventScreenTouch
@@ -432,7 +824,10 @@ func _on_ui(p: Vector2) -> bool:
 	if _joy != null and _joy.get_global_rect().has_point(p):
 		return true
 	for b in _buttons:
-		if b.get_global_rect().has_point(p):
+		if b.visible and b.get_global_rect().has_point(p):
+			return true
+	for a: ActionButton in _act_buttons:
+		if a.get_global_rect().has_point(p):
 			return true
 	return false
 
@@ -492,14 +887,45 @@ func _npc_in_range() -> String:
 	return best
 
 
+func _chest_in_range() -> String:
+	var best := ""
+	var best_d := CHEST_RANGE
+	for id: String in _chest_nodes:
+		if _chest_open.has(id):
+			continue
+		var n := _chest_nodes[id] as Node3D
+		var d := _pos.distance_to(Vector2(n.position.x, n.position.z))
+		if d <= best_d:
+			best_d = d
+			best = id
+	return best
+
+
+## Tombol konteks: "Buka peti" dekat peti, "Bicara" dekat orang; selain itu tersembunyi.
 func _update_talk_button() -> void:
-	if _talk_button != null:
-		_talk_button.disabled = Session.offline or _npc_in_range() == ""
+	if _talk_button == null:
+		return
+	var chest := _chest_in_range()
+	if chest != "" and not Session.offline:
+		_talk_button.text = "Buka peti"
+		_talk_button.visible = true
+		_talk_button.disabled = false
+		return
+	var npc := _npc_in_range()
+	_talk_button.text = "Bicara"
+	_talk_button.visible = npc != ""
+	_talk_button.disabled = Session.offline
 
 
 func _talk() -> void:
+	if _locked:
+		return
+	var chest := _chest_in_range()
+	if chest != "" and not Session.offline:
+		_open_chest(chest)
+		return
 	var npc := _npc_in_range()
-	if npc == "" or _locked:
+	if npc == "":
 		return
 	_locked = true
 	Session.talk_npc = npc
@@ -605,12 +1031,24 @@ func _build_ui() -> void:
 
 	_joy = Joystick.new()
 	_joy.position = Vector2(20, 880)
-	_joy.size = Vector2(420, 380)
+	_joy.size = Vector2(400, 380)
 	layer.add_child(_joy)
 
 	_talk_button = _add_button(layer, "Bicara", 0, _talk)
-	_add_button(layer, "Tas", 1, _open_screen.bind(INVENTORY_SCENE)).disabled = Session.offline
-	_add_button(layer, "Toko", 2, _open_screen.bind(SHOP_SCENE)).disabled = Session.offline
+	_talk_button.position = Vector2(520, 868)
+	_talk_button.size = Vector2(180, 84)
+	_btn_tangan = _add_action(layer, ActionButton.Icon.TANGAN, "Tangan", Vector2(612, 1136), 72.0, Color("ffb347"))
+	_btn_kaki = _add_action(layer, ActionButton.Icon.KAKI, "Kaki", Vector2(492, 1212), 52.0, Color("7fd1ff"))
+	_btn_perisai = _add_action(layer, ActionButton.Icon.PERISAI, "Perisai", Vector2(478, 1090), 52.0, Color("8fe08f"))
+	_btn_boost = _add_action(layer, ActionButton.Icon.BOOST, "Boost", Vector2(576, 986), 52.0, Color("ffe14a"))
+	_btn_tangan.pressed.connect(_do_tangan)
+	_btn_kaki.released.connect(_do_kaki)
+	_btn_perisai.released.connect(_do_perisai)
+	_btn_boost.pressed.connect(_do_boost)
+	_flush_timer = Timer.new()
+	_flush_timer.one_shot = true
+	_flush_timer.timeout.connect(_flush_breaks)
+	add_child(_flush_timer)
 	_update_talk_button()
 
 	var menu_btn := Button.new()
@@ -631,6 +1069,8 @@ func _build_ui() -> void:
 	_menu.quit_game.connect(_quit_game)
 	_menu.settings_changed.connect(_apply_quality)
 	_menu.profile_requested.connect(_open_profile)
+	_menu.inventory_requested.connect(_open_from_menu.bind(INVENTORY_SCENE))
+	_menu.shop_requested.connect(_open_from_menu.bind(SHOP_SCENE))
 	_profile = ProfileScreen.new()
 	add_child(_profile)
 	_profile.closed.connect(_close_profile)
@@ -650,14 +1090,37 @@ func _add_button(layer: CanvasLayer, text: String, slot: int, callback: Callable
 	return b
 
 
+func _add_action(layer: CanvasLayer, icon: int, title: String, center: Vector2, radius: float, tint: Color) -> ActionButton:
+	var b := ActionButton.new()
+	b.icon = icon
+	b.title = title
+	b.tint = tint
+	b.size = Vector2.ONE * radius * 2.0
+	b.position = center - b.size / 2.0
+	layer.add_child(b)
+	_act_buttons.append(b)
+	return b
+
+
+## Tas dan Toko dibuka dari Menu (menu menutup dulu, lalu pindah layar).
+func _open_from_menu(scene: String) -> void:
+	_menu.close()
+	_locked = false
+	_open_screen(scene)
+
+
 func _refresh_hud() -> void:
 	var st: Dictionary = Session.player.state
 	var potions := 0
+	var diamonds := 0
 	for item: Dictionary in st.inventory:
 		if item.id == "ramuan":
 			potions = int(item.qty)
-	_hud.text = "%s  Lv %d\nHP %d/%d  Emas %d\nRamuan %d  XP %d/%d" % [
-		Session.player.name, st.level, st.hp, st.max_hp, st.gold,
+		elif item.id == "berlian":
+			diamonds = int(item.qty)
+	var gems := "  Berlian %d" % diamonds if diamonds > 0 else ""
+	_hud.text = "%s  Lv %d\nHP %d/%d  Emas %d%s\nRamuan %d  XP %d/%d" % [
+		Session.player.name, st.level, st.hp, st.max_hp, st.gold, gems,
 		potions, st.xp, 20 * int(st.level),
 	]
 
@@ -695,6 +1158,11 @@ func _make_player() -> void:
 	_player = Models.create(str(Heroes.current().id))
 	add_child(_player)
 	_add_shadow(_player, 0.3)
+	if _aura_guard == null:
+		_aura_guard = HeroFx.aura(Color(0.35, 0.65, 1.0, 0.28))
+		add_child(_aura_guard)
+		_aura_boost = HeroFx.aura(Color(1.0, 0.65, 0.15, 0.22), 0.8)
+		add_child(_aura_boost)
 	if old != null:
 		old.queue_free()
 		_apply_transform()

@@ -150,6 +150,38 @@ static func warga_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
 	return true
 
 
+## Peti harta. Id dan petak HARUS sama dengan chests di internal/game/loot.go (server yang
+## mengundi isinya). `tier` hanya untuk warna peti; besar hadiah ditentukan server.
+const CHESTS := [
+	{"id": "desa_1", "map": "desa_awal", "pos": Vector2i(43, 8), "tier": 1},
+	{"id": "desa_2", "map": "desa_awal", "pos": Vector2i(2, 22), "tier": 1},
+	{"id": "desa_3", "map": "desa_awal", "pos": Vector2i(20, 44), "tier": 1},
+	{"id": "perbatasan_1", "map": "perbatasan", "pos": Vector2i(1, 1), "tier": 2},
+	{"id": "perbatasan_2", "map": "perbatasan", "pos": Vector2i(13, 18), "tier": 2},
+	{"id": "gunung_1", "map": "gunung_batu", "pos": Vector2i(13, 1), "tier": 3},
+	{"id": "gunung_2", "map": "gunung_batu", "pos": Vector2i(1, 8), "tier": 3},
+	{"id": "gua_1", "map": "gua_batu", "pos": Vector2i(1, 1), "tier": 4},
+	{"id": "gua_2", "map": "gua_batu", "pos": Vector2i(13, 1), "tier": 4},
+]
+
+
+## Peti di peta ini.
+static func chests_in(map_id: String) -> Array:
+	var out: Array = []
+	for c: Dictionary in CHESTS:
+		if c.map == map_id:
+			out.append(c)
+	return out
+
+
+## id peti di petak (x, y), atau "".
+static func chest_at(map_id: String, x: int, y: int) -> String:
+	for c: Dictionary in CHESTS:
+		if c.map == map_id and c.pos == Vector2i(x, y):
+			return str(c.id)
+	return ""
+
+
 ## id NPC di petak (x, y), atau "" bila tidak ada.
 static func npc_at(map_id: String, x: int, y: int) -> String:
 	for id: String in NPCS:
