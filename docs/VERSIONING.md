@@ -231,6 +231,12 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Data warga baru: `arah` (arah muka bangunan) dan `terlihat` (tetap terlihat di dalam). Hanya klien yang
   berubah; `DefaultMinClient` tetap 0.18.0.
 
+- v0.36.0 mengganti ikon aplikasi: ksatria berpedang dan ksatria perempuan pemanah (model karakter game
+  sendiri) di depan matahari terbenam. Berkas di `client/assets/icon/` (`icon_512.png`, `main_192.png`,
+  `adaptive_foreground_432.png`, `adaptive_background_432.png`), dipasang lewat `launcher_icons/*` di
+  `client/export_presets.cfg` dan `config/icon` di `project.godot`. Hanya klien yang berubah;
+  `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

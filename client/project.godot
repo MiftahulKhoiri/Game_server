@@ -6,12 +6,12 @@ config_version=5
 [application]
 
 config/name="Game Petualang"
-config/version="0.35.0"
+config/version="0.36.0"
 config/description="Klien RPG 2D untuk server Game_server"
 run/main_scene="res://scenes/login.tscn"
 run/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://assets/icon/icon_512.png"
 
 [autoload]
 
