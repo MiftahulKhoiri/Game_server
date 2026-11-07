@@ -744,3 +744,5 @@ func _apply_quality() -> void:
 	_sun.directional_shadow_max_distance = 16.0 if q == 1 else 26.0
 	RenderingServer.directional_shadow_atlas_set_size(1024 if q == 1 else 2048, true)
 	get_viewport().msaa_3d = Viewport.MSAA_2X if q >= 2 else Viewport.MSAA_DISABLED
+	# Resolusi 3D lebih rendah di HP beresolusi tinggi (UI tetap tajam): jauh lebih ringan bagi GPU.
+	get_viewport().scaling_3d_scale = [0.6, 0.75, 1.0][clampi(q, 0, 2)]

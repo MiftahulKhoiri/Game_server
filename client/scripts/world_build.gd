@@ -15,6 +15,9 @@ const ALAM_DIR := "res://assets/models/alam/"
 
 ## Model bangunan KayKit (CC0, atap merah-cokelat) untuk rumah-rumah di desa. Paket ini tidak punya
 ## model kandang, jadi kandang berpagar di Desa Awal diberi alas jerami (building_grain).
+## Pengali ukuran model rumah terhadap petak H/D-nya (atap sedikit melebar ke rumput; tabrakan tetap sama).
+const BANGUNAN_SKALA := 1.45
+
 const BANGUNAN_MODEL := {
 	"rumah_a": "building_home_A_red",
 	"rumah_b": "building_home_B_red",
@@ -227,9 +230,38 @@ static func _hias_rumput(tufts: Array[Transform3D], statics: Dictionary, map_id:
 		_tambah(statics, id, _xf(c + o2, Vector3.ONE * (2.0 + 0.8 * _jitter(x, z, 79)), _jitter(x, z, 80) * TAU))
 
 
-static func _multi(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color] = []) -> void:
+## Sel pengelompokan MultiMesh (satuan dunia). Tiap sel jadi satu MultiMeshInstance3D sendiri
+## supaya benda di luar layar / di luar jangkauan bayangan tidak ikut digambar.
+const SEL_MULTI := 12.0
+const MULTI_KECIL := 48  # jumlah di bawah ini tidak perlu dipecah
+
+
+## `bayangan` false untuk benda kecil/rendah (rumput, kerikil, alas) agar lintasan bayangan ringan.
+static func _multi(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color] = [], bayangan := true) -> void:
 	if xforms.is_empty():
 		return
+	var pakai_warna := not colors.is_empty()
+	if xforms.size() <= MULTI_KECIL:
+		_multi_satu(root, mesh, material, xforms, colors, bayangan)
+		return
+	var sel: Dictionary = {}  # Vector2i -> indeks benda
+	for i in xforms.size():
+		var o := xforms[i].origin
+		var k := Vector2i(floori(o.x / SEL_MULTI), floori(o.z / SEL_MULTI))
+		if not sel.has(k):
+			sel[k] = []
+		sel[k].append(i)
+	for k: Vector2i in sel:
+		var xs: Array[Transform3D] = []
+		var cs: Array[Color] = []
+		for i: int in sel[k]:
+			xs.append(xforms[i])
+			if pakai_warna:
+				cs.append(colors[i])
+		_multi_satu(root, mesh, material, xs, cs, bayangan)
+
+
+static func _multi_satu(root: Node3D, mesh: Mesh, material: Material, xforms: Array[Transform3D], colors: Array[Color], bayangan: bool) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = not colors.is_empty()
@@ -242,6 +274,8 @@ static func _multi(root: Node3D, mesh: Mesh, material: Material, xforms: Array[T
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = material
+	if not bayangan:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
 
 
@@ -419,10 +453,10 @@ static func build(map_id: String) -> Node3D:
 	# Alas (satu draw call, warna per petak)
 	var quad := PlaneMesh.new()
 	quad.size = Vector2(1.0, 1.0)
-	_multi(root, quad, mat(Color.WHITE, true), ground_x, ground_c)
+	_multi(root, quad, mat(Color.WHITE, true), ground_x, ground_c, false)
 	var water := PlaneMesh.new()
 	water.size = Vector2(1.0, 1.0)
-	_multi(root, water, mat(Color("2fa3ea"), false, 0.18), water_x)
+	_multi(root, water, mat(Color("2fa3ea"), false, 0.18), water_x, [], false)
 	_multi(root, _cyl(0.12, 0.14, 0.9, 6), mat(Color("5b3b1e")), trunk_x)
 	_multi(root, _sphere(0.5, 9), mat(Color.WHITE, true), leaf_x, leaf_c)
 	_multi(root, _sphere(0.6, 7), mat(Color.WHITE, true, 1.0), rock_x, rock_c)
@@ -430,14 +464,14 @@ static func build(map_id: String) -> Node3D:
 		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id])
 	for id: String in static_by:
 		_multi(root, _dekor_mesh(id), null, static_by[id])
-	_multi(root, _tuft_mesh(), _grass_material(), tufts)
+	_multi(root, _tuft_mesh(), _grass_material(), tufts, [], false)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("8d8d95")), stone_x)
-	_multi(root, _box(Vector3(0.8, 0.07, 1.0)), mat(Color("9a6b3c")), plank_x)
+	_multi(root, _box(Vector3(0.8, 0.07, 1.0)), mat(Color("9a6b3c")), plank_x, [], false)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5b3b1e")), post_x)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("7a5530")), rail_x)
-	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5e4326")), furrow_x)
-	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x)
-	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("5e4326")), furrow_x, [], false)
+	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x, [], false)
+	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c, false)
 	_add_houses(root, house_tiles, rows, map_id)
 	_add_jerami(root, map_id)
 	if cave:
@@ -557,8 +591,8 @@ static func build_arena(map_id: String) -> Node3D:
 		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id])
 	for id: String in static_by:
 		_multi(root, _dekor_mesh(id), null, static_by[id])
-	_multi(root, _tuft_mesh(), _grass_material(), tufts)
-	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebbles)
+	_multi(root, _tuft_mesh(), _grass_material(), tufts, [], false)
+	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebbles, [], false)
 	return root
 
 
@@ -633,7 +667,7 @@ static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx:
 	if mesh == null:
 		return false
 	var box := mesh.get_aabb()
-	var s := minf((w - 0.2) / box.size.x, (d - 0.2) / box.size.z)
+	var s := minf((w - 0.2) / box.size.x, (d - 0.2) / box.size.z) * BANGUNAN_SKALA
 	var inst := MeshInstance3D.new()
 	inst.mesh = mesh
 	inst.scale = Vector3(s, s, s)

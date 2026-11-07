@@ -152,6 +152,13 @@ membawa pemain; bawaannya halaman Releases terbaru.
   v0.24.0 tetap ada sebagai cadangan bila gambar tidak ditemukan. Hanya tampilan klien; server dan API tidak
   berubah, `DefaultMinClient` tetap 0.18.0.
 
+- v0.26.0 memperbesar semua rumah (toko, dapur, rumah sakit, rumah pribadi) sekitar 1,45x dan meringankan
+  beban grafis: objek dunia dipecah per kelompok sehingga yang di luar layar tidak digambar, bayangan dimatikan
+  untuk benda kecil (rumput, kerikil, alas), dan resolusi 3D mengikuti pengaturan kualitas (Hemat 60%,
+  Normal 75%, Tinggi 100%; antarmuka tetap tajam). Segitiga yang digambar per bingkai di Desa Awal turun dari
+  sekitar 85 ribu menjadi 30 ribu. MSAA pertarungan hanya di kualitas Tinggi. Server dan API tidak berubah,
+  `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

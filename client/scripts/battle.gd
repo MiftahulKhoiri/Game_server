@@ -570,7 +570,7 @@ func _build_arena() -> SubViewportContainer:
 	var vp := SubViewport.new()
 	vp.own_world_3d = true
 	vp.size = Vector2i(664, 360)
-	vp.msaa_3d = Viewport.MSAA_2X
+	vp.msaa_3d = Viewport.MSAA_2X if Session.quality >= 2 else Viewport.MSAA_DISABLED
 	holder.add_child(vp)
 
 	# Arena mengikuti peta tempat pertarungan terjadi: hutan, desa, gunung batu, atau gua.
