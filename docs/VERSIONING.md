@@ -169,6 +169,14 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Server yang mengundi hadiah; `DefaultMinClient` tetap 0.18.0 (klien lama tetap jalan, hanya tidak bisa
   menghancurkan objek).
 
+- v0.28.0 melebarkan Perbatasan (hutan) dan Gunung Batu dari 15x20 menjadi 45x50 petak, sama besar dengan
+  Desa Awal. Hutan: jalan raja berkelok, tujuh bukaan ladang monster, dua reruntuhan benteng, dua kolam. Gunung:
+  jalur berkelok dengan tujuh dataran berkerikil di kiri-kanan. Peti harta bertambah dari 2 menjadi 5 per peta
+  (total 16), dengan id lama `perbatasan_1/2` dan `gunung_1/2` dipindah ke posisi baru. Pintu antar-peta
+  dipindah ke tengah (x=22). Server: ukuran peta di `worldMaps` dan daftar peta di `chests`. Gua Batu tidak
+  berubah. `DefaultMinClient` tetap 0.18.0; pemain yang tersimpan di dalam peta lama dipindahkan ke petak
+  bebas terdekat oleh klien baru.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

@@ -80,9 +80,9 @@ func _run() -> void:
 		for e: Dictionary in Maps.EXITS[id]:
 			_check(Maps.walkable(id, e.pos.x, e.pos.y), "pintu %s %s berada di petak yang bisa dilewati" % [id, e.pos])
 			_check(Maps.walkable(e.to, e.at.x, e.at.y) and Maps.exit_at(e.to, e.at.x, e.at.y).is_empty(), "tujuan pintu %s -> %s aman dan bukan pintu" % [id, e.to])
-	_check(not Maps.walkable(Maps.PERBATASAN, 3, 8), "tembok batu menghalangi")
-	_check(not Maps.walkable(Maps.GUNUNG, 0, 5) and Maps.walkable(Maps.GUNUNG, 7, 0), "batu besar menghalangi, pintu gunung terbuka")
-	_check(Maps.ENCOUNTER_TILES.contains(Maps.tile_at(Maps.GUNUNG, 2, 2)), "kerikil gunung tempat pertemuan musuh")
+	_check(not Maps.walkable(Maps.PERBATASAN, 26, 14), "tembok batu menghalangi")
+	_check(not Maps.walkable(Maps.GUNUNG, 0, 5) and Maps.walkable(Maps.GUNUNG, 22, 0), "batu besar menghalangi, pintu gunung terbuka")
+	_check(Maps.ENCOUNTER_TILES.contains(Maps.tile_at(Maps.GUNUNG, 6, 8)), "kerikil gunung tempat pertemuan musuh")
 
 	print("== api")
 	Api.base_url = OS.get_environment("GAME_URL") if OS.get_environment("GAME_URL") != "" else "http://127.0.0.1:8099"
@@ -446,7 +446,7 @@ func _run() -> void:
 	await process_frame
 	world2._try_move(Vector2i.DOWN)  # (22,48) -> (22,49) = pintu ke perbatasan
 	await create_timer(0.5).timeout
-	_check(Session.player.state.map == Maps.PERBATASAN and Session.player.state.y == 1, "melewati gerbang selatan masuk Perbatasan (7,1)")
+	_check(Session.player.state.map == Maps.PERBATASAN and Session.player.state.y == 1, "melewati gerbang selatan masuk Perbatasan (22,1)")
 	await create_timer(2.5).timeout
 	var moved: Dictionary = await Api.get_me()
 	_check(moved.data.state.map == "perbatasan" and int(moved.data.state.y) == 1, "server menyimpan peta baru")
