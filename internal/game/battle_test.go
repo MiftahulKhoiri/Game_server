@@ -344,7 +344,7 @@ func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 		}
 	}
 	// Terlalu rendah untuk wilayahnya: tetap bertemu musuh terlemah di sana, bukan musuh peta lain.
-	if e := PickEnemy(1, MapGunungBatu, RandomSource{}); !e.inZone(MapGunungBatu) || e.MinLevel != 3 {
+	if e := PickEnemy(1, MapGunungBatu, RandomSource{}); !e.inZone(MapGunungBatu) || e.MinLevel != 2 {
 		t.Errorf("level 1 di gunung harus bertemu musuh terlemah gunung, dapat %s", e.ID)
 	}
 	// Peta tak dikenal tidak boleh membuat server panik.
@@ -436,7 +436,7 @@ func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
 			}
 		}
 	}
-	if e := PickEnemy(1, MapGuaBatu, RandomSource{}); e.Boss || e.ID != "kelelawar_gua" && e.ID != "golem_kerikil" && e.ID != "goblin_penjaga" {
+	if e := PickEnemy(1, MapGuaBatu, RandomSource{}); e.Boss || e.ID != "orc_gua" {
 		t.Errorf("level rendah di gua harus bertemu musuh terlemah gua non-bos, dapat %s", e.ID)
 	}
 
@@ -493,5 +493,49 @@ func TestNormalizePose(t *testing.T) {
 	}
 	if s := NewState(); s.FX != float64(SpawnX)+0.5 || s.FZ != float64(SpawnY)+0.5 {
 		t.Errorf("pemain baru harus di tengah petak awal: %+v", s)
+	}
+}
+
+func TestPickEnemyForUsesVisibleEnemyOnlyWhenAllowed(t *testing.T) {
+	rng := RandomSource{}
+	// Musuh yang sah di peta dan levelnya dipakai apa adanya.
+	if e := PickEnemyFor(3, MapPerbatasan, "serigala_hutan", rng); e.ID != "serigala_hutan" {
+		t.Errorf("serigala hutan sah di hutan level 3, dapat %s", e.ID)
+	}
+	// Musuh peta lain, bos, dan id ngawur diabaikan: server memilih sendiri di peta pemain.
+	for _, want := range []string{"orc_gua", "raja_goblin", "tidak_ada"} {
+		for i := 0; i < 100; i++ {
+			if e := PickEnemyFor(10, MapPerbatasan, want, rng); !e.inZone(MapPerbatasan) || e.Boss {
+				t.Fatalf("%q di hutan menghasilkan %s", want, e.ID)
+			}
+		}
+	}
+	// Terlalu kuat untuk levelnya: ditolak, kecuali musuh terlemah di peta itu.
+	for i := 0; i < 100; i++ {
+		if e := PickEnemyFor(1, MapPerbatasan, "serigala_alfa", rng); e.MinLevel > 1 {
+			t.Fatalf("serigala alfa tidak boleh muncul untuk level 1, dapat %s", e.ID)
+		}
+	}
+	if e := PickEnemyFor(1, MapGunungBatu, "goblin", rng); e.ID != "goblin" {
+		t.Errorf("goblin adalah musuh terlemah gunung, boleh dipilih level 1: %s", e.ID)
+	}
+	// Zona tiap peta: hutan hewan, gunung goblin, gua orc.
+	for zone, ids := range map[string][]string{
+		MapPerbatasan: {"ular_hutan", "serigala_hutan", "babi_hutan", "serigala_alfa"},
+		MapGunungBatu: {"goblin", "goblin_pemburu", "ogre_batu"},
+		MapGuaBatu:    {"orc_gua", "orc_penjaga", "orc_buas"},
+	} {
+		for _, id := range ids {
+			if e, ok := EnemyByID(id); !ok || !e.inZone(zone) {
+				t.Errorf("%s harus muncul di %s", id, zone)
+			}
+		}
+	}
+	for _, id := range []string{"kelelawar_gua", "golem_kerikil", "goblin_penjaga", "golem_lava"} {
+		for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu, MapGuaBatu} {
+			if e, _ := EnemyByID(id); e.inZone(zone) {
+				t.Errorf("%s sudah pensiun tetapi masih muncul di %s", id, zone)
+			}
+		}
 	}
 }

@@ -374,6 +374,8 @@ func (s *Server) getBattle(w http.ResponseWriter, r *http.Request) {
 type startRequest struct {
 	// Boss meminta pertarungan dengan bos di petak pemain (bukan musuh acak).
 	Boss bool `json:"boss"`
+	// Enemy (opsional) adalah id musuh berkeliaran yang disentuh pemain; dipakai bila sah di peta ini.
+	Enemy string `json:"enemy"`
 }
 
 func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
@@ -393,7 +395,7 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		} else {
-			b = game.StartBattle(&sess.Player, s.rng, now)
+			b = game.StartBattleWith(&sess.Player, req.Enemy, s.rng, now)
 		}
 		sess.Battle = &b
 		return nil

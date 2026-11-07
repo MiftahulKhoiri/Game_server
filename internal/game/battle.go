@@ -131,6 +131,12 @@ func StartBattle(p *Player, rng Rand, now int64) Battle {
 	return newBattle(PickEnemy(p.State.Level, p.State.Map, rng), now)
 }
 
+// StartBattleWith seperti StartBattle, tetapi memakai musuh `want` (id) bila boleh muncul di
+// peta pemain pada levelnya. Dipakai saat pemain menyentuh musuh yang berkeliaran di peta.
+func StartBattleWith(p *Player, want string, rng Rand, now int64) Battle {
+	return newBattle(PickEnemyFor(p.State.Level, p.State.Map, want, rng), now)
+}
+
 // ErrNoBoss berarti tidak ada bos di petak tempat pemain berdiri.
 var ErrNoBoss = errors.New("tidak ada bos di sini")
 

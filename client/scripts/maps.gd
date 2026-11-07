@@ -150,6 +150,61 @@ static func warga_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
 	return true
 
 
+## Musuh yang berkeliaran di tiap peta. `id` harus musuh di internal/game/enemy.go yang memang muncul
+## di peta itu; `lv` = MinLevel-nya (musuh yang terlalu kuat untuk level pemain tidak dimunculkan,
+## kecuali tidak ada yang lain). `n` = jumlah di peta, `tiles` = jenis petak tempat mereka muncul,
+## `min_y` = batas utara (desa: menjauh dari rumah-rumah). Server tetap yang menentukan lawan sebenarnya.
+const ROAMERS := {
+	"desa_awal": {"n": 6, "tiles": ".fT", "min_y": 24, "kinds": [
+		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1},
+		{"id": "belalang_raksasa", "name": "Kucing Liar", "lv": 1},
+		{"id": "ular_sawah", "name": "Rubah Sawah", "lv": 2},
+		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
+	]},
+	"perbatasan": {"n": 14, "tiles": ".fT", "min_y": 3, "kinds": [
+		{"id": "ular_hutan", "name": "Ular Hutan", "lv": 1},
+		{"id": "serigala_hutan", "name": "Serigala Hutan", "lv": 2},
+		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
+		{"id": "serigala_alfa", "name": "Serigala Alfa", "lv": 5},
+	]},
+	"gunung_batu": {"n": 14, "tiles": "MG", "min_y": 3, "kinds": [
+		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
+		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
+		{"id": "ogre_batu", "name": "Monster Batu", "lv": 5},
+	]},
+	"gua_batu": {"n": 7, "tiles": "MG", "min_y": 3, "kinds": [
+		{"id": "orc_gua", "name": "Orc Gua", "lv": 5},
+		{"id": "orc_penjaga", "name": "Orc Penjaga", "lv": 6},
+		{"id": "orc_buas", "name": "Orc Buas", "lv": 7},
+	]},
+}
+
+## Petak yang boleh diinjak musuh berkeliaran: seperti bisa dilewati pemain, tetapi bukan pintu
+## rumah, pintu antar-peta, singgasana bos, petak NPC, atau peti.
+const ROAM_TILES := ".=fTBMG"
+
+
+## Apakah titik (x, z) bebas dilalui musuh berkeliaran (keempat sudut badan jari-jari 0,25 juga).
+static func roam_free(map_id: String, p: Vector2) -> bool:
+	for o: Vector2 in [Vector2.ZERO, Vector2(0.25, 0.25), Vector2(-0.25, 0.25), Vector2(0.25, -0.25), Vector2(-0.25, -0.25)]:
+		var q := p + o
+		var tx := int(floor(q.x))
+		var ty := int(floor(q.y))
+		var t := tile_at(map_id, tx, ty)
+		if t == "" or not ROAM_TILES.contains(t) or npc_at(map_id, tx, ty) != "" or chest_at(map_id, tx, ty) != "" or not exit_at(map_id, tx, ty).is_empty():
+			return false
+	return true
+
+
+## Apakah ruas lurus a -> b bebas dilalui musuh berkeliaran (diperiksa tiap 0,25 petak).
+static func roam_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
+	var n := maxi(1, int(ceil(a.distance_to(b) / 0.25)))
+	for i in range(1, n + 1):
+		if not roam_free(map_id, a.lerp(b, float(i) / float(n))):
+			return false
+	return true
+
+
 ## Peti harta. Id dan petak HARUS sama dengan chests di internal/game/loot.go (server yang
 ## mengundi isinya). `tier` hanya untuk warna peti; besar hadiah ditentukan server.
 const CHESTS := [

@@ -34,8 +34,46 @@ const SCALES := {
 }
 
 
+## Musuh yang memakai model musuh lain dengan ukuran (kali lipat) dan warna (pengali) berbeda,
+## supaya satu model bisa jadi goblin kecil, orc besar, atau serigala alfa tanpa berkas baru.
+const VARIANTS := {
+	"goblin_pemburu": {"base": "goblin", "size": 1.2, "tint": Color("9fd8d0")},
+	"orc_gua": {"base": "goblin", "size": 1.55, "tint": Color("b8a070")},
+	"orc_penjaga": {"base": "goblin", "size": 1.8, "tint": Color("d9906a")},
+	"orc_buas": {"base": "goblin", "size": 2.05, "tint": Color("cc6a62")},
+	"ular_hutan": {"base": "ular_sawah", "size": 1.2, "tint": Color("86b890")},
+	"serigala_alfa": {"base": "serigala_hutan", "size": 1.25, "tint": Color("6a6f7c")},
+}
+
+
+## Mengalikan warna semua bahan model (hanya bahan hasil _fix_materials / bentuk dasar).
+static func _tint(n: Node, c: Color) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.material_override is StandardMaterial3D:
+			var mo := (mi.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D
+			mo.albedo_color = mo.albedo_color * c
+			mi.material_override = mo
+		elif mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.get_surface_override_material(i)
+				if m is StandardMaterial3D:
+					var sm := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+					sm.albedo_color = sm.albedo_color * c
+					mi.set_surface_override_material(i, sm)
+	for ch in n.get_children():
+		_tint(ch, c)
+
+
 ## Membuat model untuk id. Selalu mengembalikan node (placeholder bila tidak dikenal).
 static func create(id: String) -> Node3D:
+	if VARIANTS.has(id):
+		var v: Dictionary = VARIANTS[id]
+		var base := create(str(v.base))
+		base.scale = base.scale * float(v.size)
+		_tint(base, v.tint)
+		base.name = id
+		return base
 	var path := MODEL_DIR + id + ".glb"
 	var node: Node3D = null
 	var from_glb := false

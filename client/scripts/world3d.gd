@@ -17,6 +17,8 @@ const Breakables = preload("res://scripts/breakables.gd")
 const ActionButton = preload("res://scripts/action_button.gd")
 const Chest = preload("res://scripts/chest.gd")
 const HeroFx = preload("res://scripts/hero_fx.gd")
+const Roamer = preload("res://scripts/roamer.gd")
+const HudBars = preload("res://scripts/hud_bars.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -51,6 +53,8 @@ const ENERGY_PER_HIT := 5.0
 const ENERGY_PER_BREAK := 9.0
 const BREAK_FLUSH := 0.25      # kumpulkan benda hancur sebentar lalu lapor ke server sekaligus
 const CHEST_RANGE := 1.9
+const ROAM_GRACE := 3.0        # detik setelah masuk peta: musuh berkeliaran belum mengejar
+const ROAM_NEAR := 6.5         # jarak (petak) nama musuh mulai tampil
 const ITEM_NAMES := {"ramuan": "Ramuan", "berlian": "Berlian", "ramuan_kekuatan": "Ramuan Kekuatan"}
 
 var _map_id := Maps.DEFAULT_MAP
@@ -79,6 +83,9 @@ var _clock: Label
 var _npc_models: Dictionary = {}  # id NPC -> model 3D
 var _npc_time := 0.0
 var _warga: Array[Warga] = []        # warga desa yang berjalan bebas
+var _roamers: Array[Roamer] = []     # musuh yang berkeliaran di peta
+var _roam_grace := 0.0
+var _bars: HudBars
 
 var _joy: Control
 var _cam_finger := -1
@@ -156,6 +163,7 @@ func _ready() -> void:
 	_pos = start
 	_yaw = float(st.yaw)
 	_tile = Movement.tile_of(_pos)
+	_spawn_roamers(_map_id)
 	_sync_state()
 
 	_save_timer = Timer.new()
@@ -295,6 +303,132 @@ func _spawn_warga(map_id: String) -> void:
 		_warga.append(w)
 
 
+## Munculkan musuh berkeliaran sesuai peta dan level pemain, jauh dari tempat pemain berdiri.
+func _spawn_roamers(map_id: String) -> void:
+	_roamers = []
+	_roam_grace = ROAM_GRACE
+	var cfg: Dictionary = Maps.ROAMERS.get(map_id, {})
+	if cfg.is_empty() or _npc_root == null:
+		return
+	var level := int(Session.player.state.level)
+	var kinds: Array = []
+	var weakest: Dictionary = {}
+	for k: Dictionary in cfg.kinds:
+		if int(k.lv) <= level:
+			kinds.append(k)
+		if weakest.is_empty() or int(k.lv) < int(weakest.lv):
+			weakest = k
+	if kinds.is_empty():
+		kinds = [weakest]
+	var rows := Maps.rows(map_id)
+	var min_d := 10.0 if Maps.width(map_id) >= 30 else 6.0
+	var cands: Array[Vector2] = []
+	for y in range(int(cfg.min_y), rows.size()):
+		for x in rows[y].length():
+			if not str(cfg.tiles).contains(rows[y][x]):
+				continue
+			var c := Vector2(x + 0.5, y + 0.5)
+			if c.distance_to(_pos) >= min_d and Maps.roam_free(map_id, c):
+				cands.append(c)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var tries := 0
+	while _roamers.size() < int(cfg.n) and not cands.is_empty() and tries < 500:
+		tries += 1
+		var at: Vector2 = cands[rng.randi() % cands.size()]
+		var apart := true
+		for o in _roamers:
+			if o.pos.distance_to(at) < 3.5:
+				apart = false
+				break
+		if not apart:
+			continue
+		var kind: Dictionary = kinds[rng.randi() % kinds.size()]
+		_roamers.append(_make_roamer(kind, map_id, at, int(rng.randi())))
+
+
+func _make_roamer(kind: Dictionary, map_id: String, at: Vector2, seed_value: int) -> Roamer:
+	var r := Roamer.new(kind, map_id, at, seed_value)
+	var holder := Node3D.new()
+	holder.name = "Musuh_%s_%d" % [r.id, _roamers.size()]
+	var model := Models.create(r.id)
+	holder.add_child(model)
+	_add_shadow(holder, 0.35)
+	var base_id := r.id
+	var size := 1.0
+	if Models.VARIANTS.has(r.id):
+		base_id = str(Models.VARIANTS[r.id].base)
+		size = float(Models.VARIANTS[r.id].size)
+	var top := float(Models.HEIGHTS.get(base_id, 1.0)) * size
+	var name_label := Label3D.new()
+	name_label.text = r.label
+	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	name_label.no_depth_test = true
+	name_label.pixel_size = 0.005
+	name_label.font_size = 34
+	name_label.outline_size = 8
+	name_label.modulate = Color("ffc2b0")
+	name_label.position = Vector3(0, top + 0.3, 0)
+	name_label.visible = false
+	holder.add_child(name_label)
+	var bang := Label3D.new()
+	bang.text = "!"
+	bang.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	bang.no_depth_test = true
+	bang.pixel_size = 0.011
+	bang.font_size = 72
+	bang.outline_size = 14
+	bang.modulate = Color("ff3b30")
+	bang.position = Vector3(0, top + 0.55, 0)
+	bang.visible = false
+	holder.add_child(bang)
+	_npc_root.add_child(holder)
+	r.node = holder
+	r.model = model
+	r.name_label = name_label
+	r.alert = bang
+	r.apply(false)
+	return r
+
+
+## Musuh berjalan, mengejar bila pemain mendekat, dan memulai pertarungan saat menyentuh.
+func _update_roamers(delta: float) -> void:
+	if _roamers.is_empty() or _locked:
+		return
+	_roam_grace = maxf(0.0, _roam_grace - delta)
+	var can_aggro := _roam_grace <= 0.0 and not Session.offline
+	for r in _roamers:
+		var touched := r.step(delta, _pos, can_aggro)
+		r.apply(r.pos.distance_to(_pos) < ROAM_NEAR)
+		if touched:
+			_set_status("%s menyerang!" % r.label)
+			_start_encounter(false, r.id)
+			return
+
+
+## Pukulan/tendangan mengenai musuh berkeliaran di depan: pertarungan dimulai dengan musuh itu.
+func _hit_roamer(reach: float, cos_min: float) -> bool:
+	if Session.offline or _locked or _roamers.is_empty():
+		return false
+	var f := _facing()
+	var best: Roamer = null
+	var best_d := reach + 0.4
+	for r in _roamers:
+		var off := r.pos - _pos
+		var d := off.length()
+		if d > reach + 0.4 or d >= best_d:
+			continue
+		if d > 0.05 and off.normalized().dot(f) < cos_min:
+			continue
+		best = r
+		best_d = d
+	if best == null:
+		return false
+	_set_status("%s terkena seranganmu!" % best.label)
+	_start_encounter(false, best.id)
+	return true
+
+
 func _add_shadow(parent: Node3D, radius: float) -> void:
 	var disc := MeshInstance3D.new()
 	var m := CylinderMesh.new()
@@ -321,6 +455,7 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 	_pos = Movement.safe_spot(map_id, at)
 	_tile = Movement.tile_of(_pos)
 	_step_acc = 0.0
+	_spawn_roamers(map_id)
 	_sync_state()
 	_mark_dirty()
 	_apply_transform()
@@ -378,6 +513,7 @@ func _update_world_life(delta: float) -> void:
 	if _rain != null:
 		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
 	_update_npcs(delta)
+	_update_roamers(delta)
 
 
 ## NPC menoleh ke pemain bila dekat; selain itu berjalan pelan di sekitar petaknya.
@@ -583,6 +719,8 @@ func _dash(dir: Vector2, dist: float, time: float) -> void:
 
 ## Satu ayunan: pukul benda dalam jangkauan, isi tenaga Boost, laporkan yang hancur ke server.
 func _swing(reach: float, cos_min: float, dmg: float, solid_n: int, grass_n: int) -> int:
+	if _hit_roamer(reach, cos_min):
+		return 1
 	if _breakables == null:
 		return 0
 	if _boost_t > 0.0:
@@ -682,6 +820,8 @@ func _do_boost() -> void:
 	_shake = 0.35
 	HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("ffb347"), 3.6, 0.5)
 	HeroFx.burst(self, Vector3(_pos.x, 0.5, _pos.y), Color("ffd25a"), 24, 4.0)
+	if _hit_roamer(3.4, -1.0):
+		return
 	if _breakables != null:
 		var list := _breakables.targets(_pos, Vector2.ZERO, 3.4, -1.0, 99, 99)
 		_queue_breaks(_breakables.strike(list, 99.0))
@@ -834,11 +974,14 @@ func _on_ui(p: Vector2) -> bool:
 
 # --- pertarungan, NPC, layar lain ---
 
-func _start_encounter(boss := false) -> void:
+func _start_encounter(boss := false, enemy := "") -> void:
+	if _locked:
+		return
 	_locked = true
-	_set_status("Sesuatu menyambutmu di singgasana..." if boss else "Sesuatu bergerak di sekitarmu...")
+	if enemy == "":
+		_set_status("Sesuatu menyambutmu di singgasana..." if boss else "Sesuatu bergerak di sekitarmu...")
 	await _flush_save()  # posisi harus tersimpan dulu; server tidak ikut gerak kita
-	var res: Dictionary = await Api.battle_start(boss)
+	var res: Dictionary = await Api.battle_start(boss, enemy)
 	if res.ok:
 		_enter_battle(res.data)
 	elif res.status == 409:
@@ -995,15 +1138,19 @@ func _build_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 
+	_bars = HudBars.new()
+	_bars.position = Vector2(20, 10)
+	layer.add_child(_bars)
+
 	_hud = Label.new()
-	_hud.position = Vector2(20, 16)
-	_hud.add_theme_font_size_override("font_size", 28)
+	_hud.position = Vector2(20, 116)
+	_hud.add_theme_font_size_override("font_size", 24)
 	_hud.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	_hud.add_theme_constant_override("outline_size", 8)
 	layer.add_child(_hud)
 
 	_status = Label.new()
-	_status.position = Vector2(20, 130)
+	_status.position = Vector2(20, 180)
 	_status.size = Vector2(420, 60)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_font_size_override("font_size", 22)
@@ -1012,7 +1159,7 @@ func _build_ui() -> void:
 	layer.add_child(_status)
 
 	_clock = Label.new()
-	_clock.position = Vector2(20, 192)
+	_clock.position = Vector2(20, 242)
 	_clock.add_theme_font_size_override("font_size", 24)
 	_clock.add_theme_color_override("font_color", Color("ffe9b0"))
 	_clock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
@@ -1119,10 +1266,9 @@ func _refresh_hud() -> void:
 		elif item.id == "berlian":
 			diamonds = int(item.qty)
 	var gems := "  Berlian %d" % diamonds if diamonds > 0 else ""
-	_hud.text = "%s  Lv %d\nHP %d/%d  Emas %d%s\nRamuan %d  XP %d/%d" % [
-		Session.player.name, st.level, st.hp, st.max_hp, st.gold, gems,
-		potions, st.xp, 20 * int(st.level),
-	]
+	_hud.text = "%s\nEmas %d  Ramuan %d%s" % [Session.player.name, st.gold, potions, gems]
+	if _bars != null:
+		_bars.set_values(int(st.level), int(st.xp), 20 * int(st.level), int(st.hp), int(st.max_hp))
 
 
 func _set_status(text: String) -> void:

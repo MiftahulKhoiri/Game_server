@@ -177,6 +177,17 @@ membawa pemain; bawaannya halaman Releases terbaru.
   berubah. `DefaultMinClient` tetap 0.18.0; pemain yang tersimpan di dalam peta lama dipindahkan ke petak
   bebas terdekat oleh klien baru.
 
+- v0.29.0 mengganti tampilan kesehatan menjadi tanda + merah dengan bar yang bergerak sesuai persentase nyawa,
+  lencana level di atasnya, dan bar "Poin" (XP) biru. Level naik dari poin hasil membunuh monster. Musuh dibuat
+  bertema: hutan = binatang buas (`ular_hutan`, `serigala_hutan`, `babi_hutan`, `serigala_alfa`), gunung =
+  goblin (`goblin`, `goblin_pemburu`, `ogre_batu`), gua = orc (`orc_gua`, `orc_penjaga`, `orc_buas`) dengan
+  `raja_goblin` sebagai bos. Musuh kerangka dan golem lava dipensiunkan dari undian acak. Musuh kini terlihat
+  berkeliaran di Desa, Perbatasan, Gunung Batu, dan Gua Batu; mengejar bila pemain mendekat, dan menyentuh atau
+  memukulnya memulai pertarungan sungguhan. `POST /v1/battle/start` menerima kolom opsional `enemy`; server
+  hanya menurutinya bila musuh itu non-bos, sesuai zona peta, dan level pemain cukup, selain itu server
+  memilih sendiri. Teks misi dan dialog disesuaikan; item `taring_goblin` bernama "Taring Goblin".
+  `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

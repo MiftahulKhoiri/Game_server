@@ -1,6 +1,6 @@
 extends RefCounted
 ## Dialog singkat warga desa. Isinya mengikuti alur cerita utama (4 misi berantai):
-##   Nenek (kucing/ayam liar) -> Petani (orc ladang) -> Monster Batu (gunung) -> Raja Iblis (gua)
+##   Nenek (kucing/ayam liar) -> Petani (goblin gunung) -> Monster Batu (gunung) -> Raja Iblis (gua)
 ## `tahap` = banyak misi utama yang sudah tuntas (0-4); warga berkomentar sesuai tahap itu.
 ## Tiap tahap punya 1-2 kalimat yang bergantian setiap kali diajak bicara.
 
@@ -12,21 +12,21 @@ const WARGA := {
 	"bu_sari": {"name": "Bu Sari", "stages": [
 		["Semalam ayam dan kucing liar mengamuk di pasar. Kasihan Nenek di sebelah barat, sayurannya habis dirusak.",
 		"Kamu ksatria baru itu, ya? Bicaralah dengan Nenek dulu. Dia sudah lama menunggu bantuan."],
-		["Syukurlah Nenek selamat! Tapi Petani bilang ada orc hijau di ladang perbatasan. Temui dia di jalan raya.",
+		["Syukurlah Nenek selamat! Tapi Petani bilang ada goblin hijau turun dari Gunung Batu. Temui dia di jalan raya.",
 		"Bawalah ramuan sebelum ke perbatasan. Aku sudah lihat terlalu banyak orang pulang dengan luka."],
-		["Orc-orc itu mundur berkat kamu. Tapi tiap malam ada dentuman dari Gunung Batu. Kamu dengar juga?",
+		["Goblin-goblin itu mundur berkat kamu. Tapi tiap malam ada dentuman dari Gunung Batu. Kamu dengar juga?",
 		"Anak-anak mulai takut tidur. Katanya ada raksasa batu di gunung."],
-		["Monster Batu sudah tumbang! Tapi para pedagang bilang ada gua gelap di bawah gunung, penuh kerangka.",
+		["Monster Batu sudah tumbang! Tapi para pedagang bilang ada gua gelap di bawah gunung, penuh orc.",
 		"Kalau kamu masuk gua itu, pulanglah hidup-hidup. Aku siapkan sup hangat untukmu."],
 		["Raja Iblis sudah tumbang! Malam ini kita masak besar untuk merayakan, Ksatria.",
 		"Desa ini ramai lagi. Semua karena kamu."]]},
 	"mbak_dewi": {"name": "Mbak Dewi", "stages": [
 		["Kamu pasti ksatria yang dibicarakan semua orang. Mulailah dari Nenek di sebelah barat, ya.",
 		"Aku pedagang kain. Sejak monster berdatangan, dagangan sepi sekali."],
-		["Petani gemetar semalam, katanya orc menginjak ladangnya. Dia ada di jalan raya, dekat alun-alun.",
-		"Orc itu menjatuhkan taring. Nenek butuh taring untuk meracik obat, lho."],
-		["Jalan perbatasan makin sepi. Serigala dan kerangka mulai muncul dari arah gunung.",
-		"Pedagang yang pulang bilang kerangka itu keluar dari satu lubang di gunung."],
+		["Petani gemetar semalam, katanya goblin menginjak ladangnya. Dia ada di jalan raya, dekat alun-alun.",
+		"Goblin itu menjatuhkan taring. Nenek butuh taring untuk meracik obat, lho."],
+		["Jalan perbatasan makin sepi. Serigala liar dan goblin mulai muncul dari arah gunung.",
+		"Pedagang yang pulang bilang orc itu keluar dari satu lubang di gunung."],
 		["Konon ada permata merah berkilau di dalam gua itu. Hati-hati, jangan sembarangan disentuh.",
 		"Permata itu katanya sumber kekuatan pasukan iblis."],
 		["Permata merahnya sudah aman, syukurlah! Kalau kamu butuh kain untuk jubah baru, aku beri harga teman, Ksatria.",
@@ -34,8 +34,8 @@ const WARGA := {
 	"pak_joko": {"name": "Pak Joko", "stages": [
 		["Kalau mau menyeberang sungai, latihan dulu di rumput sekitar desa. Naikkan levelmu, Nak.",
 		"Aku dulu prajurit raja. Aku tahu mana monster yang bisa dilawan dan mana yang harus dihindari."],
-		["Ladang selatan itu sarang orc. Beli ramuan dan bawa pedang yang layak.",
-		"Orc keras kepala, tapi lemah kalau diserang bergantian. Jangan panik."],
+		["Gunung di selatan itu sarang goblin. Beli ramuan dan bawa pedang yang layak.",
+		"Goblin keras kepala, tapi lemah kalau diserang bergantian. Jangan panik."],
 		["Gunung Batu itu sarang Monster Batu. Bawa zirah dan pedang yang bagus, jangan nekat.",
 		"Aku sudah tua untuk bertarung, tapi aku tahu jalannya: dari Perbatasan terus ke selatan."],
 		["Di gua paling dalam ada singgasana. Siapa pun yang duduk di sana bukan manusia lagi.",
@@ -45,11 +45,11 @@ const WARGA := {
 	"pak_budi": {"name": "Pak Budi", "stages": [
 		["Ladang kami hampir panen. Semoga monster tidak turun ke sini.",
 		"Nenek penjual sayur itu langgananku. Tolong jaga dia, ya."],
-		["Aku lihat orc hijau mengendap di ladang perbatasan. Mereka membawa taring yang katanya bisa jadi obat.",
+		["Aku lihat goblin hijau mengendap di hutan perbatasan. Mereka membawa taring yang katanya bisa jadi obat.",
 		"Pagar ladangku sudah dua kali dijebol. Untung kamu datang."],
 		["Tanah bergetar dari arah gunung. Ayam-ayamku sampai tak mau bertelur.",
 		"Kalau gunung itu sunyi lagi, aku traktir kamu lima karung sayur."],
-		["Kerangka-kerangka itu keluar dari satu lubang di gunung. Kalau kamu menutupnya, desa ini selamat.",
+		["Orc-orc itu keluar dari satu lubang di gunung. Kalau kamu menutupnya, desa ini selamat.",
 		"Aku lihat cahaya merah dari arah gua semalam. Perasaanku tidak enak."],
 		["Ladang kami aman lagi. Ambil sayur secukupnya, Ksatria.",
 		"Besok aku menanam bibit baru. Tahun ini panen paling baik sejak lama."]]},
@@ -68,7 +68,7 @@ const WARGA := {
 		["Jangan berenang di sungai, Kak. Airnya dalam! Lewat jembatan saja.",
 		"Aku sudah hafal tiap batu di alun-alun. Ayo main petak umpet!"],
 		["Aku dengar lolongan serigala dari seberang sungai. Serem!",
-		"Kakak sudah ketemu orc? Mereka hijau dan bau, ya?"],
+		"Kakak sudah ketemu goblin? Mereka hijau dan bau, ya?"],
 		["Gunung Batu itu tempat peri tinggal, kata Nenek. Tapi Bu Sari bilang itu monster. Siapa yang benar?",
 		"Aku lihat kunang-kunang merah di langit semalam."],
 		["Kakak menang lagi! Teman-temanku sekarang bercita-cita jadi ksatria.",
@@ -78,7 +78,7 @@ const WARGA := {
 	"penjaga": {"name": "Penjaga Gerbang", "stages": [
 		["Gerbang selatan menuju Perbatasan. Di luar penuh monster, pastikan HP-mu penuh sebelum berangkat.",
 		"Aku hanya diperintah menjaga gerbang. Tapi aku tahu desa ini butuh pahlawan."],
-		["Ada laporan orc di jalan raja. Sebaiknya kamu bersiap, Ksatria.",
+		["Ada laporan serigala liar di jalan raja. Sebaiknya kamu bersiap, Ksatria.",
 		"Aku sudah melihat bayangan hijau di balik pagar ladang. Hati-hati."],
 		["Pasukan dikirim ke gunung, tapi tak satu pun yang kembali. Jangan sendirian di sana.",
 		"Terus ke selatan dari Perbatasan, lalu ke Gunung Batu. Itu jalan menuju sarangnya."],

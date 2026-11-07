@@ -14,13 +14,13 @@ const QUEST_TEXTS := {
 		"done": "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu.",
 	},
 	"selamatkan_petani": {
-		"offer": "Hei, Ksatria! Ladangku sudah diinjak-injak orc-orc hijau itu...",
+		"offer": "Hei, Ksatria! Ladangku sudah diinjak-injak goblin-goblin hijau itu...",
 		"locked": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi.",
 		"thanks": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
 		"done": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
 	},
 	"hentikan_raja_goblin": {
-		"offer": "Ksatria! Sebuah kerangka tertangkap dan ia mengaku disuruh seseorang di bawah gunung...",
+		"offer": "Ksatria! Seekor orc tertangkap dan ia mengaku disuruh seseorang di bawah gunung...",
 		"locked": "Aku punya kabar penting, tapi selesaikan urusan Nenek dan Monster Batu dulu.",
 		"thanks": "Raja Iblis sudah tumbang! Kerajaan aman berkatmu. Terimalah ini:",
 		"done": "Desa ini dan seluruh kerajaan berutang padamu, Pelindung Kerajaan.",
@@ -39,7 +39,7 @@ const QUEST_TEXTS := {
 		"done": "Sayurnya tumbuh lagi. Kamu selalu diterima di dapurku, Nak.",
 	},
 	"ramuan_nenek": {
-		"offer": "Banyak pengungsi terluka di desa. Aku bisa meracik obat, tapi butuh taring orc dari ladang perbatasan.",
+		"offer": "Banyak pengungsi terluka di desa. Aku bisa meracik obat, tapi butuh taring goblin dari Gunung Batu.",
 		"locked": "Tolong urus keadaanku dulu, baru kita bicara soal obat.",
 		"thanks": "Taring-taring ini cukup untuk satu panci obat! Ini bagianmu:",
 		"done": "Para pengungsi sudah pulih berkat obatmu, Nak.",
@@ -51,10 +51,10 @@ const QUEST_TEXTS := {
 		"done": "Pedagang kembali lewat tiap pagi. Terima kasih, Ksatria.",
 	},
 	"sisa_pasukan": {
-		"offer": "Raja Iblis memang tumbang, tapi pasukan kerangkanya belum semua padam. Mereka masih berkeliaran.",
+		"offer": "Raja Iblis memang tumbang, tapi pasukan orc-nya belum semua padam. Mereka masih berkeliaran.",
 		"locked": "Aku punya kabar penting, tapi selesaikan dulu urusan Raja Iblis.",
 		"thanks": "Gunung dan gua kini benar-benar sunyi. Kerajaan memberimu zirah ini:",
-		"done": "Tak ada lagi kerangka yang mengusik desa. Kamu pahlawan kami.",
+		"done": "Tak ada lagi orc yang mengusik desa. Kamu pahlawan kami.",
 	},
 	"permata_nenek": {
 		"offer": "Permata merah itu rupanya sumber kekuatan pasukan iblis. Jangan biarkan jatuh ke tangan salah.",
@@ -65,7 +65,7 @@ const QUEST_TEXTS := {
 }
 const GREETINGS := {
 	"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman...",
-	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak orc-orc hijau itu...",
+	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak goblin-goblin hijau itu...",
 }
 
 var _npc := ""

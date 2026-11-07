@@ -453,7 +453,7 @@ func _run() -> void:
 	world2.queue_free()
 	await process_frame
 	var pb: Dictionary = await Api.battle_start()
-	_check(pb.ok and pb.data.battle.enemy_id == "goblin" or pb.ok and pb.data.battle.enemy_id == "serigala_hutan", "musuh di Perbatasan berbeda dari desa (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
+	_check(pb.ok and ["ular_hutan", "serigala_hutan", "babi_hutan"].has(str(pb.data.battle.enemy_id)), "musuh di hutan Perbatasan adalah hewan buas (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
 	if pb.ok:
 		for i in 40:  # kabur dari pertarungan acak (peluang 60%, cooldown 3 d) supaya tidak menggantung
 			var fl: Dictionary = await Api.battle_action("flee")
@@ -520,7 +520,7 @@ func _run() -> void:
 		_check(WorldBuild.environment_for(mid) != null, "lingkungan 3D '%s'" % mid)
 
 	var model_ids := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "nenek_penjual", "petani", "goblin", "goblin_penjaga", "raja_goblin", "ogre_batu",
-		"golem_kerikil", "golem_lava", "tikus_sawah", "babi_hutan", "serigala_hutan", "ular_sawah", "belalang_raksasa", "kelelawar_gua"]
+		"golem_kerikil", "golem_lava", "goblin_pemburu", "orc_gua", "orc_penjaga", "orc_buas", "ular_hutan", "serigala_alfa", "tikus_sawah", "babi_hutan", "serigala_hutan", "ular_sawah", "belalang_raksasa", "kelelawar_gua"]
 	var bad_models: Array[String] = []
 	for mdl in model_ids:
 		var node: Node3D = Models.create(mdl)
@@ -769,6 +769,79 @@ func _run() -> void:
 	wt.queue_free()
 	await process_frame
 	Session.offline = false
+
+	print("== musuh berkeliaran dan bar nyawa")
+	var saved_pose: Dictionary = Session.player.state.duplicate(true)
+	for mid in [Maps.DEFAULT_MAP, Maps.PERBATASAN, Maps.GUNUNG, Maps.GUA]:
+		Session.player.state.map = mid
+		Session.player.state.x = 7 if mid == Maps.GUA else 22
+		Session.player.state.y = 1 if mid != Maps.DEFAULT_MAP else 5
+		Session.player.state.fx = 0.0
+		Session.player.state.fz = 0.0
+		Session.player.state.hp = 15
+		Session.player.state.max_hp = 30
+		Session.player.state.xp = 10
+		Session.player.state.level = 1
+		Session.offline = true
+		var wr: Node = load("res://scenes/world3d.tscn").instantiate()
+		get_root().add_child(wr)
+		await process_frame
+		var cfg: Dictionary = Maps.ROAMERS[mid]
+		_check(wr._roamers.size() >= mini(int(cfg.n), 5), "%s: musuh berkeliaran muncul (%d)" % [mid, wr._roamers.size()])
+		var bad_spot := 0
+		var bad_kind := 0
+		for r in wr._roamers:
+			if not Maps.roam_free(mid, r.pos):
+				bad_spot += 1
+			var okk := false
+			for k: Dictionary in cfg.kinds:
+				if k.id == r.id and int(k.lv) <= 1 + 100:
+					okk = true
+			if not okk:
+				bad_kind += 1
+			if r.pos.distance_to(wr._pos) < 5.0:
+				bad_spot += 1
+		_check(bad_spot == 0 and bad_kind == 0, "%s: musuh berdiri di petak bebas, jauh dari pemain, jenis sesuai peta" % mid)
+		if mid != Maps.DEFAULT_MAP:
+			for r in wr._roamers:
+				_check(int(Maps.ROAMERS[mid].kinds[0].lv) == 1 or r.id != "serigala_alfa" and r.id != "orc_buas", "%s: level 1 tidak bertemu musuh terkuat" % mid)
+				break
+		_check(is_equal_approx(wr._bars.hp_fraction(), 0.5) and is_equal_approx(wr._bars.xp_fraction(), 0.5), "%s: bar nyawa 50%% dan poin 10/20" % mid)
+		if mid == Maps.PERBATASAN and not wr._roamers.is_empty():
+			var rr = null
+			var target := Vector2.ZERO
+			var found := false
+			for cand_r in wr._roamers:
+				for dist: float in [2.5, 2.0, 1.5]:
+					for dir: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+						var cand: Vector2 = cand_r.pos + dir * dist
+						if not found and Maps.roam_free(mid, cand) and Maps.roam_path_free(mid, cand_r.pos, cand):
+							rr = cand_r
+							target = cand
+							found = true
+			_check(found, "ada tempat bebas di dekat musuh untuk uji kejar")
+			if found:
+				var rr_home: Vector2 = rr.pos
+				var calm := 0
+				for i in 30:
+					rr.step(0.1, target, false)
+					if rr.chasing:
+						calm += 1
+				_check(calm == 0, "musuh tidak mengejar saat jeda awal / mode uji")
+				rr.pos = rr_home
+				var touched := false
+				for i in 80:
+					if rr.step(0.1, target, true):
+						touched = true
+						break
+				_check(touched and rr.chasing, "musuh yang pemainnya mendekat mengejar lalu menyentuh")
+				rr.pos = target + Vector2(30.0, 0.0)
+				rr.step(0.1, target, true)
+				_check(not rr.chasing, "pemain jauh: pengejaran tidak dimulai")
+		wr.queue_free()
+		await process_frame
+	Session.offline = false
+	Session.player.state = saved_pose
 
 	print("== token salah")
 	Api.token = "salah"

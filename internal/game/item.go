@@ -39,7 +39,7 @@ type ItemDef struct {
 // gambar client/assets/items/<id>.png. Draf harga untuk diseimbangkan.
 var items = []ItemDef{
 	{ID: PotionID, Name: "Ramuan Penyembuh", Kind: KindConsumable, BuyPrice: 15, SellPrice: 6},
-	{ID: "taring_goblin", Name: "Taring Orc", Kind: KindMaterial, SellPrice: 12},
+	{ID: "taring_goblin", Name: "Taring Goblin", Kind: KindMaterial, SellPrice: 12},
 	{ID: "koin_kuno", Name: "Koin Kuno", Kind: KindTreasure, SellPrice: 25},
 	{ID: "permata_merah", Name: "Permata Merah", Kind: KindTreasure, SellPrice: 60},
 	{ID: DiamondID, Name: "Berlian", Kind: KindTreasure, SellPrice: 100},

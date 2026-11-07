@@ -585,8 +585,8 @@ func TestBattleEnemyDependsOnMap(t *testing.T) {
 		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
 	}
 	_, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
-	if start.Battle == nil || start.Battle.EnemyID != "goblin" {
-		t.Errorf("level 1 di perbatasan harus bertemu goblin: %s", d)
+	if start.Battle == nil || start.Battle.EnemyID != "ular_hutan" {
+		t.Errorf("level 1 di perbatasan harus bertemu ular hutan: %s", d)
 	}
 }
 
