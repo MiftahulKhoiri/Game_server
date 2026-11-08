@@ -54,6 +54,16 @@ func set_hero(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/hero", {"hero": hero}, true)
 
 
+## Beli pahlawan sebagai pendamping.
+func buy_ally(hero: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/allies/buy", {"hero": hero}, true)
+
+
+## Tetapkan pendamping yang dipasang (urutan = urutan berbaris di belakang pemain).
+func set_party(party: Array) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/party", {"party": party}, true)
+
+
 ## Pertarungan yang sedang berjalan (404 bila tidak ada).
 func battle_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/battle", null, true)

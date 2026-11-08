@@ -4,18 +4,20 @@ extends RefCounted
 ## id = nama model di assets/models/<id>.glb.
 
 const DEFAULT := "ksatria"
+## Pendamping yang boleh dipasang sekaligus (sama dengan MaxParty di internal/game/ally.go).
+const MAX_PARTY := 3
 
 const LIST := [
-	{"id": "ksatria", "name": "Ksatria", "short": "Ksatria", "weapon": "Pedang dan perisai",
+	{"id": "ksatria", "price": 250, "name": "Ksatria", "short": "Ksatria", "weapon": "Pedang dan perisai",
 		"story": "Prajurit kerajaan yang seimbang: tangguh dan tenang.",
 		"skill1": "Tebasan Kuat", "skill2": "Perisai Cahaya"},
-	{"id": "pendekar_kapak", "name": "Pendekar Kapak", "short": "Kapak", "weapon": "Kapak besar",
+	{"id": "pendekar_kapak", "price": 350, "name": "Pendekar Kapak", "short": "Kapak", "weapon": "Kapak besar",
 		"story": "Petarung liar dari pegunungan, mengandalkan ayunan kapak.",
 		"skill1": "Belahan Kapak", "skill2": "Teriakan Perang"},
-	{"id": "pemanah", "name": "Pemanah", "short": "Pemanah", "weapon": "Busur silang",
+	{"id": "pemanah", "price": 300, "name": "Pemanah", "short": "Pemanah", "weapon": "Busur silang",
 		"story": "Pemburu perempuan yang gesit dan membidik dari jauh.",
 		"skill1": "Panah Tembus", "skill2": "Kabut Pelindung"},
-	{"id": "pendekar_tombak", "name": "Pendekar Tombak", "short": "Tombak", "weapon": "Tombak",
+	{"id": "pendekar_tombak", "price": 300, "name": "Pendekar Tombak", "short": "Tombak", "weapon": "Tombak",
 		"story": "Pendekar laki-laki berjangkauan panjang, tusukannya cepat.",
 		"skill1": "Tusukan Kilat", "skill2": "Putaran Tombak"},
 ]

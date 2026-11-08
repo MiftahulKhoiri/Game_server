@@ -764,3 +764,29 @@ func TestHeroSelection(t *testing.T) {
 		t.Errorf("ganti pahlawan saat bertarung harus 409, dapat %d", resp.StatusCode)
 	}
 }
+
+func TestAllyEndpoints(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Juragan")
+	resp, data := do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero": "pemanah"})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("emas kurang harus 422: %d %s", resp.StatusCode, data)
+	}
+	resp, data = do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero": "naga"})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("pahlawan asing harus 422: %d %s", resp.StatusCode, data)
+	}
+	resp, data = do(t, "POST", ts.URL+"/v1/party", cr.Token, map[string]any{"party": []string{"pemanah"}})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("pendamping belum dibeli harus 422: %d %s", resp.StatusCode, data)
+	}
+	resp, data = do(t, "POST", ts.URL+"/v1/party", cr.Token, map[string]any{"party": []string{}})
+	var p game.Player
+	_ = json.Unmarshal(data, &p)
+	if resp.StatusCode != http.StatusOK || len(p.State.Party) != 0 {
+		t.Fatalf("kosongkan party: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ := do(t, "POST", ts.URL+"/v1/party", "", map[string]any{"party": []string{}}); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
+}

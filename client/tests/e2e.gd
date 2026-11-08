@@ -9,6 +9,7 @@ const Version = preload("res://scripts/version.gd")
 var _failed := false
 var Api: Node  # autoload tidak dikenal saat skrip utama dikompilasi; ambil dari pohon
 var Session: Node
+var Sound: Node
 
 
 func _initialize() -> void:
@@ -60,6 +61,7 @@ func _run() -> void:
 	await process_frame  # tunggu pohon siap sebelum memakai node/HTTPRequest
 	Api = root.get_node("Api")
 	Session = root.get_node("Session")
+	Sound = root.get_node("Sound")
 	print("== peta")
 	var WB: GDScript = load("res://scripts/world_build.gd")
 	for y in Maps.height(Maps.DEFAULT_MAP):
@@ -1207,6 +1209,75 @@ func _run() -> void:
 		wf.queue_free()
 		await process_frame
 	Session.player.state = saved_pose
+
+	print("== jam, suara, atribut, pendamping")
+	var saved_misc: Dictionary = Session.player.state.duplicate(true)
+	var wc: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wc)
+	await process_frame
+	await process_frame
+	_check(wc._clock != null and wc._clock.position.x > 150.0 and wc._clock.position.x + wc._clock.size.x < 570.0 and wc._clock._text != "", "jam berada di tengah atas, di antara nama pemain dan tombol Menu (%s)" % wc._clock._text)
+	Atmo.hour_override = 12.0
+	wc._update_clock()
+	_check(wc._clock._kind == "sun" and wc._clock._text.begins_with("Siang"), "siang: ikon matahari")
+	Atmo.hour_override = 23.0
+	wc._update_clock()
+	_check(wc._clock._kind == "moon" and wc._clock._text.begins_with("Malam"), "malam: ikon bulan")
+	Atmo.hour_override = -1.0
+	_check(wc._menu._toggle_npc != null and wc._menu._toggle_music != null, "Pengaturan punya pilihan suara NPC dan musik")
+	var token_kept: String = Api.token
+	Api.token = ""  # save_config() menyimpan token; jangan sampai uji ini meninggalkan sesi di user://
+	wc._menu._on_vol_music(0.35)
+	wc._menu._on_toggle_npc(false)
+	_check(is_equal_approx(Session.vol_music, 0.35) and not Session.snd_npc, "pengaturan suara tersimpan di Session")
+	_check(AudioServer.get_bus_index("Musik") >= 0 and AudioServer.get_bus_index("NPC") >= 0 and AudioServer.is_bus_mute(AudioServer.get_bus_index("NPC")), "bus Musik dan NPC ada; NPC dimatikan")
+	wc._menu._on_toggle_npc(true)
+	wc._menu._on_vol_music(0.6)
+	Api.token = token_kept
+	_check(Sound._music != null and Sound._music.stream != null and Sound._voices.size() == 6, "musik latar dan 6 suara bicara NPC termuat")
+	Sound.npc_say("Selamat datang di desa kami, Ksatria.", 3)
+	await process_frame
+	Sound.npc_stop()
+	_check(true, "suara bicara NPC berjalan tanpa galat")
+	Session.player.state.party = ["pemanah", "pendekar_kapak"]
+	wc._companions.sync()
+	await process_frame
+	_check(wc._companions.count() == 2, "pendamping muncul di dunia sesuai barisan (%d)" % wc._companions.count())
+	var gap_c: float = (Vector2(wc._companions.position_of("pemanah").x, wc._companions.position_of("pemanah").z) - wc._pos).length()
+	_check(gap_c < 4.0, "pendamping berdiri dekat pemain (%.1f petak)" % gap_c)
+	Session.player.state.party = []
+	wc._companions.sync()
+	_check(wc._companions.count() == 0, "barisan kosong = tanpa pendamping")
+	wc.queue_free()
+	await process_frame
+	Session.player.state = saved_misc
+
+	var gold_now: int = int(Session.player.state.gold)
+	var buy1: Dictionary = await Api.buy_ally("pemanah")
+	if gold_now >= 300:
+		_check(buy1.ok and buy1.data.state.allies.has("pemanah") and buy1.data.state.party.has("pemanah"), "beli pendamping: masuk daftar dan langsung dipasang")
+		Session.merge_server_player(buy1.data)
+		var unparty: Dictionary = await Api.set_party([])
+		_check(unparty.ok and unparty.data.state.party.is_empty() and unparty.data.state.allies.has("pemanah"), "lepas semua pendamping; pahlawan tetap dimiliki")
+		Session.merge_server_player(unparty.data)
+	else:
+		_check(not buy1.ok and buy1.status == 422, "emas kurang (%d): beli pendamping ditolak 422" % gold_now)
+	var bad_party: Dictionary = await Api.set_party(["ksatria", "ksatria"])
+	_check(not bad_party.ok and bad_party.status == 422, "pendamping dobel / belum dibeli ditolak 422")
+	var atr: Node = load("res://scenes/atribut.tscn").instantiate()
+	get_root().add_child(atr)
+	var ta := Time.get_ticks_msec()
+	while atr._catalog.is_empty() and Time.get_ticks_msec() - ta < 4000:
+		await process_frame
+	await process_frame
+	_check(not atr._catalog.is_empty() and atr._tab_buttons.size() == 2 and atr._page_equip.visible and not atr._page_ally.visible, "layar Atribut terbuka di tab Perlengkapan")
+	_check(atr._equip_list.get_child_count() >= 3, "tab Perlengkapan menampilkan statistik dan slot (%d baris)" % atr._equip_list.get_child_count())
+	atr._show_page(1)
+	await process_frame
+	_check(atr._page_ally.visible and not atr._page_equip.visible and atr._hero_tabs.size() == 4 and atr._ally_btn.text != "", "tab Pendamping menampilkan 4 pahlawan dan tombol beli/pasang (%s)" % atr._ally_btn.text)
+	atr.queue_free()
+	await process_frame
+	Session.player.state = saved_misc
 
 	print("== token salah")
 	Api.token = "salah"

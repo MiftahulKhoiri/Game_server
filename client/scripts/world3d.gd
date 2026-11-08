@@ -9,6 +9,7 @@ const WorldBuild = preload("res://scripts/world_build.gd")
 const Models = preload("res://scripts/models.gd")
 const Joystick = preload("res://scripts/joystick.gd")
 const GameMenu = preload("res://scripts/game_menu.gd")
+const Companions = preload("res://scripts/companions.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
@@ -34,6 +35,7 @@ const NPC_SPEED := 0.5        # petak per detik
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const SHOP_SCENE := "res://scenes/shop.tscn"
 const INVENTORY_SCENE := "res://scenes/inventory.tscn"
+const ATRIBUT_SCENE := "res://scenes/atribut.tscn"
 const DIALOG_SCENE := "res://scenes/dialog.tscn"
 const LOGIN_SCENE := "res://scenes/login.tscn"
 
@@ -90,7 +92,8 @@ var _save_timer: Timer
 var _atmo_base: Dictionary = {}   # suasana dasar peta ini (sebelum waktu/cuaca)
 var _atmo_acc := 0.0
 var _rain: CPUParticles3D
-var _clock: Label
+var _clock: ClockBadge
+var _companions: Companions
 var _npc_models: Dictionary = {}  # id NPC -> model 3D
 var _npc_time := 0.0
 var _warga: Array[Warga] = []        # warga desa yang berjalan bebas
@@ -195,7 +198,11 @@ func _ready() -> void:
 	_fight = WorldFight.new()
 	add_child(_fight)
 	_fight.setup(self)
+	_companions = Companions.new()
+	add_child(_companions)
+	_companions.setup(self)
 	_refresh_hud()
+	_update_clock()
 	_apply_transform()
 	_set_status("Mode uji (tidak disimpan)" if Session.offline else "Tersimpan")
 	if not Session.offline:
@@ -575,12 +582,22 @@ func _update_world_life(delta: float) -> void:
 		Atmosphere.apply(_env.environment, _sun, _atmo_base, _map_id)
 		Atmosphere.set_rain(_rain, _map_id)
 		_update_lamps()
-		if _clock != null:
-			_clock.text = Atmosphere.label() if Atmosphere.outdoors(_map_id) else "Gua Batu"
+		_update_clock()
 	if _rain != null:
 		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
 	_update_npcs(delta)
 	_update_roamers(delta)
+
+
+## Jam di atas layar: ikon matahari (siang) atau bulan (malam); di Gua Batu ikon gua.
+func _update_clock() -> void:
+	if _clock == null:
+		return
+	if not Atmosphere.outdoors(_map_id):
+		_clock.set_info("cave", "Gua Batu")
+		return
+	var h := Atmosphere.hour()
+	_clock.set_info("sun" if h >= 5.5 and h < 18.0 else "moon", Atmosphere.label())
 
 
 ## Lampu menara, gapura, dan rumah menyala menjelang malam dan padam saat pagi.
@@ -1357,12 +1374,8 @@ func _build_ui() -> void:
 	_status.add_theme_constant_override("outline_size", 6)
 	layer.add_child(_status)
 
-	_clock = Label.new()
-	_clock.position = Vector2(20, 214)
-	_clock.add_theme_font_size_override("font_size", 24)
-	_clock.add_theme_color_override("font_color", Color("ffe9b0"))
-	_clock.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	_clock.add_theme_constant_override("outline_size", 6)
+	_clock = ClockBadge.new()
+	_clock.position = Vector2(300.0, 14.0)
 	layer.add_child(_clock)
 
 	_toast = Label.new()
@@ -1416,6 +1429,7 @@ func _build_ui() -> void:
 	_menu.profile_requested.connect(_open_profile)
 	_menu.inventory_requested.connect(_open_from_menu.bind(INVENTORY_SCENE))
 	_menu.shop_requested.connect(_open_from_menu.bind(SHOP_SCENE))
+	_menu.atribut_requested.connect(_open_from_menu.bind(ATRIBUT_SCENE))
 	_profile = ProfileScreen.new()
 	add_child(_profile)
 	_profile.closed.connect(_close_profile)

@@ -109,6 +109,7 @@ func _render_warga() -> void:
 	_action.visible = false
 	var n := int(Session.talk_counts.get(_npc, 1)) - 1
 	_text.text = WARGA_DIALOG.line(_warga_id, _stage, n)
+	Sound.npc_say(_text.text, hash(_warga_id))
 
 
 func _load_quest() -> void:
@@ -149,6 +150,7 @@ func _render() -> void:
 	_action.visible = false
 	if _quest.is_empty():
 		_text.text = str(GREETINGS.get(_npc, "Halo."))
+		Sound.npc_say(_text.text, hash(_npc))
 		return
 	var status := str(_quest.status)
 	var target := int(_quest.target_count)
@@ -170,6 +172,7 @@ func _render() -> void:
 		for q: Dictionary in _others:
 			lines.append("%s %d/%d" % [str(q.title), int(q.progress), int(q.target_count)])
 		_text.text += "\n\nMisi lain yang kamu kerjakan: " + ", ".join(lines) + "."
+	Sound.npc_say(_text.text, hash(_npc))
 
 
 func _set_action(label: String, kind: String) -> void:
@@ -206,6 +209,7 @@ func _on_action(kind: String) -> void:
 
 
 func _on_back() -> void:
+	Sound.npc_stop()
 	get_tree().change_scene_to_file(WORLD_SCENE)
 
 

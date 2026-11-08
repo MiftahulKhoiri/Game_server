@@ -186,6 +186,13 @@ hewan (ayam, kucing, rubah, babi, serigala) dan monster/kerangka/iblis, semua be
 Nama tampilan musuh ikut berubah; id musuh (`tikus_sawah`, dst.) tidak berubah supaya data lama aman.
 Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh terlemah di wilayah itu.
 
+## Pahlawan pendamping (v0.38.0)
+
+Pahlawan (ksatria, pemanah, pendekar tombak, pendekar kapak) bisa dibeli dengan emas di menu **Atribut** lalu
+dipasang berbaris di belakang pemain (maks 3). Di dunia mereka mengikuti pemain; saat bertarung mereka
+menyerang musuh otomatis tiap 2,4 d (kerusakan 70% serangan dasar level pemain + 2). Pemain tetap yang
+menentukan bertahan, skill, ramuan, dan kabur. Harga 250-350 emas (draf, untuk diseimbangkan).
+
 ## Bos
 
 Bos tidak muncul acak. Injak singgasana (petak `K`); klien meminta `POST /v1/battle/start`

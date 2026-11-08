@@ -8,6 +8,7 @@ signal resumed
 signal profile_requested
 signal inventory_requested
 signal shop_requested
+signal atribut_requested
 signal go_home
 signal logout
 signal quit_game
@@ -24,12 +25,18 @@ var is_open := false
 
 var _main: VBoxContainer
 var _settings: VBoxContainer
+var _settings_scroll: ScrollContainer
+var _toggle_npc: CheckButton
+var _toggle_music: CheckButton
+var _vol_npc_value: Label
+var _vol_music_value: Label
 var _quality_buttons: Array[Button] = []
 var _quality_hint: Label
 var _sens_value: Label
 var _btn_logout: Button
 var _btn_tas: Button
 var _btn_toko: Button
+var _btn_atribut: Button
 var _confirm_key := ""
 var _confirm_btn: Button
 var _confirm_text := ""
@@ -75,6 +82,8 @@ func _ready() -> void:
 	_main.add_child(_btn_tas)
 	_btn_toko = _button("Toko", func() -> void: shop_requested.emit())
 	_main.add_child(_btn_toko)
+	_btn_atribut = _button("Atribut", func() -> void: atribut_requested.emit())
+	_main.add_child(_btn_atribut)
 	_main.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
 	_main.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
 	_main.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
@@ -85,10 +94,15 @@ func _ready() -> void:
 	btn_quit.pressed.connect(func() -> void: _ask(btn_quit, "quit", "Yakin? Ketuk lagi", func() -> void: quit_game.emit()))
 	_main.add_child(btn_quit)
 
+	_settings_scroll = ScrollContainer.new()
+	_settings_scroll.custom_minimum_size = Vector2(0, 980)
+	_settings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_settings_scroll.visible = false
+	holder.add_child(_settings_scroll)
 	_settings = VBoxContainer.new()
 	_settings.add_theme_constant_override("separation", 14)
-	_settings.visible = false
-	holder.add_child(_settings)
+	_settings.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_settings_scroll.add_child(_settings)
 	_settings.add_child(_title("Pengaturan"))
 	_settings.add_child(_label("Kualitas grafis"))
 	var row := HBoxContainer.new()
@@ -119,6 +133,20 @@ func _ready() -> void:
 	_settings.add_child(slider)
 	_sens_value = _label("")
 	_settings.add_child(_sens_value)
+
+	_settings.add_child(_section("Suara"))
+	_toggle_npc = _toggle("Suara orang (NPC)", _on_toggle_npc)
+	_settings.add_child(_toggle_npc)
+	_toggle_music = _toggle("Musik", _on_toggle_music)
+	_settings.add_child(_toggle_music)
+	_settings.add_child(_label("Volume suara NPC"))
+	_settings.add_child(_volume_slider(Session.vol_npc, _on_vol_npc))
+	_vol_npc_value = _label("")
+	_settings.add_child(_vol_npc_value)
+	_settings.add_child(_label("Volume musik"))
+	_settings.add_child(_volume_slider(Session.vol_music, _on_vol_music))
+	_vol_music_value = _label("")
+	_settings.add_child(_vol_music_value)
 	_settings.add_child(_button("Kembali", func() -> void: _show_page(true)))
 
 	_confirm_timer = Timer.new()
@@ -134,6 +162,7 @@ func open() -> void:
 	_btn_logout.disabled = Session.offline
 	_btn_tas.disabled = Session.offline  # tas dan toko butuh server
 	_btn_toko.disabled = Session.offline
+	_btn_atribut.disabled = Session.offline
 	visible = true
 	is_open = true
 
@@ -146,7 +175,7 @@ func close() -> void:
 
 ## Tombol kembali Android / Esc: dari Pengaturan balik ke menu, dari menu utama menutup.
 func back() -> void:
-	if _settings.visible:
+	if _settings_scroll.visible:
 		_show_page(true)
 	else:
 		resumed.emit()
@@ -155,7 +184,7 @@ func back() -> void:
 func _show_page(main: bool) -> void:
 	_reset_confirm()
 	_main.visible = main
-	_settings.visible = not main
+	_settings_scroll.visible = not main
 
 
 func _on_quality(i: int) -> void:
@@ -171,7 +200,37 @@ func _on_sens(v: float) -> void:
 	_refresh_settings()
 
 
+func _on_toggle_npc(on: bool) -> void:
+	Session.snd_npc = on
+	_sound_changed()
+
+
+func _on_toggle_music(on: bool) -> void:
+	Session.snd_music = on
+	_sound_changed()
+
+
+func _on_vol_npc(v: float) -> void:
+	Session.vol_npc = v
+	_sound_changed()
+
+
+func _on_vol_music(v: float) -> void:
+	Session.vol_music = v
+	_sound_changed()
+
+
+func _sound_changed() -> void:
+	Session.save_config()
+	Sound.apply_settings()
+	_refresh_settings()
+
+
 func _refresh_settings() -> void:
+	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
+	_toggle_music.set_pressed_no_signal(Session.snd_music)
+	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)
+	_vol_music_value.text = "%d%%" % roundi(Session.vol_music * 100.0)
 	for i in _quality_buttons.size():
 		_quality_buttons[i].set_pressed_no_signal(i == Session.quality)
 	_quality_hint.text = QUALITY_HINTS[clampi(Session.quality, 0, 2)]
@@ -198,6 +257,34 @@ func _reset_confirm() -> void:
 	_confirm_key = ""
 	if _confirm_timer != null:
 		_confirm_timer.stop()
+
+
+func _section(text: String) -> Label:
+	var l := _label(text)
+	l.add_theme_font_size_override("font_size", 34)
+	l.add_theme_color_override("font_color", Color("e0c070"))
+	return l
+
+
+func _toggle(text: String, cb: Callable) -> CheckButton:
+	var t := CheckButton.new()
+	t.text = text
+	t.custom_minimum_size = Vector2(0, 76)
+	t.focus_mode = Control.FOCUS_NONE
+	t.add_theme_font_size_override("font_size", 30)
+	t.toggled.connect(cb)
+	return t
+
+
+func _volume_slider(value: float, cb: Callable) -> HSlider:
+	var sl := HSlider.new()
+	sl.min_value = 0.0
+	sl.max_value = 1.0
+	sl.step = 0.05
+	sl.custom_minimum_size = Vector2(0, 56)
+	sl.value = value
+	sl.value_changed.connect(cb)
+	return sl
 
 
 func _title(text: String) -> Label:

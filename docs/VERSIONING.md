@@ -246,6 +246,18 @@ membawa pemain; bawaannya halaman Releases terbaru.
   angkat perisai dan tetap di tempat, 2x cepat menghindar. Gerakan tubuh lewat `hero_actions.gd`
   (SkeletonModifier3D di atas klip idle/jalan). `DefaultMinClient` tetap 0.18.0.
 
+- v0.38.0 menata ulang HUD, menambah suara, ikon barang, dan pahlawan pendamping. (1) Jam pindah ke tengah
+  atas, di antara nama pemain dan tombol Menu, berikon matahari (siang) atau bulan (malam), ikon gua di Gua
+  Batu (`client/scripts/clock_badge.gd`). (2) Pengaturan: Suara orang (NPC) dan Musik (nyala/mati) serta volume
+  masing-masing, tersimpan di HP; musik latar desa dan suara bicara NPC (dipakai di layar dialog) dibuat sendiri
+  lewat `tools/gen_suara.py` (autoload `Sound`, `client/assets/audio/`). (3) Ikon 11 barang
+  (`client/assets/items/<id>.png`, dibuat `tools/gen_ikon_item.py`) dipakai di Toko, Ransel, dan Atribut.
+  (4)+(5) Menu baru **Atribut**: tab Perlengkapan (ganti senjata/pelindung, lihat serangan dan pertahanan) dan tab
+  Pendamping (beli pahlawan, pasang maks 3 di belakang pemain). Server: `state.allies` / `state.party`,
+  `POST /v1/allies/buy`, `POST /v1/party`, `price` di `GET /v1/heroes`, dan serangan otomatis pendamping di
+  pertarungan (`internal/game/ally.go`, kejadian `who: "ally"`). Klien lama tetap jalan; `DefaultMinClient`
+  tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

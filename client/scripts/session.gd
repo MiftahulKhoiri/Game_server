@@ -20,6 +20,11 @@ var saved_name := ""
 ## Pengaturan grafis/kontrol (disimpan di HP): 0 = Hemat, 1 = Normal, 2 = Tinggi.
 var quality := 1
 var cam_sens := 1.0
+## Pengaturan suara (disimpan di HP): suara bicara NPC dan musik, masing-masing nyala/mati + volume 0..1.
+var snd_npc := true
+var snd_music := true
+var vol_npc := 0.8
+var vol_music := 0.6
 
 
 func _ready() -> void:
@@ -35,6 +40,10 @@ func load_config() -> void:
 	saved_name = str(cfg.get_value("auth", "name", "")) if Api.token != "" else ""
 	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)
 	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
+	snd_npc = bool(cfg.get_value("sound", "npc", true))
+	snd_music = bool(cfg.get_value("sound", "music", true))
+	vol_npc = clampf(float(cfg.get_value("sound", "vol_npc", 0.8)), 0.0, 1.0)
+	vol_music = clampf(float(cfg.get_value("sound", "vol_music", 0.6)), 0.0, 1.0)
 
 
 func save_config() -> void:
@@ -46,6 +55,10 @@ func save_config() -> void:
 	cfg.set_value("auth", "name", saved_name if Api.token != "" else "")
 	cfg.set_value("game", "quality", quality)
 	cfg.set_value("game", "cam_sens", cam_sens)
+	cfg.set_value("sound", "npc", snd_npc)
+	cfg.set_value("sound", "music", snd_music)
+	cfg.set_value("sound", "vol_npc", vol_npc)
+	cfg.set_value("sound", "vol_music", vol_music)
 	cfg.save(CONFIG_PATH)
 
 
@@ -66,7 +79,7 @@ func set_player(p: Dictionary) -> void:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -82,6 +95,14 @@ func use_offline_player() -> void:
 		"version": 1,
 		"state": {"level": 1, "hp": 30, "max_hp": 30, "map": "desa_awal", "x": 5, "y": 5, "fx": 5.5, "fz": 5.5},
 	})
+
+
+func _strings(v: Variant) -> Array:
+	var out: Array = []
+	if v is Array:
+		for x: Variant in v:
+			out.append(str(x))
+	return out
 
 
 func _normalize_state(s: Dictionary) -> Dictionary:
@@ -105,4 +126,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"yaw": float(s.get("yaw", 0.0)),
 		"inventory": inventory,
 		"hero": str(s.get("hero", "")) if str(s.get("hero", "")) != "" else "ksatria",
+		# Pahlawan pendamping yang sudah dibeli dan yang dipasang (hanya server yang mengubah).
+		"allies": _strings(s.get("allies", [])),
+		"party": _strings(s.get("party", [])),
 	}

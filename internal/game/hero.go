@@ -16,14 +16,15 @@ type HeroDef struct {
 	Weapon string `json:"weapon"`
 	Skill1 string `json:"skill1"`
 	Skill2 string `json:"skill2"`
+	Price  int    `json:"price"` // harga membeli pahlawan ini sebagai pendamping
 }
 
 // Heroes adalah daftar pahlawan; urutannya dipakai di layar profil.
 var Heroes = []HeroDef{
-	{ID: "ksatria", Name: "Ksatria", Weapon: "Pedang dan perisai", Skill1: "Tebasan Kuat", Skill2: "Perisai Cahaya"},
-	{ID: "pendekar_kapak", Name: "Pendekar Kapak", Weapon: "Kapak besar", Skill1: "Belahan Kapak", Skill2: "Teriakan Perang"},
-	{ID: "pemanah", Name: "Pemanah", Weapon: "Busur silang", Skill1: "Panah Tembus", Skill2: "Kabut Pelindung"},
-	{ID: "pendekar_tombak", Name: "Pendekar Tombak", Weapon: "Tombak", Skill1: "Tusukan Kilat", Skill2: "Putaran Tombak"},
+	{ID: "ksatria", Name: "Ksatria", Weapon: "Pedang dan perisai", Skill1: "Tebasan Kuat", Skill2: "Perisai Cahaya", Price: 250},
+	{ID: "pendekar_kapak", Name: "Pendekar Kapak", Weapon: "Kapak besar", Skill1: "Belahan Kapak", Skill2: "Teriakan Perang", Price: 350},
+	{ID: "pemanah", Name: "Pemanah", Weapon: "Busur silang", Skill1: "Panah Tembus", Skill2: "Kabut Pelindung", Price: 300},
+	{ID: "pendekar_tombak", Name: "Pendekar Tombak", Weapon: "Tombak", Skill1: "Tusukan Kilat", Skill2: "Putaran Tombak", Price: 300},
 }
 
 // HeroByID mencari pahlawan; "" berarti pahlawan bawaan (akun lama).

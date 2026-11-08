@@ -44,6 +44,10 @@ type State struct {
 	Inventory []Item  `json:"inventory"`
 	// Hero adalah id pahlawan yang dipakai (lihat hero.go); kosong = pahlawan bawaan.
 	Hero string `json:"hero,omitempty"`
+	// Allies: pahlawan yang sudah dibeli sebagai pendamping; Party: yang dipasang mendampingi (maks MaxParty).
+	// Keduanya hanya diubah server (lihat ally.go).
+	Allies []string `json:"allies,omitempty"`
+	Party  []string `json:"party,omitempty"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
@@ -152,6 +156,9 @@ func (s State) Validate() error {
 	}
 	if _, ok := HeroByID(s.Hero); !ok {
 		return ErrUnknownHero
+	}
+	if err := s.validateAllies(); err != nil {
+		return err
 	}
 	if len(s.Equipment.Weapon) > 64 || len(s.Equipment.Armor) > 64 {
 		return errors.New("id perlengkapan terlalu panjang")

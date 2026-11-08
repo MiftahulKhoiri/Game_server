@@ -53,6 +53,7 @@ var _pending := ""         # satu aksi yang menunggu giliran kirim
 var _finished := false
 var _enemy_at := 0         # kapan musuh menyerang berikutnya (jam lokal, ms)
 var _enemy_iv := 2000
+var _ally_at := 0         # kapan pendamping menyerang berikutnya (jam lokal, ms; 0 = tanpa pendamping)
 var _ready_at: Dictionary = {}
 var _cd_max: Dictionary = {}
 var _last_sync := 0
@@ -322,6 +323,8 @@ func _apply(res: Dictionary) -> void:
 func _read_view(v: Dictionary, now: int) -> void:
 	_enemy_at = now + int(v.get("enemy_next_ms", 2000))
 	_enemy_iv = maxi(1, int(v.get("enemy_interval_ms", 2000)))
+	var party: Array = Session.player.get("state", {}).get("party", [])
+	_ally_at = now + int(v.get("ally_next_ms", 2400)) if not party.is_empty() else 0
 	var left: Dictionary = v.get("cooldowns", {})
 	for a: String in left:
 		_ready_at[a] = now + int(left[a])
@@ -339,7 +342,8 @@ func _process(delta: float) -> void:
 	if roamer != null:
 		roamer.warn = until_hit < WARN_MS and until_hit > -LATE_MS * 3
 	# Saat musuh jatuh tempo menyerang (atau lama tak ada kabar): tanya server.
-	if not _busy and now >= _next_ask and (until_hit < -LATE_MS or now - _last_sync > POLL_MS):
+	var ally_due := _ally_at > 0 and now - _ally_at > LATE_MS
+	if not _busy and now >= _next_ask and (until_hit < -LATE_MS or ally_due or now - _last_sync > POLL_MS):
 		_ask("")
 	# Menjauh dari musuh = mencoba kabur (server menentukan berhasil atau tidak).
 	if roamer != null and not _busy and roamer.pos.distance_to(world._pos) > FLEE_DIST and _cooldown_left("flee") <= READY_SLACK_MS:
@@ -381,6 +385,10 @@ func _play_event(e: Dictionary) -> void:
 		enemy_at = Vector3(roamer.pos.x, 0.0, roamer.pos.y)
 		enemy_top = roamer.top
 	var me_at := Vector3(world._pos.x, 0.0, world._pos.y)
+	if str(e.get("who", "")) == "ally":
+		_play_ally_event(e, enemy_at, enemy_top)
+		_update_bar()
+		return
 	if str(e.get("who", "")) == "player":
 		match kind:
 			"attack", "crit", "skill1":
@@ -421,6 +429,19 @@ func _play_event(e: Dictionary) -> void:
 		else:
 			_float_text(me_at + Vector3(0, 2.0, 0), "Tertahan", Color("bfe8ff"), 48)
 	_update_bar()
+
+
+## Pendamping memukul musuh: animasi serang, percikan, dan angka kerusakan (lebih kecil dari pukulan pemain).
+func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> void:
+	var hero := str(e.get("hero", ""))
+	var comp: Variant = world._companions
+	if comp != null:
+		comp.attack(hero)
+	if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
+		roamer.model.call("play_hurt")
+	var col := Color("9fd8ff")
+	HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.5, 0), col, 7, 2.6)
+	_float_text(enemy_at + Vector3(0.35, enemy_top + 0.4, 0), "-%d" % int(e.get("dmg", 0)), col, 44)
 
 
 ## Angka/tulisan melayang yang naik lalu hilang (selalu menghadap kamera).

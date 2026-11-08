@@ -77,6 +77,7 @@ type Battle struct {
 	Round      int    `json:"round"` // jumlah serangan musuh + 1
 
 	NextEnemyMs int64            `json:"next_enemy_ms,omitempty"` // 0 = belum dijadwalkan (data lama)
+	NextAllyMs  int64            `json:"next_ally_ms,omitempty"`  // serangan pendamping berikutnya (0 = belum)
 	Ready       map[string]int64 `json:"ready,omitempty"`         // aksi -> kapan siap lagi
 	GuardPress  int64            `json:"guard_press,omitempty"`
 	GuardUntil  int64            `json:"guard_until,omitempty"`
@@ -93,6 +94,8 @@ type BattleView struct {
 	Round      int    `json:"round"`
 
 	EnemyNextMs     int64            `json:"enemy_next_ms"`     // sisa waktu sampai serangan musuh berikutnya
+	AllyNextMs      int64            `json:"ally_next_ms"`      // sisa waktu sampai pendamping menyerang
+	AllyIntervalMs  int64            `json:"ally_interval_ms"`  // jeda antar serangan pendamping
 	EnemyIntervalMs int64            `json:"enemy_interval_ms"` // jeda antar serangan musuh
 	Cooldowns       map[string]int64 `json:"cooldowns"`         // sisa cooldown per aksi (ms)
 	CooldownMax     map[string]int64 `json:"cooldown_max"`      // cooldown penuh per aksi (ms)
@@ -102,10 +105,11 @@ type BattleView struct {
 
 // Event adalah satu kejadian untuk dianimasikan klien.
 type Event struct {
-	Who  string `json:"who"`            // "player" atau "enemy"
+	Who  string `json:"who"`            // "player", "enemy", atau "ally" (pendamping)
 	Kind string `json:"kind"`           // attack, crit, skill1, skill2, guard, potion, hit, perfect, shield
 	Dmg  int    `json:"dmg,omitempty"`  // kerusakan yang diterima target
 	Heal int    `json:"heal,omitempty"` // HP yang dipulihkan
+	Hero string `json:"hero,omitempty"` // id pahlawan pendamping (Who == "ally")
 }
 
 // Rewards adalah hadiah setelah menang.
@@ -152,7 +156,7 @@ func StartBossBattle(p *Player, now int64) (Battle, error) {
 func newBattle(e Enemy, now int64) Battle {
 	return Battle{
 		EnemyID: e.ID, EnemyName: e.Name, EnemyHP: e.HP, EnemyMaxHP: e.HP, Round: 1,
-		NextEnemyMs: now + FirstHitDelayMs,
+		NextEnemyMs: now + FirstHitDelayMs, NextAllyMs: now + AllyFirstMs,
 	}
 }
 
@@ -169,6 +173,7 @@ func (b *Battle) View(now int64) BattleView {
 	v := BattleView{
 		EnemyID: b.EnemyID, EnemyName: b.EnemyName, EnemyHP: b.EnemyHP, EnemyMaxHP: b.EnemyMaxHP, Round: b.Round,
 		EnemyNextMs: left(b.NextEnemyMs), EnemyIntervalMs: EnemyIntervalMs,
+		AllyNextMs: left(b.NextAllyMs), AllyIntervalMs: AllyIntervalMs,
 		Cooldowns: map[string]int64{}, CooldownMax: map[string]int64{},
 		GuardMs: left(b.GuardUntil), ShieldMs: left(b.ShieldUntil),
 	}
@@ -307,7 +312,27 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 	if lag := upto - b.NextEnemyMs; lag > maxCatchUpHits*iv {
 		b.NextEnemyMs += lag - maxCatchUpHits*iv
 	}
-	for b.NextEnemyMs <= upto {
+	allyOn := len(st.Party) > 0
+	if allyOn {
+		if b.NextAllyMs == 0 {
+			b.NextAllyMs = upto + AllyFirstMs
+		}
+		if lag := upto - b.NextAllyMs; lag > AllyIntervalMs {
+			b.NextAllyMs += lag - AllyIntervalMs
+		}
+	}
+	for {
+		enemyDue := b.NextEnemyMs <= upto
+		allyDue := allyOn && b.NextAllyMs <= upto
+		if !enemyDue && !allyDue {
+			break
+		}
+		if allyDue && (!enemyDue || b.NextAllyMs < b.NextEnemyMs) {
+			if b.allyStrike(p, e, rng, res) {
+				return true // musuh tumbang oleh pendamping (kemenangan sudah dicatat)
+			}
+			continue
+		}
 		t := b.NextEnemyMs
 		dmg, _ := rollDamage(e.Attack, st.Defense(), rng, false)
 		kind := "hit"
@@ -333,6 +358,28 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		}
 		if st.HP <= 0 {
 			b.lose(p, res)
+			return true
+		}
+	}
+	return false
+}
+
+// allyStrike: semua pendamping yang dipasang menyerang sekali. true bila musuh tumbang.
+func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
+	st := &p.State
+	b.NextAllyMs += AllyIntervalMs
+	for _, id := range st.Party {
+		dmg, _ := rollDamage(st.allyPower(), e.Defense, rng, false)
+		b.EnemyHP -= dmg
+		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
+		name := id
+		if h, ok := HeroByID(id); ok {
+			name = h.Name
+		}
+		res.Log = append(res.Log, fmt.Sprintf("%s membantu: %s -%d HP.", name, b.EnemyName, dmg))
+		if b.EnemyHP <= 0 {
+			b.EnemyHP = 0
+			b.win(p, e, rng, res)
 			return true
 		}
 	}

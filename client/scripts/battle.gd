@@ -57,6 +57,8 @@ var _result := ""
 
 # Waktu (Time.get_ticks_msec) tempat kejadian dijadwalkan; diturunkan dari selisih relatif server.
 var _enemy_at := 0
+var _ally_at := 0           # serangan pendamping berikutnya (jam lokal, ms; 0 = tanpa pendamping)
+var _ally_rigs: Dictionary = {}  # id pahlawan -> model pendamping di arena
 var _enemy_iv := 2000
 var _ready_at: Dictionary = {}
 var _cd_max: Dictionary = {}
@@ -149,6 +151,7 @@ func _apply(res: Dictionary) -> void:
 ## Ubah tampilan relatif server menjadi jadwal di jam lokal.
 func _read_view(v: Dictionary, now: int) -> void:
 	_enemy_at = now + int(v.get("enemy_next_ms", 2000))
+	_ally_at = now + int(v.get("ally_next_ms", 2400)) if not _ally_rigs.is_empty() else 0
 	_enemy_iv = maxi(1, int(v.get("enemy_interval_ms", 2000)))
 	var left: Dictionary = v.get("cooldowns", {})
 	for a: String in left:
@@ -169,7 +172,8 @@ func _process(_delta: float) -> void:
 	var until_hit := _enemy_at - now
 	_telegraph.value = clampf(1.0 - float(until_hit) / float(_enemy_iv), 0.0, 1.0)
 	# Saat musuh jatuh tempo menyerang (atau lama tak ada kabar): tanya server.
-	if not _busy and now >= _next_ask and (until_hit < -SYNC_LATE_MS or now - _last_sync > POLL_MS):
+	var ally_due := _ally_at > 0 and now - _ally_at > SYNC_LATE_MS
+	if not _busy and now >= _next_ask and (until_hit < -SYNC_LATE_MS or ally_due or now - _last_sync > POLL_MS):
 		_ask("")
 	_update_buttons(now)
 
@@ -196,6 +200,16 @@ func _play_event(e: Dictionary) -> void:
 	var kind := str(e.get("kind", ""))
 	var dmg := int(e.get("dmg", 0))
 	var heal := int(e.get("heal", 0))
+	if str(e.get("who", "")) == "ally":
+		var rig: Node3D = _ally_rigs.get(str(e.get("hero", "")))
+		if rig != null:
+			_play(rig, "play_attack")
+			_lunge(rig, float(rig.get_meta("bx", rig.position.x)), 0.5)
+		_after(LUNGE_MS, func() -> void:
+			_play(_enemy_rig, "play_hurt")
+			_burst(_enemy_pos(), Color("9fd8ff"), 8, 3.0))
+		_pop("-%d" % dmg, Color("9fd8ff"), false, 30)
+		return
 	if str(e.get("who", "")) == "player":
 		match kind:
 			"attack", "crit", "skill1":
@@ -607,6 +621,15 @@ func _build_arena() -> SubViewportContainer:
 	_hero_rig.position = Vector3(HERO_X, 0, 0)
 	_hero_rig.rotation.y = PI / 2.0  # menghadap +x
 	vp.add_child(_hero_rig)
+	var slots := [Vector3(-0.55, 0, 0.85), Vector3(-0.55, 0, -0.85), Vector3(0.0, 0, -1.6)]
+	var party: Array = Session.player.get("state", {}).get("party", [])
+	for i in mini(party.size(), slots.size()):
+		var ally: Node3D = Models.create(str(party[i]))
+		ally.position = Vector3(HERO_X, 0, 0) + (slots[i] as Vector3)
+		ally.rotation.y = PI / 2.0
+		ally.set_meta("bx", ally.position.x)
+		vp.add_child(ally)
+		_ally_rigs[str(party[i])] = ally
 	_enemy_rig = Models.create(_enemy_id)
 	_enemy_rig.position = Vector3(ENEMY_X, 0, 0)
 	_enemy_rig.rotation.y = -PI / 2.0  # menghadap -x

@@ -201,12 +201,30 @@ Pemain memilih pahlawan (penampilan model 3D + nama skill; statistik sama untuk 
 Klien **tidak** bisa mengubahnya lewat `PUT /v1/players/me/save` (hanya posisi yang diterima).
 
 ### `GET /v1/heroes`  (login)
-`200 {"heroes": [{"id", "name", "weapon", "skill1", "skill2"}], "default": "ksatria"}`.
+`200 {"heroes": [{"id", "name", "weapon", "skill1", "skill2", "price"}], "default": "ksatria"}`.
 Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
 
 ### `POST /v1/players/me/hero`  (login)
 Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
 dikenal, `409` bila sedang bertarung. Nama skill di `log` pertarungan mengikuti pahlawan.
+
+## Pahlawan pendamping (v0.38.0)
+
+Pemain boleh membeli pahlawan (harga = `price` di `GET /v1/heroes`: ksatria 250, pemanah 300, pendekar_tombak 300,
+pendekar_kapak 350 emas) lalu memasangnya berbaris di belakang. `state.allies` = yang sudah dibeli,
+`state.party` = yang dipasang (maks 3, urutan = urutan berbaris). Keduanya hanya diubah server.
+Selama bertarung tiap pendamping yang dipasang menyerang otomatis tiap 2,4 d (kerusakan = serangan dasar
+level pemain x 70% + 2, tanpa kritis); kejadiannya `{"who":"ally","kind":"attack","dmg":N,"hero":"pemanah"}`
+dan `battle.ally_next_ms` / `ally_interval_ms` memberi jadwal serangan berikutnya.
+
+### `POST /v1/allies/buy`  (login)
+Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (emas berkurang, pahlawan masuk `allies`, dan langsung
+masuk `party` bila masih ada tempat). `422` bila id tidak dikenal, sudah dibeli, atau emas kurang;
+`409` bila sedang bertarung.
+
+### `POST /v1/party`  (login)
+Body: `{"party": ["pemanah", "pendekar_kapak"]}` (boleh kosong). `200` berisi pemain terbaru. `422` bila lebih
+dari 3, ada yang belum dibeli, atau ada yang dobel; `409` bila sedang bertarung.
 
 ## Misi (v0.6.0)
 
