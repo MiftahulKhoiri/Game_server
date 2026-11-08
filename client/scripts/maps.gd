@@ -22,20 +22,23 @@ const GUA := "gua_batu"
 const TOKO_RAMUAN := "toko_ramuan"
 const RUMAH_MAKAN := "rumah_makan"
 const RUMAH_SEHAT := "rumah_sehat"
-const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat"]
+const TOKO_ALAT := "toko_peralatan"
+const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan"]
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat"}
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
 const EXITS := {
 	"desa_awal": [
 		{"pos": Vector2i(22, 49), "to": "perbatasan", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(4, 2), "to": "toko_peralatan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(16, 2), "to": "toko_ramuan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(22, 2), "to": "rumah_makan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(28, 2), "to": "rumah_sehat", "at": Vector2i(4, 6)},
 	],
+	"toko_peralatan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(4, 3)}],
 	"toko_ramuan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(16, 3)}],
 	"rumah_makan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(22, 3)}],
 	"rumah_sehat": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(28, 3)}],
@@ -150,9 +153,10 @@ const WARGA := [
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 13.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(39, 11)},
 	# Penjaga toko: berdiri di belakang meja kasir di dalam ruangannya, siang dan malam (`diam`). Mengajak
-	# bicara penjaga = berbelanja (`toko` = "toko" ramuan, "makan" rumah makan; "rawat" = rumah sehat, pulih gratis).
+	# bicara penjaga = berbelanja (`toko` = "toko" ramuan, "makan" rumah makan; "peralatan" = toko peralatan, "rawat" = rumah sehat, pulih gratis).
 	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "toko_ramuan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
 	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
+	{"id": "penjaga_alat", "model": "warga_bapak2", "name": "Pak Hasan", "peran": "Penjaga Toko Peralatan", "map": "toko_peralatan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "peralatan"},
 	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
 
@@ -468,6 +472,16 @@ const MAKAN_ROWS: Array[String] = [
 	"H=======H",
 	"HHHHDHHHH",
 ]
+const ALAT_ROWS: Array[String] = [
+	"HHHHHHHHH",
+	"HRRRRRRRH",
+	"HxxxxxxxH",
+	"HSSSSSSSH",
+	"H=======H",
+	"HF=====FH",
+	"H=======H",
+	"HHHHDHHHH",
+]
 const SEHAT_ROWS: Array[String] = [
 	"HHHHHHHHH",
 	"HRRxxxRRH",
@@ -508,6 +522,8 @@ static func rows(map_id: String) -> Array[String]:
 			return MAKAN_ROWS
 		RUMAH_SEHAT:
 			return SEHAT_ROWS
+		TOKO_ALAT:
+			return ALAT_ROWS
 	return []
 
 

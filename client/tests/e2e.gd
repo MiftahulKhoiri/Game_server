@@ -1297,7 +1297,15 @@ func _run() -> void:
 			has_toko_btn_v39 = true
 	_check(not has_toko_btn_v39 and not wtk._menu.has_signal("shop_requested"), "tombol Toko tidak ada di Menu (belanja lewat penjaga di toko)")
 	# Pintu bangunan di desa menuju ruangan; ruangannya tersambung penuh dan pintu keluarnya kembali ke desa
-	for pair: Array in [["toko_ramuan", Vector2i(16, 2), "toko"], ["rumah_makan", Vector2i(22, 2), "makan"], ["rumah_sehat", Vector2i(28, 2), "rawat"]]:
+	var ikon_n_v41 := 0
+	var stack_v41: Array[Node] = [wtk._terrain]
+	while not stack_v41.is_empty():
+		var nd_v41: Node = stack_v41.pop_back()
+		if nd_v41.has_meta("tiang"):  # ikon atap (plang.gd)
+			ikon_n_v41 += 1
+		stack_v41.append_array(nd_v41.get_children())
+	_check(ikon_n_v41 == 4, "empat bangunan toko punya ikon atap dan plang (%d)" % ikon_n_v41)
+	for pair: Array in [["toko_ramuan", Vector2i(16, 2), "toko"], ["rumah_makan", Vector2i(22, 2), "makan"], ["rumah_sehat", Vector2i(28, 2), "rawat"], ["toko_peralatan", Vector2i(4, 2), "peralatan"]]:
 		var rid: String = pair[0]
 		var door_in: Dictionary = Maps.exit_at(Maps.DEFAULT_MAP, pair[1].x, pair[1].y)
 		var door_out: Dictionary = Maps.exit_at(rid, 4, 7)
@@ -1353,6 +1361,11 @@ func _run() -> void:
 	for it: Dictionary in cat_potion_v39.data.get("items", []):
 		potion_ids_v39.append(str(it.id))
 	_check(cat_potion_v39.ok and potion_ids_v39.has("ramuan") and potion_ids_v39.has("ramuan_kekuatan") and not potion_ids_v39.has("roti"), "toko ramuan menjual ramuan dan ramuan kekuatan, bukan makanan")
+	var cat_gear_v41: Dictionary = await Api.shop_get("peralatan")
+	var gear_ids_v41: Array = []
+	for it: Dictionary in cat_gear_v41.data.get("items", []):
+		gear_ids_v41.append(str(it.id))
+	_check(cat_gear_v41.ok and gear_ids_v41.has("pedang_besi") and gear_ids_v41.has("zirah_besi") and not gear_ids_v41.has("ramuan") and not potion_ids_v39.has("pedang_besi"), "toko peralatan menjual pedang dan baju, toko ramuan tidak %s" % str(gear_ids_v41))
 	var wrong_v39: Dictionary = await Api.shop_buy("ramuan", 1, "makan")
 	_check(not wrong_v39.ok and wrong_v39.status == 422, "membeli ramuan di rumah makan ditolak 422")
 	var no_shop_v39: Dictionary = await Api.shop_get("pasar")

@@ -627,7 +627,7 @@ func (s *Server) restAction() http.Handler {
 
 // --- toko ---
 
-// getShop: katalog satu toko (?shop=toko|makan; kosong = toko ramuan) berisi barang yang dijual
+// getShop: katalog satu toko (?shop=toko|makan|peralatan; kosong = toko ramuan) berisi barang yang dijual
 // dan yang bisa dijual pemain ke sana.
 func (s *Server) getShop(w http.ResponseWriter, r *http.Request) {
 	shop := r.URL.Query().Get("shop")

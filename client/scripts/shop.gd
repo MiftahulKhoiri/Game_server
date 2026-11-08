@@ -14,7 +14,7 @@ const KIND_COLORS := {
 	"food": Color("c98a3c"),
 	"equipment": Color("5a7fb0"),
 }
-const TITLES := {"toko": "Toko Ramuan", "makan": "Rumah Makan"}
+const TITLES := {"toko": "Toko Ramuan", "makan": "Rumah Makan", "peralatan": "Toko Peralatan"}
 
 var _catalog: Array = []
 var _gold_label: Label

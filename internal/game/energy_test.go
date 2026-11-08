@@ -142,3 +142,38 @@ func TestRestInsideVillageBuildings(t *testing.T) {
 		t.Fatalf("istirahat di luar desa: %v", err)
 	}
 }
+
+func TestGearShop(t *testing.T) {
+	st := NewState()
+	st.Gold = 500
+	if err := BuyAt(&st, ShopPotion, "pedang_besi", 1); !errors.Is(err, ErrWrongShop) {
+		t.Fatalf("pedang di toko ramuan: %v", err)
+	}
+	if err := BuyAt(&st, ShopGear, PotionID, 1); !errors.Is(err, ErrWrongShop) {
+		t.Fatalf("ramuan di toko peralatan: %v", err)
+	}
+	if err := BuyAt(&st, ShopGear, "pedang_besi", 1); err != nil || st.Gold != 380 {
+		t.Fatalf("beli pedang: %v gold=%d", err, st.Gold)
+	}
+	if err := SellAt(&st, ShopPotion, "pedang_besi", 1); !errors.Is(err, ErrNotBuyable) {
+		t.Fatalf("toko ramuan tidak beli perlengkapan: %v", err)
+	}
+	if err := SellAt(&st, ShopGear, "pedang_besi", 1); err != nil {
+		t.Fatalf("jual pedang: %v", err)
+	}
+	list, err := ShopItems(ShopGear)
+	if err != nil || len(list) == 0 {
+		t.Fatalf("katalog peralatan: %v %d", err, len(list))
+	}
+	for _, it := range list {
+		if it.Kind != KindEquipment {
+			t.Errorf("toko peralatan memuat %s (%s)", it.ID, it.Kind)
+		}
+	}
+	pot, _ := ShopItems(ShopPotion)
+	for _, it := range pot {
+		if it.Kind == KindEquipment {
+			t.Errorf("toko ramuan memuat perlengkapan %s", it.ID)
+		}
+	}
+}

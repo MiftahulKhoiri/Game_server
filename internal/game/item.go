@@ -16,8 +16,9 @@ const (
 
 // Toko di desa. Pembelian hanya sah di toko yang menjualnya (pemain harus berada di toko itu).
 const (
-	ShopPotion = "toko"  // toko ramuan / kesehatan (juga perlengkapan)
-	ShopFood   = "makan" // rumah makan
+	ShopPotion = "toko"      // toko ramuan (ramuan, harta)
+	ShopFood   = "makan"     // rumah makan
+	ShopGear   = "peralatan" // toko peralatan (pedang, baju zirah)
 )
 
 // Slot perlengkapan.
@@ -56,11 +57,11 @@ var items = []ItemDef{
 	{ID: "roti", Name: "Roti Hangat", Kind: KindFood, BuyPrice: 8, SellPrice: 3, Shop: ShopFood, Heal: 10},
 	{ID: "sup_ayam", Name: "Sup Ayam", Kind: KindFood, BuyPrice: 20, SellPrice: 8, Shop: ShopFood, Heal: 25},
 	{ID: "daging_bakar", Name: "Daging Bakar", Kind: KindFood, BuyPrice: 45, SellPrice: 18, Shop: ShopFood, Heal: 50},
-	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Shop: ShopPotion, Slot: SlotWeapon, Attack: 3},
-	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Shop: ShopPotion, Slot: SlotWeapon, Attack: 6},
+	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Shop: ShopGear, Slot: SlotWeapon, Attack: 3},
+	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Shop: ShopGear, Slot: SlotWeapon, Attack: 6},
 	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual
-	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Shop: ShopPotion, Slot: SlotArmor, Defense: 2},
-	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Shop: ShopPotion, Slot: SlotArmor, Defense: 4},
+	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Shop: ShopGear, Slot: SlotArmor, Defense: 2},
+	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Shop: ShopGear, Slot: SlotArmor, Defense: 4},
 }
 
 // Kesalahan transaksi toko.
@@ -90,10 +91,15 @@ func ItemByID(id string) (ItemDef, bool) {
 	return ItemDef{}, false
 }
 
-// ShopItems: barang yang bisa dibeli atau dijual di toko `shop`. Toko ramuan membeli semua
-// barang selain makanan; rumah makan hanya membeli makanan.
+// ValidShop: apakah `shop` salah satu toko di desa.
+func ValidShop(shop string) bool {
+	return shop == ShopPotion || shop == ShopFood || shop == ShopGear
+}
+
+// ShopItems: barang yang bisa dibeli atau dijual di toko `shop`. Rumah makan hanya membeli makanan,
+// toko peralatan hanya perlengkapan, toko ramuan sisanya (ramuan dan harta).
 func ShopItems(shop string) ([]ItemDef, error) {
-	if shop != ShopPotion && shop != ShopFood {
+	if !ValidShop(shop) {
 		return nil, ErrUnknownShop
 	}
 	var out []ItemDef
@@ -107,10 +113,13 @@ func ShopItems(shop string) ([]ItemDef, error) {
 
 // shopBuys: apakah toko `shop` mau membeli barang ini dari pemain.
 func shopBuys(shop string, it ItemDef) bool {
-	if shop == ShopFood {
+	switch shop {
+	case ShopFood:
 		return it.Kind == KindFood
+	case ShopGear:
+		return it.Kind == KindEquipment
 	}
-	return it.Kind != KindFood
+	return it.Kind != KindFood && it.Kind != KindEquipment
 }
 
 // Buy membeli qty barang di toko mana pun yang menjualnya (dipakai tes dan aturan inti).
@@ -118,7 +127,7 @@ func Buy(st *State, id string, qty int) error { return BuyAt(st, "", id, qty) }
 
 // BuyAt membeli qty barang dari toko `shop`; "" = tanpa memeriksa toko.
 func BuyAt(st *State, shop, id string, qty int) error {
-	if shop != "" && shop != ShopPotion && shop != ShopFood {
+	if shop != "" && !ValidShop(shop) {
 		return ErrUnknownShop
 	}
 	def, ok := ItemByID(id)
@@ -150,7 +159,7 @@ func Sell(st *State, id string, qty int) error { return SellAt(st, "", id, qty) 
 
 // SellAt menjual qty barang ke toko `shop`; "" = tanpa memeriksa toko.
 func SellAt(st *State, shop, id string, qty int) error {
-	if shop != "" && shop != ShopPotion && shop != ShopFood {
+	if shop != "" && !ValidShop(shop) {
 		return ErrUnknownShop
 	}
 	def, ok := ItemByID(id)

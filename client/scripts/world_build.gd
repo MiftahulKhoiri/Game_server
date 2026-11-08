@@ -12,6 +12,7 @@ const TREE_H := 2.0
 ## Model alam bergaya low-poly dari KayKit (CC0, Kay Lousberg) di assets/models/alam/.
 ## Bila berkasnya tidak ada, dipakai bentuk dasar seperti semula.
 const Interior = preload("res://scripts/interior.gd")
+const Plang = preload("res://scripts/plang.gd")
 const ALAM_DIR := "res://assets/models/alam/"
 
 ## Model bangunan KayKit (CC0, atap merah-cokelat) untuk rumah-rumah di desa. Paket ini tidak punya
@@ -23,6 +24,7 @@ const BANGUNAN_MODEL := {
 	"rumah_a": "building_home_A_red",
 	"rumah_b": "building_home_B_red",
 	"toko": "building_market_red",
+	"peralatan": "building_home_B_red",
 	"dapur": "building_tavern_red",
 	"rumah_sakit": "building_church_red",
 	"kepala_suku": "building_castle_red",
@@ -34,6 +36,7 @@ const JERAMI_KANDANG := {"desa_awal": [Vector2(7.5, 12.5), Vector2(37.5, 12.5)]}
 ## yang bergantian rumah_a / rumah_b.
 const BANGUNAN_KHUSUS := {
 	"desa_awal": {
+		Vector2i(3, 1): "peralatan",
 		Vector2i(15, 1): "toko",
 		Vector2i(21, 1): "dapur",
 		Vector2i(27, 1): "rumah_sakit",
@@ -888,7 +891,7 @@ static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx:
 	inst.position = Vector3(cx - (box.position.x + box.size.x / 2.0) * s, -box.position.y * s, cz - (box.position.z + box.size.z / 2.0) * s)
 	root.add_child(inst)
 	# Ukuran bangunan terpasang (untuk menempatkan lampu dan jendela di mukanya).
-	return {"cx": cx, "front_z": cz + box.size.z * s / 2.0, "half_w": box.size.x * s / 2.0, "height": box.size.y * s}
+	return {"cx": cx, "cz": cz, "front_z": cz + box.size.z * s / 2.0, "half_w": box.size.x * s / 2.0, "height": box.size.y * s}
 
 
 ## Rumah: tiap kelompok petak H/D menjadi satu kotak dinding + atap pelana + pintu.
@@ -931,6 +934,7 @@ static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String
 					door = t
 			if door.x >= 0:
 				_lampu_rumah(root, info, door, _jenis_bangunan(map_id, x0, z0))
+				Plang.pasang(root, info, door, _jenis_bangunan(map_id, x0, z0))
 			continue
 		var walls := MeshInstance3D.new()
 		walls.mesh = _box(Vector3(w - 0.06, WALL_H, d - 0.06))

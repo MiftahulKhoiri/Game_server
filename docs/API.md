@@ -330,3 +330,10 @@ naik level dan istirahat penuh, Ramuan Kekuatan +60.
 Peta baru yang dikenal server untuk posisi tersimpan: `toko_ramuan`, `rumah_makan`, `rumah_sehat` (masing-masing 9x8 petak,
 ruangan di dalam bangunan Desa Awal). `POST /v1/rest` sah di `desa_awal` dan ketiga ruangan itu. Isi ruangan (rak, meja,
 penjaga) hanya hiasan klien; aturan belanja tetap di `/v1/shop`.
+
+## Toko Peralatan (v0.41.0)
+
+Toko ketiga: `shop=peralatan`. `GET /v1/shop?shop=peralatan` memuat pedang besi, pedang baja, baju kulit, dan zirah besi
+(beli) serta semua perlengkapan (jual). Membeli perlengkapan di toko lain ditolak 422 (`toko ini tidak menjual barang itu`);
+toko ramuan (`toko`) kini hanya ramuan dan harta, rumah makan (`makan`) hanya makanan. Peta baru `toko_peralatan` (9x8) dikenal
+server untuk posisi tersimpan, dan `POST /v1/rest` sah di sana.

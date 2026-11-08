@@ -803,6 +803,10 @@ func TestShopPerShop(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || !strings.Contains(string(data), "ramuan_kekuatan") || strings.Contains(string(data), "sup_ayam") {
 		t.Fatalf("katalog toko ramuan: %d %s", resp.StatusCode, data)
 	}
+	resp, data = do(t, "GET", ts.URL+"/v1/shop?shop=peralatan", cr.Token, nil)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(data), "pedang_besi") || strings.Contains(string(data), "sup_ayam") || strings.Contains(string(data), "ramuan_kekuatan") {
+		t.Fatalf("katalog toko peralatan: %d %s", resp.StatusCode, data)
+	}
 	if resp, _ = do(t, "GET", ts.URL+"/v1/shop?shop=pasar", cr.Token, nil); resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("toko asing harus 404: %d", resp.StatusCode)
 	}

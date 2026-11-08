@@ -14,6 +14,7 @@ const FRONT_H := 0.42  # dinding depan (baris terakhir) rendah supaya tidak menu
 const LOOK := {
 	"toko_ramuan": {"wall": Color("a8764a"), "trim": Color("6b4426"), "floor_a": Color("c9a066"), "floor_b": Color("bd9459"), "counter": Color("7a4a26"), "top": Color("c28a4c"), "rug": Color("8e3a2c"), "sign": "TOKO RAMUAN"},
 	"rumah_makan": {"wall": Color("b98552"), "trim": Color("6e4527"), "floor_a": Color("c4985c"), "floor_b": Color("b78b50"), "counter": Color("6e4326"), "top": Color("d49a58"), "rug": Color("3a5a8e"), "sign": "RUMAH MAKAN"},
+	"toko_peralatan": {"wall": Color("8a7f74"), "trim": Color("4f4a46"), "floor_a": Color("a89d8c"), "floor_b": Color("9b9080"), "counter": Color("4d5058"), "top": Color("8a6a44"), "rug": Color("7a2f2f"), "sign": "TOKO PERALATAN"},
 	"rumah_sehat": {"wall": Color("d2dcdf"), "trim": Color("93a8ae"), "floor_a": Color("b9c8cd"), "floor_b": Color("aebec4"), "counter": Color("9fb4ba"), "top": Color("dfe9ec"), "rug": Color("4aa3a0"), "sign": "RUMAH SEHAT"},
 }
 
@@ -112,6 +113,8 @@ static func build(map_id: String) -> Node3D:
 							_barrel(root, c)
 						Maps.RUMAH_MAKAN:
 							_dining_table(root, c)
+						Maps.TOKO_ALAT:
+							_armor_stand(root, c)
 						_:
 							_plant(root, c)
 	_rug(root, look, w, h)
@@ -157,6 +160,14 @@ static func _counter(root: Node3D, map_id: String, look: Dictionary, rows: Array
 		if mid:  # timbangan sederhana
 			_put(root, _cyl(0.02, 0.02, 0.3, 8), Color("5a5a60"), c + Vector3(0, 1.04, 0.0))
 			_put(root, _box(Vector3(0.5, 0.03, 0.04)), Color("5a5a60"), c + Vector3(0, 1.19, 0.0))
+	elif map_id == Maps.TOKO_ALAT:
+		if x == 2 or x == 6:  # pedang tergeletak di atas meja
+			_put(root, _box(Vector3(0.5, 0.025, 0.07)), Color("cfd6dc"), c + Vector3(0, 0.9, 0.0), 0.0, 0.3)
+			_put(root, _box(Vector3(0.05, 0.04, 0.2)), Color("d4a72c"), c + Vector3(-0.17, 0.91, 0.0))
+			_put(root, _box(Vector3(0.14, 0.035, 0.05)), Color("5e3c20"), c + Vector3(-0.3, 0.91, 0.0))
+		if mid:  # landasan tempa
+			_put(root, _box(Vector3(0.4, 0.14, 0.22)), Color("3a3d44"), c + Vector3(0, 0.97, 0.0))
+			_put(root, _box(Vector3(0.2, 0.12, 0.14)), Color("2e3036"), c + Vector3(0, 0.87, 0.0))
 	elif map_id == Maps.RUMAH_MAKAN:
 		if x == 2 or x == 6:  # roti di piring
 			_put(root, _cyl(0.2, 0.2, 0.025, 14), Color("f4f0e6"), c + Vector3(0, 0.9, 0.0))
@@ -196,12 +207,41 @@ static func _shelf(root: Node3D, map_id: String, c: Vector3) -> void:
 			var col: Color = palette[(seed_i + i * 2 + k) % palette.size()]
 			if map_id == Maps.TOKO_RAMUAN:
 				_bottle(root, back + Vector3(px, y2, 0.05), col)
+			elif map_id == Maps.TOKO_ALAT:
+				_gear_item(root, back + Vector3(px, y2, 0.05), (i + k) % 3)
 			else:
 				if (i + k) % 2 == 0:  # toples
 					_put(root, _cyl(0.1, 0.1, 0.2, 10), Color("e8d8a8"), back + Vector3(px, y2 + 0.11, 0.05), 0.0, 0.3)
 					_put(root, _cyl(0.105, 0.105, 0.04, 10), Color("8a5a30"), back + Vector3(px, y2 + 0.22, 0.05))
 				else:  # roti
 					_put(root, _ball(0.12, 0.75), Color("d99c4a").lerp(col, 0.15), back + Vector3(px, y2 + 0.08, 0.05))
+
+
+## Barang di rak toko peralatan: 0 pedang berdiri, 1 perisai bulat, 2 helm.
+static func _gear_item(root: Node3D, p: Vector3, kind: int) -> void:
+	match kind:
+		0:
+			_put(root, _box(Vector3(0.06, 0.3, 0.02)), Color("cfd6dc"), p + Vector3(0, 0.2, 0), 0.0, 0.3)
+			_put(root, _box(Vector3(0.18, 0.03, 0.04)), Color("d4a72c"), p + Vector3(0, 0.05, 0))
+			_put(root, _box(Vector3(0.035, 0.07, 0.035)), Color("5e3c20"), p + Vector3(0, 0.0, 0))
+		1:
+			var sh := _put(root, _cyl(0.13, 0.13, 0.03, 14), Color("2f5fa8"), p + Vector3(0, 0.15, 0.04))
+			sh.rotation_degrees.x = 90.0
+			var bo := _put(root, _cyl(0.04, 0.04, 0.04, 8), Color("d4a72c"), p + Vector3(0, 0.15, 0.06))
+			bo.rotation_degrees.x = 90.0
+		_:
+			_put(root, _ball(0.12, 0.9), Color("a9b1b8"), p + Vector3(0, 0.12, 0), 0.0, 0.35)
+			_put(root, _box(Vector3(0.2, 0.03, 0.1)), Color("6c737a"), p + Vector3(0, 0.07, 0.07))
+
+
+static func _armor_stand(root: Node3D, c: Vector3) -> void:
+	_put(root, _cyl(0.03, 0.03, 0.9, 8), Color("5e3c20"), c + Vector3(0, 0.45, 0))
+	_put(root, _cyl(0.22, 0.26, 0.3, 4), Color("2a2c30"), c + Vector3(0, 0.03, 0))
+	_put(root, _box(Vector3(0.42, 0.5, 0.24)), Color("8d949b"), c + Vector3(0, 0.95, 0), 0.0, 0.4)
+	_put(root, _box(Vector3(0.12, 0.4, 0.26)), Color("8d949b"), c + Vector3(-0.27, 0.95, 0), 0.0, 0.4)
+	_put(root, _box(Vector3(0.12, 0.4, 0.26)), Color("8d949b"), c + Vector3(0.27, 0.95, 0), 0.0, 0.4)
+	_put(root, _ball(0.14, 0.95), Color("a9b1b8"), c + Vector3(0, 1.35, 0), 0.0, 0.35)
+	_put(root, _box(Vector3(0.05, 0.1, 0.28)), Color("b23a3a"), c + Vector3(0, 1.5, 0))
 
 
 static func _barrel(root: Node3D, c: Vector3) -> void:

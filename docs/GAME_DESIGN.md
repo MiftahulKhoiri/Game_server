@@ -232,3 +232,9 @@ Di klien, tiap langkah di petak ladang (`T`, di kedua peta) punya peluang 18% be
 4. Musuh dan pertarungan bergiliran (logika di server) (selesai di v0.3.0, gambar placeholder).
 5. Toko dan barang (selesai di v0.5.0, ikon placeholder); inventori menyusul. Misi pertama selesai di v0.6.0.
 6. Rilis APK lewat GitHub Actions (selesai sejak v0.2.0).
+
+### Toko Peralatan, plang, dan ikon atap (v0.41.0)
+
+Desa Awal punya empat bangunan toko berplang: Toko Peralatan (barat, pedang dan baju zirah; ikon pedang dan kapak), Toko
+Ramuan (ramuan dan harta; ikon botol), Rumah Makan (makanan; ikon piza di atas tong), dan Rumah Sehat (istirahat gratis;
+ikon palang merah). Tiap toko berpapan nama di depan dan berpenjaga di ruangannya (Pak Hasan di Toko Peralatan).

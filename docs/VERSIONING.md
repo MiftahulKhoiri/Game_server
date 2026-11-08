@@ -281,6 +281,16 @@ membawa pemain; bawaannya halaman Releases terbaru.
   istirahat gratis berlaku di desa dan ruangan-ruangan itu (`InVillage`). Penjaga tidak lagi berdiri di jalan
   depan pintu. Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
 
+- v0.41.0 menambah **plang dan ikon atap** di bangunan toko Desa Awal, serta **Toko Peralatan** baru. Tiap bangunan toko
+  punya papan nama berdiri di kanan jalan menuju pintunya (TOKO RAMUAN, RUMAH MAKAN, TOKO PERALATAN, RUMAH SEHAT) dan ikon
+  besar di atap atau depan atap: botol ramuan (toko ramuan), piza (rumah makan, di atas tong), pedang dan kapak bersilang
+  (toko peralatan), palang merah (rumah sehat); semuanya digambar kode (`client/scripts/plang.gd`). Toko Peralatan adalah
+  bangunan baru di ujung barat deretan rumah (pintu di petak 4,2) dengan ruangan sendiri (peta `toko_peralatan`, 9x8, rak
+  pedang/perisai/helm, landasan tempa, patung zirah) dan penjaga Pak Hasan. Server: pedang besi, pedang baja, baju kulit,
+  dan zirah besi kini hanya dijual dan dibeli di toko `peralatan` (`ShopGear`); toko ramuan hanya ramuan dan harta.
+  `GET /v1/shop?shop=peralatan` dan `shop` di `/v1/shop/buy|sell` menerima `peralatan`. Istirahat gratis juga sah di
+  ruangan baru (`InVillage`). Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
