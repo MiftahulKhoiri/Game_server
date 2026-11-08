@@ -84,6 +84,7 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("GET /v1/heroes", s.auth(http.HandlerFunc(s.getHeroes)))
 	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
 	mux.Handle("POST /v1/allies/buy", s.auth(http.HandlerFunc(s.buyAlly)))
+	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
 	mux.Handle("POST /v1/party", s.auth(http.HandlerFunc(s.setParty)))
 	mux.Handle("GET /v1/world", s.auth(http.HandlerFunc(s.worldState)))
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
@@ -551,7 +552,7 @@ func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
 		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
-		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold,
+		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -604,6 +605,11 @@ func (s *Server) buyAlly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.applyToState(w, r, func(st *game.State) error { return st.BuyAlly(req.Hero) })
+}
+
+// buySoldier membeli satu prajurit biasa (tidak bisa saat bertarung).
+func (s *Server) buySoldier(w http.ResponseWriter, r *http.Request) {
+	s.applyToState(w, r, func(st *game.State) error { return st.BuySoldier() })
 }
 
 type partyRequest struct {

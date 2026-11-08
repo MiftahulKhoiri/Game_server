@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 )
 
@@ -13,6 +14,11 @@ const (
 	AllyBonus      = 2    // ditambah sekian, supaya musuh berpertahanan tinggi tetap terasa
 	AllyIntervalMs = 2400 // jeda antar serangan pendamping
 	AllyFirstMs    = 1500 // serangan pendamping pertama setelah pertarungan mulai
+
+	MaxSoldiers    = 5  // prajurit biasa yang boleh dibeli
+	SoldierPrice   = 60 // harga satu prajurit
+	SoldierPercent = 20 // kerusakan satu prajurit = serangan dasar level pemain x ini persen
+	SoldierBonus   = 1
 )
 
 // Kesalahan pendamping.
@@ -21,7 +27,29 @@ var (
 	ErrAllyNotOwn  = errors.New("beli pahlawan ini dulu")
 	ErrPartyFull   = errors.New("pendamping terlalu banyak")
 	ErrPartyRepeat = errors.New("pahlawan yang sama dipasang dua kali")
+	ErrSoldiersMax = errors.New("pasukan sudah penuh")
 )
+
+// SoldierID: id pendamping prajurit ke-n (1..MaxSoldiers) di kejadian pertarungan dan model klien.
+func SoldierID(n int) string { return fmt.Sprintf("prajurit_%d", n) }
+
+// BuySoldier membeli satu prajurit biasa untuk pasukan (ikut bertarung tanpa dipasang).
+func (s *State) BuySoldier() error {
+	if s.Soldiers >= MaxSoldiers {
+		return ErrSoldiersMax
+	}
+	if s.Gold < SoldierPrice {
+		return ErrNoGold
+	}
+	s.Gold -= SoldierPrice
+	s.Soldiers++
+	return nil
+}
+
+// soldierPower adalah serangan satu prajurit.
+func (s State) soldierPower() int {
+	return AttackForLevel(s.Level)*SoldierPercent/100 + SoldierBonus
+}
 
 // HasAlly memberi tahu apakah pahlawan sudah dibeli.
 func (s State) HasAlly(id string) bool { return slices.Contains(s.Allies, id) }
@@ -71,6 +99,9 @@ func checkParty(owned, party []string) error {
 }
 
 func (s State) validateAllies() error {
+	if s.Soldiers < 0 || s.Soldiers > MaxSoldiers {
+		return ErrSoldiersMax
+	}
 	if len(s.Allies) > len(Heroes) {
 		return ErrPartyFull
 	}

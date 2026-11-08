@@ -238,3 +238,9 @@ Di klien, tiap langkah di petak ladang (`T`, di kedua peta) punya peluang 18% be
 Desa Awal punya empat bangunan toko berplang: Toko Peralatan (barat, pedang dan baju zirah; ikon pedang dan kapak), Toko
 Ramuan (ramuan dan harta; ikon botol), Rumah Makan (makanan; ikon piza di atas tong), dan Rumah Sehat (istirahat gratis;
 ikon palang merah). Tiap toko berpapan nama di depan dan berpenjaga di ruangannya (Pak Hasan di Toko Peralatan).
+
+### Basecamp Pahlawan dan prajurit (v0.42.0)
+
+Di basecamp Desa Awal (barat gerbang): tenda merah, Komandan Raka merekrut pahlawan berkelas (layar rekrut dengan potret);
+tenda hijau, Sersan Joni menjual prajurit biasa per orang. Prajurit lemah tetapi semuanya ikut bertarung dan mengikuti
+pemain; pahlawan tetap maksimal 3 slot. Gerbang desa lebar tiga petak dan tinggi; meja toko rendah agar penjaga tampak.

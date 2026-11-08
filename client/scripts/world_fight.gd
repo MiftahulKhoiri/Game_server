@@ -327,7 +327,8 @@ func _read_view(v: Dictionary, now: int) -> void:
 	_enemy_at = now + int(v.get("enemy_next_ms", 2000))
 	_enemy_iv = maxi(1, int(v.get("enemy_interval_ms", 2000)))
 	var party: Array = Session.player.get("state", {}).get("party", [])
-	_ally_at = now + int(v.get("ally_next_ms", 2400)) if not party.is_empty() else 0
+	var has_soldiers := int(Session.player.get("state", {}).get("soldiers", 0)) > 0
+	_ally_at = now + int(v.get("ally_next_ms", 2400)) if (not party.is_empty() or has_soldiers) else 0
 	var left: Dictionary = v.get("cooldowns", {})
 	for a: String in left:
 		_ready_at[a] = now + int(left[a])

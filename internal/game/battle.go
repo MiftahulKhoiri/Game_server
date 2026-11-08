@@ -319,7 +319,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 	if lag := upto - b.NextEnemyMs; lag > maxCatchUpHits*iv {
 		b.NextEnemyMs += lag - maxCatchUpHits*iv
 	}
-	allyOn := len(st.Party) > 0
+	allyOn := len(st.Party) > 0 || st.Soldiers > 0
 	if allyOn {
 		if b.NextAllyMs == 0 {
 			b.NextAllyMs = upto + AllyFirstMs
@@ -384,6 +384,17 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 			name = h.Name
 		}
 		res.Log = append(res.Log, fmt.Sprintf("%s membantu: %s -%d HP.", name, b.EnemyName, dmg))
+		if b.EnemyHP <= 0 {
+			b.EnemyHP = 0
+			b.win(p, e, rng, res)
+			return true
+		}
+	}
+	for n := 1; n <= st.Soldiers; n++ {
+		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, false)
+		b.EnemyHP -= dmg
+		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: SoldierID(n)})
+		res.Log = append(res.Log, fmt.Sprintf("Prajurit %d membantu: %s -%d HP.", n, b.EnemyName, dmg))
 		if b.EnemyHP <= 0 {
 			b.EnemyHP = 0
 			b.win(p, e, rng, res)

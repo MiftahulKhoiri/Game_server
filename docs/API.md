@@ -337,3 +337,10 @@ Toko ketiga: `shop=peralatan`. `GET /v1/shop?shop=peralatan` memuat pedang besi,
 (beli) serta semua perlengkapan (jual). Membeli perlengkapan di toko lain ditolak 422 (`toko ini tidak menjual barang itu`);
 toko ramuan (`toko`) kini hanya ramuan dan harta, rumah makan (`makan`) hanya makanan. Peta baru `toko_peralatan` (9x8) dikenal
 server untuk posisi tersimpan, dan `POST /v1/rest` sah di sana.
+
+## Prajurit biasa (v0.42.0)
+
+`POST /v1/soldiers/buy` (perlu token) membeli satu prajurit seharga 60 emas; maksimum 5. Hasil: `{state, ...}` dengan
+`state.soldiers` (jumlah). `409` saat bertarung, `422` bila emas kurang atau sudah penuh, `401` tanpa token. Prajurit
+menyerang sebagai pasukan terpisah di tiap giliran sekutu (event `Who:"ally"`, `Hero:"prajurit_n"`); daya serang = 20% serangan
+dasar + 1, tidak memakai slot party.

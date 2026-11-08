@@ -8,6 +8,7 @@ extends RefCounted
 const Maps = preload("res://scripts/maps.gd")
 
 const WALL_H := 1.7
+const COUNTER_H := 0.46  # tinggi meja kasir: rendah supaya penjaga di belakangnya kelihatan dari kamera
 const FRONT_H := 0.42  # dinding depan (baris terakhir) rendah supaya tidak menutupi pemain
 
 ## Warna per ruangan: dinding, lantai (dua nada), meja kasir, karpet.
@@ -149,40 +150,41 @@ static func _door(root: Node3D, look: Dictionary, c: Vector3) -> void:
 
 
 static func _counter(root: Node3D, map_id: String, look: Dictionary, rows: Array[String], x: int, z: int, c: Vector3) -> void:
-	_put(root, _box(Vector3(1.0, 0.82, 0.85)), look.counter, c + Vector3(0, 0.41, 0.02))
-	_put(root, _box(Vector3(1.04, 0.07, 0.95)), look.top, c + Vector3(0, 0.855, 0.02))
+	_put(root, _box(Vector3(1.0, COUNTER_H, 0.8)), look.counter, c + Vector3(0, COUNTER_H / 2.0, 0.04))
+	_put(root, _box(Vector3(1.04, 0.07, 0.9)), look.top, c + Vector3(0, COUNTER_H + 0.035, 0.04))
+	var ci := c + Vector3(0, COUNTER_H - 0.82, 0)  # barang di meja ikut turun sesuai tinggi meja
 	var first := x == 1
 	var mid := x == 4
 	if map_id == Maps.TOKO_RAMUAN:
 		if x == 2 or x == 6:  # botol di atas meja
-			_bottle(root, c + Vector3(-0.15, 0.89, 0.0), Color("d6423a"))
-			_bottle(root, c + Vector3(0.15, 0.89, 0.05), Color("3d8fe0"))
+			_bottle(root, ci + Vector3(-0.15, 0.89, 0.0), Color("d6423a"))
+			_bottle(root, ci + Vector3(0.15, 0.89, 0.05), Color("3d8fe0"))
 		if mid:  # timbangan sederhana
-			_put(root, _cyl(0.02, 0.02, 0.3, 8), Color("5a5a60"), c + Vector3(0, 1.04, 0.0))
-			_put(root, _box(Vector3(0.5, 0.03, 0.04)), Color("5a5a60"), c + Vector3(0, 1.19, 0.0))
+			_put(root, _cyl(0.02, 0.02, 0.3, 8), Color("5a5a60"), ci + Vector3(0, 1.04, 0.0))
+			_put(root, _box(Vector3(0.5, 0.03, 0.04)), Color("5a5a60"), ci + Vector3(0, 1.19, 0.0))
 	elif map_id == Maps.TOKO_ALAT:
 		if x == 2 or x == 6:  # pedang tergeletak di atas meja
-			_put(root, _box(Vector3(0.5, 0.025, 0.07)), Color("cfd6dc"), c + Vector3(0, 0.9, 0.0), 0.0, 0.3)
-			_put(root, _box(Vector3(0.05, 0.04, 0.2)), Color("d4a72c"), c + Vector3(-0.17, 0.91, 0.0))
-			_put(root, _box(Vector3(0.14, 0.035, 0.05)), Color("5e3c20"), c + Vector3(-0.3, 0.91, 0.0))
+			_put(root, _box(Vector3(0.5, 0.025, 0.07)), Color("cfd6dc"), ci + Vector3(0, 0.9, 0.0), 0.0, 0.3)
+			_put(root, _box(Vector3(0.05, 0.04, 0.2)), Color("d4a72c"), ci + Vector3(-0.17, 0.91, 0.0))
+			_put(root, _box(Vector3(0.14, 0.035, 0.05)), Color("5e3c20"), ci + Vector3(-0.3, 0.91, 0.0))
 		if mid:  # landasan tempa
-			_put(root, _box(Vector3(0.4, 0.14, 0.22)), Color("3a3d44"), c + Vector3(0, 0.97, 0.0))
-			_put(root, _box(Vector3(0.2, 0.12, 0.14)), Color("2e3036"), c + Vector3(0, 0.87, 0.0))
+			_put(root, _box(Vector3(0.4, 0.14, 0.22)), Color("3a3d44"), ci + Vector3(0, 0.97, 0.0))
+			_put(root, _box(Vector3(0.2, 0.12, 0.14)), Color("2e3036"), ci + Vector3(0, 0.87, 0.0))
 	elif map_id == Maps.RUMAH_MAKAN:
 		if x == 2 or x == 6:  # roti di piring
-			_put(root, _cyl(0.2, 0.2, 0.025, 14), Color("f4f0e6"), c + Vector3(0, 0.9, 0.0))
-			_put(root, _ball(0.13, 0.7), Color("d99c4a"), c + Vector3(-0.05, 0.98, 0.0))
-			_put(root, _ball(0.1, 0.7), Color("e8b266"), c + Vector3(0.1, 0.96, 0.05))
+			_put(root, _cyl(0.2, 0.2, 0.025, 14), Color("f4f0e6"), ci + Vector3(0, 0.9, 0.0))
+			_put(root, _ball(0.13, 0.7), Color("d99c4a"), ci + Vector3(-0.05, 0.98, 0.0))
+			_put(root, _ball(0.1, 0.7), Color("e8b266"), ci + Vector3(0.1, 0.96, 0.05))
 		if mid:  # panci sup
-			_put(root, _cyl(0.2, 0.17, 0.26, 14), Color("4a4a52"), c + Vector3(0, 1.0, 0.0))
-			_put(root, _cyl(0.17, 0.17, 0.02, 14), Color("e0902c"), c + Vector3(0, 1.12, 0.0))
+			_put(root, _cyl(0.2, 0.17, 0.26, 14), Color("4a4a52"), ci + Vector3(0, 1.0, 0.0))
+			_put(root, _cyl(0.17, 0.17, 0.02, 14), Color("e0902c"), ci + Vector3(0, 1.12, 0.0))
 	else:
 		if x == 2 or x == 6:  # kotak P3K
-			_put(root, _box(Vector3(0.3, 0.2, 0.2)), Color("f4f4f4"), c + Vector3(0, 0.99, 0.0))
-			_put(root, _box(Vector3(0.1, 0.04, 0.21)), Color("d83a3a"), c + Vector3(0, 1.0, 0.0))
-			_put(root, _box(Vector3(0.04, 0.1, 0.21)), Color("d83a3a"), c + Vector3(0, 1.0, 0.0))
+			_put(root, _box(Vector3(0.3, 0.2, 0.2)), Color("f4f4f4"), ci + Vector3(0, 0.99, 0.0))
+			_put(root, _box(Vector3(0.1, 0.04, 0.21)), Color("d83a3a"), ci + Vector3(0, 1.0, 0.0))
+			_put(root, _box(Vector3(0.04, 0.1, 0.21)), Color("d83a3a"), ci + Vector3(0, 1.0, 0.0))
 	if first or x == 7:  # ujung meja sedikit lebih tinggi (tepi)
-		_put(root, _box(Vector3(0.1, 0.12, 0.95)), look.trim, c + Vector3(-0.45 if first else 0.45, 0.9, 0.02))
+		_put(root, _box(Vector3(0.1, 0.12, 0.95)), look.trim, ci + Vector3(-0.45 if first else 0.45, 0.9, 0.02))
 
 
 static func _bottle(root: Node3D, p: Vector3, color: Color) -> void:

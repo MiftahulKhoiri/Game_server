@@ -2,6 +2,9 @@ extends Node
 ## Data sesi yang dipakai antar-layar: pemain yang sedang main + pengaturan tersimpan.
 
 const CONFIG_PATH := "user://settings.cfg"
+## Pasukan prajurit biasa (sama dengan MaxSoldiers dan SoldierPrice di internal/game/ally.go).
+const MAX_SOLDIERS := 5
+const SOLDIER_PRICE := 60
 const MAX_ENERGY := 100  # sama dengan MaxEnergy di internal/game/energy.go
 
 ## {"id", "name", "version", "state": {...}}  -- bentuk sama dengan docs/API.md
@@ -12,6 +15,8 @@ var battle: Dictionary = {}
 var talk_npc := ""
 ## Toko yang akan dibuka layar toko ("toko" = toko ramuan, "makan" = rumah makan) dan nama penjaganya.
 var shop_id := "toko"
+## Layar rekrut basecamp: "pahlawan" (tenda merah) atau "prajurit" (tenda hijau).
+var recruit_kind := "pahlawan"
 var shop_keeper := ""
 ## Berapa kali tiap lawan bicara sudah diajak bicara (kalimat warga bergantian). Tidak disimpan.
 var talk_counts: Dictionary = {}
@@ -88,7 +93,7 @@ func energy() -> int:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "energy_used"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "soldiers", "energy_used"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -138,5 +143,6 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		# Pahlawan pendamping yang sudah dibeli dan yang dipasang (hanya server yang mengubah).
 		"allies": _strings(s.get("allies", [])),
 		"party": _strings(s.get("party", [])),
+		"soldiers": clampi(int(s.get("soldiers", 0)), 0, MAX_SOLDIERS),
 		"energy_used": clampi(int(s.get("energy_used", 0)), 0, MAX_ENERGY),
 	}

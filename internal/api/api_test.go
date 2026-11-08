@@ -772,6 +772,12 @@ func TestAllyEndpoints(t *testing.T) {
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("emas kurang harus 422: %d %s", resp.StatusCode, data)
 	}
+	if resp, data = do(t, "POST", ts.URL+"/v1/soldiers/buy", cr.Token, nil); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("emas kurang beli prajurit harus 422: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ = do(t, "POST", ts.URL+"/v1/soldiers/buy", "", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("beli prajurit tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
 	resp, data = do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero": "naga"})
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("pahlawan asing harus 422: %d %s", resp.StatusCode, data)

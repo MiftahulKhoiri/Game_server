@@ -291,6 +291,13 @@ membawa pemain; bawaannya halaman Releases terbaru.
   `GET /v1/shop?shop=peralatan` dan `shop` di `/v1/shop/buy|sell` menerima `peralatan`. Istirahat gratis juga sah di
   ruangan baru (`InVillage`). Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
 
+- v0.42.0 mengubah suasana desa dan menjadikan **Basecamp Pahlawan** tempat merekrut. Meja toko diturunkan agar penjaga
+  terlihat. Gerbang Desa Awal dan Perbatasan dilebarkan jadi tiga petak dan ditinggikan (menara tinggi, tiga lampu, papan
+  lebih besar). Di basecamp, tenda merah (Komandan Raka) merekrut **pahlawan berkelas** dan tenda hijau (Sersan Joni)
+  menjual **prajurit biasa** satu per satu (maks 5, 60 emas; `POST /v1/soldiers/buy`, bidang `soldiers` di state).
+  Prajurit ikut bertarung sebagai pasukan terpisah (serangan lemah, tidak memakai 3 slot pahlawan). Beli pahlawan di layar
+  Atribut dimatikan; arahkan ke basecamp. Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

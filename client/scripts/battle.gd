@@ -638,6 +638,16 @@ func _build_arena() -> SubViewportContainer:
 		ally.set_meta("bx", ally.position.x)
 		vp.add_child(ally)
 		_ally_rigs[str(party[i])] = ally
+	# Pasukan prajurit biasa (tenda hijau): berbaris dua lapis di belakang pendamping.
+	var sol_slots := [Vector3(-1.15, 0, 1.2), Vector3(-1.15, 0, 0.4), Vector3(-1.15, 0, -0.4), Vector3(-1.15, 0, -1.2), Vector3(-1.85, 0, 0.0)]
+	var soldiers := int(Session.player.get("state", {}).get("soldiers", 0))
+	for n in mini(soldiers, sol_slots.size()):
+		var sold: Node3D = Models.create("prajurit")
+		sold.position = Vector3(HERO_X, 0, 0) + (sol_slots[n] as Vector3)
+		sold.rotation.y = PI / 2.0
+		sold.set_meta("bx", sold.position.x)
+		vp.add_child(sold)
+		_ally_rigs["prajurit_%d" % (n + 1)] = sold
 	_enemy_rig = Models.create(_enemy_id)
 	_enemy_rig.position = Vector3(ENEMY_X, 0, 0)
 	_enemy_rig.rotation.y = -PI / 2.0  # menghadap -x

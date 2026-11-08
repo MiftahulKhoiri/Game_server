@@ -32,7 +32,9 @@ const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
 const EXITS := {
 	"desa_awal": [
+		{"pos": Vector2i(21, 49), "to": "perbatasan", "at": Vector2i(21, 1)},
 		{"pos": Vector2i(22, 49), "to": "perbatasan", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(23, 49), "to": "perbatasan", "at": Vector2i(23, 1)},
 		{"pos": Vector2i(4, 2), "to": "toko_peralatan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(16, 2), "to": "toko_ramuan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(22, 2), "to": "rumah_makan", "at": Vector2i(4, 6)},
@@ -43,7 +45,9 @@ const EXITS := {
 	"rumah_makan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(22, 3)}],
 	"rumah_sehat": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(28, 3)}],
 	"perbatasan": [
+		{"pos": Vector2i(21, 0), "to": "desa_awal", "at": Vector2i(21, 48)},
 		{"pos": Vector2i(22, 0), "to": "desa_awal", "at": Vector2i(22, 48)},
+		{"pos": Vector2i(23, 0), "to": "desa_awal", "at": Vector2i(23, 48)},
 		{"pos": Vector2i(22, 49), "to": "gunung_batu", "at": Vector2i(22, 1)},
 	],
 	"gunung_batu": [
@@ -118,7 +122,7 @@ const DESA_AWAL: Array[String] = [
 	"P##~~~~~~..AA......Y..=.JJ.#...#f#..~~~~~~##P#.#...#.#####...#.#........R..R.....R.##",
 	"P##........AA....Q....=......#f..........f##P#####..########....#.......#.#..#..#..##",
 	"P##...................=...................##P########R#########RR#################R##",
-	"PPPPPPPPPPPPPPPPPPPPNN=NNPPPPPPPPPPPPPPPPPPPP##############R#####R###############R###",
+	"PPPPPPPPPPPPPPPPPPPNN===NNPPPPPPPPPPPPPPPPPPP##############R#####R###############R###",
 ]
 
 
@@ -157,6 +161,9 @@ const WARGA := [
 	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "toko_ramuan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
 	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
 	{"id": "penjaga_alat", "model": "warga_bapak2", "name": "Pak Hasan", "peran": "Penjaga Toko Peralatan", "map": "toko_peralatan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "peralatan"},
+	# Perekrut di basecamp pahlawan (barat gerbang): tenda merah = pahlawan berkelas, tenda hijau = prajurit biasa.
+	{"id": "rekrut_pahlawan", "model": "ksatria", "name": "Komandan Raka", "peran": "Perekrut Pahlawan (tenda merah)", "map": "desa_awal", "pos": Vector2(14.3, 43.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_pahlawan"},
+	{"id": "rekrut_prajurit", "model": "pendekar_tombak", "name": "Sersan Joni", "peran": "Perekrut Prajurit (tenda hijau)", "map": "desa_awal", "pos": Vector2(14.3, 46.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_prajurit"},
 	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
 
@@ -315,7 +322,7 @@ static func npc_near(map_id: String, x: int, y: int) -> String:
 ## tujuh bukaan (ladang monster), dua reruntuhan benteng, dua kolam, dan lima peti harta.
 ## Jalan di selatan naik ke Gunung Batu.
 const PERBATASAN_ROWS: Array[String] = [
-	"##############PPPPPPNN=NNPPPPPP##############",
+	"##############PPPPPNN===NNPPPPP##############",
 	"#..###...........f....=.......#.............#",
 	"#......TTTTTT....##...=......####....#......#",
 	"#....f.TTTTTT..#####...=.....####.........f.#",

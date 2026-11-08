@@ -107,3 +107,48 @@ func TestNoAlliesNoAllyEvents(t *testing.T) {
 		}
 	}
 }
+
+func TestBuySoldiers(t *testing.T) {
+	st := NewState()
+	st.Gold = SoldierPrice*MaxSoldiers + 10
+	for i := 0; i < MaxSoldiers; i++ {
+		if err := st.BuySoldier(); err != nil {
+			t.Fatalf("prajurit %d: %v", i, err)
+		}
+	}
+	if st.Soldiers != MaxSoldiers || st.Gold != 10 {
+		t.Fatalf("soldiers=%d gold=%d", st.Soldiers, st.Gold)
+	}
+	if err := st.BuySoldier(); !errors.Is(err, ErrSoldiersMax) {
+		t.Fatalf("pasukan penuh harus ditolak: %v", err)
+	}
+	st.Soldiers = 2
+	if err := st.BuySoldier(); !errors.Is(err, ErrNoGold) {
+		t.Fatalf("emas kurang harus ditolak: %v", err)
+	}
+	st.Soldiers = MaxSoldiers + 1
+	if err := st.Validate(); err == nil {
+		t.Fatal("jumlah prajurit di luar batas harus ditolak")
+	}
+}
+
+func TestSoldiersStrike(t *testing.T) {
+	p := newPlayer()
+	p.State.Soldiers = 3
+	b := battleVs("tikus_sawah", 60)
+	b.NextEnemyMs = 100000
+	b.NextAllyMs = 1000
+	res, err := b.Sync(p, 1000, seq(20, 20, 20, 99))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, e := range res.Events {
+		if e.Who == "ally" && e.Hero == SoldierID(n+1) && e.Dmg >= 1 {
+			n++
+		}
+	}
+	if n != 3 {
+		t.Fatalf("tiga prajurit harus menyerang, dapat %d: %+v", n, res.Events)
+	}
+}

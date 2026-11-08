@@ -110,7 +110,8 @@ func _on_ally_pressed() -> void:
 	var allies: Array = _state().get("allies", [])
 	var party: Array = _state().get("party", [])
 	if not allies.has(id):
-		await _act(Api.buy_ally.bind(id), "%s bergabung! Bayar %d emas." % [hero.name, int(hero.price)])
+		_message.text = "Pahlawan direkrut di Basecamp (tenda merah)."
+		return
 	elif party.has(id):
 		var rest := party.duplicate()
 		rest.erase(id)
@@ -221,7 +222,7 @@ func _refresh_ally() -> void:
 	var hero: Dictionary = Heroes.LIST[_selected]
 	var hid := str(hero.id)
 	_hero_name.text = str(hero.name)
-	var status := "Belum dibeli: %d emas" % int(hero.price)
+	var status := "Belum direkrut: %d emas di Basecamp (tenda merah)" % int(hero.price)
 	if party.has(hid):
 		status = "Berbaris di belakangmu"
 	elif allies.has(hid):
@@ -230,10 +231,10 @@ func _refresh_ally() -> void:
 	var names: PackedStringArray = []
 	for id: String in party:
 		names.append(str(Heroes.get_hero(id).short))
-	_party_label.text = "Pendamping terpasang: %d/%d%s" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else ""]
+	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d (ikut bertarung)" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS]
 	if not allies.has(hid):
-		_ally_btn.text = "Beli (%d emas)" % int(hero.price)
-		_ally_btn.disabled = int(st.gold) < int(hero.price) or _busy
+		_ally_btn.text = "Rekrut di Basecamp (%d emas)" % int(hero.price)
+		_ally_btn.disabled = true
 	elif party.has(hid):
 		_ally_btn.text = "Lepas dari barisan"
 		_ally_btn.disabled = _busy

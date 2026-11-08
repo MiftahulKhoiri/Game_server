@@ -794,7 +794,7 @@ func _run() -> void:
 	for rx in 45:  # pagar desa: tepi barat, utara, selatan (wilayah timur x >= 45 tidak berpagar)
 		for ry in [0, dh - 1]:
 			var ch := drows[ry][rx]
-			if ch != "P" and ch != "N" and not (rx == 22 and ry == dh - 1):
+			if ch != "P" and ch != "N" and not (rx >= 21 and rx <= 23 and ry == dh - 1):
 				ring_ok = false
 			if ch == "P" or ch == "N":
 				ring_blocked = ring_blocked and not Maps.walkable("desa_awal", rx, ry)
@@ -825,7 +825,7 @@ func _run() -> void:
 	_check(ring_ok, "tepi Desa Awal berupa pagar kayu (P), gapura (N), jalan keluar, atau sungai")
 	_check(ring_blocked, "pagar dan menara gapura menghalangi jalan")
 	_check(drows[dh - 1][22] == "=" and Maps.walkable("desa_awal", 22, dh - 1), "jalan keluar di antara menara gapura bisa dilewati")
-	_check(drows[dh - 1][20] == "N" and drows[dh - 1][21] == "N" and drows[dh - 1][23] == "N" and drows[dh - 1][24] == "N", "dua menara mengapit jalan keluar")
+	_check(drows[dh - 1][19] == "N" and drows[dh - 1][20] == "N" and drows[dh - 1][24] == "N" and drows[dh - 1][25] == "N" and drows[dh - 1][21] == "=" and drows[dh - 1][23] == "=", "dua menara mengapit jalan keluar selebar tiga petak")
 	_check(Maps.walkable("desa_awal", 22, dh - 2), "jalan menuju gapura terbuka")
 	var spawn_ok := true
 	for e: Dictionary in Maps.EXITS.get("perbatasan", []):
@@ -1026,14 +1026,14 @@ func _run() -> void:
 			gate_lamps += 1
 		if ch.name == "LampuMenara":
 			tower_lamp += 1
-	_check(gate_lamps == 2 and tower_lamp == 1, "dua lampu di atas gapura dan satu lampu besar di menara (%d, %d)" % [gate_lamps, tower_lamp])
+	_check(gate_lamps == 3 and tower_lamp == 1, "tiga lampu di atas gapura dan satu lampu besar di menara (%d, %d)" % [gate_lamps, tower_lamp])
 	terrain.free()
 	var pb_terrain: Node3D = WB.build(Maps.PERBATASAN)
 	var pb_gate_lamps := 0
 	for ch in pb_terrain.get_children():
 		if ch.name.begins_with("LampuGapura"):
 			pb_gate_lamps += 1
-	_check(Maps.tile_at(Maps.PERBATASAN, 20, 0) == "N" and Maps.tile_at(Maps.PERBATASAN, 22, 0) == "=" and Maps.tile_at(Maps.PERBATASAN, 24, 0) == "N" and pb_terrain.has_node("PapanGapura") and pb_gate_lamps == 2, "Perbatasan punya gapura menuju desa di (22,0) dengan dua lampu (%d)" % pb_gate_lamps)
+	_check(Maps.tile_at(Maps.PERBATASAN, 20, 0) == "N" and Maps.tile_at(Maps.PERBATASAN, 21, 0) == "=" and Maps.tile_at(Maps.PERBATASAN, 22, 0) == "=" and Maps.tile_at(Maps.PERBATASAN, 23, 0) == "=" and Maps.tile_at(Maps.PERBATASAN, 24, 0) == "N" and pb_terrain.has_node("PapanGapura") and pb_gate_lamps == 3, "Perbatasan punya gapura lebar menuju desa di (21..23,0) dengan tiga lampu (%d)" % pb_gate_lamps)
 	pb_terrain.free()
 	var well_tiles := 0
 	for row in Maps.rows(Maps.DEFAULT_MAP):
@@ -1122,7 +1122,8 @@ func _run() -> void:
 			inside_n += 1
 			_check(ww.terlihat or not ww.node.visible, "%s di dalam rumah tidak terlihat (penjaga di pos jaga terbuka tetap terlihat)" % ww.id)
 		else:
-			out_n += 1
+			if not str(ww.id).begins_with("rekrut"):
+				out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
 	_check(inside_n == 12 and not guard_out and out_n == 0, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
@@ -1366,6 +1367,38 @@ func _run() -> void:
 	for it: Dictionary in cat_gear_v41.data.get("items", []):
 		gear_ids_v41.append(str(it.id))
 	_check(cat_gear_v41.ok and gear_ids_v41.has("pedang_besi") and gear_ids_v41.has("zirah_besi") and not gear_ids_v41.has("ramuan") and not potion_ids_v39.has("pedang_besi"), "toko peralatan menjual pedang dan baju, toko ramuan tidak %s" % str(gear_ids_v41))
+	# v0.42.0: gerbang tiga petak, perekrut di basecamp, prajurit biasa
+	var exits_v42 := 0
+	for ex_v42: Dictionary in Maps.EXITS["desa_awal"]:
+		if ex_v42.to == "perbatasan" and ex_v42.pos.y == 49 and ex_v42.pos.x >= 21 and ex_v42.pos.x <= 23:
+			exits_v42 += 1
+	_check(exits_v42 == 3 and Maps.walkable("desa_awal", 21, 49) and Maps.walkable("desa_awal", 23, 49), "gerbang lebar: tiga petak keluar desa menuju Perbatasan")
+	var rek_v42: Dictionary = {}
+	for wg_v42: Dictionary in Maps.WARGA:
+		if str(wg_v42.get("toko", "")).begins_with("rekrut"):
+			rek_v42[str(wg_v42.toko)] = wg_v42
+			_check(Maps.walkable("desa_awal", int(wg_v42.pos.x), int(wg_v42.pos.y)), "perekrut %s berdiri di petak yang bisa dilewati" % wg_v42.name)
+	_check(rek_v42.has("rekrut_pahlawan") and rek_v42.has("rekrut_prajurit"), "ada perekrut pahlawan (tenda merah) dan prajurit (tenda hijau)")
+	var sol_ok_v42: Dictionary = await Api.buy_soldier()
+	_check(sol_ok_v42.ok or sol_ok_v42.status == 422, "beli prajurit: berhasil atau ditolak aturan (%d)" % int(sol_ok_v42.status))
+	if sol_ok_v42.ok:
+		Session.merge_server_player(sol_ok_v42.data)
+		_check(int(Session.player.state.soldiers) >= 1, "prajurit tersimpan di state pemain")
+	Session.recruit_kind = "prajurit"
+	var rec_v42: Control = load("res://scenes/recruit.tscn").instantiate()
+	get_root().add_child(rec_v42)
+	await process_frame
+	await process_frame
+	_check(rec_v42.is_inside_tree(), "layar rekrut prajurit terbuka")
+	rec_v42.queue_free()
+	Session.recruit_kind = "pahlawan"
+	var rec2_v42: Control = load("res://scenes/recruit.tscn").instantiate()
+	get_root().add_child(rec2_v42)
+	await process_frame
+	await process_frame
+	_check(rec2_v42.is_inside_tree(), "layar rekrut pahlawan terbuka")
+	rec2_v42.queue_free()
+	await process_frame
 	var wrong_v39: Dictionary = await Api.shop_buy("ramuan", 1, "makan")
 	_check(not wrong_v39.ok and wrong_v39.status == 422, "membeli ramuan di rumah makan ditolak 422")
 	var no_shop_v39: Dictionary = await Api.shop_get("pasar")

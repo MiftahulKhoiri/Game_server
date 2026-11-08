@@ -23,7 +23,9 @@ func setup(w: Node) -> void:
 
 ## Samakan pendamping di dunia dengan Session.player.state.party.
 func sync() -> void:
-	var party: Array = Session.player.get("state", {}).get("party", [])
+	var party: Array = (Session.player.get("state", {}).get("party", []) as Array).duplicate()
+	for n in int(Session.player.get("state", {}).get("soldiers", 0)):
+		party.append("prajurit_%d" % (n + 1))  # pasukan prajurit biasa ikut berbaris
 	var key := ",".join(PackedStringArray(party))
 	if key == _party_key:
 		return
@@ -37,7 +39,7 @@ func sync() -> void:
 		return
 	var i := 0
 	for id: String in party:
-		var node: Node3D = Models.create(id)
+		var node: Node3D = Models.create("prajurit" if id.begins_with("prajurit_") else id)
 		world.add_child(node)
 		var shadow: Variant = world._add_shadow(node, 0.3)
 		var start: Vector2 = _slot(i)
@@ -72,7 +74,13 @@ func _slot(i: int) -> Vector2:
 	var fwd := Vector2(sin(yaw), cos(yaw))
 	var right := Vector2(cos(yaw), -sin(yaw))
 	var k := mini(i, BACK.size() - 1)
-	return world._pos - fwd * float(BACK[k]) + right * float(SIDE[k])
+	var back := float(BACK[k])
+	var side := float(SIDE[k])
+	if i >= BACK.size():  # lapis berikutnya: tiga prajurit sebaris, makin jauh ke belakang
+		var j := i - BACK.size()
+		back = 2.9 + 0.8 * float(j / 3)
+		side = float([0.0, 1.1, -1.1][j % 3])
+	return world._pos - fwd * back + right * side
 
 
 func _process(delta: float) -> void:

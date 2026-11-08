@@ -562,51 +562,68 @@ static func _add_gate(root: Node3D, tiles: Array[Vector2i], map_id: String = "")
 	var stone_dark := _stone_mat(Color("9b978c"))
 	var wood := mat(Color("5b3b1e"))
 	var roof_m := mat(Color("a33a3a"))
+	var up := 1.2  # tambahan tinggi gapura: menara dan lengkungnya menjulang
 	for t in lefts:
 		var cx := float(t.x) + 1.0
 		var cz := float(t.y) + 0.5
 		# Gapura di tepi utara (Perbatasan, menuju desa) menghadap selatan; gapura desa menghadap utara.
 		var sd := 1.0 if t.y == 0 else -1.0
 		var nama := "DESA AWAL"
+		var bh := 2.5 + up
 		_gate_part(root, _box(Vector3(2.1, 0.5, 1.12)), stone_dark, Vector3(cx, 0.25, cz))
-		_gate_part(root, _box(Vector3(2.0, 2.5, 1.05)), stone, Vector3(cx, 1.25, cz))
-		_gate_part(root, _box(Vector3(2.12, 0.18, 1.17)), stone_dark, Vector3(cx, 2.58, cz))
+		_gate_part(root, _box(Vector3(2.0, bh, 1.05)), stone, Vector3(cx, bh / 2.0, cz))
+		_gate_part(root, _box(Vector3(2.12, 0.18, 1.17)), stone_dark, Vector3(cx, bh + 0.08, cz))
 		for sx in [-0.5, 0.5]:   # celah panah di sisi utara dan selatan
-			_gate_part(root, _box(Vector3(0.11, 0.5, 0.04)), mat(Color("23242a")), Vector3(cx + sx, 1.7, cz - 0.54))
-			_gate_part(root, _box(Vector3(0.11, 0.5, 0.04)), mat(Color("23242a")), Vector3(cx + sx, 1.7, cz + 0.54))
-		var roof := _gate_part(root, _cyl(0.0, 0.78, 1.0, 4), roof_m, Vector3(cx, 3.17, cz))
+			for yy in [1.7, 1.7 + up * 0.8]:
+				_gate_part(root, _box(Vector3(0.11, 0.5, 0.04)), mat(Color("23242a")), Vector3(cx + sx, yy, cz - 0.54))
+				_gate_part(root, _box(Vector3(0.11, 0.5, 0.04)), mat(Color("23242a")), Vector3(cx + sx, yy, cz + 0.54))
+		var roof := _gate_part(root, _cyl(0.0, 0.78, 1.0 + up * 0.35, 4), roof_m, Vector3(cx, 3.17 + up + up * 0.17, cz))
 		roof.rotation.y = PI * 0.25
 		roof.scale = Vector3(1.42, 1.0, 0.76)
-		_gate_part(root, _cyl(0.025, 0.03, 0.7, 5), wood, Vector3(cx, 3.95, cz))
-		_gate_part(root, _box(Vector3(0.42, 0.26, 0.03)), mat(Color("d93a3a")), Vector3(cx + 0.22, 4.1, cz))
-		if tset.has(t + Vector2i(3, 0)) and not tset.has(t + Vector2i(2, 0)):
-			var mx := float(t.x) + 2.5   # petak jalan di antara dua menara
-			_gate_part(root, _box(Vector3(1.04, 0.7, 1.05)), stone, Vector3(mx, 2.15, cz))
-			_gate_part(root, _box(Vector3(1.06, 0.14, 1.17)), stone_dark, Vector3(mx, 2.58, cz))
-			_gate_part(root, _box(Vector3(1.06, 0.2, 0.9)), wood, Vector3(mx, 1.72, cz))
-			for k in [-0.4, 0.0, 0.4]:   # merlon di atas jembatan
-				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz - 0.4))
-				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mx + k, 2.8, cz + 0.4))
-			for sx in [-0.46, 0.46]:  # dua daun pintu terbuka, menempel di dinding menara
-				_gate_part(root, _box(Vector3(0.07, 1.6, 0.48)), wood, Vector3(mx + sx, 0.85, cz + sd * 0.3))
-			for lx in [-0.36, 0.36]:   # dua lampu di atas gapura, menyala otomatis saat malam
-				_gate_part(root, _cyl(0.02, 0.025, 0.42, 5), wood, Vector3(mx + lx, 2.88, cz))
-				var bulb := _gate_part(root, _sphere(0.15, 10), _lampu_mat(root), Vector3(mx + lx, 3.17, cz))
+		_gate_part(root, _cyl(0.025, 0.03, 0.7, 5), wood, Vector3(cx, 3.95 + up * 1.35, cz))
+		_gate_part(root, _box(Vector3(0.42, 0.26, 0.03)), mat(Color("d93a3a")), Vector3(cx + 0.22, 4.1 + up * 1.35, cz))
+		# Celah jalan di antara dua menara: bentang `gap` petak (1 = gapura lama, 3 = lebar).
+		var gap := 0
+		for g in range(1, 6):
+			if tset.has(t + Vector2i(2 + g, 0)):
+				gap = g
+				break
+			if tset.has(t + Vector2i(2 + g - 1, 0)):
+				break
+		if gap > 0:
+			var gw := float(gap)
+			var mx := float(t.x) + 2.0 + gw / 2.0   # tengah celah jalan
+			_gate_part(root, _box(Vector3(gw + 0.04, 0.7 + up * 0.3, 1.05)), stone, Vector3(mx, 2.15 + up * 0.85, cz))
+			_gate_part(root, _box(Vector3(gw + 0.06, 0.14, 1.17)), stone_dark, Vector3(mx, bh + 0.08, cz))
+			_gate_part(root, _box(Vector3(gw + 0.04, 0.2, 0.9)), wood, Vector3(mx, 1.72 + up, cz))
+			var nm := int(round(gw * 2.5))
+			for k in nm:   # merlon di atas jembatan
+				var mxk := mx - gw / 2.0 + (float(k) + 0.5) * gw / float(nm)
+				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mxk, bh + 0.3, cz - 0.4))
+				_gate_part(root, _box(Vector3(0.22, 0.28, 0.2)), stone, Vector3(mxk, bh + 0.3, cz + 0.4))
+			for sx in [-1.0, 1.0]:  # dua daun pintu terbuka, menempel di dinding menara
+				_gate_part(root, _box(Vector3(0.07, 1.6 + up, 0.48)), wood, Vector3(mx + sx * (gw / 2.0 - 0.04), 0.85 + up / 2.0, cz + sd * 0.3))
+			var lampu_x: Array = [-0.36, 0.36] if gap == 1 else [-gw * 0.3, 0.0, gw * 0.3]
+			for lx: float in lampu_x:   # lampu di atas gapura, menyala otomatis saat malam
+				_gate_part(root, _cyl(0.02, 0.025, 0.42, 5), wood, Vector3(mx + lx, 2.88 + up, cz))
+				var bulb := _gate_part(root, _sphere(0.15, 10), _lampu_mat(root), Vector3(mx + lx, 3.17 + up, cz))
 				bulb.name = "LampuGapura"
-				_lampu_cahaya(root, Vector3(mx + lx, 3.2, cz + sd * 0.2), 8.0, 2.0)
-			_glow_tanah(root, Vector3(mx, 0.07, cz + sd * 1.8), 5.0)
-			var sign_board := _gate_part(root, _box(Vector3(0.96, 0.4, 0.05)), mat(Color("7a5530")), Vector3(mx, 2.15, cz + sd * 0.55))
+				_lampu_cahaya(root, Vector3(mx + lx, 3.2 + up, cz + sd * 0.2), 8.0, 2.0)
+			_glow_tanah(root, Vector3(mx, 0.07, cz + sd * 1.8), 5.0 + gw * 1.5)
+			var bw := maxf(0.96, gw * 0.62)
+			var sy := 2.15 + up * 0.85
+			var sign_board := _gate_part(root, _box(Vector3(bw, 0.4 + (gw - 1.0) * 0.08, 0.05)), mat(Color("7a5530")), Vector3(mx, sy, cz + sd * 0.55))
 			sign_board.name = "PapanGapura"
 			var label := Label3D.new()
 			label.text = nama
 			label.font = load("res://assets/fonts/LilitaOne-Regular.ttf")
-			label.font_size = 40
+			label.font_size = 40 if gap == 1 else 52
 			label.pixel_size = 0.0034
 			label.outline_size = 9
 			label.modulate = Color("ffe27a")
 			label.outline_modulate = Color("3a1d05")
 			label.rotation.y = PI if sd < 0.0 else 0.0
-			label.position = Vector3(mx, 2.15, cz + sd * 0.585)
+			label.position = Vector3(mx, sy, cz + sd * 0.585)
 			root.add_child(label)
 
 
@@ -634,8 +651,9 @@ static func _add_outskirts(root: Node3D, w: int, h: int, utara: bool = false) ->
 	var road_x: Array[Transform3D] = []
 	var road_c: Array[Color] = []
 	for k in range(0, 5):  # jalan lanjutan di luar gapura (selatan desa, atau utara Perbatasan)
-		road_x.append(_xf(Vector3(22.5, 0.0, (-0.5 - k) if utara else (float(h) + 0.5 + k))))
-		road_c.append(ground_color("="))
+		for rx in [21.5, 22.5, 23.5]:
+			road_x.append(_xf(Vector3(rx, 0.0, (-0.5 - k) if utara else (float(h) + 0.5 + k))))
+			road_c.append(ground_color("="))
 	var quad := PlaneMesh.new()
 	quad.size = Vector2(1.0, 1.0)
 	_multi(root, quad, mat(Color.WHITE, true), road_x, road_c, false)
@@ -1277,7 +1295,7 @@ static func _tenda(root: Node3D, r: Dictionary, idx: int) -> void:
 	var cx: float = r.x0 + tw / 2.0
 	var cz: float = r.z0 + td / 2.0
 	var ar := arah_kecil("A", r)
-	var warna: Color = [Color("c2503a"), Color("3a68b8"), Color("d9a23a")][idx % 3]
+	var warna: Color = [Color("c2503a"), Color("4f9a4a"), Color("d9a23a")][idx % 3]  # merah = pahlawan berkelas, hijau = prajurit biasa
 	var h := _wadah(root, cx, cz, ar)
 	var lebar := td if ar.x != 0 else tw
 	var dalam := tw if ar.x != 0 else td

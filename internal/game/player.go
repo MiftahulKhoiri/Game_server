@@ -48,6 +48,8 @@ type State struct {
 	// Keduanya hanya diubah server (lihat ally.go).
 	Allies []string `json:"allies,omitempty"`
 	Party  []string `json:"party,omitempty"`
+	// Soldiers: jumlah prajurit biasa yang dibeli (maks MaxSoldiers); semuanya ikut bertarung (lihat ally.go).
+	Soldiers int `json:"soldiers,omitempty"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).

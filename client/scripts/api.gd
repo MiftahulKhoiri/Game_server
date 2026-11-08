@@ -59,6 +59,11 @@ func buy_ally(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/allies/buy", {"hero": hero}, true)
 
 
+## Beli satu prajurit biasa untuk pasukan.
+func buy_soldier() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/buy", {}, true)
+
+
 ## Tetapkan pendamping yang dipasang (urutan = urutan berbaris di belakang pemain).
 func set_party(party: Array) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/party", {"party": party}, true)

@@ -43,6 +43,8 @@ const VARIANTS := {
 	"orc_buas": {"base": "goblin", "size": 2.05, "tint": Color("cc6a62")},
 	"ular_hutan": {"base": "ular_sawah", "size": 1.2, "tint": Color("86b890")},
 	"serigala_alfa": {"base": "serigala_hutan", "size": 1.25, "tint": Color("6a6f7c")},
+	# Prajurit biasa (pasukan dari tenda hijau): pendekar tombak yang lebih kecil dan kehijauan.
+	"prajurit": {"base": "pendekar_tombak", "size": 0.88, "tint": Color("b6d8a4")},
 }
 
 
