@@ -11,6 +11,7 @@ const TREE_H := 2.0
 
 ## Model alam bergaya low-poly dari KayKit (CC0, Kay Lousberg) di assets/models/alam/.
 ## Bila berkasnya tidak ada, dipakai bentuk dasar seperti semula.
+const Interior = preload("res://scripts/interior.gd")
 const ALAM_DIR := "res://assets/models/alam/"
 
 ## Model bangunan KayKit (CC0, atap merah-cokelat) untuk rumah-rumah di desa. Paket ini tidak punya
@@ -331,6 +332,8 @@ static func ground_color(tile: String) -> Color:
 
 
 static func build(map_id: String) -> Node3D:
+	if Maps.is_interior(map_id):
+		return Interior.build(map_id)  # ruangan dalam bangunan (toko, rumah makan, rumah sehat)
 	var root := Node3D.new()
 	root.name = "Medan"
 	var rows := Maps.rows(map_id)
@@ -1382,6 +1385,13 @@ static func environment_for(map_id: String) -> Environment:
 	var ambient := 0.22
 	var fog_c := Color("bfe3f7")
 	var fog_d := 0.007
+	if Maps.is_interior(map_id):  # ruangan: latar gelap hangat, cahaya dari lampu di dalam
+		top = Color("1d1710")
+		horizon = Color("1d1710")
+		ground = Color("1d1710")
+		ambient = 0.5
+		fog_c = Color("1d1710")
+		fog_d = 0.0
 	match map_id:
 		Maps.GUA:
 			top = Color("0b0908")
@@ -1431,6 +1441,8 @@ static func environment_for(map_id: String) -> Environment:
 
 ## Cahaya matahari: hangat di luar ruangan, redup di gua.
 static func light_energy_for(map_id: String) -> float:
+	if Maps.is_interior(map_id):
+		return 0.3
 	return 0.3 if map_id == Maps.GUA else 0.42
 
 

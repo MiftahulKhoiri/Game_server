@@ -271,6 +271,16 @@ membawa pemain; bawaannya halaman Releases terbaru.
   (kosong = toko ramuan; barang di toko yang salah ditolak 422, toko asing 404), `shop`/`heal` di daftar
   barang, jenis barang `food`. Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
 
+- v0.40.0 menambah **ruangan di dalam bangunan**. Pintu Toko Ramuan, Rumah Makan, dan Rumah Sehat di desa kini
+  jalan masuk sungguhan: pemain melangkah ke pintu lalu masuk ke ruangan 9x8 (peta `toko_ramuan`, `rumah_makan`,
+  `rumah_sehat`) berisi lantai kayu, rak dagangan (botol ramuan / roti dan toples / ranjang), meja kasir, tong,
+  meja makan, karpet, dan papan nama, digambar kode (`client/scripts/interior.gd`) tanpa aset luar. Penjaga
+  (Pak Darman, Bu Wati, Suster Mira) berdiri di balik meja kasir; ketuk **Bicara** dari depan meja untuk berbelanja
+  (jangkauan penjaga 2,3 petak), keluar lewat keset "Keluar" di bawah. Kamera di dalam ruangan condong ke dalam
+  agar meja dan penjaga terlihat; jam menampilkan nama ruangan. Server: tiga peta baru di `worldMaps` (9x8) dan
+  istirahat gratis berlaku di desa dan ruangan-ruangan itu (`InVillage`). Penjaga tidak lagi berdiri di jalan
+  depan pintu. Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

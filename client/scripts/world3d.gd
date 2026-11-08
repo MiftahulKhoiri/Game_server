@@ -27,6 +27,7 @@ const SAVE_DELAY := 1.5
 const RETRY_DELAY := 5.0
 const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap "langkah" (1 petak jalan) di ladang
 const TALK_RANGE := 1.5
+const KEEPER_RANGE := 2.3  # penjaga toko berdiri di balik meja kasir
 const CAM_DIST := 6.4
 const ATMO_STEP := 0.4        # detik antar pembaruan langit/cahaya (cukup halus, hemat tenaga)
 const NPC_NOTICE := 3.5       # jarak (petak) NPC mulai menoleh ke pemain
@@ -522,6 +523,10 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 	var st: Dictionary = Session.player.state
 	st.map = map_id
 	_load_map(map_id)
+	if Maps.is_interior(map_id):
+		_cam_pitch = maxf(_cam_pitch, 0.9)  # dari atas, supaya isi ruangan terlihat
+	elif _cam_pitch > 0.85:
+		_cam_pitch = 0.62
 	_pos = Movement.safe_spot(map_id, at)
 	_tile = Movement.tile_of(_pos)
 	_step_acc = 0.0
@@ -593,6 +598,10 @@ func _update_world_life(delta: float) -> void:
 func _update_clock() -> void:
 	if _clock == null:
 		return
+	if Maps.is_interior(_map_id):  # di dalam bangunan: ikon menurut jam, teks nama ruangan
+		var hh := Atmosphere.hour()
+		_clock.set_info("sun" if hh >= 5.5 and hh < 18.0 else "moon", str(Maps.NAMES.get(_map_id, "")))
+		return
 	if not Atmosphere.outdoors(_map_id):
 		_clock.set_info("cave", "Gua Batu")
 		return
@@ -657,7 +666,11 @@ func _apply_transform() -> void:
 	if _shadow_disc != null:
 		_shadow_disc.position.y = 0.02 - jy / maxf(0.01, _player.scale.x)  # bayangan tetap di tanah
 	var target := Vector3(_pos.x, 0.8 + jy * 0.5, _pos.y)
-	var offset := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch)) * CAM_DIST
+	var inside := Maps.is_interior(_map_id)
+	var dist := CAM_DIST * (0.95 if inside else 1.0)
+	if inside:
+		target.z -= 1.5  # pandangan condong ke dalam ruangan: meja kasir dan penjaga ikut terlihat
+	var offset := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch)) * dist
 	_camera.position = target + offset
 	if _shake > 0.0:
 		_camera.position += Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5) * _shake * 0.5
@@ -1209,7 +1222,8 @@ func _npc_in_range() -> String:
 		if w.inside and not w.terlihat:
 			continue
 		var wd := _pos.distance_to(w.pos)
-		if wd <= best_d:
+		var lim := KEEPER_RANGE if w.toko != "" else TALK_RANGE  # penjaga di balik meja kasir terjangkau lebih jauh
+		if wd <= lim and (best == "" or wd <= best_d):
 			best_d = wd
 			best = Warga.TALK_PREFIX + w.id
 	return best

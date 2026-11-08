@@ -197,7 +197,8 @@ menentukan bertahan, skill, ramuan, dan kabur. Harga 250-350 emas (draf, untuk d
 
 - **Energi** (bar petir): jurus memakainya (Skill 1 = 20, Skill 2 = 25 dari 100); serangan biasa +4, menang +15, naik level
   atau istirahat = penuh, Ramuan Kekuatan +60 (dan serangan x1,3 tiga pertarungan).
-- **Toko** hanya bisa dimasuki lewat penjaganya di depan pintu bangunan (Bicara): Toko Ramuan (Pak Darman: ramuan 15,
+- **Toko** dimasuki sungguhan (v0.40.0): melangkah ke pintu bangunan membawa pemain ke ruangan di dalamnya; penjaga
+  berdiri di balik meja kasir dan berbelanja lewat Bicara. Keluar lewat keset di bawah ruangan. Isi toko: Toko Ramuan (Pak Darman: ramuan 15,
   ramuan kekuatan 40, senjata, pelindung), Rumah Makan (Bu Wati: Roti Hangat 8 emas +10 HP, Sup Ayam 20 +25,
   Daging Bakar 45 +50), dan rumah sehat (Suster Mira: pulih gratis). Tombol Toko di Menu dihapus.
 

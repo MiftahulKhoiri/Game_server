@@ -124,3 +124,21 @@ func TestShopsAndFood(t *testing.T) {
 		t.Fatalf("katalog toko asing: %v", err)
 	}
 }
+
+func TestRestInsideVillageBuildings(t *testing.T) {
+	for _, m := range []string{MapDesaAwal, MapTokoRamuan, MapRumahMakan, MapRumahSehat} {
+		st := NewState()
+		st.Map, st.HP, st.EnergyUsed = m, 3, 40
+		if err := st.Rest(); err != nil || st.HP != st.MaxHP || st.EnergyUsed != 0 {
+			t.Errorf("istirahat di %s: %v hp=%d", m, err, st.HP)
+		}
+		if m != MapDesaAwal && (!ValidPosition(m, 8, 7) || ValidPosition(m, 9, 7) || ValidPosition(m, 8, 8)) {
+			t.Errorf("ukuran peta %s harus 9x8", m)
+		}
+	}
+	st := NewState()
+	st.Map, st.HP = MapPerbatasan, 3
+	if err := st.Rest(); !errors.Is(err, ErrCannotRest) {
+		t.Fatalf("istirahat di luar desa: %v", err)
+	}
+}

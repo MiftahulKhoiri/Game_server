@@ -128,7 +128,7 @@ func (s *State) eat(def ItemDef) error {
 
 // Rest memulihkan HP dan energi penuh, gratis, hanya di desa (wilayah aman).
 func (s *State) Rest() error {
-	if s.Map != MapDesaAwal {
+	if !InVillage(s.Map) {
 		return ErrCannotRest
 	}
 	if s.HP >= s.MaxHP && s.EnergyUsed == 0 {

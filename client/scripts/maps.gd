@@ -18,14 +18,27 @@ const DEFAULT_MAP := "desa_awal"
 const PERBATASAN := "perbatasan"
 const GUNUNG := "gunung_batu"
 const GUA := "gua_batu"
+## Ruangan di dalam bangunan Desa Awal (v0.40.0): pintu bangunan di desa = jalan masuk, pintu di bawah ruangan = keluar.
+const TOKO_RAMUAN := "toko_ramuan"
+const RUMAH_MAKAN := "rumah_makan"
+const RUMAH_SEHAT := "rumah_sehat"
+const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat"]
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu"}
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
 const EXITS := {
-	"desa_awal": [{"pos": Vector2i(22, 49), "to": "perbatasan", "at": Vector2i(22, 1)}],
+	"desa_awal": [
+		{"pos": Vector2i(22, 49), "to": "perbatasan", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(16, 2), "to": "toko_ramuan", "at": Vector2i(4, 6)},
+		{"pos": Vector2i(22, 2), "to": "rumah_makan", "at": Vector2i(4, 6)},
+		{"pos": Vector2i(28, 2), "to": "rumah_sehat", "at": Vector2i(4, 6)},
+	],
+	"toko_ramuan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(16, 3)}],
+	"rumah_makan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(22, 3)}],
+	"rumah_sehat": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(28, 3)}],
 	"perbatasan": [
 		{"pos": Vector2i(22, 0), "to": "desa_awal", "at": Vector2i(22, 48)},
 		{"pos": Vector2i(22, 49), "to": "gunung_batu", "at": Vector2i(22, 1)},
@@ -132,15 +145,15 @@ const WARGA := [
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
 	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
 	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
-	# Penjaga toko: berdiri di depan pintu bangunannya siang dan malam (`diam`). Mengajak bicara penjaga =
-	# masuk ke tokonya (`toko` = "toko" ramuan, "makan" rumah makan; "rawat" = rumah sakit, pulih gratis).
-	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "desa_awal", "pos": Vector2(16.5, 3.4), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
-	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "desa_awal", "pos": Vector2(22.5, 3.4), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
-	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "desa_awal", "pos": Vector2(28.5, 3.4), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 13.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(39, 11)},
+	# Penjaga toko: berdiri di belakang meja kasir di dalam ruangannya, siang dan malam (`diam`). Mengajak
+	# bicara penjaga = berbelanja (`toko` = "toko" ramuan, "makan" rumah makan; "rawat" = rumah sehat, pulih gratis).
+	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "toko_ramuan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
+	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
+	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
 
 ## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).
@@ -432,6 +445,45 @@ const GUA_ROWS: Array[String] = [
 ]
 
 
+## Ruangan dalam bangunan (9x8). H = dinding, = = lantai, D = pintu keluar, S = meja kasir, x = lantai di belakang meja
+## (tempat penjaga; tak terjangkau pemain), R = rak (toko ramuan, rumah makan) / ranjang (rumah sehat),
+## F = tong (toko ramuan) / meja makan (rumah makan) / tanaman (rumah sehat). Bentuknya digambar interior.gd.
+const TOKO_ROWS: Array[String] = [
+	"HHHHHHHHH",
+	"HRRRRRRRH",
+	"HxxxxxxxH",
+	"HSSSSSSSH",
+	"H=======H",
+	"HF=====FH",
+	"H=======H",
+	"HHHHDHHHH",
+]
+const MAKAN_ROWS: Array[String] = [
+	"HHHHHHHHH",
+	"HRRRRRRRH",
+	"HxxxxxxxH",
+	"HSSSSSSSH",
+	"H=======H",
+	"H=FF=FF=H",
+	"H=======H",
+	"HHHHDHHHH",
+]
+const SEHAT_ROWS: Array[String] = [
+	"HHHHHHHHH",
+	"HRRxxxRRH",
+	"HxxxxxxxH",
+	"HSSSSSSSH",
+	"H=======H",
+	"HF=====FH",
+	"H=======H",
+	"HHHHDHHHH",
+]
+
+
+static func is_interior(map_id: String) -> bool:
+	return INTERIORS.has(map_id)
+
+
 ## Pintu di (x, y) berupa {pos, to, at}, atau {} bila bukan pintu.
 static func exit_at(map_id: String, x: int, y: int) -> Dictionary:
 	for e: Dictionary in EXITS.get(map_id, []):
@@ -450,6 +502,12 @@ static func rows(map_id: String) -> Array[String]:
 			return GUNUNG_ROWS
 		GUA:
 			return GUA_ROWS
+		TOKO_RAMUAN:
+			return TOKO_ROWS
+		RUMAH_MAKAN:
+			return MAKAN_ROWS
+		RUMAH_SEHAT:
+			return SEHAT_ROWS
 	return []
 
 

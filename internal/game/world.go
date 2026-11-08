@@ -10,6 +10,10 @@ const (
 	MapPerbatasan = "perbatasan"  // ladang di luar gerbang selatan desa
 	MapGunungBatu = "gunung_batu" // sarang Ogre Batu, di selatan Perbatasan
 	MapGuaBatu    = "gua_batu"    // sarang dalang serangan monster, di dalam Gunung Batu
+	// Ruangan dalam bangunan Desa Awal (v0.40.0): tempat berbelanja dan beristirahat. Aman, tanpa musuh.
+	MapTokoRamuan = "toko_ramuan"
+	MapRumahMakan = "rumah_makan"
+	MapRumahSehat = "rumah_sehat"
 )
 
 // MapInfo adalah ukuran sebuah peta dalam petak.
@@ -22,6 +26,14 @@ var worldMaps = map[string]MapInfo{
 	MapPerbatasan: {Width: 45, Height: 50},
 	MapGunungBatu: {Width: 45, Height: 50},
 	MapGuaBatu:    {Width: 15, Height: 20},
+	MapTokoRamuan: {Width: 9, Height: 8},
+	MapRumahMakan: {Width: 9, Height: 8},
+	MapRumahSehat: {Width: 9, Height: 8},
+}
+
+// InVillage: peta tempat pemain aman dan boleh beristirahat gratis (desa dan ruangan di dalamnya).
+func InVillage(mapID string) bool {
+	return mapID == MapDesaAwal || mapID == MapTokoRamuan || mapID == MapRumahMakan || mapID == MapRumahSehat
 }
 
 // BossSpot adalah petak tempat bos menunggu. Menginjaknya (di klien) lalu

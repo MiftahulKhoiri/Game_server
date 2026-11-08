@@ -694,12 +694,7 @@ func _run() -> void:
 		if m > 1.5:
 			movers += 1
 	_check(warga_ok, "warga tidak pernah masuk pagar/air/rumah atau keluar dari jari-jarinya")
-	var jaga := 0
-	for w in w3._warga:
-		if w.diam:
-			jaga += 1
-	_check(jaga == 3 and best_move.size() == w3._warga.size(), "tiga penjaga toko berdiri di tempat")
-	_check(movers >= w3._warga.size() - jaga - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, w3._warga.size()])
+	_check(movers >= w3._warga.size() - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, w3._warga.size()])
 	_check(min_gap > 0.35, "warga tidak menumpuk satu sama lain (jarak terdekat %.2f)" % min_gap)
 	# Pemain berdiri di tengah alun-alun: warga tidak menembus pemain.
 	w3._pos = Vector2(12.5, 8.5)
@@ -1130,7 +1125,7 @@ func _run() -> void:
 			out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
-	_check(inside_n == 12 and not guard_out and out_n == 3, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang, 3 penjaga toko tetap berjaga (%d di dalam)" % inside_n)
+	_check(inside_n == 12 and not guard_out and out_n == 0, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
 	var guard_seen := false
 	for ww in wn._warga:
 		if ww.id == "penjaga":
@@ -1301,17 +1296,47 @@ func _run() -> void:
 		if ch is Button and (ch as Button).text == "Toko":
 			has_toko_btn_v39 = true
 	_check(not has_toko_btn_v39 and not wtk._menu.has_signal("shop_requested"), "tombol Toko tidak ada di Menu (belanja lewat penjaga di toko)")
-	# Penjaga: tiga toko, masing-masing di depan pintu bangunannya
-	var keepers_v39 := {}
-	for w in wtk._warga:
-		if w.toko != "":
-			keepers_v39[w.toko] = w
-	_check(keepers_v39.size() == 3 and keepers_v39.has("toko") and keepers_v39.has("makan") and keepers_v39.has("rawat"), "tiap toko punya penjaga: ramuan, makan, rumah sehat")
-	var kk_v39 = keepers_v39["toko"]
-	wtk._pos = kk_v39.pos + Vector2(0.0, 1.0)
-	_check(wtk._keeper_of(wtk._npc_in_range()) == kk_v39, "dekat penjaga toko: tombol Bicara membuka tokonya")
-	wtk._pos = Vector2(12.5, 20.5)
-	_check(wtk._keeper_of(wtk._npc_in_range()) == null, "jauh dari penjaga: tidak ada toko")
+	# Pintu bangunan di desa menuju ruangan; ruangannya tersambung penuh dan pintu keluarnya kembali ke desa
+	for pair: Array in [["toko_ramuan", Vector2i(16, 2), "toko"], ["rumah_makan", Vector2i(22, 2), "makan"], ["rumah_sehat", Vector2i(28, 2), "rawat"]]:
+		var rid: String = pair[0]
+		var door_in: Dictionary = Maps.exit_at(Maps.DEFAULT_MAP, pair[1].x, pair[1].y)
+		var door_out: Dictionary = Maps.exit_at(rid, 4, 7)
+		_check(door_in.get("to", "") == rid and door_out.get("to", "") == Maps.DEFAULT_MAP and Maps.is_interior(rid), "pintu bangunan %s di desa menuju ruangan %s dan pintu keluarnya kembali" % [str(pair[1]), rid])
+		_check(Maps.width(rid) == 9 and Maps.height(rid) == 8, "ruangan %s berukuran 9x8" % rid)
+		var tot_i := 0
+		for yy in Maps.height(rid):
+			for xx in Maps.width(rid):
+				if Maps.walkable(rid, xx, yy):
+					tot_i += 1
+		var seen_i := {Vector2i(4, 6): true}
+		var q_i: Array[Vector2i] = [Vector2i(4, 6)]
+		while not q_i.is_empty():
+			var ci: Vector2i = q_i.pop_front()
+			for di: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+				var ni: Vector2i = ci + di
+				if not seen_i.has(ni) and Maps.walkable(rid, ni.x, ni.y):
+					seen_i[ni] = true
+					q_i.append(ni)
+		_check(seen_i.size() == tot_i and Maps.walkable(rid, 4, 6) and not Maps.walkable(rid, 4, 3), "ruangan %s: lantai tersambung ke pintu, meja kasir menghalangi (%d petak)" % [rid, tot_i])
+		# Masuk ke ruangan: penjaga berdiri di balik meja, bisa diajak bicara dari depan meja
+		wtk._go_to_map(rid, Vector2i(4, 6))
+		await process_frame
+		var kp = null
+		for w in wtk._warga:
+			if w.toko != "":
+				kp = w
+		_check(kp != null and kp.toko == pair[2] and wtk._warga.size() == 1, "%s punya satu penjaga (%s)" % [rid, pair[2]])
+		wtk._pos = Vector2(4.5, 4.5)
+		_check(wtk._keeper_of(wtk._npc_in_range()) == kp, "di depan meja kasir %s: Bicara membuka toko lewat penjaga" % rid)
+		wtk._pos = Vector2(4.5, 6.5)
+		_check(wtk._keeper_of(wtk._npc_in_range()) == null, "jauh dari meja (dekat pintu): penjaga di luar jangkauan")
+	var back_door: Dictionary = Maps.exit_at("toko_ramuan", 4, 7)
+	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))
+	var atmo_i = load("res://scripts/atmosphere.gd")
+	_check(not atmo_i.outdoors("toko_ramuan") and atmo_i.outdoors(Maps.DEFAULT_MAP) and wtk._env.environment != null, "di dalam ruangan tanpa cuaca dan waktu luar")
+	wtk._go_to_map(Maps.DEFAULT_MAP, back_door.at)
+	await process_frame
+	_check(Session.player.state.map == Maps.DEFAULT_MAP and wtk._warga.size() > 8, "keluar dari toko: kembali ke desa di depan pintu")
 	wtk.queue_free()
 	await process_frame
 	Session.player.state = saved_toko_v39

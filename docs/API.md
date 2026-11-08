@@ -324,3 +324,9 @@ dipercaya dari klien dan pemicu pertemuan masih dari klien.
 `state.energy_used` (0..100): energi yang terpakai; energi = 100 - `energy_used` (0 = penuh, field hilang di data lama).
 Skill 1 memakai 20 dan Skill 2 memakai 25 energi (`422` "energi tidak cukup" bila kurang); serangan biasa +4, menang +15,
 naik level dan istirahat penuh, Ramuan Kekuatan +60.
+
+## Peta ruangan (v0.40.0)
+
+Peta baru yang dikenal server untuk posisi tersimpan: `toko_ramuan`, `rumah_makan`, `rumah_sehat` (masing-masing 9x8 petak,
+ruangan di dalam bangunan Desa Awal). `POST /v1/rest` sah di `desa_awal` dan ketiga ruangan itu. Isi ruangan (rak, meja,
+penjaga) hanya hiasan klien; aturan belanja tetap di `/v1/shop`.
