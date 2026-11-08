@@ -463,7 +463,7 @@ func _run() -> void:
 	_check(WD.line("bu_sari", 1, 0) != WD.line("bu_sari", 1, 1), "kalimat warga bergantian tiap kali diajak bicara")
 	var dialog_ok := true
 	for d: Dictionary in Maps.WARGA:
-		dialog_ok = dialog_ok and WD.has_warga(str(d.id))
+		dialog_ok = dialog_ok and (WD.has_warga(str(d.id)) or d.has("toko"))  # penjaga toko membuka toko, bukan dialog
 	_check(dialog_ok, "semua warga di peta punya dialog")
 	Session.talk_npc = "warga:bu_sari"
 	Session.talk_counts["warga:bu_sari"] = 1
@@ -694,7 +694,12 @@ func _run() -> void:
 		if m > 1.5:
 			movers += 1
 	_check(warga_ok, "warga tidak pernah masuk pagar/air/rumah atau keluar dari jari-jarinya")
-	_check(movers >= w3._warga.size() - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, w3._warga.size()])
+	var jaga := 0
+	for w in w3._warga:
+		if w.diam:
+			jaga += 1
+	_check(jaga == 3 and best_move.size() == w3._warga.size(), "tiga penjaga toko berdiri di tempat")
+	_check(movers >= w3._warga.size() - jaga - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, w3._warga.size()])
 	_check(min_gap > 0.35, "warga tidak menumpuk satu sama lain (jarak terdekat %.2f)" % min_gap)
 	# Pemain berdiri di tengah alun-alun: warga tidak menembus pemain.
 	w3._pos = Vector2(12.5, 8.5)
@@ -784,7 +789,7 @@ func _run() -> void:
 	_check(wt._chest_nodes.size() == 9, "desa punya 9 peti harta (3 di desa, 6 di hutan timur)")
 	_check(wt._btn_tangan != null and wt._btn_kaki != null and wt._btn_perisai != null and wt._btn_boost != null, "empat tombol aksi ada")
 	_check(wt._talk_button != null and not wt._talk_button.visible, "tombol Bicara tersembunyi bila tidak ada orang di dekat")
-	_check(wt._menu._btn_tas != null and wt._menu._btn_toko != null, "Ransel dan Toko ada di menu")
+	_check(wt._menu._btn_tas != null and wt._menu._btn_atribut != null, "Ransel dan Atribut ada di menu")
 	print("== Desa: pagar kayu keliling dan gapura")
 	var drows: Array[String] = Maps.rows("desa_awal")
 	var dw := Maps.width("desa_awal")
@@ -1125,7 +1130,7 @@ func _run() -> void:
 			out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
-	_check(inside_n == 12 and not guard_out and out_n == 0, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
+	_check(inside_n == 12 and not guard_out and out_n == 3, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang, 3 penjaga toko tetap berjaga (%d di dalam)" % inside_n)
 	var guard_seen := false
 	for ww in wn._warga:
 		if ww.id == "penjaga":
@@ -1278,6 +1283,81 @@ func _run() -> void:
 	atr.queue_free()
 	await process_frame
 	Session.player.state = saved_misc
+
+	print("== energi, makanan, toko per-jenis, penjaga")
+	var saved_toko_v39: Dictionary = Session.player.state.duplicate(true)
+	var wtk: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wtk)
+	await process_frame
+	await process_frame
+	# HUD: piala level + bar energi petir di bawah bar nyawa
+	Session.player.state.energy_used = 30
+	wtk._refresh_hud()
+	_check(wtk._bars.energy == 70 and wtk._bars.max_energy == 100 and Session.energy() == 70, "HUD menampilkan energi 70/100 (bar petir)")
+	_check(wtk._bars.EN_Y > wtk._bars.HP_Y + wtk._bars.HP_H and wtk._bars.COIN_Y > wtk._bars.EN_Y + wtk._bars.EN_H, "bar energi di bawah bar nyawa, di atas koin")
+	# Menu tidak lagi punya tombol Toko
+	var has_toko_btn_v39 := false
+	for ch in wtk._menu._main.get_children():
+		if ch is Button and (ch as Button).text == "Toko":
+			has_toko_btn_v39 = true
+	_check(not has_toko_btn_v39 and not wtk._menu.has_signal("shop_requested"), "tombol Toko tidak ada di Menu (belanja lewat penjaga di toko)")
+	# Penjaga: tiga toko, masing-masing di depan pintu bangunannya
+	var keepers_v39 := {}
+	for w in wtk._warga:
+		if w.toko != "":
+			keepers_v39[w.toko] = w
+	_check(keepers_v39.size() == 3 and keepers_v39.has("toko") and keepers_v39.has("makan") and keepers_v39.has("rawat"), "tiap toko punya penjaga: ramuan, makan, rumah sehat")
+	var kk_v39 = keepers_v39["toko"]
+	wtk._pos = kk_v39.pos + Vector2(0.0, 1.0)
+	_check(wtk._keeper_of(wtk._npc_in_range()) == kk_v39, "dekat penjaga toko: tombol Bicara membuka tokonya")
+	wtk._pos = Vector2(12.5, 20.5)
+	_check(wtk._keeper_of(wtk._npc_in_range()) == null, "jauh dari penjaga: tidak ada toko")
+	wtk.queue_free()
+	await process_frame
+	Session.player.state = saved_toko_v39
+
+	var cat_all_v39: Dictionary = await Api.item_catalog()
+	_check(cat_all_v39.ok and cat_all_v39.data.items.size() >= 14, "katalog seluruh barang untuk ransel")
+	var cat_food_v39: Dictionary = await Api.shop_get("makan")
+	var food_ids_v39: Array = []
+	for it: Dictionary in cat_food_v39.data.get("items", []):
+		food_ids_v39.append(str(it.id))
+	_check(cat_food_v39.ok and food_ids_v39.has("roti") and food_ids_v39.has("sup_ayam") and food_ids_v39.has("daging_bakar") and not food_ids_v39.has("ramuan"), "rumah makan hanya menjual makanan %s" % str(food_ids_v39))
+	var cat_potion_v39: Dictionary = await Api.shop_get("toko")
+	var potion_ids_v39: Array = []
+	for it: Dictionary in cat_potion_v39.data.get("items", []):
+		potion_ids_v39.append(str(it.id))
+	_check(cat_potion_v39.ok and potion_ids_v39.has("ramuan") and potion_ids_v39.has("ramuan_kekuatan") and not potion_ids_v39.has("roti"), "toko ramuan menjual ramuan dan ramuan kekuatan, bukan makanan")
+	var wrong_v39: Dictionary = await Api.shop_buy("ramuan", 1, "makan")
+	_check(not wrong_v39.ok and wrong_v39.status == 422, "membeli ramuan di rumah makan ditolak 422")
+	var no_shop_v39: Dictionary = await Api.shop_get("pasar")
+	_check(not no_shop_v39.ok and no_shop_v39.status == 404, "toko tak dikenal ditolak 404")
+	Session.shop_id = "makan"
+	Session.shop_keeper = "Bu Wati"
+	var food_shop_v39: Control = load("res://scenes/shop.tscn").instantiate()
+	get_root().add_child(food_shop_v39)
+	var tf_v39 := Time.get_ticks_msec()
+	while food_shop_v39._catalog.is_empty() and Time.get_ticks_msec() - tf_v39 < 4000:
+		await process_frame
+	await process_frame
+	_check(food_shop_v39._title.text.begins_with("Rumah Makan") and food_shop_v39._title.text.contains("Bu Wati"), "layar toko memakai nama toko dan penjaganya (%s)" % food_shop_v39._title.text)
+	_check(food_shop_v39._list.get_child_count() > 2, "layar rumah makan menampilkan barang")
+	food_shop_v39.queue_free()
+	await process_frame
+	Session.shop_id = "toko"
+	Session.shop_keeper = ""
+	var gold_f_v39: int = int(Session.player.state.gold)
+	if gold_f_v39 >= 8:
+		var buy_food_v39: Dictionary = await Api.shop_buy("roti", 1, "makan")
+		_check(buy_food_v39.ok, "beli roti di rumah makan")
+		Session.merge_server_player(buy_food_v39.data)
+		var eat_full_v39: Dictionary = await Api.inventory_use("roti")
+		_check(eat_full_v39.ok or eat_full_v39.status == 422, "makan roti: dimakan atau ditolak saat HP penuh")
+		if eat_full_v39.ok:
+			Session.merge_server_player(eat_full_v39.data)
+	else:
+		_check(true, "emas %d kurang untuk beli roti; dilewati" % gold_f_v39)
+	Session.player.state = saved_toko_v39
 
 	print("== token salah")
 	Api.token = "salah"

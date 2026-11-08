@@ -179,6 +179,49 @@ def armor():
     finish(im, "zirah_besi")
 
 
+def roti():
+    im, d = new("5a4426", "2e2212")
+    ell_shadow(im, (30, 100, 162, 156))
+    d = ImageDraw.Draw(im)
+    d.ellipse([28 * S, 66 * S, 164 * S, 150 * S], fill=c("c98238"), outline=c("7a4a18"), width=3 * S)
+    d.ellipse([36 * S, 62 * S, 156 * S, 136 * S], fill=c("e8a64e"), outline=c("a8641e"), width=3 * S)
+    d.ellipse([52 * S, 70 * S, 110 * S, 100 * S], fill=c("f6c577"))
+    for x in (66, 92, 118):  # sayatan di atas roti
+        d.line(P((x, 76), (x + 14, 112)), fill=c("b0701f"), width=5 * S)
+    finish(im, "roti")
+
+
+def sup():
+    im, d = new("4a3224", "28190f")
+    for x in (72, 96, 120):  # uap
+        d.arc([(x - 8) * S, 24 * S, (x + 8) * S, 52 * S], 90, 270, fill=c("ffffff", 150), width=4 * S)
+        d.arc([(x - 8) * S, 46 * S, (x + 8) * S, 74 * S], 270, 450, fill=c("ffffff", 150), width=4 * S)
+    ell_shadow(im, (28, 70, 164, 160))
+    d = ImageDraw.Draw(im)
+    bowl = P((28, 88), (164, 88), (150, 140), (130, 158), (62, 158), (42, 140))
+    d.polygon(bowl, fill=c("d8d0c4"), outline=c("7a6a58"))
+    d.polygon(P((34, 100), (60, 100), (66, 152), (50, 140)), fill=c("f4efe6"))
+    d.ellipse([28 * S, 74 * S, 164 * S, 108 * S], fill=c("e0902c"), outline=c("7a6a58"), width=3 * S)
+    d.ellipse([40 * S, 80 * S, 152 * S, 102 * S], fill=c("f2b64e"))
+    for x, y in ((66, 90), (100, 86), (128, 92)):
+        d.ellipse([(x - 7) * S, (y - 4) * S, (x + 7) * S, (y + 4) * S], fill=c("fff2c4"))
+    finish(im, "sup_ayam")
+
+
+def daging():
+    im, d = new("522a24", "2a1410")
+    pts = P((50, 60), (116, 40), (150, 78), (138, 118), (90, 134), (54, 104))
+    shadow(im, pts)
+    d = ImageDraw.Draw(im)
+    d.line(P((100, 110), (150, 156)), fill=c("efe3c4"), width=12 * S)  # tulang
+    d.ellipse([140 * S, 142 * S, 166 * S, 168 * S], fill=c("efe3c4"), outline=c("a8987a"), width=2 * S)
+    d.polygon(pts, fill=c("a8441c"), outline=c("5a200c"))
+    d.polygon(P((60, 64), (112, 48), (136, 74), (96, 86), (64, 92)), fill=c("c8642a"))
+    for a, b in (((74, 72), (98, 62)), ((90, 98), (122, 84)), ((104, 112), (130, 98))):  # bekas panggang
+        d.line(P(a, b), fill=c("5a200c"), width=4 * S)
+    finish(im, "daging_bakar")
+
+
 taring()
 koin()
 gem("permata_merah", "d4283c", "ff7a88", "7a1224")
@@ -188,4 +231,7 @@ sword("pedang_baja", "7ea6d4", "bcd6f0", "d8b050", "3a4a6a", bg=("2a3a52", "151e
 sword("pedang_rune", "b08cf0", "dcc8ff", "e8c860", "4a2a7a", rune="ffe27a", bg=("2e2048", "180e2c"))
 tunic()
 armor()
+roti()
+sup()
+daging()
 print("ok", sorted(os.listdir(OUT)))

@@ -1,5 +1,6 @@
 extends Control
-## Toko desa. Harga dan hasil transaksi dihitung SERVER (docs/API.md);
+## Toko desa (toko ramuan atau rumah makan, menurut Session.shop_id). Dibuka dengan mengajak bicara penjaga toko
+## di bangunannya. Harga dan hasil transaksi dihitung SERVER (docs/API.md);
 ## layar ini hanya menampilkan daftar dan mengirim permintaan beli/jual.
 ## Ikon barang dimuat dari res://assets/items/<id>.png bila ada, kalau tidak
 ## dipakai kotak berwarna sesuai jenis barang.
@@ -10,18 +11,24 @@ const KIND_COLORS := {
 	"consumable": Color("c0504d"),
 	"material": Color("8a7a55"),
 	"treasure": Color("d4a72c"),
+	"food": Color("c98a3c"),
+	"equipment": Color("5a7fb0"),
 }
+const TITLES := {"toko": "Toko Ramuan", "makan": "Rumah Makan"}
 
 var _catalog: Array = []
 var _gold_label: Label
 var _message: Label
 var _list: VBoxContainer
 var _busy := false
+var _shop := "toko"
+var _title: Label
 
 
 func _ready() -> void:
+	_shop = Session.shop_id if TITLES.has(Session.shop_id) else "toko"
 	_build_ui()
-	var res: Dictionary = await Api.shop_get()
+	var res: Dictionary = await Api.shop_get(_shop)
 	if not res.ok:
 		_message.text = str(res.error)
 		return
@@ -37,12 +44,12 @@ func _owned(id: String) -> int:
 
 
 func _rebuild() -> void:
-	_gold_label.text = "Emas: %d" % int(Session.player.state.gold)
+	_gold_label.text = "Emas: %d   HP %d/%d" % [int(Session.player.state.gold), int(Session.player.state.hp), int(Session.player.state.max_hp)]
 	for child in _list.get_children():
 		child.queue_free()
 	_add_header("Beli")
 	for def: Dictionary in _catalog:
-		if int(def.buy_price) > 0:
+		if int(def.buy_price) > 0 and str(def.get("shop", "")) == _shop:
 			_add_row(def, "Beli", int(def.buy_price), "buy",
 				int(Session.player.state.gold) < int(def.buy_price))
 	_add_header("Jual")
@@ -63,13 +70,27 @@ func _on_trade(kind: String, id: String) -> void:
 	_busy = true
 	var res: Dictionary
 	if kind == "buy":
-		res = await Api.shop_buy(id, 1)
+		res = await Api.shop_buy(id, 1, _shop)
 	else:
-		res = await Api.shop_sell(id, 1)
+		res = await Api.shop_sell(id, 1, _shop)
 	_busy = false
 	if res.ok:
 		Session.merge_server_player(res.data)
 		_message.text = "Berhasil."
+	else:
+		_message.text = str(res.error)
+	_rebuild()
+
+
+func _on_eat(id: String) -> void:
+	if _busy:
+		return
+	_busy = true
+	var res: Dictionary = await Api.inventory_use(id)
+	_busy = false
+	if res.ok:
+		Session.merge_server_player(res.data)
+		_message.text = "Enak! HP bertambah."
 	else:
 		_message.text = str(res.error)
 	_rebuild()
@@ -103,6 +124,14 @@ func _add_row(def: Dictionary, verb: String, price: int, kind: String, disabled:
 	button.custom_minimum_size = Vector2(150, 80)
 	button.add_theme_font_size_override("font_size", 28)
 	button.pressed.connect(_on_trade.bind(kind, str(def.id)))
+	if kind == "sell" and str(def.kind) == "food":  # makan langsung di tempat: HP bertambah
+		var eat := Button.new()
+		eat.text = "Makan"
+		eat.disabled = int(Session.player.state.hp) >= int(Session.player.state.max_hp)
+		eat.custom_minimum_size = Vector2(150, 80)
+		eat.add_theme_font_size_override("font_size", 28)
+		eat.pressed.connect(_on_eat.bind(str(def.id)))
+		row.add_child(eat)
 	row.add_child(button)
 	_list.add_child(row)
 
@@ -138,7 +167,11 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 14)
 	margin.add_child(box)
 
-	box.add_child(_make_label("Toko Desa", 44))
+	var title := str(TITLES.get(Session.shop_id, "Toko Desa"))
+	if Session.shop_keeper != "":
+		title += " - " + Session.shop_keeper
+	_title = _make_label(title, 40)
+	box.add_child(_title)
 	_gold_label = _make_label("", 30)
 	box.add_child(_gold_label)
 

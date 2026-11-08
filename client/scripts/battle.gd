@@ -31,6 +31,9 @@ const MAIN_ACTIONS := [
 	["skill2", "Skill 2", ""],
 ]
 
+## Biaya energi jurus (sama dengan Skill1Energy / Skill2Energy di internal/game/energy.go).
+const SKILL_ENERGY := {"skill1": 20, "skill2": 25}
+
 var _enemy_id := ""
 var _hero_rig: Node3D
 var _enemy_rig: Node3D
@@ -88,6 +91,8 @@ func _on_action(action: String) -> void:
 		return
 	if _cooldown_left(action) > READY_SLACK_MS:
 		return  # belum siap; tombol sudah tampak mati
+	if SKILL_ENERGY.has(action) and Session.energy() < int(SKILL_ENERGY[action]):
+		return  # energi kurang; tombol sudah tampak mati
 	if action == "potion" and (_potion_count() <= 0 or int(Session.player.state.hp) >= int(Session.player.state.max_hp)):
 		return
 	if _busy:
@@ -443,8 +448,8 @@ func _refresh() -> void:
 		_enemy_bar.value = 0 if _result == "won" else _enemy_bar.value
 
 	var st: Dictionary = Session.player.state
-	_player_label.text = "%s  Lv %d   HP %d/%d   Emas %d" % [
-		Session.player.name, st.level, st.hp, st.max_hp, st.gold,
+	_player_label.text = "%s  Lv %d   HP %d/%d   Energi %d/%d   Emas %d" % [
+		Session.player.name, st.level, st.hp, st.max_hp, Session.energy(), Session.MAX_ENERGY, st.gold,
 	]
 	_player_bar.max_value = int(st.max_hp)
 	_player_bar.value = int(st.hp)
@@ -465,8 +470,11 @@ func _update_buttons(now: int) -> void:
 			sub = "Menahan!"
 		elif action == "skill2" and now < _shield_until:
 			sub = "Perisai aktif"
+		var no_energy: bool = SKILL_ENERGY.has(action) and Session.energy() < int(SKILL_ENERGY[action])
+		if no_energy and left <= READY_SLACK_MS:
+			sub = "Energi kurang"
 		button.text = str(entry[1]) if sub == "" else "%s\n%s" % [entry[1], sub]
-		button.disabled = left > READY_SLACK_MS
+		button.disabled = left > READY_SLACK_MS or no_energy
 	var potions := _potion_count()
 	var potion_button := _buttons["potion"] as Button
 	var potion_left := _cooldown_left("potion")

@@ -790,3 +790,28 @@ func TestAllyEndpoints(t *testing.T) {
 		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
 	}
 }
+
+func TestShopPerShop(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "Pembeli")
+	// katalog tiap toko
+	resp, data := do(t, "GET", ts.URL+"/v1/shop?shop=makan", cr.Token, nil)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(data), "sup_ayam") || strings.Contains(string(data), "pedang_besi") {
+		t.Fatalf("katalog rumah makan: %d %s", resp.StatusCode, data)
+	}
+	resp, data = do(t, "GET", ts.URL+"/v1/shop", cr.Token, nil)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(data), "ramuan_kekuatan") || strings.Contains(string(data), "sup_ayam") {
+		t.Fatalf("katalog toko ramuan: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ = do(t, "GET", ts.URL+"/v1/shop?shop=pasar", cr.Token, nil); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("toko asing harus 404: %d", resp.StatusCode)
+	}
+	// membeli di toko yang salah ditolak
+	resp, data = do(t, "POST", ts.URL+"/v1/shop/buy", cr.Token, map[string]any{"shop": "makan", "item": "ramuan", "qty": 1})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("ramuan di rumah makan harus 422: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ = do(t, "POST", ts.URL+"/v1/shop/buy", cr.Token, map[string]any{"shop": "pasar", "item": "roti", "qty": 1}); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("toko asing harus 404: %d", resp.StatusCode)
+	}
+}

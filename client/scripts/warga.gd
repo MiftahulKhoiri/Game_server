@@ -29,6 +29,9 @@ var door := Vector2i(-1, -1)  # petak pintu rumahnya (D); (-1,-1) = tidak punya 
 var arah := Vector2i(0, 1)    # arah muka rumah: petak depan pintu = door + arah (rumah biasa menghadap selatan)
 var terlihat := false         # tetap terlihat saat "di dalam" (penjaga berdiri di pos jaga yang terbuka)
 var inside := false           # sedang di dalam rumah (malam): tidak terlihat dan tidak bisa diajak bicara
+var nama := ""
+var toko := ""                # penjaga toko: jenis toko yang dijaga ("toko", "makan", "rawat"); kosong = warga biasa
+var diam := false             # penjaga toko: tetap berdiri di tempat (hanya menoleh ke pemain)
 var node: Node3D            # wadah di dunia (posisi); model di dalamnya yang berputar
 var model: Node3D
 
@@ -49,6 +52,9 @@ func _init(def: Dictionary, seed_value: int) -> void:
 	if def.has("arah"):
 		arah = def.arah
 	terlihat = bool(def.get("terlihat", false))
+	nama = str(def.name)
+	toko = str(def.get("toko", ""))
+	diam = bool(def.get("diam", false))
 	radius = float(def.radius)
 	speed = float(def.speed)
 	pos = home
@@ -170,6 +176,11 @@ func step(delta: float, player: Vector2, others: Array[Vector2], night := false)
 			leave_home()
 		if inside:
 			return
+	if diam:  # penjaga toko: berdiri di tempat, menoleh bila pemain mendekat
+		if pos.distance_to(player) < NOTICE:
+			var tp := player - pos
+			yaw = lerp_angle(yaw, atan2(tp.x, tp.y), minf(1.0, delta * TURN_RATE))
+		return
 	var want_yaw := yaw
 	var face_player := false
 	if pos.distance_to(player) < GREET:

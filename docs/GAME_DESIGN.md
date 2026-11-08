@@ -193,6 +193,14 @@ dipasang berbaris di belakang pemain (maks 3). Di dunia mereka mengikuti pemain;
 menyerang musuh otomatis tiap 2,4 d (kerusakan 70% serangan dasar level pemain + 2). Pemain tetap yang
 menentukan bertahan, skill, ramuan, dan kabur. Harga 250-350 emas (draf, untuk diseimbangkan).
 
+## Energi, makanan, dan toko (v0.39.0)
+
+- **Energi** (bar petir): jurus memakainya (Skill 1 = 20, Skill 2 = 25 dari 100); serangan biasa +4, menang +15, naik level
+  atau istirahat = penuh, Ramuan Kekuatan +60 (dan serangan x1,3 tiga pertarungan).
+- **Toko** hanya bisa dimasuki lewat penjaganya di depan pintu bangunan (Bicara): Toko Ramuan (Pak Darman: ramuan 15,
+  ramuan kekuatan 40, senjata, pelindung), Rumah Makan (Bu Wati: Roti Hangat 8 emas +10 HP, Sup Ayam 20 +25,
+  Daging Bakar 45 +50), dan rumah sehat (Suster Mira: pulih gratis). Tombol Toko di Menu dihapus.
+
 ## Bos
 
 Bos tidak muncul acak. Injak singgasana (petak `K`); klien meminta `POST /v1/battle/start`

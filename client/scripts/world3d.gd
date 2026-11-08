@@ -318,14 +318,14 @@ func _spawn_warga(map_id: String) -> void:
 		holder.add_child(model)
 		_add_shadow(holder, 0.28)
 		var label := Label3D.new()
-		label.text = str(def.name)
+		label.text = str(def.name) + ("\n" + str(def.peran) if def.has("peran") else "")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.no_depth_test = true
 		label.pixel_size = 0.005
 		label.font_size = 36
 		label.outline_size = 8
 		label.modulate = Color("e8e8d0")
-		label.position = Vector3(0, 1.15, 0)
+		label.position = Vector3(0, 1.3 if def.has("peran") else 1.15, 0)
 		holder.add_child(label)
 		_npc_root.add_child(holder)
 		w.node = holder
@@ -1293,11 +1293,43 @@ func _talk() -> void:
 	var npc := _npc_in_range()
 	if npc == "":
 		return
+	var keeper := _keeper_of(npc)
+	if keeper != null:
+		await _visit_keeper(keeper)
+		return
 	_locked = true
 	Session.talk_npc = npc
 	Session.talk_counts[npc] = int(Session.talk_counts.get(npc, 0)) + 1
 	await _flush_save()  # versi pemain harus sinkron sebelum hadiah diambil
 	get_tree().change_scene_to_file(DIALOG_SCENE)
+
+
+## Penjaga toko dari id lawan bicara "warga:<id>", atau null bila bukan penjaga toko.
+func _keeper_of(npc_id: String) -> Warga:
+	if not npc_id.begins_with(Warga.TALK_PREFIX):
+		return null
+	var wid := npc_id.substr(Warga.TALK_PREFIX.length())
+	for w in _warga:
+		if w.id == wid and w.toko != "":
+			return w
+	return null
+
+
+## Masuk ke toko lewat penjaganya: toko ramuan / rumah makan membuka layar toko, rumah sehat memulihkan pemain.
+func _visit_keeper(w: Warga) -> void:
+	if w.toko == "rawat":
+		_set_status("%s: Duduklah, biar kurawat lukamu." % w.nama)
+		var res: Dictionary = await Api.rest()
+		if res.ok:
+			Session.merge_server_player(res.data)
+			_refresh_hud()
+			_set_status("%s merawatmu: HP dan energi pulih penuh." % w.nama)
+		else:
+			_set_status("%s: %s" % [w.nama, str(res.error)])
+		return
+	Session.shop_id = w.toko
+	Session.shop_keeper = w.nama
+	await _open_screen(SHOP_SCENE)
 
 
 ## Pindah ke layar lain (toko, tas) setelah menyimpan posisi: versi pemain harus
@@ -1366,7 +1398,7 @@ func _build_ui() -> void:
 	layer.add_child(_bars)
 
 	_status = Label.new()
-	_status.position = Vector2(20, 150)
+	_status.position = Vector2(20, 186)
 	_status.size = Vector2(420, 60)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_font_size_override("font_size", 22)
@@ -1428,7 +1460,6 @@ func _build_ui() -> void:
 	_menu.settings_changed.connect(_apply_quality)
 	_menu.profile_requested.connect(_open_profile)
 	_menu.inventory_requested.connect(_open_from_menu.bind(INVENTORY_SCENE))
-	_menu.shop_requested.connect(_open_from_menu.bind(SHOP_SCENE))
 	_menu.atribut_requested.connect(_open_from_menu.bind(ATRIBUT_SCENE))
 	_profile = ProfileScreen.new()
 	add_child(_profile)
@@ -1461,7 +1492,7 @@ func _add_action(layer: CanvasLayer, icon: int, title: String, center: Vector2, 
 	return b
 
 
-## Ransel dan Toko dibuka dari Menu (menu menutup dulu, lalu pindah layar).
+## Ransel dibuka dari Menu (toko hanya bisa dimasuki lewat penjaga di rumah toko) (menu menutup dulu, lalu pindah layar).
 func _open_from_menu(scene: String) -> void:
 	_menu.close()
 	_locked = false
@@ -1473,6 +1504,7 @@ func _refresh_hud() -> void:
 	if _bars != null:
 		_bars.set_identity(str(Session.player.name), int(st.gold))
 		_bars.set_values(int(st.level), int(st.xp), 20 * int(st.level), int(st.hp), int(st.max_hp))
+		_bars.set_energy(Session.energy(), Session.MAX_ENERGY)
 
 
 func _set_status(text: String) -> void:

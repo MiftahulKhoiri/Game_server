@@ -259,15 +259,20 @@ Saat menang, `log` pertarungan memuat baris kemajuan misi, mis. `Misi "Selamatka
 Semua harga ditentukan server. Transaksi atomik: bila gagal, emas dan tas tidak berubah.
 Tidak bisa berdagang saat ada pertarungan aktif (`409`).
 
-### `GET /v1/shop`  (login)
-`200 {"items": [{"id", "name", "kind", "buy_price", "sell_price"}, ...]}`.
+### `GET /v1/shop?shop=toko|makan|semua`  (login)
+Katalog satu toko (v0.39.0): `toko` (bawaan) = Toko Ramuan (ramuan, ramuan kekuatan, senjata, pelindung; membeli semua
+selain makanan), `makan` = Rumah Makan (makanan; hanya membeli makanan), `semua` = seluruh daftar barang (untuk ransel).
+Toko lain: `404`. Klien membuka toko lewat penjaga di bangunannya (bukan dari Menu).
+`200 {"shop": "toko", "items": [{"id", "name", "kind", "buy_price", "sell_price", "shop", "heal"}, ...]}`.
+`shop` = toko yang menjual barang itu; `heal` = HP yang dipulihkan saat dimakan (`kind` `food`).
 `buy_price` 0 = tidak dijual toko; `sell_price` 0 = toko tidak membeli.
-`kind`: `consumable`, `material`, `treasure`, `equipment`. Perlengkapan juga membawa
+`kind`: `consumable`, `material`, `treasure`, `equipment`, `food`. Perlengkapan juga membawa
 `slot` (`weapon`/`armor`), `attack`, `defense` (bonus). Penjualan perlengkapan yang sedang
 dipakai (salinan terakhir) ditolak `422`.
 
 ### `POST /v1/shop/buy` dan `POST /v1/shop/sell`  (login)
-Body: `{"item": "ramuan", "qty": 1}` (qty 1..99). `200` berisi objek pemain terbaru.
+Body: `{"shop": "toko", "item": "ramuan", "qty": 1}` (qty 1..99; `shop` kosong = `toko`). `200` berisi objek pemain terbaru.
+Membeli barang di toko yang tidak menjualnya, atau menjual ke toko yang tidak membelinya, ditolak `422`; `shop` asing `404`.
 
 | Status | Arti |
 |--------|------|
@@ -282,10 +287,10 @@ bertarung, `404` bila barang tidak dikenal, `422` bila melanggar aturan.
 
 | Endpoint | Body | Efek |
 |----------|------|------|
-| `POST /v1/inventory/use` | `{"item":"ramuan"}` | Minum ramuan (+15 HP). `422` bila HP penuh / tidak punya |
+| `POST /v1/inventory/use` | `{"item":"ramuan"}` | Minum ramuan (+15 HP), makan makanan (`roti` +10, `sup_ayam` +25, `daging_bakar` +50 HP), atau minum `ramuan_kekuatan` (isi energi 60 + serangan x1,3). `422` bila HP penuh / tidak punya |
 | `POST /v1/inventory/equip` | `{"item":"pedang_besi"}` | Pasang dari tas; yang lama kembali ke tas. `422` bila bukan perlengkapan / tidak dimiliki |
 | `POST /v1/inventory/unequip` | `{"slot":"weapon"}` | Lepas ke tas. `422` bila slot kosong / tas penuh |
-| `POST /v1/rest` | - | Istirahat gratis, HP penuh; hanya di `desa_awal` (`422` di tempat lain atau bila HP penuh) |
+| `POST /v1/rest` | - | Istirahat gratis, HP dan energi penuh; hanya di `desa_awal` (`422` di tempat lain atau bila HP dan energi sudah penuh) |
 
 Bonus perlengkapan ditambahkan ke serang/tahan dari level, dan dipakai dalam pertarungan.
 
@@ -313,3 +318,9 @@ Server sudah otoritatif untuk statistik dan pertarungan. Berikutnya, aksi
 lain (beli, pakai item, misi) mengikuti pola yang sama: klien mengirim aksi,
 server menghitung hasilnya. Server belum mengenal peta, jadi posisi masih
 dipercaya dari klien dan pemicu pertemuan masih dari klien.
+
+## Energi (v0.39.0)
+
+`state.energy_used` (0..100): energi yang terpakai; energi = 100 - `energy_used` (0 = penuh, field hilang di data lama).
+Skill 1 memakai 20 dan Skill 2 memakai 25 energi (`422` "energi tidak cukup" bila kurang); serangan biasa +4, menang +15,
+naik level dan istirahat penuh, Ramuan Kekuatan +60.

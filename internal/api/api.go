@@ -89,8 +89,8 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
 	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
-	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.Buy))))
-	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.Sell))))
+	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
+	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.SellAt))))
 	return s.logRequests(s.clientGate(mux))
 }
 
@@ -442,7 +442,7 @@ func (s *Server) battleAction(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, errNoBattle):
 		writeError(w, http.StatusNotFound, errNoBattle.Error())
-	case errors.Is(err, game.ErrBadAction), errors.Is(err, game.ErrNoPotion), errors.Is(err, game.ErrFullHP), errors.Is(err, game.ErrCooldown):
+	case errors.Is(err, game.ErrBadAction), errors.Is(err, game.ErrNoPotion), errors.Is(err, game.ErrFullHP), errors.Is(err, game.ErrCooldown), errors.Is(err, game.ErrNoEnergy):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case err != nil:
 		s.fail(w, r, err)
@@ -627,17 +627,33 @@ func (s *Server) restAction() http.Handler {
 
 // --- toko ---
 
+// getShop: katalog satu toko (?shop=toko|makan; kosong = toko ramuan) berisi barang yang dijual
+// dan yang bisa dijual pemain ke sana.
 func (s *Server) getShop(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"items": game.Items()})
+	shop := r.URL.Query().Get("shop")
+	if shop == "" {
+		shop = game.ShopPotion
+	}
+	if shop == "semua" { // seluruh daftar barang (nama dan jenis), untuk ransel
+		writeJSON(w, http.StatusOK, map[string]any{"shop": shop, "items": game.Items()})
+		return
+	}
+	list, err := game.ShopItems(shop)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"shop": shop, "items": list})
 }
 
 type tradeRequest struct {
+	Shop string `json:"shop"` // toko tempat transaksi (kosong = toko ramuan)
 	Item string `json:"item"`
 	Qty  int    `json:"qty"`
 }
 
 // shopTrade membuat handler jual/beli. Transaksi atomik: gagal berarti tidak ada yang berubah.
-func (s *Server) shopTrade(trade func(*game.State, string, int) error) http.HandlerFunc {
+func (s *Server) shopTrade(trade func(*game.State, string, string, int) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req tradeRequest
 		if !decode(w, r, &req) {
@@ -647,14 +663,18 @@ func (s *Server) shopTrade(trade func(*game.State, string, int) error) http.Hand
 			if sess.Battle != nil {
 				return errBattleActive
 			}
-			return trade(&sess.Player.State, req.Item, req.Qty)
+			shop := req.Shop
+			if shop == "" {
+				shop = game.ShopPotion
+			}
+			return trade(&sess.Player.State, shop, req.Item, req.Qty)
 		})
 		switch {
 		case errors.Is(err, errBattleActive):
 			writeError(w, http.StatusConflict, "tidak bisa berdagang saat bertarung")
-		case errors.Is(err, game.ErrUnknownItem):
+		case errors.Is(err, game.ErrUnknownItem), errors.Is(err, game.ErrUnknownShop):
 			writeError(w, http.StatusNotFound, err.Error())
-		case errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
+		case errors.Is(err, game.ErrWrongShop), errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
 			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull),
 			errors.Is(err, game.ErrEquipped):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())

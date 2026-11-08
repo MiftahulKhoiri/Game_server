@@ -136,16 +136,21 @@ func world_chest(chest_id: String, map_id: String, pos: Vector2, yaw: float) -> 
 
 
 ## Daftar barang dan harga toko.
-func shop_get() -> Dictionary:
-	return await _call(HTTPClient.METHOD_GET, "/v1/shop", null, true)
+func shop_get(shop := "toko") -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/shop?shop=" + shop, null, true)
 
 
-func shop_buy(item: String, qty: int) -> Dictionary:
-	return await _call(HTTPClient.METHOD_POST, "/v1/shop/buy", {"item": item, "qty": qty}, true)
+## Seluruh daftar barang (nama, jenis, bonus) untuk ransel, bukan katalog satu toko.
+func item_catalog() -> Dictionary:
+	return await shop_get("semua")
 
 
-func shop_sell(item: String, qty: int) -> Dictionary:
-	return await _call(HTTPClient.METHOD_POST, "/v1/shop/sell", {"item": item, "qty": qty}, true)
+func shop_buy(item: String, qty: int, shop := "toko") -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/shop/buy", {"shop": shop, "item": item, "qty": qty}, true)
+
+
+func shop_sell(item: String, qty: int, shop := "toko") -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/shop/sell", {"shop": shop, "item": item, "qty": qty}, true)
 
 
 func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -> Dictionary:

@@ -11,6 +11,13 @@ const (
 	KindMaterial   = "material"   // bahan, dijatuhkan musuh
 	KindTreasure   = "treasure"   // harta, hadiah misi
 	KindEquipment  = "equipment"  // bisa dipakai di slot perlengkapan
+	KindFood       = "food"       // makanan: dimakan memulihkan HP
+)
+
+// Toko di desa. Pembelian hanya sah di toko yang menjualnya (pemain harus berada di toko itu).
+const (
+	ShopPotion = "toko"  // toko ramuan / kesehatan (juga perlengkapan)
+	ShopFood   = "makan" // rumah makan
 )
 
 // Slot perlengkapan.
@@ -27,8 +34,10 @@ type ItemDef struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Kind      string `json:"kind"`
-	BuyPrice  int    `json:"buy_price"`  // harga beli pemain dari toko
-	SellPrice int    `json:"sell_price"` // harga jual pemain ke toko
+	BuyPrice  int    `json:"buy_price"`      // harga beli pemain dari toko
+	SellPrice int    `json:"sell_price"`     // harga jual pemain ke toko
+	Shop      string `json:"shop,omitempty"` // toko yang menjual barang ini (ShopPotion / ShopFood); kosong = tidak dijual
+	Heal      int    `json:"heal,omitempty"` // HP yang dipulihkan saat dimakan (KindFood)
 	// Khusus perlengkapan (Kind == KindEquipment):
 	Slot    string `json:"slot,omitempty"`
 	Attack  int    `json:"attack,omitempty"`  // bonus serangan (SlotWeapon)
@@ -38,17 +47,20 @@ type ItemDef struct {
 // Daftar barang. Barang baru: tambahkan satu baris di sini lalu (opsional)
 // gambar client/assets/items/<id>.png. Draf harga untuk diseimbangkan.
 var items = []ItemDef{
-	{ID: PotionID, Name: "Ramuan Penyembuh", Kind: KindConsumable, BuyPrice: 15, SellPrice: 6},
+	{ID: PotionID, Name: "Ramuan Penyembuh", Kind: KindConsumable, BuyPrice: 15, SellPrice: 6, Shop: ShopPotion},
 	{ID: "taring_goblin", Name: "Taring Goblin", Kind: KindMaterial, SellPrice: 12},
 	{ID: "koin_kuno", Name: "Koin Kuno", Kind: KindTreasure, SellPrice: 25},
 	{ID: "permata_merah", Name: "Permata Merah", Kind: KindTreasure, SellPrice: 60},
 	{ID: DiamondID, Name: "Berlian", Kind: KindTreasure, SellPrice: 100},
-	{ID: PowerPotionID, Name: "Ramuan Kekuatan", Kind: KindConsumable, SellPrice: 20},
-	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Slot: SlotWeapon, Attack: 3},
-	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Slot: SlotWeapon, Attack: 6},
+	{ID: PowerPotionID, Name: "Ramuan Kekuatan", Kind: KindConsumable, BuyPrice: 40, SellPrice: 20, Shop: ShopPotion},
+	{ID: "roti", Name: "Roti Hangat", Kind: KindFood, BuyPrice: 8, SellPrice: 3, Shop: ShopFood, Heal: 10},
+	{ID: "sup_ayam", Name: "Sup Ayam", Kind: KindFood, BuyPrice: 20, SellPrice: 8, Shop: ShopFood, Heal: 25},
+	{ID: "daging_bakar", Name: "Daging Bakar", Kind: KindFood, BuyPrice: 45, SellPrice: 18, Shop: ShopFood, Heal: 50},
+	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Shop: ShopPotion, Slot: SlotWeapon, Attack: 3},
+	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Shop: ShopPotion, Slot: SlotWeapon, Attack: 6},
 	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual
-	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Slot: SlotArmor, Defense: 2},
-	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Slot: SlotArmor, Defense: 4},
+	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Shop: ShopPotion, Slot: SlotArmor, Defense: 2},
+	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Shop: ShopPotion, Slot: SlotArmor, Defense: 4},
 }
 
 // Kesalahan transaksi toko.
@@ -61,6 +73,8 @@ var (
 	ErrNotEnough     = errors.New("barang yang dimiliki tidak cukup")
 	ErrInventoryFull = errors.New("ransel penuh")
 	ErrEquipped      = errors.New("lepas dulu perlengkapan ini sebelum menjualnya")
+	ErrUnknownShop   = errors.New("toko tidak dikenal")
+	ErrWrongShop     = errors.New("toko ini tidak menjual barang itu")
 )
 
 // Items mengembalikan salinan seluruh daftar barang.
@@ -76,8 +90,37 @@ func ItemByID(id string) (ItemDef, bool) {
 	return ItemDef{}, false
 }
 
-// Buy membeli qty barang dari toko.
-func Buy(st *State, id string, qty int) error {
+// ShopItems: barang yang bisa dibeli atau dijual di toko `shop`. Toko ramuan membeli semua
+// barang selain makanan; rumah makan hanya membeli makanan.
+func ShopItems(shop string) ([]ItemDef, error) {
+	if shop != ShopPotion && shop != ShopFood {
+		return nil, ErrUnknownShop
+	}
+	var out []ItemDef
+	for _, it := range items {
+		if it.Shop == shop || (it.SellPrice > 0 && shopBuys(shop, it)) {
+			out = append(out, it)
+		}
+	}
+	return out, nil
+}
+
+// shopBuys: apakah toko `shop` mau membeli barang ini dari pemain.
+func shopBuys(shop string, it ItemDef) bool {
+	if shop == ShopFood {
+		return it.Kind == KindFood
+	}
+	return it.Kind != KindFood
+}
+
+// Buy membeli qty barang di toko mana pun yang menjualnya (dipakai tes dan aturan inti).
+func Buy(st *State, id string, qty int) error { return BuyAt(st, "", id, qty) }
+
+// BuyAt membeli qty barang dari toko `shop`; "" = tanpa memeriksa toko.
+func BuyAt(st *State, shop, id string, qty int) error {
+	if shop != "" && shop != ShopPotion && shop != ShopFood {
+		return ErrUnknownShop
+	}
 	def, ok := ItemByID(id)
 	if !ok {
 		return ErrUnknownItem
@@ -87,6 +130,9 @@ func Buy(st *State, id string, qty int) error {
 	}
 	if def.BuyPrice <= 0 {
 		return ErrNotForSale
+	}
+	if shop != "" && def.Shop != shop {
+		return ErrWrongShop
 	}
 	cost := def.BuyPrice * qty
 	if st.Gold < cost {
@@ -99,8 +145,14 @@ func Buy(st *State, id string, qty int) error {
 	return nil
 }
 
-// Sell menjual qty barang ke toko.
-func Sell(st *State, id string, qty int) error {
+// Sell menjual qty barang ke toko mana pun (dipakai tes dan aturan inti).
+func Sell(st *State, id string, qty int) error { return SellAt(st, "", id, qty) }
+
+// SellAt menjual qty barang ke toko `shop`; "" = tanpa memeriksa toko.
+func SellAt(st *State, shop, id string, qty int) error {
+	if shop != "" && shop != ShopPotion && shop != ShopFood {
+		return ErrUnknownShop
+	}
 	def, ok := ItemByID(id)
 	if !ok {
 		return ErrUnknownItem
@@ -108,7 +160,7 @@ func Sell(st *State, id string, qty int) error {
 	if qty < 1 || qty > MaxBuyQty {
 		return ErrBadQty
 	}
-	if def.SellPrice <= 0 {
+	if def.SellPrice <= 0 || (shop != "" && !shopBuys(shop, def)) {
 		return ErrNotBuyable
 	}
 	owned := st.itemQty(id)

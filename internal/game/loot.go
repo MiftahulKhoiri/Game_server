@@ -342,6 +342,7 @@ func (s *State) UsePowerPotion() error {
 	}
 	s.RemoveItem(PowerPotionID, 1)
 	s.PowerLeft = PowerBattles
+	s.gainEnergy(EnergyPowerPotion)
 	return nil
 }
 

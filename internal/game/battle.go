@@ -251,10 +251,14 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 	switch action {
 	case ActionAttack:
 		cd()
+		st.gainEnergy(EnergyPerAttack)
 		if strike(st.Attack(), "attack") {
 			return res, nil
 		}
 	case ActionSkill1:
+		if !st.spendEnergy(Skill1Energy) {
+			return Result{}, ErrNoEnergy
+		}
 		cd()
 		if strike(st.Attack()*Skill1Mult/10, "skill1") {
 			return res, nil
@@ -265,6 +269,9 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		res.Events = append(res.Events, Event{Who: "player", Kind: "guard"})
 		logf("Kamu bersiap bertahan.")
 	case ActionSkill2:
+		if !st.spendEnergy(Skill2Energy) {
+			return Result{}, ErrNoEnergy
+		}
 		cd()
 		heal := max(1, st.MaxHP*Skill2HealPercent/100)
 		heal = min(heal, st.MaxHP-st.HP)
@@ -396,11 +403,13 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 
 	st.XP += e.XP
 	st.Gold += e.Gold
+	st.gainEnergy(EnergyPerWin)
 	for st.Level < MaxLevel && st.XP >= XPToNext(st.Level) {
 		st.XP -= XPToNext(st.Level)
 		st.Level++
 		st.MaxHP = MaxHPForLevel(st.Level)
 		st.HP = st.MaxHP
+		st.EnergyUsed = 0
 		rw.LeveledUp = true
 		rw.NewLevel = st.Level
 	}

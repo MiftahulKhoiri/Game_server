@@ -1,8 +1,9 @@
 extends Control
 ## Tampilan pemain di pojok kiri atas, digambar dengan kode:
 ##   bagus                            <- nama pemain, di atas level
-##   (Lv 3)  [=====xp======     ]     <- level, bar poin menuju level berikutnya
+##   (tropi) [=====xp======     ]     <- piala bernomor level, bar poin menuju level berikutnya
 ##    (+)    [=====nyawa=====   ]     <- tanda + merah, bar nyawa bergerak sesuai persentase
+##    (petir)[=====energi====    ]     <- ikon petir, bar energi (kekuatan jurus)
 ##   (koin) 47                        <- jumlah emas
 ## Poin (XP) didapat dari mengalahkan monster. Warna bar nyawa berubah seperti baterai:
 ## hijau stabilo saat penuh, lalu kuning, oranye, merah saat menipis. Nyawa turun/naik dengan
@@ -16,7 +17,10 @@ const XP_Y := 36.0
 const XP_H := 16.0
 const HP_Y := 66.0
 const HP_H := 24.0
-const COIN_Y := 112.0  # titik tengah baris koin emas
+const EN_Y := 98.0     # bar energi (petir) di bawah bar nyawa
+const EN_H := 18.0
+const COIN_Y := 142.0  # titik tengah baris koin emas
+const EN_COLOR := Color("ffc61a")
 const NAME_FILL := Color("ffd45e")     # nama pemain: emas hangat...
 const NAME_EDGE := Color("7a2d0a")     # ...dengan tepi cokelat tua
 const LOW := 0.3
@@ -36,10 +40,14 @@ var hp := 30
 var max_hp := 30
 var player_name := ""
 var gold := 0
+var energy := 100
+var max_energy := 100
 
 var _hp_show := 1.0    # persentase nyawa yang digambar (menyusul target dengan halus)
 var _hp_chip := 1.0    # bar putih yang menyusul lebih lambat saat nyawa berkurang
 var _xp_show := 0.0
+var _en_show := 1.0
+var _en_init := false
 var _init_done := false
 var _t := 0.0
 
@@ -64,6 +72,21 @@ func set_values(new_level: int, new_xp: int, new_xp_need: int, new_hp: int, new_
 		_xp_show = xp_fraction()
 	set_process(true)
 	queue_redraw()
+
+
+## Energi (kekuatan jurus), digambar sebagai bar di bawah bar nyawa.
+func set_energy(new_energy: int, new_max: int) -> void:
+	max_energy = maxi(1, new_max)
+	energy = clampi(new_energy, 0, max_energy)
+	if not _en_init:
+		_en_init = true
+		_en_show = energy_fraction()
+	set_process(true)
+	queue_redraw()
+
+
+func energy_fraction() -> float:
+	return clampf(float(energy) / float(max_energy), 0.0, 1.0)
 
 
 ## Nama pemain (di atas level) dan jumlah emas (di samping koin).
@@ -102,8 +125,9 @@ func _process(delta: float) -> void:
 	else:
 		_hp_chip = _hp_show
 	_xp_show = move_toward(_xp_show, xp_fraction(), delta * 0.8)
+	_en_show = move_toward(_en_show, energy_fraction(), delta * 1.2)
 	queue_redraw()
-	var settled := is_equal_approx(_hp_show, want) and is_equal_approx(_hp_chip, _hp_show) and is_equal_approx(_xp_show, xp_fraction())
+	var settled := is_equal_approx(_en_show, energy_fraction()) and is_equal_approx(_hp_show, want) and is_equal_approx(_hp_chip, _hp_show) and is_equal_approx(_xp_show, xp_fraction())
 	if settled and want >= LOW:
 		set_process(false)  # tidak ada yang bergerak: hemat tenaga
 
@@ -137,12 +161,8 @@ func _draw() -> void:
 	draw_string(font, nbase + Vector2(2.0, 3.0), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, Color(0, 0, 0, 0.45))
 	draw_string_outline(font, nbase, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, 8, NAME_EDGE)
 	draw_string(font, nbase, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, NAME_FILL)
-	# --- level ---
-	var c1 := Vector2(27.0, XP_Y + XP_H / 2.0)
-	draw_circle(c1, 20.0, Color(0, 0, 0, 0.6))
-	draw_circle(c1, 17.5, Color("e0b030"))
-	draw_circle(c1, 17.5, Color("fff0a8"), false, 2.0, true)
-	_text(str(level), c1, 22 if level < 100 else 16, Color("3a2606"))
+	# --- level: piala emas bernomor level ---
+	_trophy(Vector2(27.0, XP_Y + XP_H / 2.0 - 2.0))
 	# --- poin menuju level berikutnya ---
 	var xr := Rect2(BAR_X, XP_Y, BAR_W, XP_H)
 	_rr(xr.grow(2.0), Color(0, 0, 0, 0.55), 10.0)
@@ -176,6 +196,18 @@ func _draw() -> void:
 		_rr(Rect2(BAR_X, HP_Y, w, HP_H), fill, 10.0)
 		_rr(Rect2(BAR_X + 4.0, HP_Y + 2.5, maxf(0.0, w - 8.0), HP_H * 0.34), Color(1, 1, 1, 0.3), 5.0)
 	_rr(hr, Color(0, 0, 0, 0), 10.0, Color("ffe3df", 0.85), 1.5)
+	# --- petir dan bar energi ---
+	var ec := Vector2(27.0, EN_Y + EN_H / 2.0)
+	_bolt(ec)
+	var er := Rect2(BAR_X, EN_Y, BAR_W, EN_H)
+	_rr(er.grow(2.0), Color(0, 0, 0, 0.6), 11.0)
+	if _en_show > 0.003:
+		var ew := maxf(EN_H, BAR_W * _en_show)
+		var ecol := EN_COLOR if _en_show >= 0.2 else EN_COLOR.darkened(0.35)
+		_rr(Rect2(BAR_X, EN_Y, ew, EN_H), ecol, 9.0)
+		_rr(Rect2(BAR_X + 4.0, EN_Y + 2.0, maxf(0.0, ew - 8.0), EN_H * 0.34), Color(1, 1, 1, 0.35), 5.0)
+	_rr(er, Color(0, 0, 0, 0), 9.0, Color("fff2b8", 0.85), 1.5)
+	_text("%d/%d" % [energy, max_energy], er.get_center() + Vector2(0, -1.0), 13, Color.WHITE)
 	# --- koin emas dan jumlahnya ---
 	var cc := Vector2(27.0, COIN_Y)
 	draw_circle(cc, 15.0, Color(0, 0, 0, 0.6))
@@ -187,3 +219,37 @@ func _draw() -> void:
 	var gbase := Vector2(BAR_X - 6.0, COIN_Y + 8.0)
 	draw_string_outline(font, gbase, gtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Color("5a3a05"))
 	draw_string(font, gbase, gtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("ffe27a"))
+
+
+## Piala emas dengan nomor level di cangkirnya. `c` = titik tengah cangkir.
+func _trophy(c: Vector2) -> void:
+	var edge := Color("6b4208")
+	var gold_c := Color("f2b82a")
+	var light := Color("ffe27a")
+	# gagang kiri dan kanan
+	for sx in [-1.0, 1.0]:
+		draw_arc(c + Vector2(sx * 14.0, -6.0), 7.0, 0.0, TAU, 20, edge, 5.0, true)
+		draw_arc(c + Vector2(sx * 14.0, -6.0), 7.0, 0.0, TAU, 20, gold_c, 2.6, true)
+	# cangkir (lebar di atas, menyempit ke bawah)
+	var cup := PackedVector2Array([
+		c + Vector2(-15, -17), c + Vector2(15, -17), c + Vector2(13, -2),
+		c + Vector2(7, 6), c + Vector2(-7, 6), c + Vector2(-13, -2)])
+	draw_colored_polygon(cup, gold_c)
+	draw_polyline(PackedVector2Array([cup[0], cup[1], cup[2], cup[3], cup[4], cup[5], cup[0]]), edge, 2.4, true)
+	draw_line(c + Vector2(-10, -13), c + Vector2(-8, -3), light, 2.4, true)  # kilau
+	# tangkai dan alas
+	_rr(Rect2(c.x - 3.5, c.y + 6.0, 7.0, 7.0), gold_c, 1.0, edge, 1.5)
+	_rr(Rect2(c.x - 12.0, c.y + 12.0, 24.0, 7.0), Color("d99a1c"), 2.0, edge, 1.8)
+	_text(str(level), c + Vector2(0, -6.0), 20 if level < 10 else (16 if level < 100 else 12), Color("3a2606"))
+
+
+## Ikon petir kuning. `c` = titik tengahnya.
+func _bolt(c: Vector2) -> void:
+	var pts := PackedVector2Array([
+		c + Vector2(4, -15), c + Vector2(-9, 3), c + Vector2(-1.5, 3),
+		c + Vector2(-5, 15), c + Vector2(10, -4), c + Vector2(2, -4)])
+	draw_circle(c, 19.0, Color(0, 0, 0, 0.6))
+	draw_colored_polygon(pts, Color("ffd21a"))
+	var closed := pts.duplicate()
+	closed.append(pts[0])
+	draw_polyline(closed, Color("8a5a00"), 2.0, true)

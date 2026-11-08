@@ -236,6 +236,9 @@ func player_action(action: String) -> bool:
 	if action == "potion" and (_potion_count() <= 0 or int(Session.player.state.hp) >= int(Session.player.state.max_hp)):
 		world._set_status("Ramuan tidak bisa dipakai sekarang")
 		return false
+	if action == "skill1" and Session.energy() < 20:  # Skill1Energy di server
+		world._set_status("Energi kurang! Minum Ramuan Kekuatan atau serang biasa dulu")
+		return false
 	if _cooldown_left(action) > READY_SLACK_MS:
 		return false
 	if _busy:

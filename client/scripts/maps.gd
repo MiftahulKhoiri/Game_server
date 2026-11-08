@@ -132,6 +132,11 @@ const WARGA := [
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
 	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
 	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
+	# Penjaga toko: berdiri di depan pintu bangunannya siang dan malam (`diam`). Mengajak bicara penjaga =
+	# masuk ke tokonya (`toko` = "toko" ramuan, "makan" rumah makan; "rawat" = rumah sakit, pulih gratis).
+	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "desa_awal", "pos": Vector2(16.5, 3.4), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
+	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "desa_awal", "pos": Vector2(22.5, 3.4), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
+	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "desa_awal", "pos": Vector2(28.5, 3.4), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},

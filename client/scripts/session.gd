@@ -2,6 +2,7 @@ extends Node
 ## Data sesi yang dipakai antar-layar: pemain yang sedang main + pengaturan tersimpan.
 
 const CONFIG_PATH := "user://settings.cfg"
+const MAX_ENERGY := 100  # sama dengan MaxEnergy di internal/game/energy.go
 
 ## {"id", "name", "version", "state": {...}}  -- bentuk sama dengan docs/API.md
 var player: Dictionary = {}
@@ -9,6 +10,9 @@ var player: Dictionary = {}
 var battle: Dictionary = {}
 ## NPC yang sedang diajak bicara (untuk layar dialog).
 var talk_npc := ""
+## Toko yang akan dibuka layar toko ("toko" = toko ramuan, "makan" = rumah makan) dan nama penjaganya.
+var shop_id := "toko"
+var shop_keeper := ""
 ## Berapa kali tiap lawan bicara sudah diajak bicara (kalimat warga bergantian). Tidak disimpan.
 var talk_counts: Dictionary = {}
 ## Sisa langkah aman di ladang setelah pertarungan (tidak ada pertemuan baru).
@@ -76,10 +80,15 @@ func set_player(p: Dictionary) -> void:
 ## Menggabungkan data pemain dari server (mis. hasil pertarungan) ke data lokal.
 ## Statistik dan tas SELALU ikut server. Posisi (peta, x, y, fx, fz, yaw) tetap milik klien,
 ## kecuali adopt_position (mis. pemain kalah dan dipulangkan ke desa).
+## Energi (kekuatan jurus) pemain: MAX_ENERGY dikurangi yang terpakai (sama dengan MaxEnergy di server).
+func energy() -> int:
+	return MAX_ENERGY - int(player.state.get("energy_used", 0))
+
+
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "energy_used"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -129,4 +138,5 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		# Pahlawan pendamping yang sudah dibeli dan yang dipasang (hanya server yang mengubah).
 		"allies": _strings(s.get("allies", [])),
 		"party": _strings(s.get("party", [])),
+		"energy_used": clampi(int(s.get("energy_used", 0)), 0, MAX_ENERGY),
 	}

@@ -60,6 +60,9 @@ type State struct {
 	LastWorldMs int64 `json:"last_world_ms,omitempty"`
 	// PowerLeft: sisa pertarungan dengan Ramuan Kekuatan aktif.
 	PowerLeft int `json:"power_left,omitempty"`
+	// EnergyUsed: energi (kekuatan) yang terpakai, 0..MaxEnergy; 0 = penuh. Disimpan sebagai
+	// "terpakai" supaya data lama otomatis berenergi penuh. Lihat energy.go.
+	EnergyUsed int `json:"energy_used,omitempty"`
 }
 
 // Player adalah pemain lengkap beserta metadata penyimpanannya.
@@ -149,6 +152,8 @@ func (s State) Validate() error {
 		return errors.New("posisi halus harus bilangan biasa")
 	case len(s.Broken) > maxBrokenKept+MaxBreakBatch || len(s.Chests) > len(chests):
 		return errors.New("catatan dunia terlalu banyak")
+	case s.EnergyUsed < 0 || s.EnergyUsed > MaxEnergy:
+		return fmt.Errorf("energi terpakai harus 0..%d", MaxEnergy)
 	case s.PowerLeft < 0 || s.PowerLeft > PowerBattles:
 		return errors.New("sisa ramuan kekuatan tidak sah")
 	case len(s.Inventory) > MaxInventory:

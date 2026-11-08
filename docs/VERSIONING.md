@@ -258,6 +258,19 @@ membawa pemain; bawaannya halaman Releases terbaru.
   pertarungan (`internal/game/ally.go`, kejadian `who: "ally"`). Klien lama tetap jalan; `DefaultMinClient`
   tetap 0.18.0.
 
+- v0.39.0 menambah energi, toko di bangunannya, rumah makan, dan penjaga. (1) Level di HUD kini berbentuk
+  **piala (tropi)** bernomor level. (2) **Energi (kekuatan)**: bar berikon petir di bawah bar nyawa. Jurus
+  memakainya (Skill 1 = 20, Skill 2 = 25), serangan biasa mengisi 4, menang mengisi 15, naik level dan
+  istirahat memenuhkan, dan **Ramuan Kekuatan** (kini dijual 40 emas) mengisi 60 di samping menaikkan serangan.
+  Server: `state.energy_used` (0 = penuh; data lama otomatis penuh), `MaxEnergy` 100, galat `energi tidak cukup`
+  (`internal/game/energy.go`). (3) Tombol **Toko dihapus dari Menu**: belanja hanya lewat penjaga toko di depan
+  pintu bangunannya (ketuk Bicara). Tiap toko punya penjaga: Pak Darman (Toko Ramuan: ramuan, ramuan kekuatan,
+  senjata, pelindung), Bu Wati (Rumah Makan: Roti Hangat +10, Sup Ayam +25, Daging Bakar +50 HP), dan
+  Suster Mira (rumah sehat: pulihkan HP dan energi gratis). Makanan dimakan dari Ransel (atau langsung di
+  rumah makan). Server: `GET /v1/shop?shop=toko|makan|semua`, `shop` di badan `POST /v1/shop/buy|sell`
+  (kosong = toko ramuan; barang di toko yang salah ditolak 422, toko asing 404), `shop`/`heal` di daftar
+  barang, jenis barang `food`. Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

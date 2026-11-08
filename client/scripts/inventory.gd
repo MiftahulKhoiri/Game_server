@@ -9,6 +9,7 @@ const KIND_COLORS := {
 	"material": Color("8a7a55"),
 	"treasure": Color("d4a72c"),
 	"equipment": Color("5a7fb0"),
+	"food": Color("c98a3c"),
 }
 const SLOTS := [["weapon", "Senjata"], ["armor", "Pelindung"]]
 
@@ -21,7 +22,7 @@ var _busy := false
 
 func _ready() -> void:
 	_build_ui()
-	var res: Dictionary = await Api.shop_get()  # katalog semua barang
+	var res: Dictionary = await Api.item_catalog()  # katalog semua barang
 	if not res.ok:
 		_message.text = str(res.error)
 		return
@@ -40,7 +41,8 @@ func _name_of(id: String) -> String:
 
 func _rebuild() -> void:
 	var st: Dictionary = Session.player.state
-	_summary.text = "%s  Lv %d\nHP %d/%d   Emas %d" % [Session.player.name, st.level, st.hp, st.max_hp, st.gold]
+	_summary.text = "%s  Lv %d\nHP %d/%d   Energi %d/%d   Emas %d" % [
+		Session.player.name, st.level, st.hp, st.max_hp, Session.energy(), Session.MAX_ENERGY, st.gold]
 	for child in _list.get_children():
 		child.queue_free()
 
@@ -77,6 +79,8 @@ func _add_item_row(id: String, qty: int) -> void:
 		detail = "\nSerang +%d" % int(def.attack)
 	elif int(def.get("defense", 0)) > 0:
 		detail = "\nTahan +%d" % int(def.defense)
+	elif int(def.get("heal", 0)) > 0:
+		detail = "\nHP +%d" % int(def.heal)
 	var label := _make_label("%s  x%d%s" % [_name_of(id), qty, detail], 26)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
@@ -86,6 +90,9 @@ func _add_item_row(id: String, qty: int) -> void:
 		row.add_child(_make_button("Pakai", _on_use.bind(id), full, 130))
 	elif id == "ramuan_kekuatan":
 		row.add_child(_make_button("Minum", _on_use.bind(id), false, 130))
+	elif kind == "food":
+		var full_hp := int(Session.player.state.hp) >= int(Session.player.state.max_hp)
+		row.add_child(_make_button("Makan", _on_use.bind(id), full_hp, 130))
 	elif kind == "equipment":
 		var worn := _is_worn(id)
 		row.add_child(_make_button("Dipakai" if worn else "Pakai", _on_equip.bind(id), worn, 150))
@@ -100,7 +107,12 @@ func _is_worn(id: String) -> bool:
 # --- aksi ---
 
 func _on_use(id: String) -> void:
-	await _act(Api.inventory_use.bind(id), "Kekuatan naik untuk 3 pertarungan berikutnya." if id == "ramuan_kekuatan" else "Ramuan diminum.")
+	var text := "Ramuan diminum."
+	if id == "ramuan_kekuatan":
+		text = "Energi terisi dan kekuatan naik untuk 3 pertarungan berikutnya."
+	elif str(_catalog.get(id, {}).get("kind", "")) == "food":
+		text = "%s dimakan: +%d HP." % [_name_of(id), int(_catalog.get(id, {}).get("heal", 0))]
+	await _act(Api.inventory_use.bind(id), text)
 
 
 func _on_equip(id: String) -> void:
@@ -112,7 +124,7 @@ func _on_unequip(slot: String) -> void:
 
 
 func _on_rest() -> void:
-	await _act(Api.rest, "Kamu beristirahat. HP pulih penuh.")
+	await _act(Api.rest, "Kamu beristirahat. HP dan energi pulih penuh.")
 
 
 ## Menjalankan permintaan ke server, lalu menggabungkan pemain dari server.

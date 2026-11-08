@@ -7,7 +7,6 @@ extends CanvasLayer
 signal resumed
 signal profile_requested
 signal inventory_requested
-signal shop_requested
 signal atribut_requested
 signal go_home
 signal logout
@@ -35,7 +34,6 @@ var _quality_hint: Label
 var _sens_value: Label
 var _btn_logout: Button
 var _btn_tas: Button
-var _btn_toko: Button
 var _btn_atribut: Button
 var _confirm_key := ""
 var _confirm_btn: Button
@@ -80,8 +78,6 @@ func _ready() -> void:
 	_main.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
 	_btn_tas = _button("Ransel", func() -> void: inventory_requested.emit())
 	_main.add_child(_btn_tas)
-	_btn_toko = _button("Toko", func() -> void: shop_requested.emit())
-	_main.add_child(_btn_toko)
 	_btn_atribut = _button("Atribut", func() -> void: atribut_requested.emit())
 	_main.add_child(_btn_atribut)
 	_main.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
@@ -160,8 +156,7 @@ func open() -> void:
 	_reset_confirm()
 	_show_page(true)
 	_btn_logout.disabled = Session.offline
-	_btn_tas.disabled = Session.offline  # tas dan toko butuh server
-	_btn_toko.disabled = Session.offline
+	_btn_tas.disabled = Session.offline  # tas butuh server
 	_btn_atribut.disabled = Session.offline
 	visible = true
 	is_open = true

@@ -93,6 +93,9 @@ func (s *State) UseItem(id string) error {
 	if id == PowerPotionID {
 		return s.UsePowerPotion()
 	}
+	if def, ok := ItemByID(id); ok && def.Kind == KindFood {
+		return s.eat(def)
+	}
 	if id != PotionID {
 		if _, ok := ItemByID(id); !ok {
 			return ErrUnknownItem
@@ -110,14 +113,28 @@ func (s *State) UseItem(id string) error {
 	return nil
 }
 
-// Rest memulihkan HP penuh, gratis, hanya di desa (wilayah aman).
-func (s *State) Rest() error {
-	if s.Map != MapDesaAwal {
-		return ErrCannotRest
+// eat memakan makanan dari tas: memulihkan HP sebesar Heal.
+func (s *State) eat(def ItemDef) error {
+	if s.itemQty(def.ID) < 1 {
+		return ErrNotEnough
 	}
 	if s.HP >= s.MaxHP {
 		return ErrFullHP
 	}
+	s.RemoveItem(def.ID, 1)
+	s.HP = min(s.MaxHP, s.HP+def.Heal)
+	return nil
+}
+
+// Rest memulihkan HP dan energi penuh, gratis, hanya di desa (wilayah aman).
+func (s *State) Rest() error {
+	if s.Map != MapDesaAwal {
+		return ErrCannotRest
+	}
+	if s.HP >= s.MaxHP && s.EnergyUsed == 0 {
+		return ErrFullHP
+	}
 	s.HP = s.MaxHP
+	s.EnergyUsed = 0
 	return nil
 }
