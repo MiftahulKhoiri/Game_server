@@ -320,9 +320,6 @@ membawa pemain; bawaannya halaman Releases terbaru.
   atas ditata ulang (jarak antar baris dilebarkan, angka nyawa tampil) dan menampilkan **jumlah berlian di atas koin emas**.
   Server tidak berubah. `DefaultMinClient` tetap 0.18.0.
 
-- v0.45.1 menambah tombol **Kembali di bagian atas** halaman Pengaturan beranda (sebelumnya hanya di paling bawah, jauh setelah
-  bagian Layar dan Suara). Klien saja.
-
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
