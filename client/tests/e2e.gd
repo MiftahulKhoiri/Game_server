@@ -1401,6 +1401,10 @@ func _run() -> void:
 	await process_frame
 	Session.train_kind = "pahlawan"
 	Session.player.state = saved_v43
+	var chest_cls: GDScript = load("res://scripts/chest.gd")
+	var shop_cls: GDScript = load("res://scripts/shop.gd")
+	_check(chest_cls.SIZE < 1.0 and chest_cls.SIZE > 0.4, "peti harta diperkecil (skala %.2f)" % chest_cls.SIZE)
+	_check(shop_cls.barter_cost(15) == 1 and shop_cls.barter_cost(240) == 1 and shop_cls.barter_cost(540) == 2 and shop_cls.DIAMOND_GOLD == 500, "tukar berlian: biaya = harga/500 dibulatkan ke atas, minimal 1")
 	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))
 	var back_door: Dictionary = Maps.exit_at("toko_ramuan", 4, 7)
 	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))

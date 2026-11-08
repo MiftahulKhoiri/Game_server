@@ -361,3 +361,12 @@ menjalankan satu latihan sekaligus.
 State pemain: `hero_levels` (id pahlawan -> level, kosong = 1), `soldier_level` (0 = 1), `training` (daftar `{kind, target, to_level, ready_at}`).
 Serangan pahlawan = serangan dasar x (70 + 10 x (Lv-1))% + 2; prajurit = serangan dasar x (20 + 5 x (Lv-1))% + 1.
 Item `kartu_keahlian`: dijual di toko `peralatan` (60 emas), dijual kembali 20 emas di toko ramuan, dan dijatuhkan musuh dengan peluang 8% saat menang.
+
+## Tukar Berlian dan isi peti (v0.44.0)
+
+`POST /v1/shop/barter` `{shop, item, qty}`: menukar `berlian` dengan barang yang dijual toko itu (aturan toko sama dengan `/v1/shop/buy`,
+tetapi tanpa emas). Biaya = ceil(harga beli x qty / 500) berlian (`DiamondGold` = 500, juga harga jual berlian). `422` bila berlian kurang,
+toko salah, atau barang tidak dijual; `409` saat bertarung.
+
+`POST /v1/world/chest` kini mengundi 3 hadiah berbeda dari: emas (bobot 36), ramuan x2 (20), ramuan kekuatan (12), kartu keahlian (9),
+koin kuno (8), permata merah (7), berlian (3 + 2 x tingkat peti).

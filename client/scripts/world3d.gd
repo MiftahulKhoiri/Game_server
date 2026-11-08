@@ -71,7 +71,7 @@ const BREAK_FLUSH := 0.25      # kumpulkan benda hancur sebentar lalu lapor ke s
 const CHEST_RANGE := 1.9
 const ROAM_GRACE := 3.0        # detik setelah masuk peta: musuh berkeliaran belum mengejar
 const ROAM_NEAR := 6.5         # jarak (petak) nama musuh mulai tampil
-const ITEM_NAMES := {"ramuan": "Ramuan", "berlian": "Berlian", "ramuan_kekuatan": "Ramuan Kekuatan"}
+const ITEM_NAMES := {"ramuan": "Ramuan", "berlian": "Berlian", "ramuan_kekuatan": "Ramuan Kekuatan", "kartu_keahlian": "Kartu Keahlian", "koin_kuno": "Koin Kuno", "permata_merah": "Permata Merah"}
 
 var _map_id := Maps.DEFAULT_MAP
 var _pos := Vector2(5.5, 5.5)  # (x, z) di dunia

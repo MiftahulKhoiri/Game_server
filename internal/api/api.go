@@ -94,6 +94,7 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
+	mux.Handle("POST /v1/shop/barter", s.auth(http.HandlerFunc(s.shopTrade(game.BarterAt))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.SellAt))))
 	return s.logRequests(s.clientGate(mux))
 }
@@ -714,7 +715,7 @@ func (s *Server) shopTrade(trade func(*game.State, string, string, int) error) h
 			writeError(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, game.ErrWrongShop), errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
 			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull),
-			errors.Is(err, game.ErrEquipped):
+			errors.Is(err, game.ErrEquipped), errors.Is(err, game.ErrNoDiamond):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		case err != nil:
 			s.fail(w, r, err)

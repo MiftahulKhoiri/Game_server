@@ -4,6 +4,8 @@ extends Node3D
 
 const WorldBuild = preload("res://scripts/world_build.gd")
 
+## Ukuran peti dibuat lebih kecil supaya pas di dunia (hitbox dan jangkauan buka tidak berubah).
+const SIZE := 0.7
 const BAND_COLORS := [Color("e0b13a"), Color("c9ced8"), Color("6aa7ff"), Color("c07bff")]
 
 var chest_id := ""
@@ -98,13 +100,14 @@ func build(id: String, tier: int) -> void:
 	_label.text = "Peti Harta"
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.no_depth_test = true
-	_label.pixel_size = 0.006
+	_label.pixel_size = 0.006 / SIZE
 	_label.font_size = 40
 	_label.outline_size = 10
 	_label.modulate = band_col.lightened(0.3)
 	_label.position = Vector3(0, 0.95, 0)
 	_label.visible = false
 	add_child(_label)
+	scale = Vector3.ONE * SIZE
 
 
 func _add_box(parent: Node3D, size: Vector3, pos: Vector3, material: Material) -> void:

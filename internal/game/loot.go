@@ -274,19 +274,51 @@ func (s *State) OpenChest(now time.Time, id string, rng Rand) (Loot, error) {
 	s.Chests[id] = sec
 
 	loot.Broken = 1
-	loot.Gold = (40 + rng.Intn(41)) * c.Tier * (10 + min(s.Level, 30)) / 10
-	loot.addItem(PotionID, 1+rng.Intn(2))
-	if c.Tier >= 2 {
-		loot.addItem(DiamondID, 1)
-	}
-	if c.Tier >= 4 {
-		loot.addItem(DiamondID, 1)
-	}
-	if rng.Intn(100) < 35 {
-		loot.addItem(PowerPotionID, 1)
+	// Tiga hadiah acak yang berbeda dari kumpulan hadiah peti; berlian hanya bila beruntung (peti lebih tinggi = lebih mungkin).
+	pool := chestPool(c.Tier)
+	for range ChestRewards {
+		total := 0
+		for _, e := range pool {
+			total += e.weight
+		}
+		r := rng.Intn(total)
+		for i, e := range pool {
+			if r < e.weight {
+				if e.id == "" {
+					loot.Gold += (40 + rng.Intn(41)) * c.Tier * (10 + min(s.Level, 30)) / 10
+				} else {
+					loot.addItem(e.id, e.qty)
+				}
+				pool = append(pool[:i], pool[i+1:]...)
+				break
+			}
+			r -= e.weight
+		}
 	}
 	s.grant(loot)
 	return loot, nil
+}
+
+// ChestRewards: jumlah hadiah acak dalam satu peti.
+const ChestRewards = 3
+
+type chestEntry struct {
+	id     string // kosong = emas
+	qty    int
+	weight int
+}
+
+// chestPool: kumpulan hadiah peti beserta bobot undian. Peluang berlian = 3 + 2 x tier (%) dari bobot.
+func chestPool(tier int) []chestEntry {
+	return []chestEntry{
+		{"", 0, 36},
+		{PotionID, 2, 20},
+		{PowerPotionID, 1, 12},
+		{KartuKeahlianID, 1, 9},
+		{"koin_kuno", 1, 8},
+		{"permata_merah", 1, 7},
+		{DiamondID, 1, 3 + 2*tier},
+	}
 }
 
 // WorldItem: benda hancur atau peti terbuka yang belum tumbuh/terisi lagi, untuk digambar klien.

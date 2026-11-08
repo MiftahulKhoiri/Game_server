@@ -52,7 +52,7 @@ var items = []ItemDef{
 	{ID: "taring_goblin", Name: "Taring Goblin", Kind: KindMaterial, SellPrice: 12},
 	{ID: "koin_kuno", Name: "Koin Kuno", Kind: KindTreasure, SellPrice: 25},
 	{ID: "permata_merah", Name: "Permata Merah", Kind: KindTreasure, SellPrice: 60},
-	{ID: DiamondID, Name: "Berlian", Kind: KindTreasure, SellPrice: 100},
+	{ID: DiamondID, Name: "Berlian", Kind: KindTreasure, SellPrice: DiamondGold},
 	{ID: PowerPotionID, Name: "Ramuan Kekuatan", Kind: KindConsumable, BuyPrice: 40, SellPrice: 20, Shop: ShopPotion},
 	{ID: "roti", Name: "Roti Hangat", Kind: KindFood, BuyPrice: 8, SellPrice: 3, Shop: ShopFood, Heal: 10},
 	{ID: "sup_ayam", Name: "Sup Ayam", Kind: KindFood, BuyPrice: 20, SellPrice: 8, Shop: ShopFood, Heal: 25},
@@ -64,6 +64,10 @@ var items = []ItemDef{
 	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Shop: ShopGear, Slot: SlotArmor, Defense: 2},
 	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Shop: ShopGear, Slot: SlotArmor, Defense: 4},
 }
+
+// DiamondGold: nilai satu Berlian, barang paling berharga. Dijual seharga ini, atau ditukar (barter) dengan barang apa
+// saja di toko: butuh ceil(harga / DiamondGold) berlian.
+const DiamondGold = 500
 
 // Kesalahan transaksi toko.
 var (
@@ -77,6 +81,7 @@ var (
 	ErrEquipped      = errors.New("lepas dulu perlengkapan ini sebelum menjualnya")
 	ErrUnknownShop   = errors.New("toko tidak dikenal")
 	ErrWrongShop     = errors.New("toko ini tidak menjual barang itu")
+	ErrNoDiamond     = errors.New("berlian tidak cukup")
 )
 
 // Items mengembalikan salinan seluruh daftar barang.
@@ -182,5 +187,39 @@ func SellAt(st *State, shop, id string, qty int) error {
 	}
 	st.RemoveItem(id, qty)
 	st.Gold += def.SellPrice * qty
+	return nil
+}
+
+// BarterCost: berlian yang dibutuhkan untuk menukar qty barang.
+func BarterCost(def ItemDef, qty int) int {
+	return (def.BuyPrice*qty + DiamondGold - 1) / DiamondGold
+}
+
+// BarterAt menukar berlian dengan qty barang yang dijual toko `shop` (barang apa saja, berapa pun harganya).
+func BarterAt(st *State, shop, id string, qty int) error {
+	if !ValidShop(shop) {
+		return ErrUnknownShop
+	}
+	def, ok := ItemByID(id)
+	if !ok {
+		return ErrUnknownItem
+	}
+	if qty < 1 || qty > MaxBuyQty {
+		return ErrBadQty
+	}
+	if def.BuyPrice <= 0 {
+		return ErrNotForSale
+	}
+	if def.Shop != shop {
+		return ErrWrongShop
+	}
+	need := BarterCost(def, qty)
+	if st.itemQty(DiamondID) < need {
+		return ErrNoDiamond
+	}
+	if !st.AddItem(id, qty) {
+		return ErrInventoryFull
+	}
+	st.RemoveItem(DiamondID, need)
 	return nil
 }

@@ -308,6 +308,12 @@ membawa pemain; bawaannya halaman Releases terbaru.
   `POST /v1/train/start`, `POST /v1/train/claim`, `GET /v1/time`; state baru `hero_levels`, `soldier_level`, `training`.
   Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
 
+- v0.44.0 menjadikan **Berlian** barang paling berharga: dijual 500 emas (dulu 100) atau **ditukar (barter) dengan barang apa
+  saja** di toko mana pun: tiap baris "Beli" kini punya tombol "N Berlian" (N = harga / 500 dibulatkan ke atas, minimal 1).
+  Server: `POST /v1/shop/barter` (`BarterAt`). **Peti harta** kini memberi **3 hadiah acak yang berbeda** (emas, ramuan, ramuan
+  kekuatan, kartu keahlian, koin kuno, permata merah, dan berlian bila beruntung; peluang berlian naik menurut tingkat peti)
+  dan modelnya diperkecil (skala 0,7). Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

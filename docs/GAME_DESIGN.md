@@ -251,3 +251,8 @@ Bangunan di tengah Desa Awal (pintu 38,20). Di dalam, Guru Bima melatih pahlawan
 melatih seluruh pasukan prajurit. Syarat tiap latihan: emas, 1 Kartu Keahlian, dan energi; waktunya berjalan di server
 (10 menit x level untuk pahlawan, 5 menit x level untuk prajurit) dan bisa ditinggal. Level maksimum 20. Kartu Keahlian
 dibeli di Toko Peralatan atau jatuh dari musuh. Dua tempat latihan berjalan bersamaan.
+
+### Berlian dan peti harta (v0.44.0)
+
+Berlian barang tertinggi: bisa dijual 500 emas atau ditukar dengan barang apa saja di toko. Peti harta memberi 3 hadiah acak yang
+berbeda; berlian hanya jika beruntung (lebih mungkin di peti bertingkat tinggi). Peti diperkecil agar proporsional dengan pemain.

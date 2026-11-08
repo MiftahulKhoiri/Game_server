@@ -169,6 +169,11 @@ func shop_buy(item: String, qty: int, shop := "toko") -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/shop/buy", {"shop": shop, "item": item, "qty": qty}, true)
 
 
+## Tukar Berlian dengan barang yang dijual toko itu (butuh ceil(harga / 500) berlian).
+func shop_barter(item: String, qty: int, shop := "toko") -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/shop/barter", {"shop": shop, "item": item, "qty": qty}, true)
+
+
 func shop_sell(item: String, qty: int, shop := "toko") -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/shop/sell", {"shop": shop, "item": item, "qty": qty}, true)
 

@@ -132,8 +132,11 @@ func TestOpenChest(t *testing.T) {
 	if loot.Gold != 40*2*15/10 || st.Gold != loot.Gold {
 		t.Errorf("emas %d (pemain %d)", loot.Gold, st.Gold)
 	}
-	if st.itemQty(DiamondID) != 1 {
-		t.Errorf("peti tier 2 harus berisi 1 berlian: %+v", st.Inventory)
+	if n := len(loot.Items); n != ChestRewards-1 {
+		t.Errorf("peti berisi %d jenis barang di samping emas, harus %d: %+v", n, ChestRewards-1, loot.Items)
+	}
+	if st.itemQty(DiamondID) != 0 {
+		t.Errorf("tanpa keberuntungan tidak ada berlian: %+v", st.Inventory)
 	}
 	if _, err := st.OpenChest(t0.Add(time.Minute), "perbatasan_1", always(0)); !errors.Is(err, ErrChestEmpty) {
 		t.Errorf("peti harus kosong: %v", err)
@@ -192,5 +195,46 @@ func TestPowerPotion(t *testing.T) {
 	}
 	if st.PowerLeft != 0 || st.Attack() != base {
 		t.Errorf("setelah %d pertarungan harus habis: sisa %d", PowerBattles, st.PowerLeft)
+	}
+}
+
+func TestOpenChestLuckyDiamond(t *testing.T) {
+	c, _ := ChestByID("perbatasan_1") // tier 2: total bobot 99, berlian di 92..98
+	st := NewState()
+	st.Map, st.FX, st.FZ = c.Map, float64(c.X)+0.5, float64(c.Y)+0.5
+	loot, err := st.OpenChest(t0, "perbatasan_1", seq(95, 0, 0, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.itemQty(DiamondID) != 1 || loot.Gold == 0 || len(loot.Items) != 2 {
+		t.Errorf("tiga hadiah dengan berlian: emas %d barang %+v", loot.Gold, loot.Items)
+	}
+}
+
+func TestBarterDiamond(t *testing.T) {
+	st := NewState()
+	st.AddItem(DiamondID, 3)
+	if err := BarterAt(&st, ShopGear, "zirah_besi", 1); err != nil || st.itemQty(DiamondID) != 2 || st.itemQty("zirah_besi") != 1 {
+		t.Fatalf("zirah 240 emas = 1 berlian: %v %+v", err, st.Inventory)
+	}
+	if err := BarterAt(&st, ShopGear, KartuKeahlianID, 9); err != nil || st.itemQty(DiamondID) != 0 { // 9x60 = 540 emas = 2 berlian
+		t.Fatalf("9 kartu = 2 berlian: %v %+v", err, st.Inventory)
+	}
+	if err := BarterAt(&st, ShopGear, "pedang_baja", 4); !errors.Is(err, ErrNoDiamond) { // 1280 = 3 berlian
+		t.Fatalf("berlian kurang: %v", err)
+	}
+	if err := BarterAt(&st, ShopPotion, "zirah_besi", 1); !errors.Is(err, ErrWrongShop) {
+		t.Fatalf("toko salah: %v", err)
+	}
+	if err := BarterAt(&st, ShopGear, "pedang_rune", 1); !errors.Is(err, ErrNotForSale) {
+		t.Fatalf("tidak dijual: %v", err)
+	}
+	if st.Gold != NewState().Gold {
+		t.Fatal("barter tidak memakai emas")
+	}
+	sell := NewState()
+	sell.AddItem(DiamondID, 1)
+	if err := Sell(&sell, DiamondID, 1); err != nil || sell.Gold != NewState().Gold+DiamondGold {
+		t.Fatalf("jual berlian: %v emas %d", err, sell.Gold)
 	}
 }

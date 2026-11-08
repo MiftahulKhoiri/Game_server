@@ -23,6 +23,7 @@ var _list: VBoxContainer
 var _busy := false
 var _shop := "toko"
 var _title: Label
+const DIAMOND_GOLD := 500  # nilai satu Berlian (sama dengan DiamondGold di server)
 
 
 func _ready() -> void:
@@ -44,7 +45,7 @@ func _owned(id: String) -> int:
 
 
 func _rebuild() -> void:
-	_gold_label.text = "Emas: %d   HP %d/%d" % [int(Session.player.state.gold), int(Session.player.state.hp), int(Session.player.state.max_hp)]
+	_gold_label.text = "Emas: %d   Berlian: %d   HP %d/%d" % [int(Session.player.state.gold), _owned("berlian"), int(Session.player.state.hp), int(Session.player.state.max_hp)]
 	for child in _list.get_children():
 		child.queue_free()
 	_add_header("Beli")
@@ -71,6 +72,8 @@ func _on_trade(kind: String, id: String) -> void:
 	var res: Dictionary
 	if kind == "buy":
 		res = await Api.shop_buy(id, 1, _shop)
+	elif kind == "barter":
+		res = await Api.shop_barter(id, 1, _shop)
 	else:
 		res = await Api.shop_sell(id, 1, _shop)
 	_busy = false
@@ -132,8 +135,22 @@ func _add_row(def: Dictionary, verb: String, price: int, kind: String, disabled:
 		eat.add_theme_font_size_override("font_size", 28)
 		eat.pressed.connect(_on_eat.bind(str(def.id)))
 		row.add_child(eat)
+	if kind == "buy":  # Berlian bisa ditukar dengan barang apa saja
+		var need := barter_cost(price)
+		var swap := Button.new()
+		swap.text = "%d Berlian" % need
+		swap.disabled = _owned("berlian") < need
+		swap.custom_minimum_size = Vector2(150, 80)
+		swap.add_theme_font_size_override("font_size", 24)
+		swap.pressed.connect(_on_trade.bind("barter", str(def.id)))
+		row.add_child(swap)
 	row.add_child(button)
 	_list.add_child(row)
+
+
+## Berlian yang dibutuhkan untuk menukar satu barang berharga `price` emas.
+static func barter_cost(price: int) -> int:
+	return maxi(1, int(ceil(float(price) / float(DIAMOND_GOLD))))
 
 
 func _icon_for(def: Dictionary) -> Control:
