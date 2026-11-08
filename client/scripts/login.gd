@@ -395,6 +395,8 @@ func _build_register() -> void:
 
 func _build_settings() -> void:
 	var p := _new_page("settings", "Pengaturan")
+	_add_back(p)   # tombol Kembali di atas (halaman ini panjang, jadi tidak perlu menggulir ke bawah)
+	p.move_child(p.get_child(p.get_child_count() - 1), 1)
 
 	# Server
 	_server_box = VBoxContainer.new()
