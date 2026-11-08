@@ -451,10 +451,7 @@ static func build(map_id: String) -> Node3D:
 				"S":
 					stone_x.append(_xf(c + Vector3(0, 0.45, 0), Vector3(0.98, 0.9 - 0.25 * j, 0.98)))
 				"F":
-					for sx2 in [-0.4, 0.0, 0.4]:
-						post_x.append(_xf(c + Vector3(sx2, 0.28, 0), Vector3(0.09, 0.56, 0.09)))
-					rail_x.append(_xf(c + Vector3(0, 0.22, 0), Vector3(1.0, 0.06, 0.06)))
-					rail_x.append(_xf(c + Vector3(0, 0.42, 0), Vector3(1.0, 0.06, 0.06)))
+					_add_pagar_kandang(rows, x, z, c, post_x, rail_x)
 				"T":
 					for i in 3:
 						furrow_x.append(_xf(c + Vector3(0, 0.04, -0.3 + i * 0.3), Vector3(1.0, 0.08, 0.1)))
@@ -523,6 +520,47 @@ static func build(map_id: String) -> Node3D:
 	if cave:
 		_add_torches(root, rows)
 	return root
+
+
+## Satu petak pagar kandang ('F'): palang mengikuti tetangga pagar (sumbu x bila ada pagar di kiri/kanan,
+## sumbu z bila ada di atas/bawah), tiang di tiap ujung petak, tiang sudut lebih tinggi di tikungan.
+static func _add_pagar_kandang(rows: Array[String], x: int, z: int, c: Vector3, post_x: Array[Transform3D], rail_x: Array[Transform3D]) -> void:
+	var kiri := _tile_f(rows, x - 1, z)
+	var kanan := _tile_f(rows, x + 1, z)
+	var atas := _tile_f(rows, x, z - 1)
+	var bawah := _tile_f(rows, x, z + 1)
+	var sx := kiri or kanan
+	var sz := atas or bawah
+	if not sx and not sz:
+		sx = true
+	var sudut := sx and sz
+	if sx:
+		for ry in [0.24, 0.46]:
+			rail_x.append(_xf(c + Vector3(0, ry, 0), Vector3(1.0, 0.07, 0.07)))
+	if sz:
+		for ry in [0.24, 0.46]:
+			rail_x.append(_xf(c + Vector3(0, ry, 0), Vector3(0.07, 0.07, 1.0)))
+	# Tiang: di tepi petak (dipakai bersama petak tetangga) dan satu di tengah.
+	if sx:
+		for ox in [-0.5, 0.0, 0.5]:
+			if ox == 0.5 and kanan:
+				continue   # tiang tepi kanan digambar petak tetangga (sebagai tepi kirinya)
+			post_x.append(_xf(c + Vector3(ox, 0.3, 0), Vector3(0.1, 0.6, 0.1)))
+	if sz:
+		for oz in [-0.5, 0.0, 0.5]:
+			if oz == 0.5 and bawah:
+				continue
+			if oz == 0.0 and sx:
+				continue
+			if oz == -0.5 and sx:
+				continue   # sudah ada tiang tepi dari palang sumbu x
+			post_x.append(_xf(c + Vector3(0, 0.3, oz), Vector3(0.1, 0.6, 0.1)))
+	if sudut:
+		post_x.append(_xf(c + Vector3(0, 0.36, 0), Vector3(0.14, 0.72, 0.14)))
+
+
+static func _tile_f(rows: Array[String], x: int, z: int) -> bool:
+	return z >= 0 and z < rows.size() and x >= 0 and x < rows[z].length() and rows[z][x] == "F"
 
 
 ## Satu petak pagar kayu besar: empat batang runcing setinggi 1,6-2,0 dengan dua palang di sisi dalam.

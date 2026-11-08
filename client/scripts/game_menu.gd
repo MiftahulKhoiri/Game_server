@@ -27,6 +27,7 @@ var _settings: VBoxContainer
 var _settings_scroll: ScrollContainer
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
+var _toggle_keep: CheckButton
 var _vol_npc_value: Label
 var _vol_music_value: Label
 var _quality_buttons: Array[Button] = []
@@ -129,6 +130,8 @@ func _ready() -> void:
 	_settings.add_child(slider)
 	_sens_value = _label("")
 	_settings.add_child(_sens_value)
+	_toggle_keep = _toggle("Layar tetap menyala", _on_toggle_keep)
+	_settings.add_child(_toggle_keep)
 
 	_settings.add_child(_section("Suara"))
 	_toggle_npc = _toggle("Suara orang (NPC)", _on_toggle_npc)
@@ -195,6 +198,12 @@ func _on_sens(v: float) -> void:
 	_refresh_settings()
 
 
+func _on_toggle_keep(on: bool) -> void:
+	Session.keep_on = on
+	Session.apply_display()
+	Session.save_config()
+
+
 func _on_toggle_npc(on: bool) -> void:
 	Session.snd_npc = on
 	_sound_changed()
@@ -224,6 +233,7 @@ func _sound_changed() -> void:
 func _refresh_settings() -> void:
 	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
 	_toggle_music.set_pressed_no_signal(Session.snd_music)
+	_toggle_keep.set_pressed_no_signal(Session.keep_on)
 	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)
 	_vol_music_value.text = "%d%%" % roundi(Session.vol_music * 100.0)
 	for i in _quality_buttons.size():

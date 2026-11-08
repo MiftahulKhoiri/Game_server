@@ -4,6 +4,7 @@ extends Control
 ##   (tropi) [=====xp======     ]     <- piala bernomor level, bar poin menuju level berikutnya
 ##    (+)    [=====nyawa=====   ]     <- tanda + merah, bar nyawa bergerak sesuai persentase
 ##    (petir)[=====energi====    ]     <- ikon petir, bar energi (kekuatan jurus)
+##   (berlian) 3                      <- jumlah berlian (item tertinggi, bisa ditukar apa saja)
 ##   (koin) 47                        <- jumlah emas
 ## Poin (XP) didapat dari mengalahkan monster. Warna bar nyawa berubah seperti baterai:
 ## hijau stabilo saat penuh, lalu kuning, oranye, merah saat menipis. Nyawa turun/naik dengan
@@ -11,15 +12,18 @@ extends Control
 
 const FONT := preload("res://assets/fonts/LilitaOne-Regular.ttf")  # font game (SIL OFL)
 const BAR_X := 54.0
-const BAR_W := 232.0
+const BAR_W := 216.0   # bar berakhir di x=270 supaya tidak menyentuh jam di sebelah kanan
 const NAME_H := 30.0   # tinggi baris nama pemain di paling atas
-const XP_Y := 36.0
-const XP_H := 16.0
-const HP_Y := 66.0
-const HP_H := 24.0
-const EN_Y := 98.0     # bar energi (petir) di bawah bar nyawa
-const EN_H := 18.0
-const COIN_Y := 142.0  # titik tengah baris koin emas
+# Tiap baris punya ikon bulat/piala setinggi 30-38 px di kolom kiri; jarak antar baris diatur agar ikon tidak
+# saling menumpuk (piala 32..70, tanda + 73..111, petir 114..152, berlian 155..185, koin 188..218).
+const XP_Y := 42.0
+const XP_H := 18.0
+const HP_Y := 79.0
+const HP_H := 26.0
+const EN_Y := 123.0    # bar energi (petir) di bawah bar nyawa
+const EN_H := 20.0
+const DIA_Y := 170.0   # titik tengah baris berlian (di atas koin emas)
+const COIN_Y := 203.0  # titik tengah baris koin emas
 const EN_COLOR := Color("ffc61a")
 const NAME_FILL := Color("ffd45e")     # nama pemain: emas hangat...
 const NAME_EDGE := Color("7a2d0a")     # ...dengan tepi cokelat tua
@@ -40,6 +44,7 @@ var hp := 30
 var max_hp := 30
 var player_name := ""
 var gold := 0
+var diamonds := 0
 var energy := 100
 var max_energy := 100
 
@@ -54,7 +59,7 @@ var _t := 0.0
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(BAR_X + BAR_W + 8.0, COIN_Y + 24.0)
+	custom_minimum_size = Vector2(BAR_X + BAR_W + 8.0, COIN_Y + 22.0)
 	size = custom_minimum_size
 
 
@@ -89,10 +94,11 @@ func energy_fraction() -> float:
 	return clampf(float(energy) / float(max_energy), 0.0, 1.0)
 
 
-## Nama pemain (di atas level) dan jumlah emas (di samping koin).
-func set_identity(new_name: String, new_gold: int) -> void:
+## Nama pemain (di atas level), jumlah emas (di samping koin) dan jumlah berlian (di atas koin).
+func set_identity(new_name: String, new_gold: int, new_diamonds := 0) -> void:
 	player_name = new_name
 	gold = new_gold
+	diamonds = new_diamonds
 	queue_redraw()
 
 
@@ -162,7 +168,7 @@ func _draw() -> void:
 	draw_string_outline(font, nbase, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, 8, NAME_EDGE)
 	draw_string(font, nbase, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, NAME_FILL)
 	# --- level: piala emas bernomor level ---
-	_trophy(Vector2(27.0, XP_Y + XP_H / 2.0 - 2.0))
+	_trophy(Vector2(27.0, XP_Y + XP_H / 2.0 + 2.0))
 	# --- poin menuju level berikutnya ---
 	var xr := Rect2(BAR_X, XP_Y, BAR_W, XP_H)
 	_rr(xr.grow(2.0), Color(0, 0, 0, 0.55), 10.0)
@@ -171,7 +177,7 @@ func _draw() -> void:
 		_rr(Rect2(BAR_X, XP_Y, fw, XP_H), Color("3d9bf0"), 8.0)
 		_rr(Rect2(BAR_X + 3.0, XP_Y + 2.0, maxf(0.0, fw - 6.0), XP_H * 0.36), Color(1, 1, 1, 0.28), 4.0)
 	_rr(xr, Color(0, 0, 0, 0), 8.0, Color("cfe6ff", 0.8), 1.5)
-	_text("%d/%d" % [xp, xp_need], xr.get_center() + Vector2(0, -1.0), 13, Color.WHITE)
+	_text("%d/%d" % [xp, xp_need], xr.get_center() + Vector2(0, -1.0), 14, Color.WHITE)
 	# --- tanda + merah ---
 	var low := hp_fraction() < LOW
 	var pulse := 1.0 + (0.12 * sin(_t * 9.0) if low else 0.0)
@@ -196,6 +202,7 @@ func _draw() -> void:
 		_rr(Rect2(BAR_X, HP_Y, w, HP_H), fill, 10.0)
 		_rr(Rect2(BAR_X + 4.0, HP_Y + 2.5, maxf(0.0, w - 8.0), HP_H * 0.34), Color(1, 1, 1, 0.3), 5.0)
 	_rr(hr, Color(0, 0, 0, 0), 10.0, Color("ffe3df", 0.85), 1.5)
+	_text("%d/%d" % [hp, max_hp], hr.get_center() + Vector2(0, -1.0), 16, Color.WHITE)
 	# --- petir dan bar energi ---
 	var ec := Vector2(27.0, EN_Y + EN_H / 2.0)
 	_bolt(ec)
@@ -207,7 +214,13 @@ func _draw() -> void:
 		_rr(Rect2(BAR_X, EN_Y, ew, EN_H), ecol, 9.0)
 		_rr(Rect2(BAR_X + 4.0, EN_Y + 2.0, maxf(0.0, ew - 8.0), EN_H * 0.34), Color(1, 1, 1, 0.35), 5.0)
 	_rr(er, Color(0, 0, 0, 0), 9.0, Color("fff2b8", 0.85), 1.5)
-	_text("%d/%d" % [energy, max_energy], er.get_center() + Vector2(0, -1.0), 13, Color.WHITE)
+	_text("%d/%d" % [energy, max_energy], er.get_center() + Vector2(0, -1.0), 14, Color.WHITE)
+	# --- berlian dan jumlahnya (di atas koin emas) ---
+	_diamond(Vector2(27.0, DIA_Y))
+	var dtxt := str(diamonds)
+	var dbase := Vector2(BAR_X - 6.0, DIA_Y + 8.0)
+	draw_string_outline(font, dbase, dtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Color("0a3a55"))
+	draw_string(font, dbase, dtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("a8ecff"))
 	# --- koin emas dan jumlahnya ---
 	var cc := Vector2(27.0, COIN_Y)
 	draw_circle(cc, 15.0, Color(0, 0, 0, 0.6))
@@ -241,6 +254,22 @@ func _trophy(c: Vector2) -> void:
 	_rr(Rect2(c.x - 3.5, c.y + 6.0, 7.0, 7.0), gold_c, 1.0, edge, 1.5)
 	_rr(Rect2(c.x - 12.0, c.y + 12.0, 24.0, 7.0), Color("d99a1c"), 2.0, edge, 1.8)
 	_text(str(level), c + Vector2(0, -6.0), 20 if level < 10 else (16 if level < 100 else 12), Color("3a2606"))
+
+
+## Ikon berlian biru muda (potongan brilian: meja di atas, ujung runcing di bawah). `c` = titik tengahnya.
+func _diamond(c: Vector2) -> void:
+	draw_circle(c, 15.0, Color(0, 0, 0, 0.6))
+	var top_l := c + Vector2(-8.0, -5.0)
+	var top_r := c + Vector2(8.0, -5.0)
+	var tip := c + Vector2(0.0, 10.0)
+	var crown := PackedVector2Array([c + Vector2(-4.5, -9.0), c + Vector2(4.5, -9.0), top_r, top_l])
+	draw_colored_polygon(crown, Color("c9f6ff"))
+	draw_colored_polygon(PackedVector2Array([top_l, top_r, tip]), Color("45c8f2"))
+	draw_colored_polygon(PackedVector2Array([top_l, c + Vector2(0.0, -5.0), tip]), Color("8be4ff"))
+	var edge := Color("0f6a94")
+	draw_polyline(PackedVector2Array([c + Vector2(-4.5, -9.0), c + Vector2(4.5, -9.0), top_r, tip, top_l, c + Vector2(-4.5, -9.0)]), edge, 1.8, true)
+	draw_line(top_l, top_r, edge, 1.4, true)
+	draw_line(c + Vector2(-2.0, -9.0), top_l.lerp(tip, 0.45), Color(1, 1, 1, 0.6), 1.4, true)
 
 
 ## Ikon petir kuning. `c` = titik tengahnya.

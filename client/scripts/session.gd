@@ -36,6 +36,8 @@ var saved_name := ""
 ## Pengaturan grafis/kontrol (disimpan di HP): 0 = Hemat, 1 = Normal, 2 = Tinggi.
 var quality := 1
 var cam_sens := 1.0
+## Layar tetap menyala selama game dibuka (disimpan di HP).
+var keep_on := false
 ## Pengaturan suara (disimpan di HP): suara bicara NPC dan musik, masing-masing nyala/mati + volume 0..1.
 var snd_npc := true
 var snd_music := true
@@ -56,10 +58,25 @@ func load_config() -> void:
 	saved_name = str(cfg.get_value("auth", "name", "")) if Api.token != "" else ""
 	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)
 	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
+	keep_on = bool(cfg.get_value("game", "keep_on", false))
+	apply_display()
 	snd_npc = bool(cfg.get_value("sound", "npc", true))
 	snd_music = bool(cfg.get_value("sound", "music", true))
 	vol_npc = clampf(float(cfg.get_value("sound", "vol_npc", 0.8)), 0.0, 1.0)
 	vol_music = clampf(float(cfg.get_value("sound", "vol_music", 0.6)), 0.0, 1.0)
+
+
+## Jumlah item dengan id tertentu di ransel (0 bila tidak ada).
+func item_count(id: String) -> int:
+	for item: Dictionary in player.get("state", {}).get("inventory", []):
+		if str(item.get("id", "")) == id:
+			return int(item.get("qty", 0))
+	return 0
+
+
+## Terapkan pengaturan layar yang berlaku di seluruh aplikasi (layar tetap menyala).
+func apply_display() -> void:
+	DisplayServer.screen_set_keep_on(keep_on)
 
 
 func save_config() -> void:
@@ -71,6 +88,7 @@ func save_config() -> void:
 	cfg.set_value("auth", "name", saved_name if Api.token != "" else "")
 	cfg.set_value("game", "quality", quality)
 	cfg.set_value("game", "cam_sens", cam_sens)
+	cfg.set_value("game", "keep_on", keep_on)
 	cfg.set_value("sound", "npc", snd_npc)
 	cfg.set_value("sound", "music", snd_music)
 	cfg.set_value("sound", "vol_npc", vol_npc)

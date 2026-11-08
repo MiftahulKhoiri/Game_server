@@ -4,6 +4,7 @@ extends Control
 ##   Masuk      : isian nama/email + kata sandi.
 ##   Daftar     : isian nama, email, kata sandi.
 ##   Pengaturan : alamat server (tes, menciut dengan tanda centang hijau bila terjangkau),
+##                layar (kualitas grafis, kamera, layar menyala) dan suara (NPC, musik, volume),
 ##                keluar dari akun, dan info pembaruan APK (unduh dan pasang bila ada versi baru).
 ## Seluruh antarmuka dibuat lewat kode agar mudah ditinjau di Pull Request.
 ## Kata sandi TIDAK pernah disimpan di HP; yang disimpan hanya token sesi (lihat Session).
@@ -11,6 +12,7 @@ extends Control
 const Version = preload("res://scripts/version.gd")
 const Updater = preload("res://scripts/updater.gd")
 const JudulLatar = preload("res://scripts/judul_latar.gd")
+const PengaturanUmum = preload("res://scripts/pengaturan_umum.gd")
 const JUDUL_GAMBAR := "res://assets/ui/judul.jpg"  # gambar judul 3:2; bila tidak ada, dipakai diorama 3D
 const JUDUL_TINGGI := 480.0  # tinggi gambar judul di layar 720 lebar
 const TEPI := Color("382e2c")  # warna tepi bawah gambar judul
@@ -440,6 +442,7 @@ func _build_settings() -> void:
 	_account_box.add_child(_account_status)
 	p.add_child(_account_box)
 
+	p.add_child(PengaturanUmum.new())   # layar (grafis, kamera) dan suara
 	p.add_child(_filler())
 
 	# Pembaruan APK (paling bawah)

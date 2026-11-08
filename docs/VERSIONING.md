@@ -314,6 +314,12 @@ membawa pemain; bawaannya halaman Releases terbaru.
   kekuatan, kartu keahlian, koin kuno, permata merah, dan berlian bila beruntung; peluang berlian naik menurut tingkat peti)
   dan modelnya diperkecil (skala 0,7). Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
 
+- v0.45.0 (klien saja): **pagar kandang ayam** digambar mengikuti arah pagar (palang memanjang ke utara-selatan/timur-barat,
+  tiang di tiap petak, tiang sudut lebih tinggi) sehingga tidak lagi terpotong-potong; **Pengaturan** di beranda kini punya bagian
+  **Layar** (kualitas grafis, kecepatan putar kamera, layar tetap menyala) dan **Suara** (suara NPC, musik, volume); **HUD** kiri
+  atas ditata ulang (jarak antar baris dilebarkan, angka nyawa tampil) dan menampilkan **jumlah berlian di atas koin emas**.
+  Server tidak berubah. `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

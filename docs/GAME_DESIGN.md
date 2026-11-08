@@ -256,3 +256,9 @@ dibeli di Toko Peralatan atau jatuh dari musuh. Dua tempat latihan berjalan bers
 
 Berlian barang tertinggi: bisa dijual 500 emas atau ditukar dengan barang apa saja di toko. Peti harta memberi 3 hadiah acak yang
 berbeda; berlian hanya jika beruntung (lebih mungkin di peti bertingkat tinggi). Peti diperkecil agar proporsional dengan pemain.
+
+### HUD dan pengaturan (v0.45.0)
+
+HUD kiri atas (nama, level+poin, nyawa dengan angka, energi, berlian, koin emas) disusun satu kolom dengan jarak yang cukup agar
+ikon tidak bertumpuk; berlian berada tepat di atas koin emas. Pengaturan (beranda dan menu dalam game) memuat Layar (kualitas
+grafis, kecepatan putar kamera, layar tetap menyala) dan Suara (NPC, musik, volume).

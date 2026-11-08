@@ -856,6 +856,49 @@ func _run() -> void:
 	_check(hb.size.y >= HB.COIN_Y + 20.0, "HUD cukup tinggi untuk baris koin")
 	_check(HB.NAME_H <= HB.XP_Y - 4.0, "nama pemain berada di atas level")
 	hb.free()
+	print("== v0.45: HUD berlian, pagar kandang, pengaturan layar dan suara")
+	var hb_v45: Control = HB.new()
+	hb_v45.set_identity("bagus", 47, 3)
+	_check(hb_v45.diamonds == 3, "HUD menyimpan jumlah berlian")
+	_check(HB.DIA_Y < HB.COIN_Y and HB.DIA_Y > HB.EN_Y + HB.EN_H, "berlian di atas koin emas dan di bawah bar energi")
+	_check(HB.COIN_Y - HB.DIA_Y >= 30.0 and HB.DIA_Y - (HB.EN_Y + HB.EN_H / 2.0) >= 34.0, "jarak antar baris cukup (ikon tidak bertumpuk)")
+	_check(HB.BAR_X + HB.BAR_W <= 280.0, "bar HUD tidak menyentuh jam di sebelahnya")
+	hb_v45.free()
+	var inv_v45: Array = Session.player.state.inventory
+	var inv_backup_v45: Array = inv_v45.duplicate(true)
+	Session.player.state.inventory = [{"id": "berlian", "qty": 4}]
+	_check(Session.item_count("berlian") == 4 and Session.item_count("ramuan") == 0, "Session.item_count menghitung isi ransel")
+	Session.player.state.inventory = inv_backup_v45
+	var WBv45: Script = load("res://scripts/world_build.gd")
+	var rows_v45: Array[String] = ["....", ".FFF", ".F..", ".F.."]
+	_check(WBv45._tile_f(rows_v45, 1, 1) and not WBv45._tile_f(rows_v45, 0, 0) and not WBv45._tile_f(rows_v45, 9, 9), "_tile_f mengenali petak pagar kandang")
+	var posts_v45: Array[Transform3D] = []
+	var rails_v45: Array[Transform3D] = []
+	WBv45._add_pagar_kandang(rows_v45, 1, 2, Vector3(1.5, 0, 2.5), posts_v45, rails_v45)
+	var along_z_v45 := true
+	for r_v45: Transform3D in rails_v45:
+		along_z_v45 = along_z_v45 and r_v45.basis.get_scale().z > r_v45.basis.get_scale().x
+	_check(rails_v45.size() == 2 and along_z_v45, "pagar kandang sisi utara-selatan palangnya memanjang ke arah z")
+	var rails_h_v45: Array[Transform3D] = []
+	WBv45._add_pagar_kandang(rows_v45, 2, 1, Vector3(2.5, 0, 1.5), posts_v45, rails_h_v45)
+	_check(rails_h_v45.size() == 2 and rails_h_v45[0].basis.get_scale().x > rails_h_v45[0].basis.get_scale().z, "pagar kandang sisi timur-barat palangnya memanjang ke arah x")
+	var rails_c_v45: Array[Transform3D] = []
+	WBv45._add_pagar_kandang(rows_v45, 1, 1, Vector3(1.5, 0, 1.5), posts_v45, rails_c_v45)
+	_check(rails_c_v45.size() == 4, "tikungan pagar kandang punya palang ke dua arah")
+	var PUv45: Script = load("res://scripts/pengaturan_umum.gd")
+	var pu_v45: Control = PUv45.new()
+	root.add_child(pu_v45)
+	await process_frame
+	var labels_v45 := []
+	for ch_v45: Node in pu_v45.get_children():
+		if ch_v45 is Label:
+			labels_v45.append((ch_v45 as Label).text)
+	_check(labels_v45.has("Layar") and labels_v45.has("Suara") and labels_v45.has("Kualitas grafis"), "pengaturan beranda punya bagian Layar dan Suara")
+	var keep_old_v45: bool = Session.keep_on
+	pu_v45._on_keep(true)
+	_check(Session.keep_on, "toggle layar tetap menyala tersimpan di Session")
+	pu_v45._on_keep(keep_old_v45)
+	pu_v45.free()
 	var npc_id := ""
 	for nid: String in Maps.NPCS:
 		if Maps.NPCS[nid].map == wt._map_id:

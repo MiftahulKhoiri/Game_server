@@ -1422,7 +1422,7 @@ func _build_ui() -> void:
 	layer.add_child(_bars)
 
 	_status = Label.new()
-	_status.position = Vector2(20, 186)
+	_status.position = Vector2(20, 240)
 	_status.size = Vector2(420, 60)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_font_size_override("font_size", 22)
@@ -1526,7 +1526,7 @@ func _open_from_menu(scene: String) -> void:
 func _refresh_hud() -> void:
 	var st: Dictionary = Session.player.state
 	if _bars != null:
-		_bars.set_identity(str(Session.player.name), int(st.gold))
+		_bars.set_identity(str(Session.player.name), int(st.gold), Session.item_count("berlian"))
 		_bars.set_values(int(st.level), int(st.xp), 20 * int(st.level), int(st.hp), int(st.max_hp))
 		_bars.set_energy(Session.energy(), Session.MAX_ENERGY)
 
