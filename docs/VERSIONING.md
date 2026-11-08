@@ -320,6 +320,15 @@ membawa pemain; bawaannya halaman Releases terbaru.
   atas ditata ulang (jarak antar baris dilebarkan, angka nyawa tampil) dan menampilkan **jumlah berlian di atas koin emas**.
   Server tidak berubah. `DefaultMinClient` tetap 0.18.0.
 
+- v0.46.0 menambah **Hutan Lebat** (peta 170x50, dua kali lebar Desa Awal) di selatan Perbatasan dan **Gua Goblin** (peta 3, 25x30).
+  Di hutan pemain harus mengalahkan **100 binatang** (kancil, rubah, ular belang, babi bertaring, serigala hitam, beruang) lalu
+  bos **Goblin Level 1** muncul di singgasana (85,25); setelah ia kalah muncul lagi 100 binatang, lalu Goblin Level 2, dst. sampai
+  **Goblin Level 3**. Setelah ketiganya kalah gerbang ke Gua Goblin terbuka (gerbang dikunci di klien; Gua Goblin lalu menuju
+  Gunung Batu). Server menghitung kemajuan (state baru `hutan {wave, kills}`; `POST /v1/battle/start {"boss":true}` di singgasana
+  menjawab `422` bila binatang belum habis), enam peti baru di hutan dan tiga di gua. **Pendamping** kini maju mengepung musuh
+  yang mengejar atau sedang dilawan (dulu hanya ikut berjalan) dan membantu menyerang lebih cepat (pukulan pertama 0,8 d, lalu
+  tiap 1,8 d). `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

@@ -118,7 +118,7 @@ func energy() -> int:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "soldiers", "hero_levels", "soldier_level", "training", "energy_used"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "soldiers", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -134,6 +134,20 @@ func use_offline_player() -> void:
 		"version": 1,
 		"state": {"level": 1, "hp": 30, "max_hp": 30, "map": "desa_awal", "x": 5, "y": 5, "fx": 5.5, "fz": 5.5},
 	})
+
+
+## Kemajuan misi Hutan Lebat dari server: {wave: Goblin yang sudah kalah 0..3, kills: binatang tahap ini 0..100}.
+func _hutan(v: Variant) -> Dictionary:
+	var d: Dictionary = v if v is Dictionary else {}
+	return {"wave": clampi(int(d.get("wave", 0)), 0, 3), "kills": clampi(int(d.get("kills", 0)), 0, 100)}
+
+
+func hutan_wave() -> int:
+	return int(player.get("state", {}).get("hutan", {}).get("wave", 0))
+
+
+func hutan_kills() -> int:
+	return int(player.get("state", {}).get("hutan", {}).get("kills", 0))
 
 
 func _levels(v: Variant) -> Dictionary:
@@ -207,4 +221,5 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"soldier_level": clampi(int(s.get("soldier_level", 0)), 0, MAX_TRAIN_LEVEL),
 		"training": _jobs(s.get("training", [])),
 		"energy_used": clampi(int(s.get("energy_used", 0)), 0, MAX_ENERGY),
+		"hutan": _hutan(s.get("hutan", {})),
 	}

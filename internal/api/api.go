@@ -408,7 +408,7 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	switch {
-	case errors.Is(err, game.ErrNoBoss):
+	case errors.Is(err, game.ErrNoBoss), errors.Is(err, game.ErrBossNotReady):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, errBattleActive):
 		writeError(w, http.StatusConflict, "masih ada pertarungan yang berjalan; lanjutkan lewat GET /v1/battle")

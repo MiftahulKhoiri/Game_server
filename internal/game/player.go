@@ -55,6 +55,8 @@ type State struct {
 	HeroLevels   map[string]int `json:"hero_levels,omitempty"`
 	SoldierLevel int            `json:"soldier_level,omitempty"`
 	Training     []TrainJob     `json:"training,omitempty"`
+	// Hutan: kemajuan misi Hutan Lebat (binatang dan bos Goblin), hanya diubah server (lihat hutan.go).
+	Hutan HutanProgress `json:"hutan"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
@@ -174,6 +176,9 @@ func (s State) Validate() error {
 	}
 	if err := s.validateTraining(); err != nil {
 		return err
+	}
+	if !s.Hutan.valid() {
+		return errors.New("kemajuan hutan tidak sah")
 	}
 	if len(s.Equipment.Weapon) > 64 || len(s.Equipment.Armor) > 64 {
 		return errors.New("id perlengkapan terlalu panjang")

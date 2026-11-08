@@ -110,6 +110,9 @@ var _bars: HudBars
 var _joy: Control
 var _cam_finger := -1
 var _status: Label
+var _hutan_label: Label        # penghitung binatang/Goblin di Hutan Lebat
+var _hutan_boss: Node3D        # Goblin yang menunggu di singgasana hutan (bila sudah waktunya)
+var _hutan_sig := -1           # tanda kemajuan terakhir (untuk pesan saat berubah)
 var _toast: Label
 var _talk_button: Button
 var _buttons: Array[Button] = []
@@ -234,6 +237,8 @@ func _load_map(map_id: String) -> void:
 	_breakables = Breakables.new()
 	_breakables.setup(_terrain, _terrain)
 	_spawn_chests(map_id)
+	_hutan_boss = null
+	_hutan_sig = -1
 	_npc_root = Node3D.new()
 	_npc_root.name = "NPC"
 	add_child(_npc_root)
@@ -343,6 +348,11 @@ func _spawn_warga(map_id: String) -> void:
 
 
 ## Munculkan musuh berkeliaran sesuai peta dan level pemain, jauh dari tempat pemain berdiri.
+## Hutan Lebat: setelah 100 binatang kalah, tidak ada binatang baru sampai Goblin tahap itu kalah.
+func _hutan_boss_phase() -> bool:
+	return _map_id == Maps.HUTAN and Session.hutan_kills() >= 100 and Session.hutan_wave() < 3
+
+
 func _spawn_roamers(map_id: String) -> void:
 	_roamers = []
 	_roam_grace = ROAM_GRACE
@@ -362,7 +372,8 @@ func _spawn_roamers(map_id: String) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var tries := 0
-	while _roamers.size() < int(_roam_cfg.n) and tries < 500:
+	var cap := 0 if (map_id == Maps.HUTAN and Session.hutan_kills() >= 100 and Session.hutan_wave() < 3) else int(_roam_cfg.n)
+	while _roamers.size() < cap and tries < 500:
 		tries += 1
 		var at := _roam_spot(map_id, rng)
 		if at == Vector2.ZERO:
@@ -400,7 +411,7 @@ func _roam_spot(map_id: String, rng: RandomNumberGenerator) -> Vector2:
 
 ## Satu musuh pengganti muncul (dipanggil WorldFight setelah satu musuh tumbang).
 func respawn_roamer() -> void:
-	if _roam_cfg.is_empty() or _roam_kinds.is_empty() or _roamers.size() >= int(_roam_cfg.n):
+	if _roam_cfg.is_empty() or _roam_kinds.is_empty() or _roamers.size() >= int(_roam_cfg.n) or _hutan_boss_phase():
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -711,6 +722,13 @@ func _after_step(moved: float) -> void:
 			return
 		var ex := Maps.exit_at(_map_id, t.x, t.y)
 		if not ex.is_empty():
+			if Maps.exit_locked(_map_id, t.x, t.y, Session.hutan_wave()):
+				_pos = Vector2(_pos.x, float(t.y) - 0.6)   # gerbang Gua Goblin masih terkunci: mundur selangkah
+				_tile = Movement.tile_of(_pos)
+				_apply_transform()
+				_show_toast("Gerbang terkunci!")
+				_set_status("Kalahkan 3 Goblin di hutan untuk membuka gerbang Gua Goblin")
+				return
 			_go_to_map(str(ex.to), ex.at)
 			return
 		if not Session.offline and Maps.tile_at(_map_id, t.x, t.y) == Maps.BOSS_TILE:
@@ -1421,6 +1439,17 @@ func _build_ui() -> void:
 	_bars.position = Vector2(20, 10)
 	layer.add_child(_bars)
 
+	_hutan_label = Label.new()
+	_hutan_label.position = Vector2(300, 70)
+	_hutan_label.size = Vector2(410, 70)
+	_hutan_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hutan_label.add_theme_font_size_override("font_size", 24)
+	_hutan_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_hutan_label.add_theme_constant_override("outline_size", 8)
+	_hutan_label.add_theme_color_override("font_color", Color("ffe27a"))
+	_hutan_label.visible = false
+	layer.add_child(_hutan_label)
+
 	_status = Label.new()
 	_status.position = Vector2(20, 240)
 	_status.size = Vector2(420, 60)
@@ -1524,11 +1553,75 @@ func _open_from_menu(scene: String) -> void:
 
 
 func _refresh_hud() -> void:
+	_refresh_hutan()
 	var st: Dictionary = Session.player.state
 	if _bars != null:
 		_bars.set_identity(str(Session.player.name), int(st.gold), Session.item_count("berlian"))
 		_bars.set_values(int(st.level), int(st.xp), 20 * int(st.level), int(st.hp), int(st.max_hp))
 		_bars.set_energy(Session.energy(), Session.MAX_ENERGY)
+
+
+## Hutan Lebat: penghitung binatang/Goblin, palang gerbang Gua Goblin, dan Goblin di singgasana.
+func _refresh_hutan() -> void:
+	if _hutan_label == null:
+		return
+	var on := _map_id == Maps.HUTAN
+	_hutan_label.visible = on
+	var wave := Session.hutan_wave()
+	var kills := Session.hutan_kills()
+	if _terrain != null:
+		var lock := _terrain.get_node_or_null("KunciGerbang")
+		if lock != null:
+			lock.visible = wave < 3
+	var boss_up := on and kills >= 100 and wave < 3
+	_update_hutan_boss(boss_up, wave + 1)
+	if not on:
+		return
+	if wave >= 3:
+		_hutan_label.text = "Ketiga Goblin kalah!\nGerbang Gua Goblin terbuka"
+	elif kills >= 100:
+		_hutan_label.text = "Goblin Level %d menunggu\ndi singgasana hutan!" % (wave + 1)
+	else:
+		_hutan_label.text = "Binatang %d/100\nGoblin Level %d: %d/3" % [kills, wave + 1, wave]
+	var sig := wave * 1000 + kills
+	if _hutan_sig >= 0 and sig != _hutan_sig:
+		if wave >= 3 and _hutan_sig < 3000:
+			_show_toast("Gerbang Gua Goblin terbuka!")
+		elif kills >= 100 and _hutan_sig % 1000 < 100:
+			_show_toast("Goblin Level %d muncul!" % (wave + 1))
+		elif wave * 1000 > _hutan_sig - _hutan_sig % 1000:
+			_show_toast("Goblin Level %d kalah!" % wave)
+			for _i in int(_roam_cfg.get("n", 0)):
+				respawn_roamer()
+	_hutan_sig = sig
+
+
+func _update_hutan_boss(show: bool, level: int) -> void:
+	if not show:
+		if _hutan_boss != null and is_instance_valid(_hutan_boss):
+			_hutan_boss.queue_free()
+		_hutan_boss = null
+		return
+	if _hutan_boss != null and is_instance_valid(_hutan_boss) and _hutan_boss.name == "goblin_hutan_%d" % level:
+		return
+	if _hutan_boss != null and is_instance_valid(_hutan_boss):
+		_hutan_boss.queue_free()
+	if _terrain == null:
+		return
+	_hutan_boss = Models.create("goblin_hutan_%d" % level)
+	_hutan_boss.position = Vector3(float(Maps.HUTAN_BOSS.x) + 0.5, 0.0, float(Maps.HUTAN_BOSS.y) - 0.6)
+	_hutan_boss.rotation.y = PI
+	_terrain.add_child(_hutan_boss)
+	var label := Label3D.new()
+	label.text = "Goblin Level %d" % level
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.pixel_size = 0.008
+	label.font_size = 44
+	label.outline_size = 12
+	label.modulate = Color("ff8a5c")
+	label.position = Vector3(0, 2.6 + 0.35 * float(level), 0)
+	_hutan_boss.add_child(label)
 
 
 func _set_status(text: String) -> void:

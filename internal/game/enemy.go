@@ -32,8 +32,20 @@ var enemies = []Enemy{
 	{ID: "serigala_hutan", Zones: []string{MapPerbatasan}, Name: "Serigala Hutan", HP: 32, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 2, DropID: PotionID, DropPercent: 20},
 	{ID: "serigala_alfa", Zones: []string{MapPerbatasan}, Name: "Serigala Alfa", HP: 55, Attack: 12, Defense: 4, XP: 38, Gold: 16, MinLevel: 5, DropID: PotionID, DropPercent: 30},
 	// Gunung Batu: goblin, dan Monster Batu sebagai penjaga.
-	{ID: "goblin", Zones: []string{MapGunungBatu}, Name: "Goblin Gunung", HP: 34, Attack: 9, Defense: 2, XP: 24, Gold: 10, MinLevel: 2, DropID: "taring_goblin", DropPercent: 35},
-	{ID: "goblin_pemburu", Zones: []string{MapGunungBatu}, Name: "Goblin Pemburu", HP: 48, Attack: 11, Defense: 3, XP: 32, Gold: 14, MinLevel: 4, DropID: "taring_goblin", DropPercent: 40},
+	// Hutan Lebat (v0.46.0): binatang hutan, 100 per tahap; bos Goblin Level 1..3 hanya lewat singgasana (hutan.go).
+	{ID: "kancil_hutan", Zones: []string{MapHutanLebat}, Name: "Kancil Hutan", HP: 24, Attack: 6, Defense: 1, XP: 7, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 8},
+	{ID: "rubah_hutan", Zones: []string{MapHutanLebat}, Name: "Rubah Hutan", HP: 32, Attack: 8, Defense: 2, XP: 10, Gold: 4, MinLevel: 2, DropID: PotionID, DropPercent: 10},
+	{ID: "ular_belang", Zones: []string{MapHutanLebat}, Name: "Ular Belang", HP: 38, Attack: 11, Defense: 2, XP: 13, Gold: 5, MinLevel: 3, DropID: PotionID, DropPercent: 10},
+	{ID: "babi_bertaring", Zones: []string{MapHutanLebat}, Name: "Babi Bertaring", HP: 48, Attack: 10, Defense: 3, XP: 14, Gold: 6, MinLevel: 3, DropID: PotionID, DropPercent: 12},
+	{ID: "serigala_hitam", Zones: []string{MapHutanLebat}, Name: "Serigala Hitam", HP: 54, Attack: 12, Defense: 3, XP: 17, Gold: 7, MinLevel: 4, DropID: PotionID, DropPercent: 15},
+	{ID: "beruang_hutan", Zones: []string{MapHutanLebat}, Name: "Beruang Hutan", HP: 82, Attack: 14, Defense: 5, XP: 26, Gold: 10, MinLevel: 6, DropID: PotionID, DropPercent: 20},
+	{ID: "goblin_hutan_1", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 1", HP: 170, Attack: 14, Defense: 6, XP: 90, Gold: 40, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100},
+	{ID: "goblin_hutan_2", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 2", HP: 300, Attack: 19, Defense: 9, XP: 180, Gold: 80, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100},
+	{ID: "goblin_hutan_3", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 3", HP: 520, Attack: 25, Defense: 12, XP: 320, Gold: 150, MinLevel: 1, DropID: "permata_merah", DropPercent: 100},
+	// Gua Goblin (peta 3, v0.46.0): penjaga gua selain goblin biasa.
+	{ID: "goblin_penjaga", Zones: []string{MapGuaGoblin}, Name: "Goblin Penjaga", HP: 66, Attack: 12, Defense: 4, XP: 38, Gold: 16, MinLevel: 5, DropID: "taring_goblin", DropPercent: 40},
+	{ID: "goblin", Zones: []string{MapGunungBatu, MapGuaGoblin}, Name: "Goblin Gunung", HP: 34, Attack: 9, Defense: 2, XP: 24, Gold: 10, MinLevel: 2, DropID: "taring_goblin", DropPercent: 35},
+	{ID: "goblin_pemburu", Zones: []string{MapGunungBatu, MapGuaGoblin}, Name: "Goblin Pemburu", HP: 48, Attack: 11, Defense: 3, XP: 32, Gold: 14, MinLevel: 4, DropID: "taring_goblin", DropPercent: 40},
 	{ID: "ogre_batu", Zones: []string{MapGunungBatu}, Name: "Monster Batu", HP: 70, Attack: 12, Defense: 5, XP: 45, Gold: 25, MinLevel: 5, DropID: "permata_merah", DropPercent: 30},
 	// Gua Batu: sarang orc dan Raja Iblis, dalang serangan monster.
 	{ID: "orc_gua", Zones: []string{MapGuaBatu}, Name: "Orc Gua", HP: 56, Attack: 12, Defense: 5, XP: 34, Gold: 15, MinLevel: 5, DropID: "koin_kuno", DropPercent: 25},

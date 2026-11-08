@@ -148,7 +148,11 @@ var ErrNoBoss = errors.New("tidak ada bos di sini")
 func StartBossBattle(p *Player, now int64) (Battle, error) {
 	e, ok := BossAt(p.State.Map, p.State.X, p.State.Y)
 	if !ok {
-		return Battle{}, ErrNoBoss
+		he, err := hutanBoss(p)
+		if err != nil {
+			return Battle{}, err
+		}
+		return newBattle(he, now), nil
 	}
 	return newBattle(e, now), nil
 }
@@ -438,6 +442,7 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 		}
 	}
 	res.Log = append(res.Log, st.RecordKill(e.ID)...)
+	res.Log = append(res.Log, st.recordHutan(e)...)
 }
 
 // lose: pemain pingsan, kehilangan separuh emas, dibawa pulang ke desa dengan separuh HP.

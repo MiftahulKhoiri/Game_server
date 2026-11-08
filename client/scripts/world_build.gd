@@ -344,7 +344,7 @@ static func build(map_id: String) -> Node3D:
 	var rows := Maps.rows(map_id)
 	var w := Maps.width(map_id)
 	var h := Maps.height(map_id)
-	var cave := map_id == Maps.GUA
+	var cave := map_id == Maps.GUA or map_id == Maps.GUA_GOBLIN
 	var mountain := map_id == Maps.GUNUNG or cave
 
 	# Alas luas di bawah peta, supaya tidak ada ruang kosong di tepi layar.
@@ -517,6 +517,8 @@ static func build(map_id: String) -> Node3D:
 	_add_houses(root, house_tiles, rows, map_id)
 	_add_kecil(root, kecil)
 	_add_jerami(root, map_id)
+	if map_id == Maps.HUTAN:
+		_add_kunci_gerbang(root)
 	if cave:
 		_add_torches(root, rows)
 	return root
@@ -588,6 +590,35 @@ static func _add_palisade_tile(rows: Array[String], x: int, z: int, w: int, h: i
 		rail_x.append(Transform3D(Basis.from_euler(Vector3(0, rot, 0)) * Basis.from_scale(Vector3(1.0, 0.11, 0.09)), c + inward * 0.17 + Vector3(0, ry, 0)))
 
 
+## Palang kayu yang menutup gerbang Gua Goblin di Hutan Lebat sampai tiga Goblin kalah. Node "KunciGerbang"
+## disembunyikan world3d.gd begitu misi selesai.
+static func _add_kunci_gerbang(root: Node3D) -> void:
+	var lock := Node3D.new()
+	lock.name = "KunciGerbang"
+	lock.position = Vector3(147.5, 0.0, 49.45)
+	root.add_child(lock)
+	var wood := mat(Color("6b4423"))
+	var dark := mat(Color("3d2815"))
+	for sx in [-1.4, 1.4]:
+		_gate_part(lock, _box(Vector3(0.22, 2.3, 0.22)), dark, Vector3(sx, 1.15, 0))
+	for yy in [0.45, 1.0, 1.55, 2.05]:
+		_gate_part(lock, _box(Vector3(3.0, 0.16, 0.14)), wood, Vector3(0, yy, 0))
+	_gate_part(lock, _box(Vector3(0.14, 2.2, 0.12)), wood, Vector3(0, 1.1, 0.02))
+	_gate_part(lock, _box(Vector3(1.0, 0.4, 0.06)), mat(Color("8a1f1f")), Vector3(0, 1.3, -0.1))
+	var label := Label3D.new()
+	label.text = "TERKUNCI"
+	label.font = load("res://assets/fonts/LilitaOne-Regular.ttf")
+	label.font_size = 40
+	label.pixel_size = 0.0045
+	label.outline_size = 8
+	label.modulate = Color("ffe27a")
+	label.outline_modulate = Color("3a1d05")
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.position = Vector3(0, 2.7, -0.2)
+	lock.add_child(label)
+
+
 ## Gapura desa: tiap dua petak 'N' yang bersebelahan menjadi menara batu beratap merah; bila di
 ## antara dua menara ada satu petak jalan, di atasnya dipasang jembatan batu + balok kayu + papan nama.
 static func _add_gate(root: Node3D, tiles: Array[Vector2i], map_id: String = "") -> void:
@@ -608,7 +639,7 @@ static func _add_gate(root: Node3D, tiles: Array[Vector2i], map_id: String = "")
 		var cz := float(t.y) + 0.5
 		# Gapura di tepi utara (Perbatasan, menuju desa) menghadap selatan; gapura desa menghadap utara.
 		var sd := 1.0 if t.y == 0 else -1.0
-		var nama := "DESA AWAL"
+		var nama := "GUA GOBLIN" if map_id == Maps.HUTAN else "DESA AWAL"
 		var bh := 2.5 + up
 		_gate_part(root, _box(Vector3(2.1, 0.5, 1.12)), stone_dark, Vector3(cx, 0.25, cz))
 		_gate_part(root, _box(Vector3(2.0, bh, 1.05)), stone, Vector3(cx, bh / 2.0, cz))
@@ -738,9 +769,9 @@ static func build_arena(map_id: String) -> Node3D:
 	var tile := "."
 	match map_id:
 		Maps.GUNUNG: tile = "M"
-		Maps.GUA: tile = "G"
+		Maps.GUA, Maps.GUA_GOBLIN: tile = "G"
 	var floor_color := ground_color(tile)
-	if map_id == Maps.PERBATASAN:
+	if map_id == Maps.PERBATASAN or map_id == Maps.HUTAN:
 		floor_color = floor_color.darkened(0.1)
 	var disc := CylinderMesh.new()
 	disc.top_radius = 18.0
@@ -769,7 +800,7 @@ static func build_arena(map_id: String) -> Node3D:
 			for i in 60:
 				var q := _arena_pos(i, 60, 1.2, 9.0, 31)
 				pebbles.append(_xf(q + Vector3(0, 0.03, 0), Vector3.ONE * (0.5 + _jitter(i, 8, 32) * 0.9)))
-		Maps.GUA:
+		Maps.GUA, Maps.GUA_GOBLIN:
 			for i in 10:
 				var mid2: String = MOUNTAINS[i % MOUNTAINS.size()]
 				_tambah(static_by, mid2, _xf(_arena_pos(i, 10, 5.5, 8.0, 41), Vector3.ONE * (3.0 + 1.2 * _jitter(i, 3, 42)), _jitter(i, 4, 43) * TAU))
@@ -803,7 +834,7 @@ static func build_arena(map_id: String) -> Node3D:
 				light.omni_range = 7.0
 				light.position = Vector3(0, 1.2, 0.3)
 				torch.add_child(light)
-		Maps.PERBATASAN:  # hutan lebat
+		Maps.PERBATASAN, Maps.HUTAN:  # hutan lebat
 			for i in 16:
 				var tid: String = TREE_SINGLE[i % TREE_SINGLE.size()]
 				_tambah(sway_by, tid, _xf(_arena_pos(i, 16, 3.8, 8.0, 71), Vector3.ONE * (1.7 + 0.6 * _jitter(i, 3, 72)), _jitter(i, 4, 73) * TAU))
@@ -823,7 +854,7 @@ static func build_arena(map_id: String) -> Node3D:
 			for i in 3:
 				var rid3: String = ROCKS[i % ROCKS.size()]
 				_tambah(static_by, rid3, _xf(_arena_pos(i, 3, 4.0, 6.0, 121), Vector3.ONE * 2.2, _jitter(i, 4, 123) * TAU))
-	if map_id != Maps.GUNUNG and map_id != Maps.GUA:
+	if map_id != Maps.GUNUNG and map_id != Maps.GUA and map_id != Maps.GUA_GOBLIN:
 		for i in 150:
 			var q2 := _arena_pos(i, 150, 0.9, 9.5, 131)
 			if absf(q2.x) < 0.3 and q2.z > -0.3:
@@ -1455,7 +1486,7 @@ static func environment_for(map_id: String) -> Environment:
 		fog_c = Color("1d1710")
 		fog_d = 0.0
 	match map_id:
-		Maps.GUA:
+		Maps.GUA, Maps.GUA_GOBLIN:
 			top = Color("0b0908")
 			horizon = Color("0b0908")
 			ground = Color("0b0908")
@@ -1469,7 +1500,7 @@ static func environment_for(map_id: String) -> Environment:
 			ambient = 0.22
 			fog_c = Color("c9d4e0")
 			fog_d = 0.012
-		Maps.PERBATASAN:
+		Maps.PERBATASAN, Maps.HUTAN:
 			top = Color("4a8fd0")
 			horizon = Color("d2e6f0")
 			ground = Color("9fb48c")

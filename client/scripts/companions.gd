@@ -8,6 +8,9 @@ const Movement = preload("res://scripts/movement.gd")
 const BACK := [1.5, 1.7, 1.7]       # jarak di belakang pemain per urutan
 const SIDE := [0.0, 0.95, -0.95]    # geser kanan(+)/kiri(-)
 const MAX_SPEED := 7.0
+const CHARGE_SPEED := 9.5       # kecepatan maju saat musuh mengejar / bertarung
+const ENGAGE_DIST := 7.5        # musuh pengejar sedekat ini membuat pendamping maju menyambutnya
+const FOE_RING := 1.15          # jarak pendamping dari musuh saat mengepung
 const FOLLOW_GAIN := 5.0
 const SNAP_DIST := 9.0
 
@@ -93,6 +96,14 @@ func _process(delta: float) -> void:
 	if fight != null and fight.active and fight.roamer != null:
 		foe = fight.roamer.pos
 		fighting = true
+	else:
+		# Musuh sedang mengejar pemain: pendamping tidak diam di belakang, tetapi maju menyambutnya.
+		var near: float = ENGAGE_DIST
+		for r: Variant in world._roamers:
+			if r.chasing and not r.dying and r.pos.distance_to(world._pos) < near:
+				near = r.pos.distance_to(world._pos)
+				foe = r.pos
+				fighting = true
 	for i in _units.size():
 		var u: Dictionary = _units[i]
 		var node: Node3D = u.node
@@ -100,13 +111,20 @@ func _process(delta: float) -> void:
 			continue
 		var pos: Vector2 = u.pos
 		var target := _slot(i)
+		if fighting:
+			# Mengepung musuh dari sisi pemain, tersebar menurut urutan.
+			var from_foe: Vector2 = world._pos - foe
+			var base: float = atan2(from_foe.x, from_foe.y)
+			var ang: float = base + (float(i) - float(_units.size() - 1) / 2.0) * 0.8
+			target = foe + Vector2(sin(ang), cos(ang)) * (FOE_RING + 0.15 * float(i % 3))
 		var gap := target - pos
 		if gap.length() > SNAP_DIST:
 			pos = target
 			gap = Vector2.ZERO
 		var vel := gap * FOLLOW_GAIN
-		if vel.length() > MAX_SPEED:
-			vel = vel.normalized() * MAX_SPEED
+		var top_speed := CHARGE_SPEED if fighting else MAX_SPEED
+		if vel.length() > top_speed:
+			vel = vel.normalized() * top_speed
 		var before := pos
 		if vel.length() > 0.2:
 			pos = Movement.move(world._map_id, pos, vel * delta)

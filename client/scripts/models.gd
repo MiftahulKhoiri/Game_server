@@ -43,6 +43,17 @@ const VARIANTS := {
 	"orc_buas": {"base": "goblin", "size": 2.05, "tint": Color("cc6a62")},
 	"ular_hutan": {"base": "ular_sawah", "size": 1.2, "tint": Color("86b890")},
 	"serigala_alfa": {"base": "serigala_hutan", "size": 1.25, "tint": Color("6a6f7c")},
+	# Hutan Lebat (v0.46.0): binatang hutan memakai model hewan yang sudah ada dengan ukuran/warna berbeda.
+	"kancil_hutan": {"base": "tikus_sawah", "size": 1.45, "tint": Color("d9b98a")},
+	"rubah_hutan": {"base": "serigala_hutan", "size": 0.85, "tint": Color("f0a060")},
+	"ular_belang": {"base": "ular_sawah", "size": 1.15, "tint": Color("c8b070")},
+	"babi_bertaring": {"base": "babi_hutan", "size": 1.2, "tint": Color("b09078")},
+	"serigala_hitam": {"base": "serigala_hutan", "size": 1.15, "tint": Color("55555e")},
+	"beruang_hutan": {"base": "babi_hutan", "size": 1.7, "tint": Color("8a6244")},
+	# Bos Goblin Level 1..3 (makin besar dan makin merah) dan penjaga Gua Goblin.
+	"goblin_hutan_1": {"base": "goblin_penjaga", "size": 1.6, "tint": Color("b8e0a0")},
+	"goblin_hutan_2": {"base": "goblin_penjaga", "size": 1.95, "tint": Color("e8c070")},
+	"goblin_hutan_3": {"base": "goblin_penjaga", "size": 2.3, "tint": Color("e07060")},
 	# Prajurit biasa (pasukan dari tenda hijau): pendekar tombak yang lebih kecil dan kehijauan.
 	"prajurit": {"base": "pendekar_tombak", "size": 0.88, "tint": Color("b6d8a4")},
 }

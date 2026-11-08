@@ -1541,6 +1541,40 @@ func _run() -> void:
 		_check(true, "emas %d kurang untuk beli roti; dilewati" % gold_f_v39)
 	Session.player.state = saved_toko_v39
 
+	print("== v0.46: Hutan Lebat, Gua Goblin, pendamping membantu")
+	_check(Maps.width(Maps.HUTAN) == 170 and Maps.height(Maps.HUTAN) == 50, "Hutan Lebat 170x50 (dua kali lebar Desa Awal)")
+	_check(Maps.width(Maps.HUTAN) == 2 * Maps.width(Maps.DEFAULT_MAP), "lebar Hutan Lebat dua kali Desa Awal")
+	_check(Maps.width(Maps.GUA_GOBLIN) == 25 and Maps.height(Maps.GUA_GOBLIN) == 30, "Gua Goblin 25x30")
+	_check(Maps.tile_at(Maps.HUTAN, Maps.HUTAN_BOSS.x, Maps.HUTAN_BOSS.y) == "K", "singgasana bos hutan di petak K (85,25)")
+	_check(Maps.exit_at(Maps.PERBATASAN, 22, 49).get("to", "") == Maps.HUTAN, "Perbatasan selatan menuju Hutan Lebat")
+	_check(Maps.exit_at(Maps.HUTAN, 147, 49).get("to", "") == Maps.GUA_GOBLIN, "gerbang hutan menuju Gua Goblin")
+	_check(Maps.exit_at(Maps.GUA_GOBLIN, 12, 29).get("to", "") == Maps.GUNUNG, "Gua Goblin selatan menuju Gunung Batu")
+	_check(Maps.exit_locked(Maps.HUTAN, 147, 49, 0) and Maps.exit_locked(Maps.HUTAN, 146, 49, 2), "gerbang Gua Goblin terkunci sebelum tiga Goblin kalah")
+	_check(not Maps.exit_locked(Maps.HUTAN, 147, 49, 3) and not Maps.exit_locked(Maps.HUTAN, 22, 0, 0) and not Maps.exit_locked(Maps.PERBATASAN, 147, 49, 0), "gerbang terbuka setelah tiga Goblin; pintu lain tidak terkunci")
+	var seen_v46 := {Vector2i(22, 1): true}
+	var queue_v46: Array[Vector2i] = [Vector2i(22, 1)]
+	while not queue_v46.is_empty():
+		var c_v46: Vector2i = queue_v46.pop_back()
+		for d_v46: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n_v46: Vector2i = c_v46 + d_v46
+			if not seen_v46.has(n_v46) and Maps.walkable(Maps.HUTAN, n_v46.x, n_v46.y):
+				seen_v46[n_v46] = true
+				queue_v46.append(n_v46)
+	_check(seen_v46.has(Maps.HUTAN_BOSS) and seen_v46.has(Vector2i(147, 48)) and seen_v46.has(Vector2i(147, 49)), "dari jalan masuk hutan, singgasana dan gerbang gua dapat dicapai")
+	for ex_v46: Dictionary in Maps.EXITS[Maps.HUTAN]:
+		_check(Maps.walkable(ex_v46.to, ex_v46.at.x, ex_v46.at.y), "tujuan pintu hutan %s dapat dipijak" % str(ex_v46.pos))
+	for kid_v46: String in ["kancil_hutan", "rubah_hutan", "ular_belang", "babi_bertaring", "serigala_hitam", "beruang_hutan", "goblin_hutan_1", "goblin_hutan_2", "goblin_hutan_3"]:
+		_check(load("res://scripts/models.gd").VARIANTS.has(kid_v46), "model musuh %s terdaftar" % kid_v46)
+	_check(Maps.ROAMERS[Maps.HUTAN].kinds.size() == 6 and int(Maps.ROAMERS[Maps.HUTAN].n) >= 10, "hutan punya enam jenis binatang berkeliaran")
+	var ps_v46: Dictionary = Session._normalize_state({"hutan": {"wave": 9, "kills": 500}})
+	_check(ps_v46.hutan.wave == 3 and ps_v46.hutan.kills == 100, "kemajuan hutan dibatasi 3 / 100")
+	var saved_h_v46: Variant = Session.player.state.get("hutan", {})
+	Session.merge_server_player({"state": {"hutan": {"wave": 1, "kills": 42}}})
+	_check(Session.hutan_wave() == 1 and Session.hutan_kills() == 42, "state hutan dari server digabung ke Session")
+	Session.player.state["hutan"] = saved_h_v46
+	var CPv46: Script = load("res://scripts/companions.gd")
+	_check(CPv46.CHARGE_SPEED > CPv46.MAX_SPEED and CPv46.ENGAGE_DIST > 3.0, "pendamping maju lebih cepat saat musuh mengejar")
+
 	print("== token salah")
 	Api.token = "salah"
 	var bad: Dictionary = await Api.get_me()

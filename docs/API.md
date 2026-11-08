@@ -121,7 +121,7 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 | 401 | Token tidak valid |
 | 409 | Versi tidak cocok |
 | 426 | Versi aplikasi di bawah `min_client` |
-| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `gunung_batu`, `gua_batu`, Desa Awal 85x50, lainnya 45x50 (Gua Batu 15x20)) |
+| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `hutan_lebat`, `gua_goblin`, `gunung_batu`, `gua_batu`, Desa Awal 85x50, Hutan Lebat 170x50, Gua Goblin 25x30, lainnya 45x50 (Gua Batu 15x20)) |
 
 ## Pertarungan (v0.3.0)
 
@@ -139,7 +139,7 @@ tempo diselesaikan dan dilaporkan di `log`/`events`. `200` berisi respons pertar
 bila tidak ada. Pemain bisa kalah di sini (`status: "lost"`).
 
 ### `POST /v1/battle/start`  (login)
-Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana.
+Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana. Di singgasana Hutan Lebat (85,25) bos hanya ada bila 100 binatang tahap itu sudah kalah (`state.hutan.kills == 100`), selain itu `422`.
 Mulai melawan musuh acak sesuai level pemain dan peta tempat ia berada (peta terakhir yang disimpan). `201` berisi respons pertarungan,
 `409` bila sudah ada pertarungan aktif. Musuh pertama menyerang 3 detik setelah mulai.
 
@@ -370,3 +370,9 @@ toko salah, atau barang tidak dijual; `409` saat bertarung.
 
 `POST /v1/world/chest` kini mengundi 3 hadiah berbeda dari: emas (bobot 36), ramuan x2 (20), ramuan kekuatan (12), kartu keahlian (9),
 koin kuno (8), permata merah (7), berlian (3 + 2 x tingkat peti).
+
+## Hutan Lebat (v0.46.0)
+
+State pemain punya `hutan: {"wave": 0..3, "kills": 0..100}`: `wave` = jumlah bos Goblin yang sudah kalah, `kills` = binatang kalah di tahap ini.
+Server menaikkan `kills` tiap kemenangan atas binatang di `hutan_lebat` (maks 100, lalu bos `goblin_hutan_<wave+1>` bisa dilawan di (85,25));
+mengalahkan bos menaikkan `wave` dan mengosongkan `kills`. `POST /v1/state` menolak nilai di luar rentang dengan `422`.

@@ -18,6 +18,8 @@ const DEFAULT_MAP := "desa_awal"
 const PERBATASAN := "perbatasan"
 const GUNUNG := "gunung_batu"
 const GUA := "gua_batu"
+const HUTAN := "hutan_lebat"
+const GUA_GOBLIN := "gua_goblin"
 ## Ruangan di dalam bangunan Desa Awal (v0.40.0): pintu bangunan di desa = jalan masuk, pintu di bawah ruangan = keluar.
 const TOKO_RAMUAN := "toko_ramuan"
 const RUMAH_MAKAN := "rumah_makan"
@@ -27,7 +29,7 @@ const AULA := "aula_pelatihan"
 const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan", "aula_pelatihan"]
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan"}
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "hutan_lebat": "Hutan Lebat", "gua_goblin": "Gua Goblin", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
@@ -51,10 +53,25 @@ const EXITS := {
 		{"pos": Vector2i(21, 0), "to": "desa_awal", "at": Vector2i(21, 48)},
 		{"pos": Vector2i(22, 0), "to": "desa_awal", "at": Vector2i(22, 48)},
 		{"pos": Vector2i(23, 0), "to": "desa_awal", "at": Vector2i(23, 48)},
-		{"pos": Vector2i(22, 49), "to": "gunung_batu", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(22, 49), "to": "hutan_lebat", "at": Vector2i(22, 1)},
+	],
+	"hutan_lebat": [
+		{"pos": Vector2i(22, 0), "to": "perbatasan", "at": Vector2i(22, 48)},
+		# Gerbang Gua Goblin: terkunci sampai tiga Goblin kalah (lihat exit_locked).
+		{"pos": Vector2i(146, 49), "to": "gua_goblin", "at": Vector2i(11, 1)},
+		{"pos": Vector2i(147, 49), "to": "gua_goblin", "at": Vector2i(12, 1)},
+		{"pos": Vector2i(148, 49), "to": "gua_goblin", "at": Vector2i(13, 1)},
+	],
+	"gua_goblin": [
+		{"pos": Vector2i(11, 0), "to": "hutan_lebat", "at": Vector2i(146, 48)},
+		{"pos": Vector2i(12, 0), "to": "hutan_lebat", "at": Vector2i(147, 48)},
+		{"pos": Vector2i(13, 0), "to": "hutan_lebat", "at": Vector2i(148, 48)},
+		{"pos": Vector2i(11, 29), "to": "gunung_batu", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(12, 29), "to": "gunung_batu", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(13, 29), "to": "gunung_batu", "at": Vector2i(22, 1)},
 	],
 	"gunung_batu": [
-		{"pos": Vector2i(22, 0), "to": "perbatasan", "at": Vector2i(22, 48)},
+		{"pos": Vector2i(22, 0), "to": "gua_goblin", "at": Vector2i(12, 28)},
 		{"pos": Vector2i(22, 49), "to": "gua_batu", "at": Vector2i(7, 1)},
 	],
 	"gua_batu": [{"pos": Vector2i(7, 0), "to": "gunung_batu", "at": Vector2i(22, 48)}],
@@ -63,6 +80,8 @@ const SPAWN := Vector2i(5, 5)
 const WALKABLE := ".=fTBDMGK"
 ## Petak bos: menginjaknya memulai pertarungan bos di server (posisi harus sama dengan BossSpot di internal/game/world.go).
 const BOSS_TILE := "K"
+## Singgasana bos Goblin di Hutan Lebat (sama dengan HutanBossX/Y di internal/game/hutan.go).
+const HUTAN_BOSS := Vector2i(85, 25)
 const ENCOUNTER_TILES := "TG"
 
 ## Desa Awal (85x50): desa di barat (x 0..44, dipagari) dan wilayah jelajah di timur (x 45..84, lewat celah
@@ -213,6 +232,20 @@ const ROAMERS := {
 		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
 		{"id": "serigala_alfa", "name": "Serigala Alfa", "lv": 5},
 	]},
+	# Hutan Lebat: 100 binatang per tahap (server menghitung), yang hidup bersamaan dibatasi `n`.
+	"hutan_lebat": {"n": 22, "tiles": ".f", "min_y": 3, "kinds": [
+		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1},
+		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 2},
+		{"id": "ular_belang", "name": "Ular Belang", "lv": 3},
+		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 3},
+		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 4},
+		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
+	]},
+	"gua_goblin": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [
+		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
+		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
+		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 5},
+	]},
 	"gunung_batu": {"n": 14, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
@@ -273,6 +306,15 @@ const CHESTS := [
 	{"id": "gunung_3", "map": "gunung_batu", "pos": Vector2i(42, 32), "tier": 3},
 	{"id": "gunung_4", "map": "gunung_batu", "pos": Vector2i(5, 45), "tier": 3},
 	{"id": "gunung_5", "map": "gunung_batu", "pos": Vector2i(39, 45), "tier": 3},
+	{"id": "hutan_1", "map": "hutan_lebat", "pos": Vector2i(96, 40), "tier": 2},
+	{"id": "hutan_2", "map": "hutan_lebat", "pos": Vector2i(49, 18), "tier": 2},
+	{"id": "hutan_3", "map": "hutan_lebat", "pos": Vector2i(22, 30), "tier": 2},
+	{"id": "hutan_4", "map": "hutan_lebat", "pos": Vector2i(154, 30), "tier": 3},
+	{"id": "hutan_5", "map": "hutan_lebat", "pos": Vector2i(35, 39), "tier": 2},
+	{"id": "hutan_6", "map": "hutan_lebat", "pos": Vector2i(25, 12), "tier": 3},
+	{"id": "gua_gob_1", "map": "gua_goblin", "pos": Vector2i(11, 20), "tier": 3},
+	{"id": "gua_gob_2", "map": "gua_goblin", "pos": Vector2i(18, 20), "tier": 3},
+	{"id": "gua_gob_3", "map": "gua_goblin", "pos": Vector2i(12, 7), "tier": 3},
 	{"id": "gua_1", "map": "gua_batu", "pos": Vector2i(1, 1), "tier": 4},
 	{"id": "gua_2", "map": "gua_batu", "pos": Vector2i(13, 1), "tier": 4},
 ]
@@ -462,6 +504,96 @@ const GUA_ROWS: Array[String] = [
 ]
 
 
+## Hutan Lebat (170x50): dua kali lebar Desa Awal. Pintu masuk dari Perbatasan di (22,0), singgasana bos K di tengah, gapura ke Gua Goblin di bawah.
+const HUTAN_ROWS: Array[String] = [
+	"######################=###################################################################################################################################################",
+	"###.#####..#########..=..########..#########.........#####################...########......###########..................#####.......#############..................#######",
+	"##....#......#######..=..#####.......####............R##########......#####..####...........##########.................#####...f.......######.......................######",
+	"##.............####...=...###......f...R..............#########........#########............##########....f.###.......######...........#####...........####...........####",
+	"##..............##...f=....##..........f.............##########.........#######.............##########.....####......########.........###...............###...........####",
+	"##........f...........=..................##...f.....###########..........#####...............#########....#####....R.#.######..f.....###.................##..R..##....####",
+	"##....................=....f....##.f.....##.........###########..........####.................#######....#####............###f.......###f...~..........f.......###...#####",
+	"##.....##.............=f........###................###########..........#####..........ff......#####....#####..............#f.........##..~~~~~...##...........###...#####",
+	"###...###...##........======...####................#######............########..................###.....####........f........================~~~..###..........f#.....####",
+	"###...###..####..f....==============.....f.........######.......f..###############........###............##......f........====..........f.~~~~~.f####.................####",
+	"###...###...###...f........===..##.=..##...........######...~......################.......###........................f..===...........#.....~....#####...##............###",
+	"####..###f..###..ff..........==....=.####......##...#####.~~~~~....#######....####.f.....####.............f..#........===............###.........#####..................##",
+	"#########....#.......f........=....=.####.....####..####.~~~~~~~....#.###................###.R.......==================............f####.........######f..........f.....##",
+	"########......................=....=.####.....####...###..~~~~~...f........##............###........#=####............f......##....######.........#####.........f.......##",
+	"#.....#................##.....=f...=====#......##...f.#.....~.....f.......####...........###........==###..........f.f.......##...##########.......####...........f....###",
+	"#....f.#.............#####R...=.#######====..............f...............######..........###........=...............f........#...############......f###f...........R.#####",
+	"##....###..........########...=##########.===......f.....................######...###f...###.....#..=...........#....f....f.##....###..######........##...f.........######",
+	"##...####.........############=##########R..==...........................#####........f...##........=f.......f.###..f..f...##..........######........###............######",
+	"##...###f.........####f.######=##########....==...........................####.............#........=...........###....ff.##...........######.......#####............#####",
+	"#...####....####...##....#####=##########....#=====.....................f.####....f.f......f...======..................................######.....f.#####...............##",
+	"#..##############........#####=.....####...f###..f==========...............###..........ff....==........................................#####.......#####................#",
+	"################.........#####=......f.......#.............=.........#.....##.....f..........==f.........................................####.....f..###.................#",
+	"###############..........#####=..............f.f...........==#....#####.....#.....Rf....R....=.....##.......###.................................................##.......#",
+	"#############............#####=#.............R.............#=##########......................=....######...#####..........##..........f..............f..........###......#",
+	"############............Rf####=#......f...........#######...===========..................=====....######...######.........####.........###..............f....R.f####...f.#",
+	"############...............###=..................#########...#########==============.K.===.ff......#####...##########.....########....#####.........f...........#####....#",
+	"############................##=ff..f..............###..###....#####................f...==...........###....###########....########...######....................#######..##",
+	"#####...####...####...f.....##=....................................f......#.............====..#####.......#############..#########.R.######.................##############",
+	"#.......###...######......ff##====...f...............f...................###...ff.R.....R..===#####.....#########################.....####.........f..=......#############",
+	"#.......##...#######..........f..==...f.............R.............##...f####..f..............=====###f.###########...###########.......###.....##.....=.....##############",
+	"#.......##.R.#######..............====......f........##.......#######...####..f...........f..####=================.R..#########.........#......##.....=.....####.....#####",
+	"##.....##...########.....#........ff.==..............###.R...########...###ff...............###..####.....####.#===........###.........R.......##...===.....###......#####",
+	"##.....##...########....###...........=........f......###...f#######....###................###.............######====.......##......................=......###.......#####",
+	"##.....##....#######...####......#....=.......f.f......###...######.....##.......f.........###.f...........########===......##......f.f........======..........f.....#####",
+	"##.....##.......#####.#####.....###...====.##f..........##...######....###....f.............##.....f......##########=====...###f.....#.........=...................f.#####",
+	"#.....###........##########......#.......=##....f..f.f...#....####R...####.................###...........###########.==.=....###.....f........==......##.............#####",
+	"#....#####..R....#########...f..........~=.#.......f.....##..####....f###..............#######...........##########..f=f=...f.###............#=#########............######",
+	"#....######.....######................~~~====............########.....##...............#######...........#####R..#....===......#............##=#########..f........####..#",
+	"##..##################...............~~~~~~~=======......f########....##...........##...######...........##............====.f............======#########...........####..#",
+	"#####################.................~~~~~..............#########....##..........f###..######f.......................~~=~==...........===...##########............#######",
+	"#####################f..................~........f.........########.........##......##.######.......f................~~~=~~==============.........####.............#######",
+	"####################..................f....................#########........##........######....f...f.................~~~~~.............====.f.........ff...#.......######",
+	"################...........###..............................###..####.......###.......#####................f.........f..~...........ff.....=.f........##...###.......#####",
+	"###..##########.........f..###....................f..........#...#####......####......##....f.........f....................f..........ff.R.=..............####........####",
+	"##.....#######......###....###.f...............f....f.............###........####....##.............f..................f..f.f...........##.==....##.......###..........###",
+	"##.........###...f######...###........##.......###.........................f..###...###...............f...##......f..........#..........##..========......###...####...###",
+	"#...........###..########.####....................................f....###....###...###..................####.f....f........###.........##.........=......###...#####...##",
+	"##.##..f...###################.........f..............####.............###....###...###..f............f..####........###....##..........###........=......####.######..###",
+	"######....####################......................#######..........f#####..####.f#####..###...........######.......###...............#####......===.....###########..###",
+	"#PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPNN===NNPPPPPPPPPPPPPPPPPP#",
+]
+
+
+## Gua Goblin (25x30): peta 3, terbuka setelah tiga Goblin di Hutan Lebat kalah.
+const GUA_GOBLIN_ROWS: Array[String] = [
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRMMMMMMMMMMMMMMMMMRRRR",
+	"RRRRMGGGGMMMMMMMGGGGMRRRR",
+	"RRRRMGGGGMGGGGGMGGGGMRRRR",
+	"RRRRMGGGGMGGGGGMGGGGMRRRR",
+	"RRRRMMMMMMGGGGGMMMMMRRRRR",
+	"RRRRMMRMMMMMMMMMMMMMMRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRMMMMMMMMMMMRMMMMMMMMMRR",
+	"RRMGGGGMMMMMMRMMMGGGGMMRR",
+	"RRMGGGGMMMMMMRMMMGGGGRMRR",
+	"RRMGGGGMMMMMMRMMMGGGGMMRR",
+	"RRMGGGGMMMMMMRMMMGGGGMMRR",
+	"RRMMMMMMMMMMMRMMMMMMRMMRR",
+	"RRMMMMMMRMMMMRMMMMMMMMMRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRMMMMMRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+]
+
+
 ## Ruangan dalam bangunan (9x8). H = dinding, = = lantai, D = pintu keluar, S = meja kasir, x = lantai di belakang meja
 ## (tempat penjaga; tak terjangkau pemain), R = rak (toko ramuan, rumah makan) / ranjang (rumah sehat),
 ## F = tong (toko ramuan) / meja makan (rumah makan) / tanaman (rumah sehat). Bentuknya digambar interior.gd.
@@ -529,12 +661,21 @@ static func exit_at(map_id: String, x: int, y: int) -> Dictionary:
 	return {}
 
 
+## Gerbang Gua Goblin di Hutan Lebat terkunci sampai tiga Goblin kalah (`hutan_wave` dari Session.player.state.hutan).
+static func exit_locked(map_id: String, x: int, y: int, hutan_wave: int) -> bool:
+	return map_id == HUTAN and y == 49 and x >= 146 and x <= 148 and hutan_wave < 3
+
+
 static func rows(map_id: String) -> Array[String]:
 	match map_id:
 		DEFAULT_MAP:
 			return DESA_AWAL
 		PERBATASAN:
 			return PERBATASAN_ROWS
+		HUTAN:
+			return HUTAN_ROWS
+		GUA_GOBLIN:
+			return GUA_GOBLIN_ROWS
 		GUNUNG:
 			return GUNUNG_ROWS
 		GUA:

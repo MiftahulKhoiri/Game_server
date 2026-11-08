@@ -12,8 +12,8 @@ const (
 	MaxParty       = 3    // pendamping yang boleh dipasang sekaligus
 	AllyPercent    = 70   // kerusakan pendamping = serangan dasar level pemain x ini persen
 	AllyBonus      = 2    // ditambah sekian, supaya musuh berpertahanan tinggi tetap terasa
-	AllyIntervalMs = 2400 // jeda antar serangan pendamping
-	AllyFirstMs    = 1500 // serangan pendamping pertama setelah pertarungan mulai
+	AllyIntervalMs = 1800 // jeda antar serangan pendamping
+	AllyFirstMs    = 800  // serangan pendamping pertama setelah pertarungan mulai
 
 	MaxSoldiers    = 5  // prajurit biasa yang boleh dibeli
 	SoldierPrice   = 60 // harga satu prajurit

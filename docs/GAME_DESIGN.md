@@ -190,8 +190,22 @@ Bila level pemain terlalu rendah untuk sebuah wilayah, ia tetap bertemu musuh te
 
 Pahlawan (ksatria, pemanah, pendekar tombak, pendekar kapak) bisa dibeli dengan emas di menu **Atribut** lalu
 dipasang berbaris di belakang pemain (maks 3). Di dunia mereka mengikuti pemain; saat bertarung mereka
-menyerang musuh otomatis tiap 2,4 d (kerusakan 70% serangan dasar level pemain + 2). Pemain tetap yang
+menyerang musuh otomatis (pukulan pertama 0,8 d setelah mulai, lalu tiap 1,8 d sejak v0.46.0; kerusakan 70% serangan dasar level pemain + 2). Saat musuh mengejar atau sedang dilawan, pendamping berlari mengepung musuh itu, bukan hanya ikut berjalan. Pemain tetap yang
 menentukan bertahan, skill, ramuan, dan kabur. Harga 250-350 emas (draf, untuk diseimbangkan).
+
+## Hutan Lebat dan tiga Goblin (v0.46.0)
+
+Hutan Lebat (selatan Perbatasan) berisi binatang liar level 1-6 (kancil, rubah, ular belang, babi bertaring, serigala hitam,
+beruang; HP 24-82). Tiap tahap: kalahkan **100 binatang** (penghitung "Binatang X/100" di layar) -> bos **Goblin Level N** muncul
+di singgasana (85,25) dan binatang berhenti muncul -> bos kalah -> 100 binatang baru. Tiga tahap:
+
+| Bos | HP | Serang | Tahan | XP | Emas | Jatuhan |
+|-----|----|--------|-------|----|------|---------|
+| Goblin Level 1 | 170 | 14 | 6 | 90 | 40 | Taring Goblin |
+| Goblin Level 2 | 300 | 19 | 9 | 180 | 80 | Taring Goblin |
+| Goblin Level 3 | 520 | 25 | 12 | 320 | 150 | Permata Merah |
+
+Setelah Goblin Level 3 kalah, gerbang Gua Goblin (peta 3) terbuka. Angka di atas draf untuk diseimbangkan.
 
 ## Energi, makanan, dan toko (v0.39.0)
 
@@ -214,6 +228,8 @@ berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai 
 |------|-----|-------|
 | Desa Awal (`desa_awal`, 85x50) | Hutan belantara timur lewat celah pagar timur (kolam, kebun, reruntuhan, tambang, 6 peti); tujuh rumah utara, empat rumah tengah, alun-alun, dua kandang berpagar, sungai, empat ladang berpagar dan pondok tani, dua kolam, Nenek dan Petani, serta 11 warga yang berjalan bebas (ibu, bapak, anak, penjaga, ayam) | Gerbang selatan (22,49) ke Perbatasan |
 | Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
+| Hutan Lebat (`hutan_lebat`, 170x50) | Hutan pinus lebat, jalan tanah, kolam, tempat terbuka, singgasana bos di tengah (85,25), enam peti | Utara (22,0) ke Perbatasan; gerbang selatan (146-148,49) ke Gua Goblin (terkunci sampai tiga Goblin kalah) |
+| Gua Goblin (`gua_goblin`, 25x30) | Peta 3: gua sarang goblin (goblin, pemburu, penjaga), tiga peti | Utara kembali ke hutan; selatan (11-13,29) ke Gunung Batu |
 | Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) ke Perbatasan; selatan (7,19) masuk Gua Batu |
 | Gua Batu (`gua_batu`) | Lorong gua, sarang Raja Goblin | Utara (7,0) kembali ke Gunung Batu |
 

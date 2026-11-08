@@ -8,7 +8,7 @@ import "math"
 const (
 	MapDesaAwal   = SpawnMap      // "desa_awal"
 	MapPerbatasan = "perbatasan"  // ladang di luar gerbang selatan desa
-	MapGunungBatu = "gunung_batu" // sarang Ogre Batu, di selatan Perbatasan
+	MapGunungBatu = "gunung_batu" // sarang Ogre Batu, di selatan Gua Goblin (sejak v0.46.0)
 	MapGuaBatu    = "gua_batu"    // sarang dalang serangan monster, di dalam Gunung Batu
 	// Ruangan dalam bangunan Desa Awal (v0.40.0): tempat berbelanja dan beristirahat. Aman, tanpa musuh.
 	MapTokoRamuan = "toko_ramuan"
@@ -26,6 +26,8 @@ type MapInfo struct {
 var worldMaps = map[string]MapInfo{
 	MapDesaAwal:   {Width: 85, Height: 50},
 	MapPerbatasan: {Width: 45, Height: 50},
+	MapHutanLebat: {Width: 170, Height: 50},
+	MapGuaGoblin:  {Width: 25, Height: 30},
 	MapGunungBatu: {Width: 45, Height: 50},
 	MapGuaBatu:    {Width: 15, Height: 20},
 	MapTokoRamuan: {Width: 9, Height: 8},
