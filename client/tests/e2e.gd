@@ -1590,7 +1590,7 @@ func _run() -> void:
 		if wg_v47.id == "kapten_kem":
 			kapten_v47 = wg_v47
 	_check(not kapten_v47.is_empty() and kapten_v47.map == Maps.HUTAN and Maps.HUTAN_KEM.has_point(Vector2i(int(kapten_v47.pos.x), int(kapten_v47.pos.y))), "Kapten Rimba berdiri di dalam kem hutan")
-	_check(not Maps.roam_free(Maps.HUTAN, Vector2(22.5, 7.5)) and not Maps.roam_free(Maps.HUTAN, Vector2(18.5, 3.5)), "kem adalah zona aman: binatang tidak boleh masuk")
+	_check(not Maps.roam_free(Maps.HUTAN, Vector2(22.5, 5.5)) and not Maps.roam_free(Maps.HUTAN, Vector2(18.5, 4.5)) and Maps.roam_free(Maps.HUTAN, Vector2(22.5, 11.5)), "kem adalah zona aman: binatang tidak boleh masuk")
 	_check(Maps.roam_free(Maps.HUTAN, Vector2(50.5, 12.5)), "jalan hutan di luar kem bebas dilalui binatang")
 	var has_fire_v47 := false
 	var tents_v47 := 0

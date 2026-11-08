@@ -339,6 +339,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
   singgasana dan 100 binatang tahap itu sudah kalah (selain itu `422`); `{"boss":true}` di petak singgasana tetap berlaku. Posisi enam
   peti hutan dipindah ke padang terbuka baru. `DefaultMinClient` tetap 0.18.0.
 
+- v0.47.1: **kem Hutan Lebat dirapatkan ke pintu masuk**: begitu tiba dari Perbatasan, tenda, panji "KEM HUTAN", api unggun, dan Kapten Rimba
+  langsung terlihat di depan (zona aman x 13-31, y 1-9), jalan tanah lurus melewatinya. Posisi enam peti hutan dipindah ulang.
+  `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

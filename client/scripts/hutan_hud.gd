@@ -6,7 +6,7 @@ extends Control
 const Maps = preload("res://scripts/maps.gd")
 
 const PANEL_SIZE := Vector2(412, 150)
-const KEM_POINT := Vector2(22.5, 7.5)       # titik pulang: jalan masuk di kem
+const KEM_POINT := Vector2(22.5, 4.5)       # titik pulang: jalan masuk di kem
 const GATE_POINT := Vector2(147.5, 48.5)    # gerbang Gua Goblin
 
 var kills := 0

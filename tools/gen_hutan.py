@@ -18,8 +18,8 @@ BOSS = (85, 25)       # singgasana bos Goblin (harus sama dengan HutanBossX/Y di
 GATE_X0 = 144         # gapura "NN===NN" di baris paling bawah: N di 144-145, jalan 146-148, N di 149-150
 GATE_ROAD = (146, 147, 148)
 WALK = ".=fTBDMGK"
-KEM = (12, 1, 33, 14)  # kotak kem (x0, y0, x1, y1 eksklusif): zona aman, tanpa binatang (sama dengan Maps.HUTAN_KEM di maps.gd)
-NPC_KEM = (24, 7)      # petak NPC penjaga kem (sama dengan Maps.WARGA kapten_kem)
+KEM = (13, 1, 32, 10)  # kotak kem (x0, y0, x1, y1 eksklusif): zona aman, tanpa binatang (sama dengan Maps.HUTAN_KEM di maps.gd)
+NPC_KEM = (24, 5)      # petak NPC penjaga kem (sama dengan Maps.WARGA kapten_kem)
 
 
 def hutan(seed=46):
@@ -110,13 +110,13 @@ def hutan(seed=46):
             if g[y][x] in "#R~":
                 g[y][x] = "."
     # kem: tenda (A, 2x2), api unggun (U), tiang panji (Y); jalan utama x=21..23 melewati tengah kem
-    for (tx, ty) in ((15, 4), (15, 9), (28, 4), (28, 9)):
+    for (tx, ty) in ((16, 2), (16, 6), (27, 2), (27, 6)):
         for dy in (0, 1):
             for dx in (0, 1):
                 g[ty + dy][tx + dx] = "A"
-    g[7][26] = "U"
-    g[3][20] = "Y"
-    g[3][24] = "Y"
+    g[4][25] = "U"
+    g[2][20] = "Y"
+    g[2][24] = "Y"
     # singgasana bos dan lingkarannya
     for y in range(BOSS[1] - 1, BOSS[1] + 2):
         for x in range(BOSS[0] - 1, BOSS[0] + 2):

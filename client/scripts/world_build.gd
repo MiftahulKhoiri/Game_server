@@ -515,7 +515,7 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x, [], false)
 	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c, false)
 	_add_houses(root, house_tiles, rows, map_id)
-	_add_kecil(root, kecil)
+	_add_kecil(root, kecil, map_id)
 	_add_jerami(root, map_id)
 	if map_id == Maps.HUTAN:
 		_add_kunci_gerbang(root)
@@ -1242,7 +1242,7 @@ static func _kelompok(tiles: Array) -> Array:
 	return out
 
 
-static func _add_kecil(root: Node3D, kecil: Dictionary) -> void:
+static func _add_kecil(root: Node3D, kecil: Dictionary, map_id: String = "") -> void:
 	for r: Dictionary in _kelompok(kecil.J):
 		_pos_jaga(root, r)
 	for r: Dictionary in _kelompok(kecil.C):
@@ -1256,7 +1256,7 @@ static func _add_kecil(root: Node3D, kecil: Dictionary) -> void:
 	for t: Vector2i in kecil.Q:
 		_dummy_latihan(root, Vector3(t.x + 0.5, 0.0, t.y + 0.5))
 	for t: Vector2i in kecil.Y:
-		_panji_basecamp(root, Vector3(t.x + 0.5, 0.0, t.y + 0.5))
+		_panji_basecamp(root, Vector3(t.x + 0.5, 0.0, t.y + 0.5), "KEM\nHUTAN" if map_id == Maps.HUTAN else "BASECAMP\nPAHLAWAN")
 
 
 static func _label_kecil(root: Node3D, text: String, pos: Vector3, size: int, px: float, yaw := 0.0) -> void:
@@ -1430,13 +1430,13 @@ static func _dummy_latihan(root: Node3D, c: Vector3) -> void:
 
 
 ## Tiang panji basecamp: bendera merah di puncak dan papan nama "BASECAMP PAHLAWAN" yang menghadap ke jalan (timur).
-static func _panji_basecamp(root: Node3D, c: Vector3) -> void:
+static func _panji_basecamp(root: Node3D, c: Vector3, teks: String = "BASECAMP\nPAHLAWAN") -> void:
 	var kayu := mat(Color("5b3b1e"))
 	_gate_part(root, _cyl(0.04, 0.05, 2.7, 6), kayu, c + Vector3(0, 1.35, 0))
 	_gate_part(root, _sphere(0.07, 6), mat(Color("ffd23a")), c + Vector3(0, 2.74, 0))
 	_gate_part(root, _box(Vector3(0.03, 0.5, 0.75)), mat(Color("b02a2a")), c + Vector3(0, 2.38, 0.42))
 	_gate_part(root, _box(Vector3(0.07, 0.66, 1.3)), mat(Color("7a5530")), c + Vector3(0.07, 1.5, 0))
-	_label_kecil(root, "BASECAMP\nPAHLAWAN", c + Vector3(0.115, 1.5, 0), 40, 0.0036, PI / 2.0)
+	_label_kecil(root, teks, c + Vector3(0.115, 1.5, 0), 40, 0.0036, PI / 2.0)
 
 
 ## Obor di dinding gua: tiang kecil dengan nyala (cahaya titik hanya beberapa, agar ringan).
