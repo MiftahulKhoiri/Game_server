@@ -64,6 +64,21 @@ func buy_soldier() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/buy", {}, true)
 
 
+## Mulai latihan di Aula Pelatihan: kind "pahlawan" (target = id pahlawan) atau "prajurit".
+func train_start(kind: String, target := "") -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/train/start", {"kind": kind, "target": target}, true)
+
+
+## Ambil hasil latihan yang sudah selesai.
+func train_claim(kind: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/train/claim", {"kind": kind}, true)
+
+
+## Jam server (detik Unix), untuk menghitung sisa waktu latihan.
+func server_time() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/time", null, false)
+
+
 ## Tetapkan pendamping yang dipasang (urutan = urutan berbaris di belakang pemain).
 func set_party(party: Array) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/party", {"party": party}, true)

@@ -16,6 +16,7 @@ const LOOK := {
 	"toko_ramuan": {"wall": Color("a8764a"), "trim": Color("6b4426"), "floor_a": Color("c9a066"), "floor_b": Color("bd9459"), "counter": Color("7a4a26"), "top": Color("c28a4c"), "rug": Color("8e3a2c"), "sign": "TOKO RAMUAN"},
 	"rumah_makan": {"wall": Color("b98552"), "trim": Color("6e4527"), "floor_a": Color("c4985c"), "floor_b": Color("b78b50"), "counter": Color("6e4326"), "top": Color("d49a58"), "rug": Color("3a5a8e"), "sign": "RUMAH MAKAN"},
 	"toko_peralatan": {"wall": Color("8a7f74"), "trim": Color("4f4a46"), "floor_a": Color("a89d8c"), "floor_b": Color("9b9080"), "counter": Color("4d5058"), "top": Color("8a6a44"), "rug": Color("7a2f2f"), "sign": "TOKO PERALATAN"},
+	"aula_pelatihan": {"wall": Color("7a7390"), "trim": Color("3f3a58"), "floor_a": Color("b3a68c"), "floor_b": Color("a69a80"), "counter": Color("4d5058"), "top": Color("8a6a44"), "rug": Color("3a5a8e"), "sign": "AULA PELATIHAN"},
 	"rumah_sehat": {"wall": Color("d2dcdf"), "trim": Color("93a8ae"), "floor_a": Color("b9c8cd"), "floor_b": Color("aebec4"), "counter": Color("9fb4ba"), "top": Color("dfe9ec"), "rug": Color("4aa3a0"), "sign": "RUMAH SEHAT"},
 }
 
@@ -116,8 +117,13 @@ static func build(map_id: String) -> Node3D:
 							_dining_table(root, c)
 						Maps.TOKO_ALAT:
 							_armor_stand(root, c)
+						Maps.AULA:
+							_dummy(root, c)
 						_:
 							_plant(root, c)
+	if map_id == Maps.AULA:  # dua panggung pelatih: kiri pahlawan (merah), kanan prajurit (hijau)
+		_dais(root, Vector3(4.0, 0.0, 2.6), Color("a33a3a"))
+		_dais(root, Vector3(7.0, 0.0, 2.6), Color("4f9a4a"))
 	_rug(root, look, w, h)
 	_sign(root, look, w)
 	_lights(root, map_id, w, h)
@@ -209,7 +215,7 @@ static func _shelf(root: Node3D, map_id: String, c: Vector3) -> void:
 			var col: Color = palette[(seed_i + i * 2 + k) % palette.size()]
 			if map_id == Maps.TOKO_RAMUAN:
 				_bottle(root, back + Vector3(px, y2, 0.05), col)
-			elif map_id == Maps.TOKO_ALAT:
+			elif map_id == Maps.TOKO_ALAT or map_id == Maps.AULA:
 				_gear_item(root, back + Vector3(px, y2, 0.05), (i + k) % 3)
 			else:
 				if (i + k) % 2 == 0:  # toples
@@ -244,6 +250,25 @@ static func _armor_stand(root: Node3D, c: Vector3) -> void:
 	_put(root, _box(Vector3(0.12, 0.4, 0.26)), Color("8d949b"), c + Vector3(0.27, 0.95, 0), 0.0, 0.4)
 	_put(root, _ball(0.14, 0.95), Color("a9b1b8"), c + Vector3(0, 1.35, 0), 0.0, 0.35)
 	_put(root, _box(Vector3(0.05, 0.1, 0.28)), Color("b23a3a"), c + Vector3(0, 1.5, 0))
+
+
+## Panggung kecil tempat pelatih berdiri.
+static func _dais(root: Node3D, c: Vector3, color: Color) -> void:
+	_put(root, _box(Vector3(1.8, 0.04, 1.6)), color.darkened(0.3), c + Vector3(0, 0.02, 0))
+	_put(root, _box(Vector3(1.6, 0.05, 1.4)), color, c + Vector3(0, 0.03, 0))
+
+
+## Boneka latihan: tiang kayu, badan jerami, dan lingkaran sasaran.
+static func _dummy(root: Node3D, c: Vector3) -> void:
+	_put(root, _cyl(0.05, 0.06, 1.1, 8), Color("5e3c20"), c + Vector3(0, 0.55, 0))
+	_put(root, _box(Vector3(0.7, 0.1, 0.1)), Color("5e3c20"), c + Vector3(0, 0.85, 0))
+	_put(root, _cyl(0.25, 0.28, 0.5, 10), Color("c9a86a"), c + Vector3(0, 0.82, 0))
+	_put(root, _ball(0.17, 0.95), Color("d6b87a"), c + Vector3(0, 1.28, 0))
+	var tp := _put(root, _cyl(0.2, 0.2, 0.02, 14), Color("b23a3a"), c + Vector3(0, 0.84, 0.27))
+	tp.rotation_degrees.x = 90.0
+	var tp2 := _put(root, _cyl(0.1, 0.1, 0.03, 14), Color("f2e6c4"), c + Vector3(0, 0.84, 0.275))
+	tp2.rotation_degrees.x = 90.0
+	_put(root, _cyl(0.3, 0.34, 0.06, 10), Color("3a3a40"), c + Vector3(0, 0.03, 0))
 
 
 static func _barrel(root: Node3D, c: Vector3) -> void:

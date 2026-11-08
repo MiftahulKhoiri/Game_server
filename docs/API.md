@@ -344,3 +344,20 @@ server untuk posisi tersimpan, dan `POST /v1/rest` sah di sana.
 `state.soldiers` (jumlah). `409` saat bertarung, `422` bila emas kurang atau sudah penuh, `401` tanpa token. Prajurit
 menyerang sebagai pasukan terpisah di tiap giliran sekutu (event `Who:"ally"`, `Hero:"prajurit_n"`); daya serang = 20% serangan
 dasar + 1, tidak memakai slot party.
+
+## Aula Pelatihan (v0.43.0)
+
+Pelatihan hanya sah saat pemain berada di peta `aula_pelatihan` (11x8, termasuk `InVillage` sehingga istirahat gratis juga sah).
+Dua tempat latihan: `pahlawan` (satu pahlawan pembantu yang sudah dibeli) dan `prajurit` (seluruh pasukan). Tiap tempat
+menjalankan satu latihan sekaligus.
+
+- `POST /v1/train/start` `{kind, target}`: `kind` = `pahlawan` (target = id pahlawan) atau `prajurit`. Dari level L ke L+1 biayanya
+  pahlawan 80xL emas, prajurit 40xL emas, ditambah 1 `kartu_keahlian` dan energi (pahlawan 30, prajurit 20), dibayar saat mulai.
+  Lama: pahlawan 600xL detik, prajurit 300xL detik. `422` bila di luar aula, tempat latihan sibuk, level sudah 20, emas/kartu/energi
+  kurang, atau pahlawan belum dibeli / belum punya prajurit. `409` saat bertarung.
+- `POST /v1/train/claim` `{kind}`: mengambil hasil bila `ready_at` (detik Unix) sudah lewat; level naik. `422` bila belum selesai atau tidak ada latihan.
+- `GET /v1/time`: `{"unix": detik}` jam server, untuk menghitung sisa waktu.
+
+State pemain: `hero_levels` (id pahlawan -> level, kosong = 1), `soldier_level` (0 = 1), `training` (daftar `{kind, target, to_level, ready_at}`).
+Serangan pahlawan = serangan dasar x (70 + 10 x (Lv-1))% + 2; prajurit = serangan dasar x (20 + 5 x (Lv-1))% + 1.
+Item `kartu_keahlian`: dijual di toko `peralatan` (60 emas), dijual kembali 20 emas di toko ramuan, dan dijatuhkan musuh dengan peluang 8% saat menang.

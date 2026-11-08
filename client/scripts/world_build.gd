@@ -25,6 +25,7 @@ const BANGUNAN_MODEL := {
 	"rumah_b": "building_home_B_red",
 	"toko": "building_market_red",
 	"peralatan": "building_home_B_red",
+	"aula": "building_home_A_red",
 	"dapur": "building_tavern_red",
 	"rumah_sakit": "building_church_red",
 	"kepala_suku": "building_castle_red",
@@ -40,6 +41,7 @@ const BANGUNAN_KHUSUS := {
 		Vector2i(15, 1): "toko",
 		Vector2i(21, 1): "dapur",
 		Vector2i(27, 1): "rumah_sakit",
+		Vector2i(37, 19): "aula",
 		Vector2i(38, 1): "kepala_suku",
 	},
 }

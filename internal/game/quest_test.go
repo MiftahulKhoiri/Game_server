@@ -73,7 +73,7 @@ func TestWinCountsTowardQuest(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := battleVs("tikus_sawah", 1)
-	res, err := act(b, p, ActionAttack, seq(20, 99, 99))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 99, 99))
 	if err != nil || res.Status != StatusWon {
 		t.Fatalf("harus menang: %v %+v", err, res)
 	}
@@ -90,7 +90,7 @@ func TestFleeAndLossDoNotCount(t *testing.T) {
 	_ = p.State.AcceptQuest(nenekQuest)
 	p.State.HP = 1
 	b := battleVs("babi_hutan", 34)
-	_, _ = act(b, p, ActionAttack, seq(20, 99, 20))
+	_, _ = act(b, p, ActionAttack, seq(20, 99, 20, 99))
 	if p.State.Quests[0].Progress != 0 {
 		t.Errorf("kalah tidak boleh menambah kemajuan: %+v", p.State.Quests)
 	}

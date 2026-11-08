@@ -12,6 +12,7 @@ const PLANG := {
 	"dapur": {"teks": "RUMAH\nMAKAN", "papan": Color("b5532a")},
 	"peralatan": {"teks": "TOKO\nPERALATAN", "papan": Color("4d5058")},
 	"rumah_sakit": {"teks": "RUMAH\nSEHAT", "papan": Color("2f8f86")},
+	"aula": {"teks": "AULA\nPELATIHAN", "papan": Color("6a3fa0")},
 }
 
 ## Letak ikon atap per jenis: (tinggi sebagai bagian dari tinggi bangunan, geser z dari muka bangunan; negatif = masuk ke atap).
@@ -20,6 +21,7 @@ const IKON_POS := {
 	"dapur": Vector2(0.6, 0.5),
 	"peralatan": Vector2(0.58, 0.35),
 	"rumah_sakit": Vector2(0.42, 0.35),
+	"aula": Vector2(0.55, 0.35),
 }
 
 static var _mats: Dictionary = {}
@@ -125,6 +127,8 @@ static func pasang(root: Node3D, info: Dictionary, door: Vector2i, kind: String)
 			_senjata(ikon)
 		"rumah_sakit":
 			_palang_merah(ikon)
+		"aula":
+			_perisai(ikon)
 
 
 ## Tiang pendek dari atap ke bawah ikon (ikon berpusat di atas titik ini).
@@ -204,3 +208,21 @@ static func _palang_merah(ikon: Node3D) -> void:
 	_put(c, _cyl(0.45, 0.08, 24), Color("f4f4f4"), Vector3.ZERO, Vector3.ZERO, 0.5)
 	_put(c, _box(Vector3(0.62, 0.1, 0.18)), Color("d83a3a"), Vector3(0, 0.01, 0))
 	_put(c, _box(Vector3(0.18, 0.1, 0.62)), Color("d83a3a"), Vector3(0, 0.01, 0))
+
+
+## Ikon Aula Pelatihan: perisai biru bulat dengan bintang emas, dan pedang tegak di belakangnya.
+static func _perisai(ikon: Node3D) -> void:
+	_tiang(ikon, 0.4)
+	var c := Node3D.new()
+	c.position = Vector3(0, 0.82, 0)
+	ikon.add_child(c)
+	_pedang(c, 0.0)
+	var sh := Node3D.new()
+	sh.position = Vector3(0, 0.1, 0.1)
+	sh.rotation_degrees = Vector3(90, 0, 0)
+	c.add_child(sh)
+	_put(sh, _cyl(0.5, 0.08, 24), Color("d4a72c"), Vector3.ZERO, Vector3.ZERO, 0.3)
+	_put(sh, _cyl(0.43, 0.1, 24), Color("2f5fa8"), Vector3(0, 0.005, 0), Vector3.ZERO, 0.4)
+	for i in 5:  # bintang emas dari lima batang pendek
+		var b := _put(sh, _box(Vector3(0.1, 0.11, 0.55)), Color("f2c14e"), Vector3(0, 0.012, 0), Vector3.ZERO, 0.3, 0.2)
+		b.rotation_degrees.y = 36.0 * i

@@ -778,6 +778,18 @@ func TestAllyEndpoints(t *testing.T) {
 	if resp, _ = do(t, "POST", ts.URL+"/v1/soldiers/buy", "", nil); resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("beli prajurit tanpa token harus 401, dapat %d", resp.StatusCode)
 	}
+	if resp, data = do(t, "GET", ts.URL+"/v1/time", "", nil); resp.StatusCode != http.StatusOK || !strings.Contains(string(data), "unix") {
+		t.Fatalf("jam server: %d %s", resp.StatusCode, data)
+	}
+	if resp, data = do(t, "POST", ts.URL+"/v1/train/start", cr.Token, map[string]string{"kind": "prajurit"}); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("latihan di luar aula harus 422: %d %s", resp.StatusCode, data)
+	}
+	if resp, data = do(t, "POST", ts.URL+"/v1/train/claim", cr.Token, map[string]string{"kind": "pahlawan"}); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("klaim tanpa latihan harus 422: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ = do(t, "POST", ts.URL+"/v1/train/start", "", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("latihan tanpa token harus 401, dapat %d", resp.StatusCode)
+	}
 	resp, data = do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero": "naga"})
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("pahlawan asing harus 422: %d %s", resp.StatusCode, data)

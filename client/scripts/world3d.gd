@@ -35,6 +35,7 @@ const NPC_WANDER := 0.22      # NPC berjalan pelan di dalam petaknya sendiri (ja
 const NPC_SPEED := 0.5        # petak per detik
 const BATTLE_SCENE := "res://scenes/battle.tscn"
 const SHOP_SCENE := "res://scenes/shop.tscn"
+const TRAIN_SCENE := "res://scenes/train.tscn"
 const RECRUIT_SCENE := "res://scenes/recruit.tscn"
 const INVENTORY_SCENE := "res://scenes/inventory.tscn"
 const ATRIBUT_SCENE := "res://scenes/atribut.tscn"
@@ -1346,6 +1347,10 @@ func _visit_keeper(w: Warga) -> void:
 	if w.toko == "rekrut_pahlawan" or w.toko == "rekrut_prajurit":
 		Session.recruit_kind = "pahlawan" if w.toko == "rekrut_pahlawan" else "prajurit"
 		await _open_screen(RECRUIT_SCENE)
+		return
+	if w.toko == "latih_pahlawan" or w.toko == "latih_prajurit":
+		Session.train_kind = "pahlawan" if w.toko == "latih_pahlawan" else "prajurit"
+		await _open_screen(TRAIN_SCENE)
 		return
 	Session.shop_id = w.toko
 	await _open_screen(SHOP_SCENE)

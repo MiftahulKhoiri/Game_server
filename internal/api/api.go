@@ -85,6 +85,9 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
 	mux.Handle("POST /v1/allies/buy", s.auth(http.HandlerFunc(s.buyAlly)))
 	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
+	mux.HandleFunc("GET /v1/time", s.serverTime)
+	mux.Handle("POST /v1/train/start", s.auth(http.HandlerFunc(s.trainStart)))
+	mux.Handle("POST /v1/train/claim", s.auth(http.HandlerFunc(s.trainClaim)))
 	mux.Handle("POST /v1/party", s.auth(http.HandlerFunc(s.setParty)))
 	mux.Handle("GET /v1/world", s.auth(http.HandlerFunc(s.worldState)))
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
@@ -553,6 +556,7 @@ func isRuleError(err error) bool {
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
 		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
 		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax,
+		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -610,6 +614,34 @@ func (s *Server) buyAlly(w http.ResponseWriter, r *http.Request) {
 // buySoldier membeli satu prajurit biasa (tidak bisa saat bertarung).
 func (s *Server) buySoldier(w http.ResponseWriter, r *http.Request) {
 	s.applyToState(w, r, func(st *game.State) error { return st.BuySoldier() })
+}
+
+// serverTime: jam server (detik Unix) untuk menghitung sisa waktu latihan di klien.
+func (s *Server) serverTime(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]int64{"unix": s.clock().Unix()})
+}
+
+type trainRequest struct {
+	Kind   string `json:"kind"`
+	Target string `json:"target,omitempty"`
+}
+
+// trainStart memulai latihan di Aula Pelatihan (jenis "pahlawan" + target, atau "prajurit").
+func (s *Server) trainStart(w http.ResponseWriter, r *http.Request) {
+	var req trainRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.StartTrain(req.Kind, req.Target, s.clock().Unix()) })
+}
+
+// trainClaim mengambil hasil latihan yang sudah selesai.
+func (s *Server) trainClaim(w http.ResponseWriter, r *http.Request) {
+	var req trainRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.ClaimTrain(req.Kind, s.clock().Unix()) })
 }
 
 type partyRequest struct {

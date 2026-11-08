@@ -46,9 +46,9 @@ func (s *State) BuySoldier() error {
 	return nil
 }
 
-// soldierPower adalah serangan satu prajurit.
+// soldierPower adalah serangan satu prajurit; naik 5 poin persen tiap level latihan pasukan.
 func (s State) soldierPower() int {
-	return AttackForLevel(s.Level)*SoldierPercent/100 + SoldierBonus
+	return AttackForLevel(s.Level)*(SoldierPercent+5*(s.SquadLevel()-1))/100 + SoldierBonus
 }
 
 // HasAlly memberi tahu apakah pahlawan sudah dibeli.

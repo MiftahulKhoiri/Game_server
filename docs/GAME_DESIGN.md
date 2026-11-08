@@ -244,3 +244,10 @@ ikon palang merah). Tiap toko berpapan nama di depan dan berpenjaga di ruanganny
 Di basecamp Desa Awal (barat gerbang): tenda merah, Komandan Raka merekrut pahlawan berkelas (layar rekrut dengan potret);
 tenda hijau, Sersan Joni menjual prajurit biasa per orang. Prajurit lemah tetapi semuanya ikut bertarung dan mengikuti
 pemain; pahlawan tetap maksimal 3 slot. Gerbang desa lebar tiga petak dan tinggi; meja toko rendah agar penjaga tampak.
+
+### Aula Pelatihan (v0.43.0)
+
+Bangunan di tengah Desa Awal (pintu 38,20). Di dalam, Guru Bima melatih pahlawan pembantu berkelas satu per satu dan Sersan Anton
+melatih seluruh pasukan prajurit. Syarat tiap latihan: emas, 1 Kartu Keahlian, dan energi; waktunya berjalan di server
+(10 menit x level untuk pahlawan, 5 menit x level untuk prajurit) dan bisa ditinggal. Level maksimum 20. Kartu Keahlian
+dibeli di Toko Peralatan atau jatuh dari musuh. Dua tempat latihan berjalan bersamaan.

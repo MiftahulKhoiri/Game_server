@@ -1305,7 +1305,7 @@ func _run() -> void:
 		if nd_v41.has_meta("tiang"):  # ikon atap (plang.gd)
 			ikon_n_v41 += 1
 		stack_v41.append_array(nd_v41.get_children())
-	_check(ikon_n_v41 == 4, "empat bangunan toko punya ikon atap dan plang (%d)" % ikon_n_v41)
+	_check(ikon_n_v41 == 5, "lima bangunan (empat toko dan aula) punya ikon atap dan plang (%d)" % ikon_n_v41)
 	for pair: Array in [["toko_ramuan", Vector2i(16, 2), "toko"], ["rumah_makan", Vector2i(22, 2), "makan"], ["rumah_sehat", Vector2i(28, 2), "rawat"], ["toko_peralatan", Vector2i(4, 2), "peralatan"]]:
 		var rid: String = pair[0]
 		var door_in: Dictionary = Maps.exit_at(Maps.DEFAULT_MAP, pair[1].x, pair[1].y)
@@ -1339,6 +1339,69 @@ func _run() -> void:
 		_check(wtk._keeper_of(wtk._npc_in_range()) == kp, "di depan meja kasir %s: Bicara membuka toko lewat penjaga" % rid)
 		wtk._pos = Vector2(4.5, 6.5)
 		_check(wtk._keeper_of(wtk._npc_in_range()) == null, "jauh dari meja (dekat pintu): penjaga di luar jangkauan")
+	# v0.43.0: Aula Pelatihan (bangunan di desa, ruangan 11x8, dua pelatih) dan layar latihan
+	var door_aula: Dictionary = Maps.exit_at(Maps.DEFAULT_MAP, 38, 20)
+	var out_aula: Dictionary = Maps.exit_at(Maps.AULA, 5, 7)
+	_check(door_aula.get("to", "") == Maps.AULA and out_aula.get("to", "") == Maps.DEFAULT_MAP and Maps.is_interior(Maps.AULA), "pintu aula (38,20) menuju Aula Pelatihan dan pintu keluarnya kembali")
+	_check(Maps.width(Maps.AULA) == 11 and Maps.height(Maps.AULA) == 8, "Aula Pelatihan berukuran 11x8")
+	var tot_a := 0
+	for ya in Maps.height(Maps.AULA):
+		for xa in Maps.width(Maps.AULA):
+			if Maps.walkable(Maps.AULA, xa, ya):
+				tot_a += 1
+	var seen_a := {Vector2i(5, 6): true}
+	var q_a: Array[Vector2i] = [Vector2i(5, 6)]
+	while not q_a.is_empty():
+		var ca: Vector2i = q_a.pop_front()
+		for da: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var na: Vector2i = ca + da
+			if not seen_a.has(na) and Maps.walkable(Maps.AULA, na.x, na.y):
+				seen_a[na] = true
+				q_a.append(na)
+	_check(seen_a.size() == tot_a and tot_a > 30, "aula: lantai tersambung ke pintu (%d petak)" % tot_a)
+	wtk._go_to_map(Maps.AULA, Vector2i(5, 6))
+	await process_frame
+	var trainers_a := {}
+	for wa in wtk._warga:
+		if wa.toko.begins_with("latih_"):
+			trainers_a[wa.toko] = wa
+	_check(trainers_a.size() == 2 and wtk._warga.size() == 2, "aula punya dua pelatih (pahlawan dan prajurit)")
+	wtk._pos = Vector2(4.2, 4.2)
+	_check(wtk._keeper_of(wtk._npc_in_range()) == trainers_a.get("latih_pahlawan"), "dekat panggung merah: Bicara membuka latihan pahlawan")
+	wtk._pos = Vector2(6.8, 4.2)
+	_check(wtk._keeper_of(wtk._npc_in_range()) == trainers_a.get("latih_prajurit"), "dekat panggung hijau: Bicara membuka latihan prajurit")
+	var saved_v43: Dictionary = Session.player.state.duplicate(true)
+	var st_v43: Dictionary = Session.player.state
+	st_v43.allies = ["pemanah"]
+	st_v43.soldiers = 2
+	st_v43.gold = 1000
+	st_v43.inventory = [{"id": "kartu_keahlian", "qty": 2}]
+	st_v43.hero_levels = {"pemanah": 3}
+	st_v43.soldier_level = 2
+	st_v43.training = [{"kind": "pahlawan", "target": "pemanah", "to_level": 4, "ready_at": int(Time.get_unix_time_from_system()) + 1800}]
+	_check(Session.hero_level("pemanah") == 3 and Session.hero_level("ksatria") == 1 and Session.squad_level() == 2 and not Session.train_job("pahlawan").is_empty() and Session.train_job("prajurit").is_empty(), "level latihan dan latihan berjalan terbaca dari state")
+	var norm_v43: Dictionary = Session._normalize_state({"hero_levels": {"pemanah": 99}, "soldier_level": 7, "training": [{"kind": "prajurit", "to_level": 3, "ready_at": 5}]})
+	_check(norm_v43.hero_levels.pemanah == 20 and norm_v43.soldier_level == 7 and norm_v43.training.size() == 1 and norm_v43.training[0].ready_at == 5, "state latihan dinormalkan (level dibatasi 20)")
+	Session.train_kind = "pahlawan"
+	var tr_v43: Control = load("res://scenes/train.tscn").instantiate()
+	get_root().add_child(tr_v43)
+	await process_frame
+	await process_frame
+	_check(tr_v43._list.get_child_count() >= 2 and tr_v43._timers.size() == 1, "layar latihan pahlawan: baris pahlawan dan hitung mundur (%d baris)" % tr_v43._list.get_child_count())
+	_check(tr_v43.duration_text(600) == "10 mnt" and tr_v43.duration_text(3900) == "1 jam 5 mnt" and tr_v43.duration_text(45) == "45 dtk", "format lama latihan")
+	tr_v43.queue_free()
+	await process_frame
+	Session.train_kind = "prajurit"
+	var tr2_v43: Control = load("res://scenes/train.tscn").instantiate()
+	get_root().add_child(tr2_v43)
+	await process_frame
+	await process_frame
+	_check(tr2_v43._list.get_child_count() >= 2 and tr2_v43._timers.is_empty(), "layar latihan prajurit: satu baris pasukan, belum ada latihan")
+	tr2_v43.queue_free()
+	await process_frame
+	Session.train_kind = "pahlawan"
+	Session.player.state = saved_v43
+	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))
 	var back_door: Dictionary = Maps.exit_at("toko_ramuan", 4, 7)
 	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))
 	var atmo_i = load("res://scripts/atmosphere.gd")

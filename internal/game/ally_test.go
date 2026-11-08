@@ -71,7 +71,7 @@ func TestAlliesStrikeAndWin(t *testing.T) {
 	b.NextEnemyMs = 100000 // musuh tidak menyerang
 	b.NextAllyMs = 1000
 	// variasi 20 = 100% kerusakan
-	res, err := b.Sync(p, 1000, seq(20, 20, 99))
+	res, err := b.Sync(p, 1000, seq(20, 20, 99, 99))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestSoldiersStrike(t *testing.T) {
 	b := battleVs("tikus_sawah", 60)
 	b.NextEnemyMs = 100000
 	b.NextAllyMs = 1000
-	res, err := b.Sync(p, 1000, seq(20, 20, 20, 99))
+	res, err := b.Sync(p, 1000, seq(20, 20, 20, 99, 99))
 	if err != nil {
 		t.Fatal(err)
 	}

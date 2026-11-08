@@ -376,7 +376,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 	st := &p.State
 	b.NextAllyMs += AllyIntervalMs
 	for _, id := range st.Party {
-		dmg, _ := rollDamage(st.allyPower(), e.Defense, rng, false)
+		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, false)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
 		name := id
@@ -430,6 +430,12 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	if e.DropID != "" && rng.Intn(100) < e.DropPercent && st.AddItem(e.DropID, 1) {
 		rw.Drop = e.DropID
 		res.Log = append(res.Log, fmt.Sprintf("%s menjatuhkan: %s.", b.EnemyName, e.DropID))
+	}
+	if rng.Intn(100) < KartuDropPercent && st.AddItem(KartuKeahlianID, 1) {
+		res.Log = append(res.Log, "Kamu menemukan Kartu Keahlian!")
+		if rw.Drop == "" {
+			rw.Drop = KartuKeahlianID
+		}
 	}
 	res.Log = append(res.Log, st.RecordKill(e.ID)...)
 }

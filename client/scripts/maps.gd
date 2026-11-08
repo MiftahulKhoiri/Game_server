@@ -23,10 +23,11 @@ const TOKO_RAMUAN := "toko_ramuan"
 const RUMAH_MAKAN := "rumah_makan"
 const RUMAH_SEHAT := "rumah_sehat"
 const TOKO_ALAT := "toko_peralatan"
-const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan"]
+const AULA := "aula_pelatihan"
+const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan", "aula_pelatihan"]
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan"}
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
@@ -36,11 +37,13 @@ const EXITS := {
 		{"pos": Vector2i(22, 49), "to": "perbatasan", "at": Vector2i(22, 1)},
 		{"pos": Vector2i(23, 49), "to": "perbatasan", "at": Vector2i(23, 1)},
 		{"pos": Vector2i(4, 2), "to": "toko_peralatan", "at": Vector2i(4, 6)},
+		{"pos": Vector2i(38, 20), "to": "aula_pelatihan", "at": Vector2i(5, 6)},
 		{"pos": Vector2i(16, 2), "to": "toko_ramuan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(22, 2), "to": "rumah_makan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(28, 2), "to": "rumah_sehat", "at": Vector2i(4, 6)},
 	],
 	"toko_peralatan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(4, 3)}],
+	"aula_pelatihan": [{"pos": Vector2i(5, 7), "to": "desa_awal", "at": Vector2i(38, 21)}],
 	"toko_ramuan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(16, 3)}],
 	"rumah_makan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(22, 3)}],
 	"rumah_sehat": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(28, 3)}],
@@ -164,6 +167,9 @@ const WARGA := [
 	# Perekrut di basecamp pahlawan (barat gerbang): tenda merah = pahlawan berkelas, tenda hijau = prajurit biasa.
 	{"id": "rekrut_pahlawan", "model": "ksatria", "name": "Komandan Raka", "peran": "Perekrut Pahlawan (tenda merah)", "map": "desa_awal", "pos": Vector2(14.3, 43.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_pahlawan"},
 	{"id": "rekrut_prajurit", "model": "pendekar_tombak", "name": "Sersan Joni", "peran": "Perekrut Prajurit (tenda hijau)", "map": "desa_awal", "pos": Vector2(14.3, 46.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_prajurit"},
+	# Pelatih di Aula Pelatihan: kiri melatih pahlawan pembantu berkelas, kanan melatih prajurit biasa.
+	{"id": "latih_pahlawan", "model": "pendekar_kapak", "name": "Guru Bima", "peran": "Pelatih Pahlawan", "map": "aula_pelatihan", "pos": Vector2(4.0, 2.6), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "latih_pahlawan"},
+	{"id": "latih_prajurit", "model": "pendekar_tombak", "name": "Sersan Anton", "peran": "Pelatih Prajurit", "map": "aula_pelatihan", "pos": Vector2(7.0, 2.6), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "latih_prajurit"},
 	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
 
@@ -489,6 +495,16 @@ const ALAT_ROWS: Array[String] = [
 	"H=======H",
 	"HHHHDHHHH",
 ]
+const AULA_ROWS: Array[String] = [
+	"HHHHHHHHHHH",
+	"HRRRRRRRRRH",
+	"H=========H",
+	"H=========H",
+	"HF=======FH",
+	"H=========H",
+	"H=========H",
+	"HHHHHDHHHHH",
+]
 const SEHAT_ROWS: Array[String] = [
 	"HHHHHHHHH",
 	"HRRxxxRRH",
@@ -531,6 +547,8 @@ static func rows(map_id: String) -> Array[String]:
 			return SEHAT_ROWS
 		TOKO_ALAT:
 			return ALAT_ROWS
+		AULA:
+			return AULA_ROWS
 	return []
 
 

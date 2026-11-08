@@ -224,14 +224,14 @@ func _refresh_ally() -> void:
 	_hero_name.text = str(hero.name)
 	var status := "Belum direkrut: %d emas di Basecamp (tenda merah)" % int(hero.price)
 	if party.has(hid):
-		status = "Berbaris di belakangmu"
+		status = "Berbaris di belakangmu (Lv %d)" % Session.hero_level(hid)
 	elif allies.has(hid):
-		status = "Sudah dibeli, belum dipasang"
+		status = "Sudah dibeli, belum dipasang (Lv %d)" % Session.hero_level(hid)
 	_hero_detail.text = "%s\nSkill: %s, %s\n%s" % [hero.weapon, hero.skill1, hero.skill2, status]
 	var names: PackedStringArray = []
 	for id: String in party:
 		names.append(str(Heroes.get_hero(id).short))
-	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d (ikut bertarung)" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS]
+	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d, Lv %d (ikut bertarung)" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS, Session.squad_level()]
 	if not allies.has(hid):
 		_ally_btn.text = "Rekrut di Basecamp (%d emas)" % int(hero.price)
 		_ally_btn.disabled = true

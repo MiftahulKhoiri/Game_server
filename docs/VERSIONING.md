@@ -298,6 +298,16 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Prajurit ikut bertarung sebagai pasukan terpisah (serangan lemah, tidak memakai 3 slot pahlawan). Beli pahlawan di layar
   Atribut dimatikan; arahkan ke basecamp. Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
 
+- v0.43.0 menambah **Aula Pelatihan**: bangunan baru di Desa Awal (pintu di petak 38,20, plang AULA PELATIHAN, ikon perisai
+  dan pedang di atap) dengan ruangan sendiri (peta `aula_pelatihan`, 11x8) dan dua pelatih: Guru Bima (panggung merah)
+  melatih pahlawan pembantu berkelas, Sersan Anton (panggung hijau) melatih pasukan prajurit biasa. Tiap latihan memakai
+  emas, 1 **Kartu Keahlian**, dan energi (dibayar di awal), lalu berjalan menurut jam server (juga saat game ditutup);
+  hasilnya diambil lewat tombol Ambil. Makin tinggi level, makin mahal dan makin lama (pahlawan 10 menit x level, prajurit
+  5 menit x level; maks level 20). Level pahlawan per pahlawan, level prajurit satu untuk seluruh pasukan; level menambah
+  serangan saat membantu bertarung. Kartu Keahlian dijual di Toko Peralatan (60 emas) dan dijatuhkan musuh (8%). Server:
+  `POST /v1/train/start`, `POST /v1/train/claim`, `GET /v1/time`; state baru `hero_levels`, `soldier_level`, `training`.
+  Klien lama tetap jalan; `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

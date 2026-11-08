@@ -222,6 +222,29 @@ def daging():
     finish(im, "daging_bakar")
 
 
+def kartu():
+    im, d = new("2a3a5a", "141c34")
+    ell_shadow(im, (40, 50, 152, 150))
+    pts = P((46, 52), (142, 52), (142, 148), (46, 148))
+    shadow(im, pts)
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([46 * S, 44 * S, 146 * S, 150 * S], radius=10 * S, fill=c("f2e6c4"), outline=c("8a6a2c"), width=3 * S)
+    d.rounded_rectangle([54 * S, 52 * S, 138 * S, 142 * S], radius=6 * S, outline=c("c9a64a"), width=2 * S)
+    # pedang dan bintang di tengah kartu
+    d.polygon(P((92, 62), (100, 62), (102, 112), (96, 120), (90, 112)), fill=c("aeb8c4"), outline=c("5a6470"))
+    d.rectangle([80 * S, 110 * S, 112 * S, 116 * S], fill=c("d4a72c"), outline=c("7a5410"))
+    d.rectangle([93 * S, 116 * S, 99 * S, 132 * S], fill=c("6a4424"))
+    star = []
+    for k in range(10):
+        r = 12 if k % 2 == 0 else 5
+        a = math.radians(-90 + k * 36)
+        star.append((126 + r * math.cos(a), 74 + r * math.sin(a)))
+    d.polygon(P(*star), fill=c("e8b83a"), outline=c("a8741a"))
+    star2 = [(x - 60, y + 0) for x, y in star]
+    d.polygon(P(*star2), fill=c("e8b83a"), outline=c("a8741a"))
+    finish(im, "kartu_keahlian")
+
+
 taring()
 koin()
 gem("permata_merah", "d4283c", "ff7a88", "7a1224")
@@ -234,4 +257,5 @@ armor()
 roti()
 sup()
 daging()
+kartu()
 print("ok", sorted(os.listdir(OUT)))

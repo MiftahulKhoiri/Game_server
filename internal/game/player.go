@@ -50,6 +50,11 @@ type State struct {
 	Party  []string `json:"party,omitempty"`
 	// Soldiers: jumlah prajurit biasa yang dibeli (maks MaxSoldiers); semuanya ikut bertarung (lihat ally.go).
 	Soldiers int `json:"soldiers,omitempty"`
+	// HeroLevels: level latihan tiap pahlawan pembantu (kosong = level 1); SoldierLevel: level seluruh prajurit;
+	// Training: latihan yang sedang berjalan di Aula Pelatihan. Hanya diubah server (lihat train.go).
+	HeroLevels   map[string]int `json:"hero_levels,omitempty"`
+	SoldierLevel int            `json:"soldier_level,omitempty"`
+	Training     []TrainJob     `json:"training,omitempty"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
@@ -165,6 +170,9 @@ func (s State) Validate() error {
 		return ErrUnknownHero
 	}
 	if err := s.validateAllies(); err != nil {
+		return err
+	}
+	if err := s.validateTraining(); err != nil {
 		return err
 	}
 	if len(s.Equipment.Weapon) > 64 || len(s.Equipment.Armor) > 64 {

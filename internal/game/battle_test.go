@@ -44,7 +44,7 @@ func act(b *Battle, p *Player, action string, rng Rand) (Result, error) {
 func TestAttackKillsAndRewards(t *testing.T) {
 	p := newPlayer()
 	b := battleVs("tikus_sawah", 5)
-	res, err := act(b, p, ActionAttack, seq(20, 99, 99))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 99, 99))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestLevelUp(t *testing.T) {
 	p := newPlayer()
 	p.State.XP = 18
 	b := battleVs("tikus_sawah", 1)
-	res, err := act(b, p, ActionAttack, seq(20, 99, 99))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 99, 99))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestLevelUp(t *testing.T) {
 func TestDropAddsItem(t *testing.T) {
 	p := newPlayer() // mulai dengan 2 ramuan
 	b := battleVs("tikus_sawah", 1)
-	res, _ := act(b, p, ActionAttack, seq(20, 99, 0)) // drop 0 < 10%
+	res, _ := act(b, p, ActionAttack, seq(20, 99, 0, 99)) // drop 0 < 10%
 	if res.Rewards.Drop != PotionID || p.State.Inventory[0].Qty != 3 {
 		t.Errorf("harus dapat ramuan: %+v %+v", res.Rewards, p.State.Inventory)
 	}
@@ -90,7 +90,7 @@ func TestDropAddsItem(t *testing.T) {
 func TestEnemyRetaliates(t *testing.T) {
 	p := newPlayer()
 	b := battleVs("tikus_sawah", 10)
-	res, err := act(b, p, ActionAttack, seq(20, 99, 20))
+	res, err := act(b, p, ActionAttack, seq(20, 99, 20, 99))
 	if err != nil {
 		t.Fatal(err)
 	}

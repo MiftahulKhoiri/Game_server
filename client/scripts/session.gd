@@ -4,6 +4,12 @@ extends Node
 const CONFIG_PATH := "user://settings.cfg"
 ## Pasukan prajurit biasa (sama dengan MaxSoldiers dan SoldierPrice di internal/game/ally.go).
 const MAX_SOLDIERS := 5
+## Pelatihan di Aula Pelatihan (sama dengan train.go): level tertinggi, biaya emas/energi, detik per level.
+const MAX_TRAIN_LEVEL := 20
+const TRAIN := {
+	"pahlawan": {"gold": 80, "energy": 30, "sec": 600},
+	"prajurit": {"gold": 40, "energy": 20, "sec": 300},
+}
 const SOLDIER_PRICE := 60
 const MAX_ENERGY := 100  # sama dengan MaxEnergy di internal/game/energy.go
 
@@ -17,6 +23,7 @@ var talk_npc := ""
 var shop_id := "toko"
 ## Layar rekrut basecamp: "pahlawan" (tenda merah) atau "prajurit" (tenda hijau).
 var recruit_kind := "pahlawan"
+var train_kind := "pahlawan"  # tempat latihan yang dibuka: "pahlawan" / "prajurit"
 var shop_keeper := ""
 ## Berapa kali tiap lawan bicara sudah diajak bicara (kalimat warga bergantian). Tidak disimpan.
 var talk_counts: Dictionary = {}
@@ -93,7 +100,7 @@ func energy() -> int:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "soldiers", "energy_used"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "soldiers", "hero_levels", "soldier_level", "training", "energy_used"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -109,6 +116,40 @@ func use_offline_player() -> void:
 		"version": 1,
 		"state": {"level": 1, "hp": 30, "max_hp": 30, "map": "desa_awal", "x": 5, "y": 5, "fx": 5.5, "fz": 5.5},
 	})
+
+
+func _levels(v: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if v is Dictionary:
+		for k: Variant in v:
+			out[str(k)] = clampi(int(v[k]), 1, MAX_TRAIN_LEVEL)
+	return out
+
+
+func _jobs(v: Variant) -> Array:
+	var out: Array = []
+	if v is Array:
+		for j: Variant in v:
+			if j is Dictionary:
+				out.append({"kind": str(j.get("kind", "")), "target": str(j.get("target", "")), "to_level": int(j.get("to_level", 2)), "ready_at": int(j.get("ready_at", 0))})
+	return out
+
+
+## Level latihan satu pahlawan pembantu (1 bila belum dilatih) dan level pasukan prajurit.
+func hero_level(id: String) -> int:
+	return maxi(1, int(player.state.get("hero_levels", {}).get(id, 1)))
+
+
+func squad_level() -> int:
+	return maxi(1, int(player.state.get("soldier_level", 1)))
+
+
+## Latihan yang sedang berjalan untuk tempat latihan itu ({} bila kosong).
+func train_job(kind: String) -> Dictionary:
+	for j: Dictionary in player.state.get("training", []):
+		if j.kind == kind:
+			return j
+	return {}
 
 
 func _strings(v: Variant) -> Array:
@@ -144,5 +185,8 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"allies": _strings(s.get("allies", [])),
 		"party": _strings(s.get("party", [])),
 		"soldiers": clampi(int(s.get("soldiers", 0)), 0, MAX_SOLDIERS),
+		"hero_levels": _levels(s.get("hero_levels", {})),
+		"soldier_level": clampi(int(s.get("soldier_level", 0)), 0, MAX_TRAIN_LEVEL),
+		"training": _jobs(s.get("training", [])),
 		"energy_used": clampi(int(s.get("energy_used", 0)), 0, MAX_ENERGY),
 	}

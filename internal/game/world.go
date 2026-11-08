@@ -15,6 +15,7 @@ const (
 	MapRumahMakan = "rumah_makan"
 	MapRumahSehat = "rumah_sehat"
 	MapTokoAlat   = "toko_peralatan"
+	MapAula       = "aula_pelatihan" // Aula Pelatihan (v0.43.0): latih pahlawan pembantu dan prajurit
 )
 
 // MapInfo adalah ukuran sebuah peta dalam petak.
@@ -31,11 +32,12 @@ var worldMaps = map[string]MapInfo{
 	MapRumahMakan: {Width: 9, Height: 8},
 	MapRumahSehat: {Width: 9, Height: 8},
 	MapTokoAlat:   {Width: 9, Height: 8},
+	MapAula:       {Width: 11, Height: 8},
 }
 
 // InVillage: peta tempat pemain aman dan boleh beristirahat gratis (desa dan ruangan di dalamnya).
 func InVillage(mapID string) bool {
-	return mapID == MapDesaAwal || mapID == MapTokoRamuan || mapID == MapRumahMakan || mapID == MapRumahSehat || mapID == MapTokoAlat
+	return mapID == MapDesaAwal || mapID == MapTokoRamuan || mapID == MapRumahMakan || mapID == MapRumahSehat || mapID == MapTokoAlat || mapID == MapAula
 }
 
 // BossSpot adalah petak tempat bos menunggu. Menginjaknya (di klien) lalu

@@ -166,7 +166,7 @@ func TestGearShop(t *testing.T) {
 		t.Fatalf("katalog peralatan: %v %d", err, len(list))
 	}
 	for _, it := range list {
-		if it.Kind != KindEquipment {
+		if it.Kind != KindEquipment && it.ID != KartuKeahlianID {
 			t.Errorf("toko peralatan memuat %s (%s)", it.ID, it.Kind)
 		}
 	}
