@@ -48,7 +48,7 @@ func run(log *slog.Logger) error {
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           api.New(st, log, info),
+		Handler:           api.WithPatches(cfg.PatchDir, api.New(st, log, info)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

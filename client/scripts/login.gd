@@ -90,6 +90,7 @@ class CheckMark extends Control:
 
 
 func _ready() -> void:
+	Patcher.confirm.call_deferred()  # tanda: patch (bila ada) berhasil sampai layar masuk
 	var bg := ColorRect.new()
 	bg.color = Color("1b2a1f")
 	add_child(bg)
@@ -460,7 +461,7 @@ func _build_settings() -> void:
 	_progress.custom_minimum_size = Vector2(0, 28)
 	_progress.visible = false
 	update_box.add_child(_progress)
-	_version_label = _make_label("Aplikasi " + Version.app_label(), 22)
+	_version_label = _make_label("Aplikasi " + Version.app_label() + Patcher.suffix(), 22)
 	_version_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_version_label.modulate = Color(1, 1, 1, 0.65)
 	update_box.add_child(_version_label)

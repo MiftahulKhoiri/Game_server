@@ -1,4 +1,4 @@
-.PHONY: build run test vet fmt check client-test install-user-service restart clean
+.PHONY: build run test vet fmt check client-test patch install-user-service restart clean
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -27,6 +27,10 @@ check:
 	go test ./...
 
 # Uji klien Godot <-> server. Butuh Godot 4.7:  make client-test GODOT=/path/ke/godot
+# Patch isi game tanpa APK baru (lihat docs/PATCH.md). Butuh Godot 4.7:  make patch GODOT=/path/ke/godot
+patch:
+	GODOT=$(GODOT) bash scripts/build-patch.sh
+
 client-test:
 	GODOT=$(GODOT) bash scripts/client-test.sh
 

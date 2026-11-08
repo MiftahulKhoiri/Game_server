@@ -10,6 +10,7 @@ var _failed := false
 var Api: Node  # autoload tidak dikenal saat skrip utama dikompilasi; ambil dari pohon
 var Session: Node
 var Sound: Node
+var Patcher: Node
 
 
 func _initialize() -> void:
@@ -60,6 +61,7 @@ func _check_map_connected(map_id: String) -> void:
 func _run() -> void:
 	await process_frame  # tunggu pohon siap sebelum memakai node/HTTPRequest
 	Api = root.get_node("Api")
+	Patcher = root.get_node("Patcher")
 	Session = root.get_node("Session")
 	Sound = root.get_node("Sound")
 	print("== peta")
@@ -1574,6 +1576,10 @@ func _run() -> void:
 	Session.player.state["hutan"] = saved_h_v46
 	var CPv46: Script = load("res://scripts/companions.gd")
 	_check(CPv46.CHARGE_SPEED > CPv46.MAX_SPEED and CPv46.ENGAGE_DIST > 3.0, "pendamping maju lebih cepat saat musuh mengejar")
+
+	print("== v0.47.3: pemuat patch (editor/uji tidak menarik patch)")
+	_check(Patcher.active_id == "" and Patcher.suffix() == "", "tanpa patch: id kosong, label versi bersih")
+	_check(ResourceLoader.exists("res://scripts/patcher.gd"), "skrip pemuat patch ada")
 
 	print("== v0.47: kem hutan, jalan menyambung, bos di dunia, papan misi")
 	var HHv47: Script = load("res://scripts/hutan_hud.gd")

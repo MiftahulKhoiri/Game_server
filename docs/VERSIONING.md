@@ -352,3 +352,7 @@ membawa pemain; bawaannya halaman Releases terbaru.
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru
   sebagai pembaruan.
+
+- v0.47.3 menambah **patch isi game** (`GET /v1/patch`, `client/scripts/patcher.gd`, `make patch`):
+  peta, skrip, dan adegan bisa diperbarui lewat server tanpa APK baru. APK v0.47.3 adalah APK
+  terakhir yang wajib dipasang untuk fitur ini. Tidak mengubah API lama; `DefaultMinClient` tetap.

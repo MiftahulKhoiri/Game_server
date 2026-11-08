@@ -19,6 +19,8 @@ type Config struct {
 	LatestClient string
 	// UpdateURL: alamat unduh APK yang ditampilkan ke pemain.
 	UpdateURL string
+	// PatchDir: folder patch konten klien (latest.json + *.pck); kosong = tanpa patch.
+	PatchDir string
 }
 
 // Load membaca konfigurasi. Nilai bawaan cocok untuk pengembangan di Pi.
@@ -28,6 +30,7 @@ type Config struct {
 //	GAME_MIN_CLIENT     versi klien minimum       (bawaan dari paket version)
 //	GAME_LATEST_CLIENT  versi klien terbaru       (bawaan dari paket version)
 //	GAME_UPDATE_URL     alamat unduh APK          (bawaan halaman Releases)
+//	GAME_PATCH_DIR      folder patch konten klien (bawaan "patches")
 //
 // Dengan GAME_MIN_CLIENT dan GAME_LATEST_CLIENT, pemilik server bisa
 // mewajibkan update tanpa membangun ulang server.
@@ -38,6 +41,7 @@ func Load() Config {
 		MinClient:    env("GAME_MIN_CLIENT", version.DefaultMinClient),
 		LatestClient: env("GAME_LATEST_CLIENT", version.DefaultLatestClient),
 		UpdateURL:    env("GAME_UPDATE_URL", version.DefaultUpdateURL),
+		PatchDir:     env("GAME_PATCH_DIR", "patches"),
 	}
 }
 

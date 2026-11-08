@@ -3,6 +3,7 @@
 
 # Data runtime (database pemain, dll.)
 /data/
+/patches/
 
 # Go
 *.test

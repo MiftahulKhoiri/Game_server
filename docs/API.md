@@ -379,3 +379,13 @@ mengalahkan bos menaikkan `wave` dan mengosongkan `kills`. `POST /v1/state` meno
 
 Sejak v0.47.0 bos hutan dilawan di dunia: `POST /v1/battle/start {"enemy":"goblin_hutan_<wave+1>"}` memulai pertarungan dengan Goblin tahap ini bila
 pemain di `hutan_lebat` dalam 20 petak dari singgasana (85,25) dan `state.hutan.kills == 100`; selain itu `422`. Id bos tahap lain ditolak `422`.
+
+## Patch isi game (v0.47.3)
+
+Tanpa autentikasi dan tanpa gerbang versi (dipasang sebelum `/v1/*` lain). Pemuat di klien memakainya
+saat aplikasi dibuka. Rincian: [PATCH.md](PATCH.md).
+
+- `GET /v1/patch?apk=0.47.3` -> `{"id","sha256","size","version","min_apk","built","url"}`.
+  Objek kosong `{}` bila tidak ada patch, atau versi APK di luar `min_apk..version`.
+- `GET /v1/patch/{id}.pck` -> berkas patch (`application/octet-stream`, di-cache lama; id berubah tiap build).
+- Folder patch: env `GAME_PATCH_DIR` (bawaan `patches`) berisi `latest.json` dan `<id>.pck`.
