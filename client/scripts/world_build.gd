@@ -1256,7 +1256,7 @@ static func _add_kecil(root: Node3D, kecil: Dictionary, map_id: String = "") -> 
 	for t: Vector2i in kecil.Q:
 		_dummy_latihan(root, Vector3(t.x + 0.5, 0.0, t.y + 0.5))
 	for t: Vector2i in kecil.Y:
-		_panji_basecamp(root, Vector3(t.x + 0.5, 0.0, t.y + 0.5), "KEM\nHUTAN" if map_id == Maps.HUTAN else "BASECAMP\nPAHLAWAN")
+		_panji_basecamp(root, Vector3(t.x + 0.5, 0.0, t.y + 0.5), "KEM\nHUTAN" if Maps.KEM_ZONES.has(map_id) else "BASECAMP\nPAHLAWAN")
 
 
 static func _label_kecil(root: Node3D, text: String, pos: Vector3, size: int, px: float, yaw := 0.0) -> void:

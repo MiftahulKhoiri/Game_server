@@ -82,8 +82,8 @@ const WALKABLE := ".=fTBDMGK"
 const BOSS_TILE := "K"
 ## Singgasana bos Goblin di Hutan Lebat (sama dengan HutanBossX/Y di internal/game/hutan.go).
 const HUTAN_BOSS := Vector2i(85, 25)
-## Kem di dekat pintu masuk Hutan Lebat (api unggun, tenda, Kapten Rimba): zona aman, binatang tidak masuk. x 13..31, y 1..9.
-const HUTAN_KEM := Rect2i(13, 1, 19, 9)
+## Kem Kapten Rimba (api unggun, tenda, panji) tepat di bawah gapura desa di Perbatasan: zona aman per peta, binatang tidak masuk.
+const KEM_ZONES := {"perbatasan": Rect2i(23, 1, 7, 6)}  # x 23..29, y 1..6
 const ENCOUNTER_TILES := "TG"
 
 ## Desa Awal (85x50): desa di barat (x 0..44, dipagari) dan wilayah jelajah di timur (x 45..84, lewat celah
@@ -185,7 +185,7 @@ const WARGA := [
 	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "toko_ramuan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
 	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
 	{"id": "penjaga_alat", "model": "warga_bapak2", "name": "Pak Hasan", "peran": "Penjaga Toko Peralatan", "map": "toko_peralatan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "peralatan"},
-	{"id": "kapten_kem", "model": "pendekar_kapak", "name": "Kapten Rimba", "peran": "Penjaga Kem Hutan", "map": "hutan_lebat", "pos": Vector2(24.5, 5.5), "radius": 0.0, "speed": 0.0, "diam": true},
+	{"id": "kapten_kem", "model": "pendekar_kapak", "name": "Kapten Rimba", "peran": "Penjaga Kem Hutan", "map": "perbatasan", "pos": Vector2(27.5, 3.5), "radius": 0.0, "speed": 0.0, "diam": true},
 	# Perekrut di basecamp pahlawan (barat gerbang): tenda merah = pahlawan berkelas, tenda hijau = prajurit biasa.
 	{"id": "rekrut_pahlawan", "model": "ksatria", "name": "Komandan Raka", "peran": "Perekrut Pahlawan (tenda merah)", "map": "desa_awal", "pos": Vector2(14.3, 43.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_pahlawan"},
 	{"id": "rekrut_prajurit", "model": "pendekar_tombak", "name": "Sersan Joni", "peran": "Perekrut Prajurit (tenda hijau)", "map": "desa_awal", "pos": Vector2(14.3, 46.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_prajurit"},
@@ -273,7 +273,7 @@ static func roam_free(map_id: String, p: Vector2) -> bool:
 		var tx := int(floor(q.x))
 		var ty := int(floor(q.y))
 		var t := tile_at(map_id, tx, ty)
-		if map_id == HUTAN and HUTAN_KEM.has_point(Vector2i(tx, ty)):
+		if KEM_ZONES.has(map_id) and (KEM_ZONES[map_id] as Rect2i).has_point(Vector2i(tx, ty)):
 			return false  # kem: zona aman
 		if t == "" or not ROAM_TILES.contains(t) or npc_at(map_id, tx, ty) != "" or chest_at(map_id, tx, ty) != "" or not exit_at(map_id, tx, ty).is_empty():
 			return false
@@ -376,11 +376,11 @@ static func npc_near(map_id: String, x: int, y: int) -> String:
 ## Jalan di selatan naik ke Gunung Batu.
 const PERBATASAN_ROWS: Array[String] = [
 	"##############PPPPPNN===NNPPPPP##############",
-	"#..###...........f....=.......#.............#",
-	"#......TTTTTT....##...=......####....#......#",
+	"#..###...........f....=.YAA...#.............#",
+	"#......TTTTTT....##..Y=..AA.U####....#......#",
 	"#....f.TTTTTT..#####...=.....####.........f.#",
-	"#........f....#######f.=.....####...........#",
-	"#.............#######...=.....##...........f#",
+	"#........f....#######f.=.AA..####...........#",
+	"#.............#######...=AA...##...........f#",
 	"#.....====================........f.f.......#",
 	"#............##########..==============.....#",
 	"#......f.....##########...=...##.........f..#",
@@ -513,12 +513,12 @@ const GUA_ROWS: Array[String] = [
 const HUTAN_ROWS: Array[String] = [
 	"######################=###################################################################################################################################################",
 	"###.#####..##....f...===........#..#########.........#####################...########......###########..................#####.......#############..................#######",
-	"##....#......f..AA..Y===Y..AA........####............R##########......#####..####...........##########.................#####...f.......######.......................######",
-	"##..............AA...===f..AA......f...R..............#########........#########............##########....f.###.......######...........#####...........####...........####",
-	"##...................===.U.............f.............##########.........#######.............##########.....####......########.........###...f...........###...........####",
+	"##....#......f.......===.............####............R##########......#####..####...........##########.................#####...f.......######.......................######",
+	"##...................===f..........f...R..............#########........#########............##########....f.###.......######...........#####...........####...........####",
+	"##...................===...............f.............##########.........#######.............##########.....####......########.........###...f...........###...........####",
 	"##........f..........===.................##...f.....###########..........#####...............#########....#####....R.#.######..f.....###.................##..R..##....####",
-	"##..............AA...===...AA...##.f.....##.........###########..........####.................#######....#####.....f......###f.......###....~f.........f.......###...#####",
-	"##.....##.......AA...===...AA...###................###########..........#####..........ff......#####....#####.........f....#f.........##..~~~~~...##...........###...#####",
+	"##...................===........##.f.....##.........###########..........####.................#######....#####.....f......###f.......###....~f.........f.......###...#####",
+	"##.....##............===........###................###########..........#####..........ff......#####....#####.........f....#f.........##..~~~~~...##...........###...#####",
 	"###...###...#......f.===...f....###................#######...f........########..................###.....####.............................~~~~~~~..###..........f#.....####",
 	"###...###..##........===........###......f.........######.......f..###############........###............##.............f.................~~~~~f.####.................####",
 	"###...###...###......===........##....##...........######...~f.....################.......###.......................f.................#.....~....#####...##............###",

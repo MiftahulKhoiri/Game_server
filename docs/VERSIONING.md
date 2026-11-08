@@ -343,6 +343,11 @@ membawa pemain; bawaannya halaman Releases terbaru.
   langsung terlihat di depan (zona aman x 13-31, y 1-9), jalan tanah lurus melewatinya. Posisi enam peti hutan dipindah ulang.
   `DefaultMinClient` tetap 0.18.0.
 
+- v0.47.2: **kem dipindah ke Perbatasan, tepat di bawah gapura desa**, jadi langsung terlihat begitu keluar dari Desa Awal: 4 tenda, 2 panji
+  "KEM HUTAN", api unggun, dan **Kapten Rimba** (tombol Bicara) di sisi timur jalan (zona aman x 23-29, y 1-6; binatang tidak masuk).
+  Kapten menjelaskan tugas Hutan Lebat dan arah ke sana (selatan, ujung jalan raja). Hutan Lebat tidak lagi punya kem; di papan misi
+  panah hijau kini bertuliskan "Pulang" (ke pintu masuk hutan). `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

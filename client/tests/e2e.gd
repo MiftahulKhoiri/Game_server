@@ -1589,15 +1589,15 @@ func _run() -> void:
 	for wg_v47: Dictionary in Maps.WARGA:
 		if wg_v47.id == "kapten_kem":
 			kapten_v47 = wg_v47
-	_check(not kapten_v47.is_empty() and kapten_v47.map == Maps.HUTAN and Maps.HUTAN_KEM.has_point(Vector2i(int(kapten_v47.pos.x), int(kapten_v47.pos.y))), "Kapten Rimba berdiri di dalam kem hutan")
-	_check(not Maps.roam_free(Maps.HUTAN, Vector2(22.5, 5.5)) and not Maps.roam_free(Maps.HUTAN, Vector2(18.5, 4.5)) and Maps.roam_free(Maps.HUTAN, Vector2(22.5, 11.5)), "kem adalah zona aman: binatang tidak boleh masuk")
-	_check(Maps.roam_free(Maps.HUTAN, Vector2(50.5, 12.5)), "jalan hutan di luar kem bebas dilalui binatang")
+	_check(not kapten_v47.is_empty() and kapten_v47.map == Maps.PERBATASAN and (Maps.KEM_ZONES[Maps.PERBATASAN] as Rect2i).has_point(Vector2i(int(kapten_v47.pos.x), int(kapten_v47.pos.y))), "Kapten Rimba berdiri di dalam kem, di bawah gapura desa (Perbatasan)")
+	_check(not Maps.roam_free(Maps.PERBATASAN, Vector2(27.5, 3.5)) and not Maps.roam_free(Maps.PERBATASAN, Vector2(24.5, 2.5)) and Maps.roam_free(Maps.PERBATASAN, Vector2(5.5, 5.5)), "kem adalah zona aman: binatang tidak boleh masuk")
+	_check(Maps.roam_free(Maps.HUTAN, Vector2(50.5, 12.5)) and Maps.roam_free(Maps.HUTAN, Vector2(22.5, 5.5)), "jalan hutan bebas dilalui binatang (kem ada di Perbatasan)")
 	var has_fire_v47 := false
 	var tents_v47 := 0
-	for ry_v47: String in Maps.rows(Maps.HUTAN):
+	for ry_v47: String in Maps.rows(Maps.PERBATASAN):
 		has_fire_v47 = has_fire_v47 or ry_v47.contains("U")
 		tents_v47 += ry_v47.count("A")
-	_check(has_fire_v47 and tents_v47 >= 8, "kem hutan punya api unggun dan tenda")
+	_check(has_fire_v47 and tents_v47 >= 8, "kem di Perbatasan punya api unggun dan tenda")
 	for pt_v47: Vector2i in [Vector2i(22, 1), Vector2i(22, 12), Vector2i(60, 12), Vector2i(85, 12), Vector2i(85, 20), Vector2i(100, 25), Vector2i(147, 25), Vector2i(147, 40), Vector2i(85, 38), Vector2i(22, 30), Vector2i(120, 30)]:
 		_check(Maps.tile_at(Maps.HUTAN, pt_v47.x, pt_v47.y) == "=", "jalan hutan menyambung di %s" % str(pt_v47))
 	# bos Goblin berkeliaran di dunia (bukan layar penuh) begitu 100 binatang kalah

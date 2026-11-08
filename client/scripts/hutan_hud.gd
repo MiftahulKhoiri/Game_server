@@ -6,7 +6,7 @@ extends Control
 const Maps = preload("res://scripts/maps.gd")
 
 const PANEL_SIZE := Vector2(412, 150)
-const KEM_POINT := Vector2(22.5, 4.5)       # titik pulang: jalan masuk di kem
+const KEM_POINT := Vector2(22.5, 1.5)       # titik pulang: pintu masuk hutan (ke kem di Perbatasan)
 const GATE_POINT := Vector2(147.5, 48.5)    # gerbang Gua Goblin
 
 var kills := 0
@@ -59,7 +59,7 @@ func _draw() -> void:
 	if wave < 3:
 		items.append(["Singgasana", Vector2(float(Maps.HUTAN_BOSS.x) + 0.5, float(Maps.HUTAN_BOSS.y) + 0.5), Color("ff8a5c")])
 	items.append(["Gerbang Gua", GATE_POINT, Color("ffe27a") if wave >= 3 else Color("9a9a9a")])
-	items.append(["Kem / Pulang", KEM_POINT, Color("8fe08f")])
+	items.append(["Pulang", KEM_POINT, Color("8fe08f")])
 	var col_w := (PANEL_SIZE.x - 20.0) / float(items.size())
 	for i in items.size():
 		var cx := 10.0 + col_w * (float(i) + 0.5)

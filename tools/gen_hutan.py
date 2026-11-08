@@ -6,7 +6,7 @@ berkas keluaran dan memeriksa bahwa pintu masuk, singgasana bos, gerbang, dan se
 
 Pakai:  python3 tools/gen_hutan.py client/scripts/maps_hutan.gen   (lalu salin ke maps.gd)
 Legenda petak: # pohon, . rumput, f bunga, = jalan, R batu, ~ air, K singgasana bos, N menara gapura, P pagar kayu,
-M lantai gua, G kerikil (tempat monster/pertemuan), A tenda, U api unggun, Y tiang panji (kem di dekat pintu masuk).
+M lantai gua, G kerikil (tempat monster/pertemuan), (A tenda, U api unggun, Y tiang panji dipakai kem di Perbatasan.)
 """
 import random
 import sys
@@ -18,8 +18,7 @@ BOSS = (85, 25)       # singgasana bos Goblin (harus sama dengan HutanBossX/Y di
 GATE_X0 = 144         # gapura "NN===NN" di baris paling bawah: N di 144-145, jalan 146-148, N di 149-150
 GATE_ROAD = (146, 147, 148)
 WALK = ".=fTBDMGK"
-KEM = (13, 1, 32, 10)  # kotak kem (x0, y0, x1, y1 eksklusif): zona aman, tanpa binatang (sama dengan Maps.HUTAN_KEM di maps.gd)
-NPC_KEM = (24, 5)      # petak NPC penjaga kem (sama dengan Maps.WARGA kapten_kem)
+KEM = (13, 1, 32, 10)  # padang terbuka di balik pintu masuk (x0, y0, x1, y1 eksklusif); kem Kapten Rimba ada di Perbatasan (maps.gd KEM_ZONES)
 
 
 def hutan(seed=46):
@@ -109,14 +108,6 @@ def hutan(seed=46):
         for x in range(GATE_X0 - 1, GATE_X0 + 8):
             if g[y][x] in "#R~":
                 g[y][x] = "."
-    # kem: tenda (A, 2x2), api unggun (U), tiang panji (Y); jalan utama x=21..23 melewati tengah kem
-    for (tx, ty) in ((16, 2), (16, 6), (27, 2), (27, 6)):
-        for dy in (0, 1):
-            for dx in (0, 1):
-                g[ty + dy][tx + dx] = "A"
-    g[4][25] = "U"
-    g[2][20] = "Y"
-    g[2][24] = "Y"
     # singgasana bos dan lingkarannya
     for y in range(BOSS[1] - 1, BOSS[1] + 2):
         for x in range(BOSS[0] - 1, BOSS[0] + 2):
@@ -204,7 +195,6 @@ def main():
     assert BOSS in seen, "singgasana tidak terjangkau"
     for x in GATE_ROAD:
         assert (x, H - 2) in seen, "gerbang tidak terjangkau"
-    assert (NPC_KEM[0], NPC_KEM[1]) in seen and g[NPC_KEM[1]][NPC_KEM[0]] == ".", "NPC kem harus berdiri di rumput yang terjangkau"
     for rx, ry in ((22, 1), (22, 12), (85, 12), (85, 38), (120, 25), (147, 40)):
         assert g[ry][rx] == "=", "simpang jalan %s putus" % ((rx, ry),)
     ch = chests(g, seen, 6, None, 7)
@@ -216,7 +206,7 @@ def main():
     assert (12, 28) in gseen, "pintu keluar gua tidak terjangkau"
     gch = chests(gg, gseen, 3, None, 3, "MG", 7)
     assert len(gch) == 3, "peti gua kurang"
-    text = fmt("HUTAN_ROWS", g, "Hutan Lebat (170x50): dua kali lebar Desa Awal. Pintu masuk dari Perbatasan di (22,0) lalu kem (api unggun), jalan lebar ke singgasana bos K di tengah dan gapura ke Gua Goblin di bawah.")
+    text = fmt("HUTAN_ROWS", g, "Hutan Lebat (170x50): dua kali lebar Desa Awal. Pintu masuk dari Perbatasan di (22,0) lalu padang terbuka, jalan lebar ke singgasana bos K di tengah dan gapura ke Gua Goblin di bawah.")
     text += "\n\n\n" + fmt("GUA_GOBLIN_ROWS", gg, "Gua Goblin (25x30): peta 3, terbuka setelah tiga Goblin di Hutan Lebat kalah.")
     text += "\n\n# peti hutan: %s\n# peti gua goblin: %s\n# petak bebas binatang: %d\n" % (ch, gch, free)
     open(out, "w").write(text)
