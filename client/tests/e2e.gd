@@ -755,14 +755,15 @@ func _run() -> void:
 		var far_chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(5.5, 5.5), 0.0)
 		_check(not far_chest.ok and far_chest.status == 422, "peti dari jauh ditolak 422")
 		var chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(43.5, 9.0), 0.0)
-		_check(chest.ok and int(chest.data.loot.gold) > 0, "membuka peti memberi emas")
+		var kinds_v44: int = (1 if int(chest.data.loot.get("gold", 0)) > 0 else 0) + (chest.data.loot.get("items", []) as Array).size()
+		_check(chest.ok and kinds_v44 == 3, "membuka peti memberi 3 hadiah acak yang berbeda (%d)" % kinds_v44)
 		if chest.ok:
 			_check(int(chest.data.player.state.gold) == int(chest.data.loot.gold), "emas peti masuk ke pemain")
 			var diamonds := 0
 			for it: Dictionary in chest.data.player.state.inventory:
 				if it.id == "berlian":
 					diamonds += int(it.qty)
-			_check(diamonds == 0, "peti tingkat 1 tanpa berlian")
+			_check(diamonds <= 1, "peti tingkat 1 memberi paling banyak 1 berlian (%d)" % diamonds)
 		var empty_chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(43.5, 9.0), 0.0)
 		_check(not empty_chest.ok and empty_chest.status == 422, "peti yang sama tidak bisa dibuka lagi 422")
 		await create_timer(0.2).timeout
