@@ -207,6 +207,11 @@ di singgasana (85,25) dan binatang berhenti muncul -> bos kalah -> 100 binatang 
 
 Setelah Goblin Level 3 kalah, gerbang Gua Goblin (peta 3) terbuka. Angka di atas draf untuk diseimbangkan.
 
+Sejak v0.47.0: Goblin dilawan **di dunia** seperti binatang (berkeliaran di sekitar singgasana, mengejar saat pemain mendekat, lalu
+pertarungan langsung); di dekat pintu masuk ada **kem** (api unggun, tenda) sebagai zona aman dengan **Kapten Rimba** yang memberi
+tahu tugas (tombol Bicara). Papan misi di layar menampilkan Binatang X/100, kemajuan Goblin, dan panah arah ke singgasana, gerbang
+gua, dan kem. Jalan tanah lebar tiga petak menyambung dari pintu masuk ke singgasana dan gerbang gua.
+
 ## Energi, makanan, dan toko (v0.39.0)
 
 - **Energi** (bar petir): jurus memakainya (Skill 1 = 20, Skill 2 = 25 dari 100); serangan biasa +4, menang +15, naik level
@@ -228,7 +233,7 @@ berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai 
 |------|-----|-------|
 | Desa Awal (`desa_awal`, 85x50) | Hutan belantara timur lewat celah pagar timur (kolam, kebun, reruntuhan, tambang, 6 peti); tujuh rumah utara, empat rumah tengah, alun-alun, dua kandang berpagar, sungai, empat ladang berpagar dan pondok tani, dua kolam, Nenek dan Petani, serta 11 warga yang berjalan bebas (ibu, bapak, anak, penjaga, ayam) | Gerbang selatan (22,49) ke Perbatasan |
 | Perbatasan Kerajaan (`perbatasan`) | Jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
-| Hutan Lebat (`hutan_lebat`, 170x50) | Hutan pinus lebat, jalan tanah, kolam, tempat terbuka, singgasana bos di tengah (85,25), enam peti | Utara (22,0) ke Perbatasan; gerbang selatan (146-148,49) ke Gua Goblin (terkunci sampai tiga Goblin kalah) |
+| Hutan Lebat (`hutan_lebat`, 170x50) | Hutan pinus lebat, kem api unggun dengan Kapten Rimba di dekat pintu masuk, jalan tanah lebar, kolam, tempat terbuka, singgasana bos di tengah (85,25), enam peti | Utara (22,0) ke Perbatasan; gerbang selatan (146-148,49) ke Gua Goblin (terkunci sampai tiga Goblin kalah) |
 | Gua Goblin (`gua_goblin`, 25x30) | Peta 3: gua sarang goblin (goblin, pemburu, penjaga), tiga peti | Utara kembali ke hutan; selatan (11-13,29) ke Gunung Batu |
 | Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) ke Perbatasan; selatan (7,19) masuk Gua Batu |
 | Gua Batu (`gua_batu`) | Lorong gua, sarang Raja Goblin | Utara (7,0) kembali ke Gunung Batu |

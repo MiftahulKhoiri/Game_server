@@ -376,3 +376,6 @@ koin kuno (8), permata merah (7), berlian (3 + 2 x tingkat peti).
 State pemain punya `hutan: {"wave": 0..3, "kills": 0..100}`: `wave` = jumlah bos Goblin yang sudah kalah, `kills` = binatang kalah di tahap ini.
 Server menaikkan `kills` tiap kemenangan atas binatang di `hutan_lebat` (maks 100, lalu bos `goblin_hutan_<wave+1>` bisa dilawan di (85,25));
 mengalahkan bos menaikkan `wave` dan mengosongkan `kills`. `POST /v1/state` menolak nilai di luar rentang dengan `422`.
+
+Sejak v0.47.0 bos hutan dilawan di dunia: `POST /v1/battle/start {"enemy":"goblin_hutan_<wave+1>"}` memulai pertarungan dengan Goblin tahap ini bila
+pemain di `hutan_lebat` dalam 20 petak dari singgasana (85,25) dan `state.hutan.kills == 100`; selain itu `422`. Id bos tahap lain ditolak `422`.

@@ -84,6 +84,23 @@ func TestHutanNotCountedElsewhereAndValidation(t *testing.T) {
 	if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrNoBoss) {
 		t.Errorf("jauh dari singgasana harus ErrNoBoss: %v", err)
 	}
+	// Dekat singgasana (bos menyambut di dunia): sah bila 100 binatang sudah kalah.
+	p.State.X, p.State.Y = HutanBossX+9, HutanBossY-6
+	if _, err := StartHutanBossBattle(p, 0); !errors.Is(err, ErrBossNotReady) {
+		t.Errorf("binatang belum habis harus ErrBossNotReady: %v", err)
+	}
+	p.State.Hutan.Kills = HutanBeasts
+	b, err := StartHutanBossBattle(p, 0)
+	if err != nil || b.EnemyID != "goblin_hutan_1" {
+		t.Errorf("bos menyambut dekat singgasana: %+v %v", b, err)
+	}
+	p.State.X = HutanBossX + HutanBossRadius + 1
+	if _, err := StartHutanBossBattle(p, 0); !errors.Is(err, ErrNoBoss) {
+		t.Errorf("di luar jangkauan harus ErrNoBoss: %v", err)
+	}
+	if !IsHutanBossID("goblin_hutan_3") || IsHutanBossID("goblin") {
+		t.Error("IsHutanBossID salah")
+	}
 	for _, bad := range []HutanProgress{{Wave: 4}, {Wave: -1}, {Kills: 101}, {Kills: -1}} {
 		s := NewState()
 		s.Hutan = bad

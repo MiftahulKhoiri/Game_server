@@ -43,10 +43,29 @@ func (h HutanProgress) valid() bool {
 	return h.Wave >= 0 && h.Wave <= HutanWaves && h.Kills >= 0 && h.Kills <= HutanBeasts
 }
 
-// hutanBoss: bos di singgasana hutan untuk pemain ini (bila sudah waktunya).
+// HutanBossRadius: jarak terjauh (petak) dari singgasana tempat bos hutan boleh menyambut pemain. Bos berkeliaran
+// di sekitar singgasana dan mengejar pemain yang mendekat, jadi pertarungannya dimulai di dunia, bukan di petak K saja.
+const HutanBossRadius = 20
+
+// IsHutanBossID: id musuh bos hutan (goblin_hutan_1..3).
+func IsHutanBossID(id string) bool {
+	for i := 1; i <= HutanWaves; i++ {
+		if id == fmt.Sprintf("goblin_hutan_%d", i) {
+			return true
+		}
+	}
+	return false
+}
+
+// hutanBoss: bos hutan untuk pemain ini (bila sudah waktunya). Pemain harus berada di Hutan Lebat dalam
+// HutanBossRadius petak dari singgasana; tepat di petak singgasana selalu sah.
 func hutanBoss(p *Player) (Enemy, error) {
 	st := &p.State
-	if st.Map != MapHutanLebat || st.X != HutanBossX || st.Y != HutanBossY {
+	if st.Map != MapHutanLebat {
+		return Enemy{}, ErrNoBoss
+	}
+	dx, dy := st.X-HutanBossX, st.Y-HutanBossY
+	if dx*dx+dy*dy > HutanBossRadius*HutanBossRadius {
 		return Enemy{}, ErrNoBoss
 	}
 	if !st.Hutan.BossReady() {
@@ -60,6 +79,15 @@ func hutanBoss(p *Player) (Enemy, error) {
 		return Enemy{}, ErrNoBoss
 	}
 	return e, nil
+}
+
+// StartHutanBossBattle memulai pertarungan dengan bos hutan yang sedang menyambut pemain (dari musuh di dunia).
+func StartHutanBossBattle(p *Player, now int64) (Battle, error) {
+	e, err := hutanBoss(p)
+	if err != nil {
+		return Battle{}, err
+	}
+	return newBattle(e, now), nil
 }
 
 // recordHutan mencatat kemenangan di Hutan Lebat. Mengembalikan baris log tambahan.

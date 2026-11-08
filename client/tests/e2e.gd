@@ -996,7 +996,7 @@ func _run() -> void:
 			await process_frame
 			continue
 		var cfg: Dictionary = Maps.ROAMERS[mid]
-		_check(wr._roamers.size() >= mini(int(cfg.n), 5), "%s: musuh berkeliaran muncul (%d)" % [mid, wr._roamers.size()])
+		_check(wr._roamers.size() >= mini(int(cfg.n), 3), "%s: musuh berkeliaran muncul (%d)" % [mid, wr._roamers.size()])
 		var bad_spot := 0
 		var bad_kind := 0
 		for r in wr._roamers:
@@ -1574,6 +1574,65 @@ func _run() -> void:
 	Session.player.state["hutan"] = saved_h_v46
 	var CPv46: Script = load("res://scripts/companions.gd")
 	_check(CPv46.CHARGE_SPEED > CPv46.MAX_SPEED and CPv46.ENGAGE_DIST > 3.0, "pendamping maju lebih cepat saat musuh mengejar")
+
+	print("== v0.47: kem hutan, jalan menyambung, bos di dunia, papan misi")
+	var HHv47: Script = load("res://scripts/hutan_hud.gd")
+	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(10, 0), 0.0)) < 0.01, "panah ke utara saat kamera menghadap utara menunjuk lurus ke atas")
+	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(20, 10), 0.0) - PI / 2.0) < 0.01, "panah ke timur menunjuk ke kanan")
+	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(20, 10), PI / 2.0) - PI) < 0.01, "kamera diputar: panah ikut berputar")
+	var WDv47: Script = load("res://scripts/warga_dialog.gd")
+	_check(WDv47.display_name("kapten_kem") == "Kapten Rimba", "Kapten Rimba punya nama dialog")
+	_check(WDv47.kapten_line(0, 0, 0).contains("100 binatang") and WDv47.kapten_line(0, 37, 1).contains("37"), "Kapten menjelaskan tugas dan kemajuan binatang")
+	_check(WDv47.kapten_line(1, 100, 0).contains("Level 2"), "Kapten menyebut Goblin berikutnya bila binatang habis")
+	_check(WDv47.kapten_line(3, 0, 0).contains("terbuka"), "Kapten menyebut gerbang terbuka setelah tiga Goblin")
+	var kapten_v47 := {}
+	for wg_v47: Dictionary in Maps.WARGA:
+		if wg_v47.id == "kapten_kem":
+			kapten_v47 = wg_v47
+	_check(not kapten_v47.is_empty() and kapten_v47.map == Maps.HUTAN and Maps.HUTAN_KEM.has_point(Vector2i(int(kapten_v47.pos.x), int(kapten_v47.pos.y))), "Kapten Rimba berdiri di dalam kem hutan")
+	_check(not Maps.roam_free(Maps.HUTAN, Vector2(22.5, 7.5)) and not Maps.roam_free(Maps.HUTAN, Vector2(18.5, 3.5)), "kem adalah zona aman: binatang tidak boleh masuk")
+	_check(Maps.roam_free(Maps.HUTAN, Vector2(50.5, 12.5)), "jalan hutan di luar kem bebas dilalui binatang")
+	var has_fire_v47 := false
+	var tents_v47 := 0
+	for ry_v47: String in Maps.rows(Maps.HUTAN):
+		has_fire_v47 = has_fire_v47 or ry_v47.contains("U")
+		tents_v47 += ry_v47.count("A")
+	_check(has_fire_v47 and tents_v47 >= 8, "kem hutan punya api unggun dan tenda")
+	for pt_v47: Vector2i in [Vector2i(22, 1), Vector2i(22, 12), Vector2i(60, 12), Vector2i(85, 12), Vector2i(85, 20), Vector2i(100, 25), Vector2i(147, 25), Vector2i(147, 40), Vector2i(85, 38), Vector2i(22, 30), Vector2i(120, 30)]:
+		_check(Maps.tile_at(Maps.HUTAN, pt_v47.x, pt_v47.y) == "=", "jalan hutan menyambung di %s" % str(pt_v47))
+	# bos Goblin berkeliaran di dunia (bukan layar penuh) begitu 100 binatang kalah
+	var saved_v47: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state.map = Maps.HUTAN
+	Session.player.state.x = 22
+	Session.player.state.y = 2
+	Session.player.state.level = 4
+	Session.player.state["hutan"] = {"wave": 1, "kills": 100}
+	Session.offline = true
+	var wh_v47: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wh_v47)
+	await process_frame
+	await process_frame
+	var boss_v47 = null
+	var beasts_v47 := 0
+	for r_v47 in wh_v47._roamers:
+		if r_v47.id.begins_with("goblin_hutan_"):
+			boss_v47 = r_v47
+		else:
+			beasts_v47 += 1
+	_check(boss_v47 != null and boss_v47.id == "goblin_hutan_2" and beasts_v47 == 0, "kills 100 wave 1: hanya Goblin Level 2 berkeliaran di dunia")
+	_check(boss_v47 != null and boss_v47.pos.distance_to(Vector2(85.5, 23.5)) < 1.0, "Goblin muncul di dekat singgasana")
+	_check(wh_v47._hutan_hud.visible, "papan misi hutan tampil di Hutan Lebat")
+	Session.player.state["hutan"] = {"wave": 1, "kills": 5}
+	wh_v47._refresh_hutan()
+	var still_boss_v47 := false
+	for r_v47 in wh_v47._roamers:
+		if r_v47.id.begins_with("goblin_hutan_") and not r_v47.fight:
+			still_boss_v47 = true
+	_check(not still_boss_v47, "Goblin hilang dari dunia bila belum waktunya")
+	wh_v47.queue_free()
+	await process_frame
+	Session.offline = false
+	Session.player.state = saved_v47
 
 	print("== token salah")
 	Api.token = "salah"

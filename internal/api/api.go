@@ -401,6 +401,14 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 			if b, err = game.StartBossBattle(&sess.Player, now); err != nil {
 				return err
 			}
+		} else if game.IsHutanBossID(req.Enemy) {
+			var err error
+			if b, err = game.StartHutanBossBattle(&sess.Player, now); err != nil {
+				return err
+			}
+			if b.EnemyID != req.Enemy {
+				return game.ErrBossNotReady // bos tahap lain: belum waktunya
+			}
 		} else {
 			b = game.StartBattleWith(&sess.Player, req.Enemy, s.rng, now)
 		}

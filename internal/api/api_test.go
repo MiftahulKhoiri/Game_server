@@ -840,3 +840,22 @@ func TestShopPerShop(t *testing.T) {
 		t.Fatalf("toko asing harus 404: %d", resp.StatusCode)
 	}
 }
+
+func TestHutanBossStartFromWorld(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "PenjelajahHutan")
+	st := cr.Player.State
+	st.Map, st.X, st.Y = game.MapHutanLebat, 80, 22
+	if resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st}); resp.StatusCode != http.StatusOK {
+		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
+	}
+	body := map[string]string{"enemy": "goblin_hutan_1"}
+	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", body); code != http.StatusUnprocessableEntity {
+		t.Errorf("bos hutan sebelum 100 binatang harus 422, dapat %d", code)
+	}
+	// Binatang biasa tetap bisa dilawan di hutan.
+	code, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]string{"enemy": "kancil_hutan"})
+	if code != http.StatusCreated || start.Battle == nil || start.Battle.EnemyID != "kancil_hutan" {
+		t.Errorf("binatang hutan: %d %s", code, d)
+	}
+}

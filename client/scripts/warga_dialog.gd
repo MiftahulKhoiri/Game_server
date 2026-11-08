@@ -124,18 +124,43 @@ static func stage_from_quests(quests: Array) -> int:
 
 
 static func has_warga(id: String) -> bool:
-	return WARGA.has(id)
+	return id == "kapten_kem" or WARGA.has(id)
 
 
 static func display_name(id: String) -> String:
+	if id == "kapten_kem":
+		return "Kapten Rimba"
 	return str(WARGA.get(id, {}).get("name", "Penduduk"))
 
 
 ## Kalimat untuk warga `id` pada tahap `stage`; `n` = berapa kali sudah diajak bicara
 ## (kalimat bergantian bila ada lebih dari satu).
 static func line(id: String, stage: int, n: int) -> String:
+	if id == "kapten_kem":
+		return kapten_line(Session.hutan_wave(), Session.hutan_kills(), n)
 	if not WARGA.has(id):
 		return "Halo."
 	var stages: Array = WARGA[id].stages
 	var lines: Array = stages[clampi(stage, 0, stages.size() - 1)]
 	return str(lines[n % lines.size()])
+
+
+## Kapten Rimba (penjaga kem di pintu masuk Hutan Lebat) menjelaskan tugas sesuai kemajuan misi.
+## wave = Goblin yang sudah kalah (0-3), kills = binatang kalah di tahap ini (0-100), n = urutan bicara.
+static func kapten_line(wave: int, kills: int, n: int) -> String:
+	var tugas := "Tugasmu: kalahkan 100 binatang buas di hutan ini. Setelah itu Goblin Level %d muncul di singgasana, di tengah hutan." % (wave + 1)
+	var jalan := "Ikuti jalan tanah lebar ke timur. Singgasana ada di tengah hutan, gerbang Gua Goblin di ujung selatan-timur. Jalan pulang ke desa lewat utara, lewat kem ini."
+	if wave >= 3:
+		return ["Tiga Goblin sudah kamu tumbangkan! Gerbang Gua Goblin sudah terbuka, di ujung selatan-timur hutan. Hati-hati di dalam.",
+			"Hutan ini aman berkat kamu. Isi bekalmu di sini sebelum masuk Gua Goblin."][n % 2]
+	if kills >= 100:
+		return ["Semua binatang tahap ini sudah habis! Goblin Level %d menunggumu di singgasana, di tengah hutan. Ikuti jalan tanah ke timur." % (wave + 1),
+			"Goblin itu lebih kuat dari binatang biasa. Bawa ramuan dan jangan lupa bertahan, ya."][n % 2]
+	var progress := "Sudah %d dari 100 binatang kamu kalahkan." % kills if kills > 0 else "Belum ada binatang yang kamu kalahkan."
+	if wave == 0:
+		return ["Selamat datang di kem, Ksatria. Hutan ini dikuasai tiga Goblin. " + tugas,
+			progress + " " + jalan,
+			"Setelah tiga Goblin tumbang, gerbang Gua Goblin terbuka. Gua itu jalan menuju Gunung Batu."][n % 3]
+	return ["Goblin Level %d sudah kamu kalahkan! %d binatang baru muncul di hutan. %s" % [wave, 100, tugas],
+		progress + " " + jalan,
+		"Tersisa %d Goblin lagi. Terus semangat, Ksatria." % (3 - wave)][n % 3]

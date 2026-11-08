@@ -329,6 +329,16 @@ membawa pemain; bawaannya halaman Releases terbaru.
   yang mengejar atau sedang dilawan (dulu hanya ikut berjalan) dan membantu menyerang lebih cepat (pukulan pertama 0,8 d, lalu
   tiap 1,8 d). `DefaultMinClient` tetap 0.18.0.
 
+- v0.47.0 menyempurnakan **Hutan Lebat**: jalan tanah kini **lebar tiga petak dan selalu menyambung** (pintu masuk -> kem -> singgasana
+  -> gerbang Gua Goblin, plus dua lingkaran jalan untuk pulang). Di dekat pintu masuk ada **kem** (api unggun, empat tenda, panji) yang
+  menjadi zona aman tanpa binatang; **Kapten Rimba** menunggu di sana dan, lewat tombol **Bicara**, menjelaskan tugas sesuai kemajuan
+  (binatang X/100, Goblin ke berapa). **Papan misi** di layar hutan menampilkan "Binatang X/100", kemajuan Goblin, dan tiga **panah
+  penunjuk arah** (singgasana, gerbang gua, kem/pulang) lengkap dengan jaraknya. **Goblin Level 1-3 kini bertarung di dunia seperti
+  binatang** (berkeliaran di sekitar singgasana, mengejar, lalu pertarungan langsung; hanya HP dan seranganya lebih besar), bukan layar
+  pertarungan penuh. Server: `POST /v1/battle/start {"enemy":"goblin_hutan_N"}` sah bila pemain di Hutan Lebat dalam 20 petak dari
+  singgasana dan 100 binatang tahap itu sudah kalah (selain itu `422`); `{"boss":true}` di petak singgasana tetap berlaku. Posisi enam
+  peti hutan dipindah ke padang terbuka baru. `DefaultMinClient` tetap 0.18.0.
+
 - APK baru harus dipasang **menimpa** yang lama (jangan hapus aplikasi), karena
   menghapus aplikasi menghapus token login.
 - `version code` Android = nomor build, naik terus, sehingga HP menerima APK baru

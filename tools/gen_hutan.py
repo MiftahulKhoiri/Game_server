@@ -6,7 +6,7 @@ berkas keluaran dan memeriksa bahwa pintu masuk, singgasana bos, gerbang, dan se
 
 Pakai:  python3 tools/gen_hutan.py client/scripts/maps_hutan.gen   (lalu salin ke maps.gd)
 Legenda petak: # pohon, . rumput, f bunga, = jalan, R batu, ~ air, K singgasana bos, N menara gapura, P pagar kayu,
-M lantai gua, G kerikil (tempat monster/pertemuan).
+M lantai gua, G kerikil (tempat monster/pertemuan), A tenda, U api unggun, Y tiang panji (kem di dekat pintu masuk).
 """
 import random
 import sys
@@ -18,6 +18,8 @@ BOSS = (85, 25)       # singgasana bos Goblin (harus sama dengan HutanBossX/Y di
 GATE_X0 = 144         # gapura "NN===NN" di baris paling bawah: N di 144-145, jalan 146-148, N di 149-150
 GATE_ROAD = (146, 147, 148)
 WALK = ".=fTBDMGK"
+KEM = (12, 1, 33, 14)  # kotak kem (x0, y0, x1, y1 eksklusif): zona aman, tanpa binatang (sama dengan Maps.HUTAN_KEM di maps.gd)
+NPC_KEM = (24, 7)      # petak NPC penjaga kem (sama dengan Maps.WARGA kapten_kem)
 
 
 def hutan(seed=46):
@@ -50,7 +52,7 @@ def hutan(seed=46):
                 elif r < 0.032:
                     g[y][x] = "R"
     # 3. padang terbuka (tanpa pohon), kolam, dan jalan
-    clearings = [(85, 25, 9), (22, 8, 6), (50, 38, 7), (118, 12, 7), (120, 40, 7), (150, 28, 6), (62, 12, 5), (100, 44, 5), (35, 28, 5), (140, 8, 5)]
+    clearings = [(85, 25, 9), (50, 38, 7), (118, 12, 7), (120, 40, 7), (150, 28, 6), (62, 12, 5), (100, 44, 5), (35, 28, 5), (140, 8, 5)]
     for cx, cy, r in clearings:
         for y in range(max(1, cy - r), min(H - 1, cy + r + 1)):
             for x in range(max(1, cx - r), min(W - 1, cx + r + 1)):
@@ -64,21 +66,27 @@ def hutan(seed=46):
                     g[y][x] = "~"
 
     def road(points):
+        """Jalan lebar tiga petak dari garis tengah berbelok siku-siku (selalu menyambung)."""
         for (x0, y0), (x1, y1) in zip(points, points[1:]):
-            x, y = x0, y0
-            while (x, y) != (x1, y1):
-                g[y][x] = "="
-                if x != x1 and (y == y1 or rng.random() < 0.7):
-                    x += 1 if x1 > x else -1
-                else:
-                    y += 1 if y1 > y else -1
-            g[y1][x1] = "="
-    road([(22, 1), (22, 8), (35, 14), (50, 20), (70, 24), BOSS])
-    road([BOSS, (110, 30), (135, 40), (147, 46), (147, 48)])
-    road([(22, 8), (30, 28), (50, 38)])
-    road([BOSS, (100, 14), (118, 12), (140, 8)])
-    road([(110, 30), (120, 40)])
-    road([(135, 40), (150, 28)])
+            assert x0 == x1 or y0 == y1, "ruas jalan harus lurus"
+            for y in range(min(y0, y1), max(y0, y1) + 1):
+                for x in range(min(x0, x1), max(x0, x1) + 1):
+                    for dy in (-1, 0, 1):
+                        for dx in (-1, 0, 1):
+                            if (x0 == x1 and dy != 0) or (y0 == y1 and dx != 0):
+                                continue
+                            xx, yy = x + dx, y + dy
+                            if 1 <= xx < W - 1 and 1 <= yy < H - 1:
+                                g[yy][xx] = "="
+    # kem dulu (padang bersih), supaya jalan dan benda kem digambar di atasnya
+    for y in range(KEM[1], KEM[3]):
+        for x in range(KEM[0], KEM[2]):
+            g[y][x] = "." if rng.random() > 0.05 else "f"
+    road([(22, 1), (22, 12), (85, 12), (85, 25)])
+    road([(85, 25), (147, 25), (147, 48)])
+    road([(22, 12), (22, 38), (85, 38), (85, 25)])
+    road([(85, 12), (120, 12), (120, 25)])
+    road([(120, 25), (120, 40), (147, 40)])
     # 4. tepi: pohon di semua sisi, pagar di sisi selatan, gapura dan pintu masuk
     for x in range(W):
         g[0][x] = "#"
@@ -101,6 +109,14 @@ def hutan(seed=46):
         for x in range(GATE_X0 - 1, GATE_X0 + 8):
             if g[y][x] in "#R~":
                 g[y][x] = "."
+    # kem: tenda (A, 2x2), api unggun (U), tiang panji (Y); jalan utama x=21..23 melewati tengah kem
+    for (tx, ty) in ((15, 4), (15, 9), (28, 4), (28, 9)):
+        for dy in (0, 1):
+            for dx in (0, 1):
+                g[ty + dy][tx + dx] = "A"
+    g[7][26] = "U"
+    g[3][20] = "Y"
+    g[3][24] = "Y"
     # singgasana bos dan lingkarannya
     for y in range(BOSS[1] - 1, BOSS[1] + 2):
         for x in range(BOSS[0] - 1, BOSS[0] + 2):
@@ -126,7 +142,7 @@ def reach(g, start):
 
 def chests(g, seen, count, tier_of, seed, chars=".f", gap=18):
     rng = random.Random(seed)
-    cand = [(x, y) for (x, y) in sorted(seen) if g[y][x] in chars and 2 < x < len(g[0]) - 3 and 2 < y < len(g) - 3]
+    cand = [(x, y) for (x, y) in sorted(seen) if g[y][x] in chars and 2 < x < len(g[0]) - 3 and 2 < y < len(g) - 3 and not (len(g[0]) > 100 and KEM[0] - 2 <= x < KEM[2] + 2 and KEM[1] <= y < KEM[3] + 2)]
     out = []
     tries = 0
     while len(out) < count and tries < 5000:
@@ -188,6 +204,9 @@ def main():
     assert BOSS in seen, "singgasana tidak terjangkau"
     for x in GATE_ROAD:
         assert (x, H - 2) in seen, "gerbang tidak terjangkau"
+    assert (NPC_KEM[0], NPC_KEM[1]) in seen and g[NPC_KEM[1]][NPC_KEM[0]] == ".", "NPC kem harus berdiri di rumput yang terjangkau"
+    for rx, ry in ((22, 1), (22, 12), (85, 12), (85, 38), (120, 25), (147, 40)):
+        assert g[ry][rx] == "=", "simpang jalan %s putus" % ((rx, ry),)
     ch = chests(g, seen, 6, None, 7)
     assert len(ch) == 6, "peti kurang"
     free = sum(1 for (x, y) in seen if g[y][x] in ".f" and y >= 3)
@@ -197,7 +216,7 @@ def main():
     assert (12, 28) in gseen, "pintu keluar gua tidak terjangkau"
     gch = chests(gg, gseen, 3, None, 3, "MG", 7)
     assert len(gch) == 3, "peti gua kurang"
-    text = fmt("HUTAN_ROWS", g, "Hutan Lebat (170x50): dua kali lebar Desa Awal. Pintu masuk dari Perbatasan di (22,0), singgasana bos K di tengah, gapura ke Gua Goblin di bawah.")
+    text = fmt("HUTAN_ROWS", g, "Hutan Lebat (170x50): dua kali lebar Desa Awal. Pintu masuk dari Perbatasan di (22,0) lalu kem (api unggun), jalan lebar ke singgasana bos K di tengah dan gapura ke Gua Goblin di bawah.")
     text += "\n\n\n" + fmt("GUA_GOBLIN_ROWS", gg, "Gua Goblin (25x30): peta 3, terbuka setelah tiga Goblin di Hutan Lebat kalah.")
     text += "\n\n# peti hutan: %s\n# peti gua goblin: %s\n# petak bebas binatang: %d\n" % (ch, gch, free)
     open(out, "w").write(text)

@@ -21,6 +21,7 @@ const HeroFx = preload("res://scripts/hero_fx.gd")
 const Roamer = preload("res://scripts/roamer.gd")
 const WorldFight = preload("res://scripts/world_fight.gd")
 const HudBars = preload("res://scripts/hud_bars.gd")
+const HutanHud = preload("res://scripts/hutan_hud.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -110,8 +111,8 @@ var _bars: HudBars
 var _joy: Control
 var _cam_finger := -1
 var _status: Label
-var _hutan_label: Label        # penghitung binatang/Goblin di Hutan Lebat
-var _hutan_boss: Node3D        # Goblin yang menunggu di singgasana hutan (bila sudah waktunya)
+var _hutan_hud: Control        # papan misi Hutan Lebat: binatang X/100, Goblin, panah arah
+var _hutan_boss: Roamer        # Goblin yang menunggu di singgasana hutan (bila sudah waktunya)
 var _hutan_sig := -1           # tanda kemajuan terakhir (untuk pesan saat berubah)
 var _toast: Label
 var _talk_button: Button
@@ -556,6 +557,8 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 
 func _process(delta: float) -> void:
 	_update_world_life(delta)
+	if _hutan_hud != null and _hutan_hud.visible:
+		_hutan_hud.update_view(Session.hutan_kills(), Session.hutan_wave(), _pos, _cam_yaw)
 	_tick_actions(delta)
 	var rig := _player as Node
 	if _locked:
@@ -731,7 +734,7 @@ func _after_step(moved: float) -> void:
 				return
 			_go_to_map(str(ex.to), ex.at)
 			return
-		if not Session.offline and Maps.tile_at(_map_id, t.x, t.y) == Maps.BOSS_TILE:
+		if not Session.offline and _map_id != Maps.HUTAN and Maps.tile_at(_map_id, t.x, t.y) == Maps.BOSS_TILE:
 			_start_encounter(true)
 			return
 	if Session.offline or _locked or _fight.busy():
@@ -1439,16 +1442,10 @@ func _build_ui() -> void:
 	_bars.position = Vector2(20, 10)
 	layer.add_child(_bars)
 
-	_hutan_label = Label.new()
-	_hutan_label.position = Vector2(300, 70)
-	_hutan_label.size = Vector2(410, 70)
-	_hutan_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hutan_label.add_theme_font_size_override("font_size", 24)
-	_hutan_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	_hutan_label.add_theme_constant_override("outline_size", 8)
-	_hutan_label.add_theme_color_override("font_color", Color("ffe27a"))
-	_hutan_label.visible = false
-	layer.add_child(_hutan_label)
+	_hutan_hud = HutanHud.new()
+	_hutan_hud.position = Vector2(290, 58)
+	_hutan_hud.visible = false
+	layer.add_child(_hutan_hud)
 
 	_status = Label.new()
 	_status.position = Vector2(20, 240)
@@ -1561,12 +1558,12 @@ func _refresh_hud() -> void:
 		_bars.set_energy(Session.energy(), Session.MAX_ENERGY)
 
 
-## Hutan Lebat: penghitung binatang/Goblin, palang gerbang Gua Goblin, dan Goblin di singgasana.
+## Hutan Lebat: papan misi (binatang X/100, Goblin, panah arah), palang gerbang Gua Goblin, dan bos di singgasana.
 func _refresh_hutan() -> void:
-	if _hutan_label == null:
+	if _hutan_hud == null:
 		return
 	var on := _map_id == Maps.HUTAN
-	_hutan_label.visible = on
+	_hutan_hud.visible = on
 	var wave := Session.hutan_wave()
 	var kills := Session.hutan_kills()
 	if _terrain != null:
@@ -1577,12 +1574,7 @@ func _refresh_hutan() -> void:
 	_update_hutan_boss(boss_up, wave + 1)
 	if not on:
 		return
-	if wave >= 3:
-		_hutan_label.text = "Ketiga Goblin kalah!\nGerbang Gua Goblin terbuka"
-	elif kills >= 100:
-		_hutan_label.text = "Goblin Level %d menunggu\ndi singgasana hutan!" % (wave + 1)
-	else:
-		_hutan_label.text = "Binatang %d/100\nGoblin Level %d: %d/3" % [kills, wave + 1, wave]
+	_hutan_hud.update_view(kills, wave, _pos, _cam_yaw)
 	var sig := wave * 1000 + kills
 	if _hutan_sig >= 0 and sig != _hutan_sig:
 		if wave >= 3 and _hutan_sig < 3000:
@@ -1593,35 +1585,41 @@ func _refresh_hutan() -> void:
 			_show_toast("Goblin Level %d kalah!" % wave)
 			for _i in int(_roam_cfg.get("n", 0)):
 				respawn_roamer()
+		elif kills > _hutan_sig % 1000:
+			_set_status("Binatang %d/100" % kills)
 	_hutan_sig = sig
 
 
+## Bos Goblin berkeliaran di sekitar singgasana seperti musuh biasa (pertarungan langsung di dunia, hanya lebih kuat).
 func _update_hutan_boss(show: bool, level: int) -> void:
+	var cur: Roamer = _hutan_boss
+	if cur != null and (cur.dying or cur.node == null or not is_instance_valid(cur.node)):
+		cur = null
+		_hutan_boss = null
 	if not show:
-		if _hutan_boss != null and is_instance_valid(_hutan_boss):
-			_hutan_boss.queue_free()
+		if cur != null and not cur.fight:
+			_remove_roamer(cur)
 		_hutan_boss = null
 		return
-	if _hutan_boss != null and is_instance_valid(_hutan_boss) and _hutan_boss.name == "goblin_hutan_%d" % level:
+	var want := "goblin_hutan_%d" % level
+	if cur != null and cur.id == want:
 		return
-	if _hutan_boss != null and is_instance_valid(_hutan_boss):
-		_hutan_boss.queue_free()
-	if _terrain == null:
+	if cur != null and not cur.fight:
+		_remove_roamer(cur)
+	if _terrain == null or _npc_root == null:
 		return
-	_hutan_boss = Models.create("goblin_hutan_%d" % level)
-	_hutan_boss.position = Vector3(float(Maps.HUTAN_BOSS.x) + 0.5, 0.0, float(Maps.HUTAN_BOSS.y) - 0.6)
-	_hutan_boss.rotation.y = PI
-	_terrain.add_child(_hutan_boss)
-	var label := Label3D.new()
-	label.text = "Goblin Level %d" % level
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.no_depth_test = true
-	label.pixel_size = 0.008
-	label.font_size = 44
-	label.outline_size = 12
-	label.modulate = Color("ff8a5c")
-	label.position = Vector3(0, 2.6 + 0.35 * float(level), 0)
-	_hutan_boss.add_child(label)
+	var kind := {"id": want, "name": "Goblin Level %d" % level, "lv": 1}
+	var at := Vector2(float(Maps.HUTAN_BOSS.x) + 0.5, float(Maps.HUTAN_BOSS.y) - 1.5)
+	var r := _make_roamer(kind, _map_id, at, 7000 + level)
+	r.chase_speed = 2.0
+	_roamers.append(r)
+	_hutan_boss = r
+
+
+func _remove_roamer(r: Roamer) -> void:
+	_roamers.erase(r)
+	if r.node != null and is_instance_valid(r.node):
+		r.node.queue_free()
 
 
 func _set_status(text: String) -> void:
