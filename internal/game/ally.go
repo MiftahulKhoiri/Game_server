@@ -24,13 +24,13 @@ const (
 
 // Kesalahan pendamping.
 var (
-	ErrAllyOwned   = errors.New("pahlawan ini sudah kamu beli")
-	ErrAllyNotOwn  = errors.New("beli pahlawan ini dulu")
-	ErrPartyFull   = errors.New("pendamping terlalu banyak")
-	ErrPartyRepeat = errors.New("pahlawan yang sama dipasang dua kali")
-	ErrSoldiersMax = errors.New("pasukan sudah penuh")
+	ErrAllyOwned       = errors.New("pahlawan ini sudah kamu beli")
+	ErrAllyNotOwn      = errors.New("beli pahlawan ini dulu")
+	ErrPartyFull       = errors.New("pendamping terlalu banyak")
+	ErrPartyRepeat     = errors.New("pahlawan yang sama dipasang dua kali")
+	ErrSoldiersMax     = errors.New("pasukan sudah penuh")
 	ErrAllyUnavailable = errors.New("pendamping tidak tersedia")
-	ErrAllyFullHP = errors.New("HP pendamping sudah penuh")
+	ErrAllyFullHP      = errors.New("HP pendamping sudah penuh")
 )
 
 // SoldierID: id pendamping prajurit ke-n (1..MaxSoldiers) di kejadian pertarungan dan model klien.
@@ -121,7 +121,6 @@ func (s State) allyPower() int {
 	return AttackForLevel(s.Level)*AllyPercent/100 + AllyBonus
 }
 
-
 // ensureAllyHealth memberi HP penuh kepada pendamping lama yang belum memiliki data HP.
 // Nilai ini disimpan di State sehingga kompatibel dengan data akun sebelum fitur ini.
 func (s *State) ensureAllyHealth() {
@@ -170,7 +169,6 @@ func (s *State) HealAlly(id string, amount int) (int, error) {
 	s.AllyHP[id] = min(AllyMaxHP, s.AllyHP[id]+amount)
 	return s.AllyHP[id], nil
 }
-
 
 // hasHealthyAlly reports whether at least one equipped companion can fight.
 func (s State) hasHealthyAlly() bool {
