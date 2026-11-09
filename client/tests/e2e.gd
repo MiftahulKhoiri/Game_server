@@ -1286,6 +1286,8 @@ func _run() -> void:
 	await process_frame
 	Sound.npc_stop()
 	_check(true, "suara bicara NPC berjalan tanpa galat")
+	var hp_json := JSON.stringify(Session._normalize_state({"ally_hp": {"ksatria": 30.0, "pemanah": -3.0}}).get("ally_hp"))
+	_check(hp_json.contains('"ksatria":30}') and hp_json.contains('"pemanah":0}'), "HP pendamping dikirim sebagai bilangan bulat (%s)" % hp_json)
 	Session.player.state.party = ["pemanah", "pendekar_kapak"]
 	wc._companions.sync()
 	await process_frame

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 )
@@ -237,5 +238,25 @@ func TestEnemyCanDownCompanionAfterThreeStrikes(t *testing.T) {
 	}
 	if p.State.HP >= p.State.MaxHP {
 		t.Fatalf("dua serangan pertama harus mengenai pemain: %d", p.State.HP)
+	}
+}
+
+func TestAllyHPAcceptsDecimalWholeNumbers(t *testing.T) {
+	var st State
+	if err := json.Unmarshal([]byte(`{"ally_hp":{"ksatria":30.0,"pemanah":0.0,"pendekar_kapak":12}}`), &st); err != nil {
+		t.Fatalf("30.0 harus diterima: %v", err)
+	}
+	if st.AllyHP["ksatria"] != 30 || st.AllyHP["pemanah"] != 0 || st.AllyHP["pendekar_kapak"] != 12 {
+		t.Fatalf("hasil salah: %v", st.AllyHP)
+	}
+	for _, bad := range []string{`{"ally_hp":{"ksatria":30.5}}`, `{"ally_hp":{"ksatria":"30"}}`, `{"ally_hp":{"ksatria":1e30}}`} {
+		var s2 State
+		if err := json.Unmarshal([]byte(bad), &s2); err == nil {
+			t.Errorf("%s harus ditolak", bad)
+		}
+	}
+	var s3 State
+	if err := json.Unmarshal([]byte(`{"ally_hp":null}`), &s3); err != nil || s3.AllyHP != nil {
+		t.Errorf("null harus jadi kosong: %v %v", err, s3.AllyHP)
 	}
 }

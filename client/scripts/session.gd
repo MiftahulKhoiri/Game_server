@@ -158,6 +158,15 @@ func _levels(v: Variant) -> Dictionary:
 	return out
 
 
+## HP pendamping selalu bilangan bulat: JSON dari Godot menulis float utuh sebagai "30.0".
+func _hp_map(v: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if v is Dictionary:
+		for k: Variant in v:
+			out[str(k)] = maxi(0, int(v[k]))
+	return out
+
+
 func _jobs(v: Variant) -> Array:
 	var out: Array = []
 	if v is Array:
@@ -216,7 +225,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		# Pahlawan pendamping yang sudah dibeli dan yang dipasang (hanya server yang mengubah).
 		"allies": _strings(s.get("allies", [])),
 		"party": _strings(s.get("party", [])),
-		"ally_hp": s.get("ally_hp", {}),
+		"ally_hp": _hp_map(s.get("ally_hp", {})),
 		"soldiers": clampi(int(s.get("soldiers", 0)), 0, MAX_SOLDIERS),
 		"hero_levels": _levels(s.get("hero_levels", {})),
 		"soldier_level": clampi(int(s.get("soldier_level", 0)), 0, MAX_TRAIN_LEVEL),

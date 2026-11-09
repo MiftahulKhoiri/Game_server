@@ -5,6 +5,7 @@
 package game
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -50,7 +51,7 @@ type State struct {
 	Allies []string `json:"allies,omitempty"`
 	Party  []string `json:"party,omitempty"`
 	// AllyHP menyimpan HP setiap pahlawan pendamping yang dimiliki; kosong pada akun lama = HP penuh.
-	AllyHP map[string]int `json:"ally_hp,omitempty"`
+	AllyHP HPMap `json:"ally_hp,omitempty"`
 	// Soldiers: jumlah prajurit biasa yang dibeli (maks MaxSoldiers); semuanya ikut bertarung (lihat ally.go).
 	Soldiers int `json:"soldiers,omitempty"`
 	// HeroLevels: level latihan tiap pahlawan pembantu (kosong = level 1); SoldierLevel: level seluruh prajurit;
@@ -206,3 +207,29 @@ func (s State) Validate() error {
 }
 
 func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+
+// HPMap adalah peta id -> HP. Saat dibaca dari JSON ia menerima bilangan bulat yang ditulis
+// dengan desimal ("30.0"), karena klien Godot menuliskan semua angka seperti itu. Angka
+// pecahan sungguhan (30.5) tetap ditolak.
+type HPMap map[string]int
+
+// UnmarshalJSON mengimplementasikan json.Unmarshaler.
+func (m *HPMap) UnmarshalJSON(b []byte) error {
+	var raw map[string]float64
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if raw == nil {
+		*m = nil
+		return nil
+	}
+	out := make(HPMap, len(raw))
+	for id, v := range raw {
+		if v != math.Trunc(v) || math.Abs(v) > 1e9 {
+			return fmt.Errorf("HP %q harus bilangan bulat", id)
+		}
+		out[id] = int(v)
+	}
+	*m = out
+	return nil
+}
