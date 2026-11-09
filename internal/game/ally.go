@@ -10,6 +10,7 @@ import (
 // mendampingi di belakang. Pendamping ikut menyerang musuh secara otomatis selama pertarungan.
 const (
 	MaxParty       = 3    // pendamping yang boleh dipasang sekaligus
+	AllyMaxHP      = 30   // HP dasar setiap pahlawan pendamping
 	AllyPercent    = 70   // kerusakan pendamping = serangan dasar level pemain x ini persen
 	AllyBonus      = 2    // ditambah sekian, supaya musuh berpertahanan tinggi tetap terasa
 	AllyIntervalMs = 1800 // jeda antar serangan pendamping
@@ -28,6 +29,8 @@ var (
 	ErrPartyFull   = errors.New("pendamping terlalu banyak")
 	ErrPartyRepeat = errors.New("pahlawan yang sama dipasang dua kali")
 	ErrSoldiersMax = errors.New("pasukan sudah penuh")
+	ErrAllyUnavailable = errors.New("pendamping tidak tersedia")
+	ErrAllyFullHP = errors.New("HP pendamping sudah penuh")
 )
 
 // SoldierID: id pendamping prajurit ke-n (1..MaxSoldiers) di kejadian pertarungan dan model klien.
@@ -116,4 +119,54 @@ func (s State) validateAllies() error {
 // allyPower adalah serangan satu pendamping.
 func (s State) allyPower() int {
 	return AttackForLevel(s.Level)*AllyPercent/100 + AllyBonus
+}
+
+
+// ensureAllyHealth memberi HP penuh kepada pendamping lama yang belum memiliki data HP.
+// Nilai ini disimpan di State sehingga kompatibel dengan data akun sebelum fitur ini.
+func (s *State) ensureAllyHealth() {
+	if s.AllyHP == nil {
+		s.AllyHP = make(map[string]int, len(s.Allies))
+	}
+	for _, id := range s.Allies {
+		if _, ok := s.AllyHP[id]; !ok {
+			s.AllyHP[id] = AllyMaxHP
+		}
+	}
+}
+
+// AllyHealth mengembalikan HP dan HP maksimum pendamping yang dimiliki.
+func (s State) AllyHealth(id string) (hp, maxHP int, ok bool) {
+	if !slices.Contains(s.Allies, id) {
+		return 0, AllyMaxHP, false
+	}
+	hp, ok = s.AllyHP[id]
+	if !ok {
+		return AllyMaxHP, AllyMaxHP, true // akun lama: dianggap sehat
+	}
+	return hp, AllyMaxHP, true
+}
+
+// damageAlly mengurangi HP pendamping yang terpasang. HP tidak pernah negatif.
+func (s *State) damageAlly(id string, damage int) (remaining int, down bool) {
+	s.ensureAllyHealth()
+	if damage < 1 || !slices.Contains(s.Party, id) {
+		return s.AllyHP[id], false
+	}
+	s.AllyHP[id] = max(0, s.AllyHP[id]-damage)
+	return s.AllyHP[id], s.AllyHP[id] == 0
+}
+
+// HealAlly memulihkan HP pendamping yang terpasang. Pengurangan item dilakukan
+// oleh pemanggil dalam transaksi penyimpanan yang sama.
+func (s *State) HealAlly(id string, amount int) (int, error) {
+	if amount < 1 || !slices.Contains(s.Party, id) || !slices.Contains(s.Allies, id) {
+		return 0, ErrAllyUnavailable
+	}
+	s.ensureAllyHealth()
+	if s.AllyHP[id] >= AllyMaxHP {
+		return s.AllyHP[id], ErrAllyFullHP
+	}
+	s.AllyHP[id] = min(AllyMaxHP, s.AllyHP[id]+amount)
+	return s.AllyHP[id], nil
 }
