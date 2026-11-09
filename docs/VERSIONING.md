@@ -356,3 +356,7 @@ membawa pemain; bawaannya halaman Releases terbaru.
 - v0.47.3 menambah **patch isi game** (`GET /v1/patch`, `client/scripts/patcher.gd`, `make patch`):
   peta, skrip, dan adegan bisa diperbarui lewat server tanpa APK baru. APK v0.47.3 adalah APK
   terakhir yang wajib dipasang untuk fitur ini. Tidak mengubah API lama; `DefaultMinClient` tetap.
+
+- v0.48.0 menambah **kesehatan pahlawan pendamping**: musuh bisa melukai pendamping, pendamping yang kalah
+  disembunyikan dan tidak menyerang, serta bisa disembuhkan dengan ramuan (`POST /v1/allies/heal`, tombol heal
+  di dunia). Lihat `docs/COMPANION_DEATH_AND_HEALING.md`. Hanya menambah; `DefaultMinClient` tetap 0.18.0.
