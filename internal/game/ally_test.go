@@ -206,7 +206,6 @@ func TestDownAllyStopsAttackingAndCanBeIgnoredByEnemyTargeting(t *testing.T) {
 	}
 }
 
-
 func TestEnemyCanDownCompanionAfterThreeStrikes(t *testing.T) {
 	p := newPlayer()
 	p.State.Allies = []string{"ksatria"}
