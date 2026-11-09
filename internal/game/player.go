@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 )
 
@@ -48,6 +49,8 @@ type State struct {
 	// Keduanya hanya diubah server (lihat ally.go).
 	Allies []string `json:"allies,omitempty"`
 	Party  []string `json:"party,omitempty"`
+	// AllyHP menyimpan HP setiap pahlawan pendamping yang dimiliki; kosong pada akun lama = HP penuh.
+	AllyHP map[string]int `json:"ally_hp,omitempty"`
 	// Soldiers: jumlah prajurit biasa yang dibeli (maks MaxSoldiers); semuanya ikut bertarung (lihat ally.go).
 	Soldiers int `json:"soldiers,omitempty"`
 	// HeroLevels: level latihan tiap pahlawan pembantu (kosong = level 1); SoldierLevel: level seluruh prajurit;
@@ -173,6 +176,11 @@ func (s State) Validate() error {
 	}
 	if err := s.validateAllies(); err != nil {
 		return err
+	}
+	for id, hp := range s.AllyHP {
+		if !slices.Contains(s.Allies, id) || hp < 0 || hp > AllyMaxHP {
+			return errors.New("data HP pendamping tidak sah")
+		}
 	}
 	if err := s.validateTraining(); err != nil {
 		return err
