@@ -364,7 +364,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		// Setiap serangan musuh ketiga diarahkan ke pendamping sehat pertama.
 		// Ini deterministik, tidak mengubah urutan RNG atau perilaku akun tanpa pendamping.
 		targetAlly := ""
-		if kind != "perfect" && b.Round%3 == 0 {
+		if kind != "perfect" && (b.Round-1)%3 == 0 {
 			for _, id := range st.Party {
 				if hp, _, ok := st.AllyHealth(id); ok && hp > 0 {
 					targetAlly = id
