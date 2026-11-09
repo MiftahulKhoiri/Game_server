@@ -84,6 +84,7 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("GET /v1/heroes", s.auth(http.HandlerFunc(s.getHeroes)))
 	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
 	mux.Handle("POST /v1/allies/buy", s.auth(http.HandlerFunc(s.buyAlly)))
+	mux.Handle("POST /v1/allies/heal", s.auth(http.HandlerFunc(s.healAlly)))
 	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
 	mux.HandleFunc("GET /v1/time", s.serverTime)
 	mux.Handle("POST /v1/train/start", s.auth(http.HandlerFunc(s.trainStart)))
@@ -564,7 +565,7 @@ func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
 		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
-		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax,
+		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax,
 		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy,
 	} {
 		if errors.Is(err, e) {
@@ -591,6 +592,33 @@ func (s *Server) slotAction() http.Handler {
 			return
 		}
 		s.applyToState(w, r, func(st *game.State) error { return st.Unequip(req.Slot) })
+	})
+}
+
+type healAllyRequest struct {
+	Hero string `json:"hero"`
+}
+
+// healAlly memakai satu ramuan untuk memulihkan pahlawan pendamping yang terpasang.
+// Perubahan HP dan inventaris tersimpan sebagai satu transaksi pemain.
+func (s *Server) healAlly(w http.ResponseWriter, r *http.Request) {
+	var req healAllyRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error {
+		hp, maxHP, ok := st.AllyHealth(req.Hero)
+		if !ok {
+			return game.ErrAllyUnavailable
+		}
+		if hp >= maxHP {
+			return game.ErrAllyFullHP
+		}
+		if !st.RemoveItem(game.PotionID, 1) {
+			return game.ErrNoPotion
+		}
+		_, err := st.HealAlly(req.Hero, game.PotionHeal)
+		return err
 	})
 }
 
