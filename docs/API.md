@@ -389,3 +389,11 @@ saat aplikasi dibuka. Rincian: [PATCH.md](PATCH.md).
   Objek kosong `{}` bila tidak ada patch, atau versi APK di luar `min_apk..version`.
 - `GET /v1/patch/{id}.pck` -> berkas patch (`application/octet-stream`, di-cache lama; id berubah tiap build).
 - Folder patch: env `GAME_PATCH_DIR` (bawaan `patches`) berisi `latest.json` dan `<id>.pck`.
+
+
+## Pendamping: HP dan penyembuhan
+
+- Data pemain dapat memuat `state.ally_hp`, berupa objek dari ID pahlawan pendamping ke HP saat ini (0..30). Jika properti tidak ada pada akun lama, klien harus menganggap pendamping sehat dengan HP 30.
+- Serangan musuh ketiga dalam siklus serangan diarahkan ke pendamping sehat pertama dalam party. Pendamping dengan HP 0 tidak menyerang lagi.
+- `POST /v1/allies/heal` menerima JSON `{"hero":"ksatria"}`. Satu ramuan `ramuan` memulihkan 15 HP, termasuk menghidupkan pendamping yang HP-nya 0. Endpoint ditolak saat pertarungan berlangsung, jika target bukan anggota party, jika HP penuh, atau jika ramuan tidak tersedia.
+- Respons sukses adalah objek pemain terbaru, termasuk HP pendamping dan inventaris yang sudah dikurangi satu ramuan.
