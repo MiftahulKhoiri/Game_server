@@ -14,7 +14,9 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Format
-        run: test -z "$(gofmt -l .)"
+        run: |
+          gofmt -d internal/api/api_test.go internal/game/ally_test.go
+          test -z "$(gofmt -l .)"
       - name: Vet
         run: go vet ./...
       - name: Test
