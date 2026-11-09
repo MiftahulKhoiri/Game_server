@@ -58,6 +58,9 @@ func count() -> int:
 ## Pendamping menyerang (animasi pukul). Dipanggil saat kejadian "ally" dari server.
 func attack(hero_id: String) -> void:
 	for u: Dictionary in _units:
+		var hp_map: Dictionary = Session.player.get("state", {}).get("ally_hp", {})
+		if int(hp_map.get(hero_id, 30)) <= 0:
+			return
 		if u.id == hero_id and is_instance_valid(u.node) and u.node.has_method("play_attack"):
 			u.node.call("play_attack")
 			return
@@ -109,6 +112,11 @@ func _process(delta: float) -> void:
 		var node: Node3D = u.node
 		if not is_instance_valid(node):
 			continue
+		var hp_map: Dictionary = Session.player.get("state", {}).get("ally_hp", {})
+		if int(hp_map.get(str(u.id), 30)) <= 0:
+			node.visible = false
+			continue
+		node.visible = true
 		var pos: Vector2 = u.pos
 		var target := _slot(i)
 		if fighting:
