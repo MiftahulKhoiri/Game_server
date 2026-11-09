@@ -14,10 +14,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Format
-        run: |
-          files="$(gofmt -l .)"
-          printf "Files requiring gofmt:\n%s\n" "$files"
-          test -z "$files"
+        run: test -z "$(gofmt -l .)"
       - name: Vet
         run: go vet ./...
       - name: Test
