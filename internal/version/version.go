@@ -16,14 +16,14 @@ const (
 
 	// Nilai bawaan; bisa ditimpa lewat environment (lihat internal/config).
 	DefaultMinClient    = "0.18.0"
-	DefaultLatestClient = "0.48.1"
+	DefaultLatestClient = "0.48.2"
 	DefaultUpdateURL    = "https://github.com/MiftahulKhoiri/Game_server/releases/latest"
 )
 
 // Server adalah versi server ini. Naikkan saat merilis.
 // Commit diisi saat build lewat -ldflags (lihat Makefile).
 var (
-	Server = "0.48.1"
+	Server = "0.48.2"
 	Commit = "dev"
 )
 

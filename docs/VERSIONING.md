@@ -364,3 +364,6 @@ membawa pemain; bawaannya halaman Releases terbaru.
 - v0.48.1 memperbaiki simpan otomatis yang gagal ("cannot unmarshal number 30.0 into ally_hp") sesudah v0.48.0:
   klien kini mengirim HP pendamping sebagai bilangan bulat, dan server menerima bilangan bulat berdesimal (`HPMap`).
   Tidak mengubah API; `DefaultMinClient` tetap 0.18.0.
+
+- v0.48.2 memperbarui tampilan NPC desa: Bu Sari (dan Suster Mira, yang memakai model sama) kini model stylized buatan kode,
+  dan seluruh NPC warga memakai shading toon. Hanya klien; server dan API tidak berubah. `DefaultMinClient` tetap 0.18.0.
