@@ -860,7 +860,6 @@ func TestHutanBossStartFromWorld(t *testing.T) {
 	}
 }
 
-
 func TestHealCompanionConsumesOnePotionAndRestoresHP(t *testing.T) {
 	ts, st := newTestServerWithStore(t)
 	cr := register(t, ts, "PahlawanHeal")
