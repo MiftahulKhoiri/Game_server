@@ -380,7 +380,9 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			}
 			res.Events = append(res.Events, Event{Who: "ally", Kind: allyKind, Dmg: dmg, Hero: targetAlly})
 			name := targetAlly
-			if h, ok := HeroByID(targetAlly); ok { name = h.Name }
+			if h, ok := HeroByID(targetAlly); ok {
+				name = h.Name
+			}
 			if down {
 				res.Log = append(res.Log, fmt.Sprintf("%s tumbang! Gunakan ramuan kesehatan untuk menyembuhkannya.", name))
 			} else {
@@ -408,7 +410,9 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 	st := &p.State
 	b.NextAllyMs += AllyIntervalMs
 	for _, id := range st.Party {
-		if hp, _, ok := st.AllyHealth(id); ok && hp <= 0 { continue }
+		if hp, _, ok := st.AllyHealth(id); ok && hp <= 0 {
+			continue
+		}
 		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, false)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
