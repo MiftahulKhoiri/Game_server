@@ -67,6 +67,18 @@ func attack(hero_id: String) -> void:
 
 
 ## Posisi dunia (x, 0, z) pendamping `hero_id`; Vector3.ZERO bila tidak ada.
+## Reaksi saat pendamping terkena serangan atau tumbang.
+func hit(hero_id: String, down: bool) -> void:
+	for u: Dictionary in _units:
+		if u.id != hero_id or not is_instance_valid(u.node):
+			continue
+		if down and u.node.has_method("play_die"):
+			u.node.call("play_die")
+		elif u.node.has_method("play_hurt"):
+			u.node.call("play_hurt")
+		return
+
+
 func position_of(hero_id: String) -> Vector3:
 	for u: Dictionary in _units:
 		if u.id == hero_id:
