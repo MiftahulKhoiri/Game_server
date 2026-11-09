@@ -323,7 +323,8 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 	if lag := upto - b.NextEnemyMs; lag > maxCatchUpHits*iv {
 		b.NextEnemyMs += lag - maxCatchUpHits*iv
 	}
-	allyOn := len(st.Party) > 0 || st.Soldiers > 0
+	st.ensureAllyHealth()
+	allyOn := st.hasHealthyAlly() || st.Soldiers > 0
 	if allyOn {
 		if b.NextAllyMs == 0 {
 			b.NextAllyMs = upto + AllyFirstMs
@@ -358,9 +359,36 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		case guarded:
 			dmg, kind = max(1, dmg/DefendDivisor), "guard"
 		}
-		st.HP -= dmg
 		b.Round++
 		b.NextEnemyMs = next
+		// Setiap serangan musuh ketiga diarahkan ke pendamping sehat pertama.
+		// Ini deterministik, tidak mengubah urutan RNG atau perilaku akun tanpa pendamping.
+		targetAlly := ""
+		if kind != "perfect" && b.Round%3 == 0 {
+			for _, id := range st.Party {
+				if hp, _, ok := st.AllyHealth(id); ok && hp > 0 {
+					targetAlly = id
+					break
+				}
+			}
+		}
+		if targetAlly != "" {
+			remaining, down := st.damageAlly(targetAlly, dmg)
+			allyKind := "hit"
+			if down {
+				allyKind = "down"
+			}
+			res.Events = append(res.Events, Event{Who: "ally", Kind: allyKind, Dmg: dmg, Hero: targetAlly})
+			name := targetAlly
+			if h, ok := HeroByID(targetAlly); ok { name = h.Name }
+			if down {
+				res.Log = append(res.Log, fmt.Sprintf("%s tumbang! Gunakan ramuan kesehatan untuk menyembuhkannya.", name))
+			} else {
+				res.Log = append(res.Log, fmt.Sprintf("%s terkena serangan: -%d HP (tersisa %d).", name, dmg, remaining))
+			}
+			continue
+		}
+		st.HP -= dmg
 		res.Events = append(res.Events, Event{Who: "enemy", Kind: kind, Dmg: dmg})
 		if kind == "perfect" {
 			res.Log = append(res.Log, fmt.Sprintf("Tangkisan sempurna! Serangan %s tidak berefek.", b.EnemyName))
@@ -380,6 +408,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 	st := &p.State
 	b.NextAllyMs += AllyIntervalMs
 	for _, id := range st.Party {
+		if hp, _, ok := st.AllyHealth(id); ok && hp <= 0 { continue }
 		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, false)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
