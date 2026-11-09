@@ -113,7 +113,7 @@ func _refresh_heal_button() -> void:
 		if int(hp_map.get(id, 30)) <= 0:
 			_heal_target = id
 			break
-	var fighting := world._fight != null and world._fight.active
+	var fighting: bool = world._fight != null and world._fight.active
 	_heal_button.visible = _heal_target != "" and not fighting
 	_heal_button.disabled = _heal_busy or Session.item_count("ramuan") <= 0
 	if _heal_target != "":
