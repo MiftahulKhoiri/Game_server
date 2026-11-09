@@ -29,6 +29,7 @@ const SCALES := {
 	"ksatria": 0.42, "pendekar_kapak": 0.44, "pemanah": 0.42, "pendekar_tombak": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
 	"goblin": 0.58, "goblin_penjaga": 0.68, "raja_goblin": 0.95, "ogre_batu": 1.1,
 	"golem_kerikil": 1.0, "golem_lava": 1.1,
+	"warga_ibu": 0.57,  # model prosedural Bu Sari (tinggi asli ~1,55) -> setara tinggi GLB lama (0,88)
 	"tikus_sawah": 0.8, "babi_hutan": 0.95, "serigala_hutan": 0.95,
 	"ular_sawah": 1.0, "belalang_raksasa": 0.95, "kelelawar_gua": 1.0,
 }
