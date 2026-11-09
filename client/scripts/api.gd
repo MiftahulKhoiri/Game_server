@@ -59,6 +59,11 @@ func buy_ally(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/allies/buy", {"hero": hero}, true)
 
 
+## Gunakan satu ramuan kesehatan untuk menyembuhkan pendamping yang dipasang (termasuk yang tumbang).
+func heal_ally(hero: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/allies/heal", {"hero": hero}, true)
+
+
 ## Beli satu prajurit biasa untuk pasukan.
 func buy_soldier() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/buy", {}, true)
