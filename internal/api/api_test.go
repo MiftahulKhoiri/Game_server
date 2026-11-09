@@ -870,7 +870,7 @@ func TestHealCompanionConsumesOnePotionAndRestoresHP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, data := do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero":"ksatria"})
+	resp, data := do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero": "ksatria"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("beli pendamping: %d %s", resp.StatusCode, data)
 	}
@@ -881,7 +881,7 @@ func TestHealCompanionConsumesOnePotionAndRestoresHP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, data = do(t, "POST", ts.URL+"/v1/allies/heal", cr.Token, map[string]string{"hero":"ksatria"})
+	resp, data = do(t, "POST", ts.URL+"/v1/allies/heal", cr.Token, map[string]string{"hero": "ksatria"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("sembuhkan pendamping: %d %s", resp.StatusCode, data)
 	}
@@ -907,11 +907,11 @@ func TestHealCompanionRejectsFullHealthWithoutConsumingPotion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp, data := do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero":"ksatria"})
+	resp, data := do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero": "ksatria"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("beli pendamping: %d %s", resp.StatusCode, data)
 	}
-	resp, data = do(t, "POST", ts.URL+"/v1/allies/heal", cr.Token, map[string]string{"hero":"ksatria"})
+	resp, data = do(t, "POST", ts.URL+"/v1/allies/heal", cr.Token, map[string]string{"hero": "ksatria"})
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("HP penuh harus ditolak: %d %s", resp.StatusCode, data)
 	}
