@@ -367,3 +367,6 @@ membawa pemain; bawaannya halaman Releases terbaru.
 
 - v0.48.2 memperbarui tampilan NPC desa: Bu Sari (dan Suster Mira, yang memakai model sama) kini model stylized buatan kode,
   dan seluruh NPC warga memakai shading toon. Hanya klien; server dan API tidak berubah. `DefaultMinClient` tetap 0.18.0.
+
+- v0.48.3 mengembalikan Bu Sari (dan Suster Mira) ke model GLB aslinya; model prosedural dari v0.48.2 dicabut karena
+  tampil kusam dan kecil. Toon shading untuk NPC warga tetap. Hanya klien; `DefaultMinClient` tetap 0.18.0.

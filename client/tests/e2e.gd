@@ -575,17 +575,12 @@ func _run() -> void:
 	_check(bad_models.is_empty(), "semua %d model 3D terbuat %s" % [model_ids.size(), str(bad_models)])
 	# NPC dan warga KayKit harus membawa tekstur (tanpa tekstur modelnya tampil putih polos).
 	var polos: Array[String] = []
-	# warga_ibu (Bu Sari) sengaja model prosedural berwarna polos tanpa tekstur; tingginya diperiksa di bawah.
-	for mdl in ["nenek_penjual", "petani", "warga_ibu2", "warga_bapak", "warga_bapak2", "anak_desa"]:
+	for mdl in ["nenek_penjual", "petani", "warga_ibu", "warga_ibu2", "warga_bapak", "warga_bapak2", "anak_desa"]:
 		var tn: Node3D = Models.create(mdl)
 		if not _punya_tekstur(tn):
 			polos.append(mdl)
 		tn.free()
 	_check(polos.is_empty(), "model NPC/warga bertekstur (tidak putih polos) %s" % str(polos))
-	var bu_sari: Node3D = Models.create("warga_ibu")
-	var bu_sari_tinggi: float = Models._aabb_of(bu_sari, bu_sari.transform).size.y
-	_check(absf(bu_sari_tinggi - float(Models.HEIGHTS["warga_ibu"])) < 0.12, "Bu Sari prosedural setinggi warga lain (%.2f, ingin ~%.2f)" % [bu_sari_tinggi, float(Models.HEIGHTS["warga_ibu"])])
-	bu_sari.free()
 	# Model berrangka + animasi (idle/walk/attack/hurt/die) dari Blender.
 	for mdl in ["pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)
