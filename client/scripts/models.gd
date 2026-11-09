@@ -90,9 +90,13 @@ static func create(id: String) -> Node3D:
 	var path := MODEL_DIR + id + ".glb"
 	var node: Node3D = null
 	var from_glb := false
-	if ResourceLoader.exists(path):
-		node = _from_glb(id, path)
-		from_glb = node != null
+	# Bu Sari memakai model stylized prosedural agar siluet kerudung dan busananya terbaca jelas.
+	if id == "warga_ibu":
+		node = build_placeholder(id)
+	else:
+		if ResourceLoader.exists(path):
+			node = _from_glb(id, path)
+			from_glb = node != null
 	if node == null:
 		node = build_placeholder(id)
 	if from_glb and not is_hero(id):
@@ -324,6 +328,8 @@ static func build_placeholder(id: String) -> Node3D:
 			var sword := box(pv.arm_l, Vector3(0.05, 0.62, 0.02), Vector3(0, -0.62, 0.08), Color("c8d4e0"))
 			sword.rotation.x = 0.0
 			cyl(pv.arm_r, 0.17, 0.17, 0.04, Vector3(0, -0.34, 0.1), Color("a8b4c0"), Vector3(PI / 2.0, 0, 0))  # perisai
+		"warga_ibu":
+			pv = _bu_sari(rig)
 		"nenek_penjual":
 			pv = _humanoid(rig, {"skin": Color("e8c9a5"), "shirt": Color("6a4a8a"), "pants": Color("6a4a8a"), "shoes": Color("4a3a2a"), "hair": Color("d8d8d8"), "head_r": 0.18, "bulk": 0.9})
 			cyl(pv.body, 0.19, 0.34, 0.5, Vector3(0, 0.3, 0), Color("6a4a8a"))  # rok panjang
@@ -370,6 +376,60 @@ static func build_placeholder(id: String) -> Node3D:
 			pv = _humanoid(rig, {"skin": Color("c8a878"), "shirt": Color("8a5a3c"), "pants": Color("4a3a2a"), "shoes": Color("3a2a1a")})
 	rig.setup(kind, pv)
 	return rig
+
+
+## NPC perempuan desa bergaya stylized, dibuat dari primitive mesh tanpa aset eksternal.
+static func _bu_sari(root: Node3D) -> Dictionary:
+	var pv: Dictionary = {}
+	var body := pivot(root, "body", Vector3.ZERO)
+	pv["body"] = body
+	var skin := Color("d9a985")
+	var hijab := Color("d9c5a0")
+	var dress := Color("76503a")
+	var shoes := Color("49372e")
+
+	for side in [-1.0, 1.0]:
+		var leg_name := "leg_l" if side < 0.0 else "leg_r"
+		var leg := pivot(body, leg_name, Vector3(side * 0.09, 0.34, 0.0))
+		pv[leg_name] = leg
+		ball(leg, 0.075, Vector3(0, -0.12, 0), dress)
+		ball(leg, 0.075, Vector3(0, -0.29, 0.045), shoes, Vector3(1.0, 0.55, 1.25))
+
+	# Gaun panjang, panel depan, dan lis pinggang.
+	cyl(body, 0.17, 0.29, 0.64, Vector3(0, 0.63, 0), dress)
+	ball(body, 0.235, Vector3(0, 0.37, 0), dress, Vector3(1.18, 0.42, 1.0))
+	cyl(body, 0.185, 0.19, 0.07, Vector3(0, 0.82, 0), Color("d8b77b"))
+	ball(body, 0.12, Vector3(0, 0.62, 0.155), Color("987052"), Vector3(0.8, 1.65, 0.22))
+	box(body, Vector3(0.025, 0.43, 0.012), Vector3(0, 0.62, 0.205), Color("d8b77b"))
+
+	# Lengan dan telapak tangan.
+	for side2 in [-1.0, 1.0]:
+		var arm_name := "arm_l" if side2 < 0.0 else "arm_r"
+		var arm := pivot(body, arm_name, Vector3(side2 * 0.205, 0.91, 0))
+		pv[arm_name] = arm
+		ball(arm, 0.095, Vector3(0, -0.18, 0), Color("987052"), Vector3(0.82, 1.7, 0.9))
+		ball(arm, 0.065, Vector3(0, -0.36, 0.015), skin)
+
+	# Kepala, wajah, dan kerudung yang membingkai wajah.
+	var head := pivot(body, "head", Vector3(0, 1.12, 0))
+	pv["head"] = head
+	ball(head, 0.17, Vector3(0, 0.14, 0), hijab, Vector3(1.08, 1.22, 0.92))
+	ball(head, 0.125, Vector3(0, 0.105, 0.105), skin, Vector3(0.88, 0.95, 0.58))
+	ball(head, 0.17, Vector3(0, 0.24, -0.015), Color("b49b76"), Vector3(1.12, 1.12, 0.88))
+	ball(head, 0.13, Vector3(0, 0.08, -0.055), hijab, Vector3(1.18, 1.0, 0.92))
+	ball(head, 0.105, Vector3(-0.105, -0.06, 0.0), hijab, Vector3(0.42, 1.45, 0.72))
+	ball(head, 0.105, Vector3(0.105, -0.06, 0.0), hijab, Vector3(0.42, 1.45, 0.72))
+	for side3 in [-1.0, 1.0]:
+		ball(head, 0.012, Vector3(side3 * 0.045, 0.12, 0.168), Color("382b27"))
+		ball(head, 0.018, Vector3(side3 * 0.045, 0.151, 0.16), Color("5b4035"), Vector3(1.5, 0.35, 0.4))
+	ball(head, 0.012, Vector3(0, 0.075, 0.176), Color("b77d68"), Vector3(0.8, 0.8, 0.55))
+	box(head, Vector3(0.045, 0.008, 0.008), Vector3(0, 0.035, 0.177), Color("8b5148"))
+
+	# Selempang dan tas kecil.
+	box(body, Vector3(0.045, 0.52, 0.025), Vector3(-0.12, 0.79, 0.13), Color("d8b77b"), Vector3(0, 0, -0.28))
+	ball(body, 0.075, Vector3(0.17, 0.47, 0.12), Color("9a7047"), Vector3(1.0, 1.15, 0.55))
+	box(body, Vector3(0.075, 0.025, 0.012), Vector3(0.17, 0.51, 0.17), Color("d8b77b"))
+	return pv
 
 
 static func _humanoid(root: Node3D, o: Dictionary) -> Dictionary:
