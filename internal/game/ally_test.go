@@ -154,6 +154,66 @@ func TestSoldiersStrike(t *testing.T) {
 	}
 }
 
+func TestDeploySoldiers(t *testing.T) {
+	st := NewState()
+	st.Soldiers = 4
+	if st.ActiveSoldiers() != 4 {
+		t.Fatalf("data lama: semua prajurit ikut, dapat %d", st.ActiveSoldiers())
+	}
+	if err := st.SetActiveSoldiers(2); err != nil || st.ActiveSoldiers() != 2 || st.SoldiersRest != 2 {
+		t.Fatalf("pasang 2: %v aktif=%d rest=%d", err, st.ActiveSoldiers(), st.SoldiersRest)
+	}
+	if err := st.SetActiveSoldiers(5); !errors.Is(err, ErrSoldiersCount) {
+		t.Errorf("melebihi jumlah prajurit harus ditolak: %v", err)
+	}
+	if err := st.SetActiveSoldiers(-1); !errors.Is(err, ErrSoldiersCount) {
+		t.Errorf("negatif harus ditolak: %v", err)
+	}
+	st.Gold = SoldierPrice
+	if err := st.BuySoldier(); err != nil || st.ActiveSoldiers() != 3 {
+		t.Errorf("prajurit baru ikut bertarung: %v aktif=%d", err, st.ActiveSoldiers())
+	}
+	if err := st.SetActiveSoldiers(0); err != nil || st.ActiveSoldiers() != 0 {
+		t.Fatalf("pasang 0: %v", err)
+	}
+	st.SoldiersRest = st.Soldiers + 1
+	if err := st.Validate(); err == nil {
+		t.Error("soldiers_rest di luar batas harus ditolak")
+	}
+	// Hanya prajurit yang dipasang yang menyerang.
+	p := newPlayer()
+	p.State.Soldiers = 3
+	if err := p.State.SetActiveSoldiers(1); err != nil {
+		t.Fatal(err)
+	}
+	b := battleVs("tikus_sawah", 60)
+	b.NextEnemyMs = 100000
+	b.NextAllyMs = 1000
+	res, err := b.Sync(p, 1000, seq(20, 20, 20, 99, 99))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, e := range res.Events {
+		if e.Who == "ally" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("hanya satu prajurit yang dipasang harus menyerang, dapat %d", n)
+	}
+	p.State.SoldiersRest = 3
+	b2 := battleVs("tikus_sawah", 60)
+	b2.NextEnemyMs = 100000
+	b2.NextAllyMs = 1000
+	res2, _ := b2.Sync(p, 1000, seq(20, 20, 20, 99, 99))
+	for _, e := range res2.Events {
+		if e.Who == "ally" {
+			t.Fatal("tanpa prajurit terpasang tidak boleh ada serangan prajurit")
+		}
+	}
+}
+
 func TestAllyHealthDefaultsAndHealing(t *testing.T) {
 	st := NewState()
 	st.Allies = []string{"ksatria"}

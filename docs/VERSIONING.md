@@ -377,3 +377,7 @@ membawa pemain; bawaannya halaman Releases terbaru.
   Kapten Rimba, yang memberi barang khusus **Radar Musuh** (`radar_musuh`): titik musuh di layar hutan. Server: `POST /v1/hutan/brief`,
   `hutan.briefed`, `422` untuk pertarungan hutan sebelum arahan (pemain yang sudah punya kemajuan hutan dianggap sudah diarahkan).
   Item baru jenis `special` (tidak dijual). `DefaultMinClient` tetap 0.18.0.
+
+- v0.49.1 menambah pengaturan jumlah prajurit yang dipasang di layar Atribut (tab Pendamping): tombol - / + lalu "Pasang N prajurit".
+  Server: `POST /v1/soldiers/deploy {"count": n}`, `state.soldiers_rest` (prajurit yang menunggu di kem); hanya prajurit yang dipasang
+  ikut bertarung. Data lama tetap sama (semua prajurit ikut). `DefaultMinClient` tetap 0.18.0.

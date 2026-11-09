@@ -345,6 +345,11 @@ server untuk posisi tersimpan, dan `POST /v1/rest` sah di sana.
 menyerang sebagai pasukan terpisah di tiap giliran sekutu (event `Who:"ally"`, `Hero:"prajurit_n"`); daya serang = 20% serangan
 dasar + 1, tidak memakai slot party.
 
+`POST /v1/soldiers/deploy` (v0.49.1, perlu token) memasang `{"count": n}` prajurit untuk ikut bertarung (`0 <= n <= state.soldiers`);
+sisanya menunggu di kem dan dicatat di `state.soldiers_rest` (kosong/0 = semua ikut, jadi akun lama tidak berubah). Hanya prajurit yang
+dipasang menyerang (`Hero:"prajurit_1".."prajurit_<n>"`). Prajurit yang baru dibeli langsung ikut. `409` saat bertarung, `422` bila `n`
+di luar rentang, `401` tanpa token. Membalas `Player`.
+
 ## Aula Pelatihan (v0.43.0)
 
 Pelatihan hanya sah saat pemain berada di peta `aula_pelatihan` (11x8, termasuk `InVillage` sehingga istirahat gratis juga sah).

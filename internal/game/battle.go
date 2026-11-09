@@ -324,7 +324,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		b.NextEnemyMs += lag - maxCatchUpHits*iv
 	}
 	st.ensureAllyHealth()
-	allyOn := st.hasHealthyAlly() || st.Soldiers > 0
+	allyOn := st.hasHealthyAlly() || st.ActiveSoldiers() > 0
 	if allyOn {
 		if b.NextAllyMs == 0 {
 			b.NextAllyMs = upto + AllyFirstMs
@@ -427,7 +427,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 			return true
 		}
 	}
-	for n := 1; n <= st.Soldiers; n++ {
+	for n := 1; n <= st.ActiveSoldiers(); n++ {
 		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, false)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: SoldierID(n)})

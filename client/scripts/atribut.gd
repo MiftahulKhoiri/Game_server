@@ -24,6 +24,12 @@ var _hero_name: Label
 var _hero_detail: Label
 var _party_label: Label
 var _ally_btn: Button
+var _sol_row: HBoxContainer      # pengatur jumlah prajurit yang dipasang: [-] n / total [+]
+var _sol_minus: Button
+var _sol_plus: Button
+var _sol_count: Label
+var _sol_btn: Button
+var _sol_pick := -1              # jumlah yang sedang dipilih (belum dikirim ke server); -1 = ikut yang terpasang
 var _selected := 0
 var _busy := false
 var _page := 0
@@ -120,6 +126,18 @@ func _on_ally_pressed() -> void:
 		var next := party.duplicate()
 		next.append(id)
 		await _act(Api.set_party.bind(next), "%s berbaris di belakangmu." % hero.name)
+
+
+## Pilih jumlah prajurit yang dipasang (belum dikirim); tombol Pasang mengirimnya ke server.
+func _on_sol_step(delta: int) -> void:
+	var total := int(_state().get("soldiers", 0))
+	_sol_pick = clampi(_sol_pick + delta, 0, total)
+	_refresh_ally()
+
+
+func _on_sol_deploy() -> void:
+	var n := _sol_pick
+	await _act(Api.deploy_soldiers.bind(n), "%d prajurit dipasang di belakangmu." % n if n > 0 else "Semua prajurit menunggu di kem.")
 
 
 func _on_back() -> void:
@@ -231,7 +249,18 @@ func _refresh_ally() -> void:
 	var names: PackedStringArray = []
 	for id: String in party:
 		names.append(str(Heroes.get_hero(id).short))
-	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d, Lv %d (ikut bertarung)" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS, Session.squad_level()]
+	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d, Lv %d, dipasang %d" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS, Session.squad_level(), Session.active_soldiers()]
+	var total := int(st.get("soldiers", 0))
+	var active := Session.active_soldiers()
+	if _sol_pick < 0 or _sol_pick > total:
+		_sol_pick = active
+	_sol_row.visible = total > 0
+	_sol_btn.visible = total > 0
+	_sol_count.text = "%d / %d" % [_sol_pick, total]
+	_sol_minus.disabled = _sol_pick <= 0 or _busy
+	_sol_plus.disabled = _sol_pick >= total or _busy
+	_sol_btn.text = "Prajurit terpasang: %d" % active if _sol_pick == active else "Pasang %d prajurit" % _sol_pick
+	_sol_btn.disabled = _sol_pick == active or _busy
 	if not allies.has(hid):
 		_ally_btn.text = "Rekrut di Basecamp (%d emas)" % int(hero.price)
 		_ally_btn.disabled = true
@@ -317,7 +346,7 @@ func _build_ui() -> void:
 		row.add_child(hb)
 		_hero_tabs.append(hb)
 	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(0, 380)
+	holder.custom_minimum_size = Vector2(0, 220)
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	holder.stretch = true
 	_page_ally.add_child(holder)
@@ -334,6 +363,23 @@ func _build_ui() -> void:
 	_page_ally.add_child(_party_label)
 	_ally_btn = _button("", _on_ally_pressed, 0, 84)
 	_page_ally.add_child(_ally_btn)
+	_sol_row = HBoxContainer.new()
+	_sol_row.add_theme_constant_override("separation", 10)
+	_page_ally.add_child(_sol_row)
+	var sol_title := _label("Prajurit dipasang:", 26)
+	sol_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sol_row.add_child(sol_title)
+	_sol_minus = _button("-", _on_sol_step.bind(-1), 84, 72)
+	_sol_row.add_child(_sol_minus)
+	_sol_count = _label("0 / 0", 32)
+	_sol_count.custom_minimum_size = Vector2(120, 0)
+	_sol_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sol_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_sol_row.add_child(_sol_count)
+	_sol_plus = _button("+", _on_sol_step.bind(1), 84, 72)
+	_sol_row.add_child(_sol_plus)
+	_sol_btn = _button("", _on_sol_deploy, 0, 76)
+	_page_ally.add_child(_sol_btn)
 
 	box.add_child(_button("Kembali", _on_back, 0, 84))
 

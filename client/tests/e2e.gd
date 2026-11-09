@@ -1324,6 +1324,27 @@ func _run() -> void:
 	atr._show_page(1)
 	await process_frame
 	_check(atr._page_ally.visible and not atr._page_equip.visible and atr._hero_tabs.size() == 4 and atr._ally_btn.text != "", "tab Pendamping menampilkan 4 pahlawan dan tombol beli/pasang (%s)" % atr._ally_btn.text)
+	# Pasang prajurit: pengatur jumlah (v0.49.1)
+	Session.player.state["soldiers"] = 3
+	Session.player.state["soldiers_rest"] = 1
+	_check(Session.active_soldiers() == 2, "dua dari tiga prajurit dipasang (satu menunggu di kem)")
+	Session.player.state["soldiers_rest"] = 0
+	atr._sol_pick = -1
+	atr._refresh_ally()
+	_check(atr._sol_row.visible and atr._sol_count.text == "3 / 3" and atr._sol_plus.disabled and not atr._sol_minus.disabled and atr._sol_btn.disabled, "pengatur prajurit: 3 / 3, tombol Pasang mati bila jumlah sama")
+	atr._on_sol_step(-1)
+	atr._on_sol_step(-1)
+	_check(atr._sol_count.text == "1 / 3" and not atr._sol_btn.disabled and atr._sol_btn.text == "Pasang 1 prajurit", "kurangi ke 1: tombol jadi 'Pasang 1 prajurit'")
+	atr._on_sol_step(-5)
+	_check(atr._sol_count.text == "0 / 3" and atr._sol_minus.disabled, "jumlah tidak bisa di bawah 0")
+	Session.player.state["soldiers"] = 0
+	atr._sol_pick = -1
+	atr._refresh_ally()
+	_check(not atr._sol_row.visible and not atr._sol_btn.visible, "tanpa prajurit pengatur disembunyikan")
+	var dep_far: Dictionary = await Api.deploy_soldiers(5)
+	_check(not dep_far.ok and dep_far.status == 422, "pasang lebih dari yang dimiliki ditolak server (422)")
+	var dep_zero: Dictionary = await Api.deploy_soldiers(0)
+	_check(dep_zero.ok, "pasang 0 prajurit diterima server")
 	atr.queue_free()
 	await process_frame
 	Session.player.state = saved_misc

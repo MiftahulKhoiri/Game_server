@@ -43,7 +43,7 @@ func setup(w: Node) -> void:
 ## Samakan pendamping di dunia dengan Session.player.state.party.
 func sync() -> void:
 	var party: Array = (Session.player.get("state", {}).get("party", []) as Array).duplicate()
-	for n in int(Session.player.get("state", {}).get("soldiers", 0)):
+	for n in Session.active_soldiers():
 		party.append("prajurit_%d" % (n + 1))  # pasukan prajurit biasa ikut berbaris
 	var key := ",".join(PackedStringArray(party))
 	if key == _party_key:

@@ -640,7 +640,7 @@ func _build_arena() -> SubViewportContainer:
 		_ally_rigs[str(party[i])] = ally
 	# Pasukan prajurit biasa (tenda hijau): berbaris dua lapis di belakang pendamping.
 	var sol_slots := [Vector3(-1.15, 0, 1.2), Vector3(-1.15, 0, 0.4), Vector3(-1.15, 0, -0.4), Vector3(-1.15, 0, -1.2), Vector3(-1.85, 0, 0.0)]
-	var soldiers := int(Session.player.get("state", {}).get("soldiers", 0))
+	var soldiers := Session.active_soldiers()
 	for n in mini(soldiers, sol_slots.size()):
 		var sold: Node3D = Models.create("prajurit")
 		sold.position = Vector3(HERO_X, 0, 0) + (sol_slots[n] as Vector3)

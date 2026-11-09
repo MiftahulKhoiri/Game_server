@@ -93,7 +93,29 @@ func _profile() -> void:
 	get_tree().quit()
 
 
+## Layar Atribut, tab Pendamping, dengan SHOT_SOLDIERS prajurit dipasang (SHOT_REST menunggu di kem).
+func _atribut() -> void:
+	Session.use_offline_player()
+	Session.player.state["soldiers"] = int(OS.get_environment("SHOT_SOLDIERS")) if OS.get_environment("SHOT_SOLDIERS") != "" else 5
+	Session.player.state["soldiers_rest"] = int(OS.get_environment("SHOT_REST")) if OS.get_environment("SHOT_REST") != "" else 0
+	var scr: Node = load("res://scenes/atribut.tscn").instantiate()
+	get_tree().root.add_child.call_deferred(scr)
+	await get_tree().create_timer(0.8).timeout
+	scr._show_page(1)
+	await get_tree().create_timer(0.6).timeout
+	for _i in int(OS.get_environment("SHOT_STEP")) if OS.get_environment("SHOT_STEP") != "" else 0:
+		scr._on_sol_step(-1)
+	await get_tree().create_timer(0.8).timeout
+	var img := get_viewport().get_texture().get_image()
+	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.save_png(OS.get_environment("SHOT_OUT"))
+	get_tree().quit()
+
+
 func _ready() -> void:
+	if OS.get_environment("SHOT_SCENE") == "atribut":
+		_atribut()
+		return
 	if OS.get_environment("SHOT_SCENE") == "profile":
 		_profile()
 		return

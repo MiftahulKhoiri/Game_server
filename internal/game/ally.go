@@ -29,6 +29,7 @@ var (
 	ErrPartyFull       = errors.New("pendamping terlalu banyak")
 	ErrPartyRepeat     = errors.New("pahlawan yang sama dipasang dua kali")
 	ErrSoldiersMax     = errors.New("pasukan sudah penuh")
+	ErrSoldiersCount   = errors.New("jumlah prajurit yang dipasang harus 0 sampai jumlah prajurit yang kamu punya")
 	ErrAllyUnavailable = errors.New("pendamping tidak tersedia")
 	ErrAllyFullHP      = errors.New("HP pendamping sudah penuh")
 )
@@ -46,6 +47,20 @@ func (s *State) BuySoldier() error {
 	}
 	s.Gold -= SoldierPrice
 	s.Soldiers++
+	return nil
+}
+
+// ActiveSoldiers: jumlah prajurit yang ikut bertarung (yang dipasang), 0..Soldiers.
+func (s State) ActiveSoldiers() int {
+	return max(0, s.Soldiers-s.SoldiersRest)
+}
+
+// SetActiveSoldiers memasang n prajurit (0..Soldiers) untuk ikut bertarung; sisanya menunggu di kem.
+func (s *State) SetActiveSoldiers(n int) error {
+	if n < 0 || n > s.Soldiers {
+		return ErrSoldiersCount
+	}
+	s.SoldiersRest = s.Soldiers - n
 	return nil
 }
 
@@ -104,6 +119,9 @@ func checkParty(owned, party []string) error {
 func (s State) validateAllies() error {
 	if s.Soldiers < 0 || s.Soldiers > MaxSoldiers {
 		return ErrSoldiersMax
+	}
+	if s.SoldiersRest < 0 || s.SoldiersRest > s.Soldiers {
+		return ErrSoldiersCount
 	}
 	if len(s.Allies) > len(Heroes) {
 		return ErrPartyFull

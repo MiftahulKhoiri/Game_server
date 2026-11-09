@@ -86,6 +86,7 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/allies/buy", s.auth(http.HandlerFunc(s.buyAlly)))
 	mux.Handle("POST /v1/allies/heal", s.auth(http.HandlerFunc(s.healAlly)))
 	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
+	mux.Handle("POST /v1/soldiers/deploy", s.auth(http.HandlerFunc(s.deploySoldiers)))
 	mux.HandleFunc("GET /v1/time", s.serverTime)
 	mux.Handle("POST /v1/train/start", s.auth(http.HandlerFunc(s.trainStart)))
 	mux.Handle("POST /v1/train/claim", s.auth(http.HandlerFunc(s.trainClaim)))
@@ -569,7 +570,7 @@ func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
 		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
-		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax,
+		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax, game.ErrSoldiersCount,
 		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy, game.ErrNoKapten, game.ErrInventoryFull,
 	} {
 		if errors.Is(err, e) {
@@ -661,6 +662,19 @@ func (s *Server) hutanBrief(w http.ResponseWriter, r *http.Request) {
 // buySoldier membeli satu prajurit biasa (tidak bisa saat bertarung).
 func (s *Server) buySoldier(w http.ResponseWriter, r *http.Request) {
 	s.applyToState(w, r, func(st *game.State) error { return st.BuySoldier() })
+}
+
+type deployRequest struct {
+	Count int `json:"count"`
+}
+
+// deploySoldiers memasang `count` prajurit untuk ikut bertarung (0..jumlah prajurit); sisanya menunggu di kem.
+func (s *Server) deploySoldiers(w http.ResponseWriter, r *http.Request) {
+	var req deployRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.SetActiveSoldiers(req.Count) })
 }
 
 // serverTime: jam server (detik Unix) untuk menghitung sisa waktu latihan di klien.

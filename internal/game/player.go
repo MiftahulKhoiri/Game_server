@@ -54,6 +54,9 @@ type State struct {
 	AllyHP HPMap `json:"ally_hp,omitempty"`
 	// Soldiers: jumlah prajurit biasa yang dibeli (maks MaxSoldiers); semuanya ikut bertarung (lihat ally.go).
 	Soldiers int `json:"soldiers,omitempty"`
+	// SoldiersRest: prajurit yang disimpan di kem dan tidak ikut bertarung (0..Soldiers). Yang ikut = Soldiers - SoldiersRest;
+	// kosong (0) berarti semua ikut, jadi data lama tetap sama.
+	SoldiersRest int `json:"soldiers_rest,omitempty"`
 	// HeroLevels: level latihan tiap pahlawan pembantu (kosong = level 1); SoldierLevel: level seluruh prajurit;
 	// Training: latihan yang sedang berjalan di Aula Pelatihan. Hanya diubah server (lihat train.go).
 	HeroLevels   map[string]int `json:"hero_levels,omitempty"`

@@ -69,6 +69,11 @@ func hutan_brief() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/hutan/brief", {}, true)
 
 
+## Pasang `count` prajurit (0..jumlah yang dimiliki) untuk ikut bertarung; sisanya menunggu di kem.
+func deploy_soldiers(count: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/deploy", {"count": count}, true)
+
+
 ## Beli satu prajurit biasa untuk pasukan.
 func buy_soldier() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/buy", {}, true)

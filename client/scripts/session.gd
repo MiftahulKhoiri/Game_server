@@ -118,7 +118,7 @@ func energy() -> int:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "ally_hp", "soldiers", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -193,6 +193,12 @@ func hero_level(id: String) -> int:
 	return maxi(1, int(player.state.get("hero_levels", {}).get(id, 1)))
 
 
+## Prajurit yang dipasang dan ikut bertarung (sama dengan ActiveSoldiers di server): dimiliki dikurangi yang menunggu di kem.
+func active_soldiers() -> int:
+	var st: Dictionary = player.get("state", {})
+	return maxi(0, int(st.get("soldiers", 0)) - int(st.get("soldiers_rest", 0)))
+
+
 func squad_level() -> int:
 	return maxi(1, int(player.state.get("soldier_level", 1)))
 
@@ -239,6 +245,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"party": _strings(s.get("party", [])),
 		"ally_hp": _hp_map(s.get("ally_hp", {})),
 		"soldiers": clampi(int(s.get("soldiers", 0)), 0, MAX_SOLDIERS),
+		"soldiers_rest": clampi(int(s.get("soldiers_rest", 0)), 0, MAX_SOLDIERS),
 		"hero_levels": _levels(s.get("hero_levels", {})),
 		"soldier_level": clampi(int(s.get("soldier_level", 0)), 0, MAX_TRAIN_LEVEL),
 		"training": _jobs(s.get("training", [])),
