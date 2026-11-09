@@ -139,7 +139,7 @@ tempo diselesaikan dan dilaporkan di `log`/`events`. `200` berisi respons pertar
 bila tidak ada. Pemain bisa kalah di sini (`status: "lost"`).
 
 ### `POST /v1/battle/start`  (login)
-Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana. Di singgasana Hutan Lebat (85,25) bos hanya ada bila 100 binatang tahap itu sudah kalah (`state.hutan.kills == 100`), selain itu `422`.
+Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana. Di singgasana Hutan Lebat (142,47) bos hanya ada bila 100 binatang tahap itu sudah kalah (`state.hutan.kills == 100`), selain itu `422`.
 Mulai melawan musuh acak sesuai level pemain dan peta tempat ia berada (peta terakhir yang disimpan). `201` berisi respons pertarungan,
 `409` bila sudah ada pertarungan aktif. Musuh pertama menyerang 3 detik setelah mulai.
 
@@ -373,12 +373,22 @@ koin kuno (8), permata merah (7), berlian (3 + 2 x tingkat peti).
 
 ## Hutan Lebat (v0.46.0)
 
-State pemain punya `hutan: {"wave": 0..3, "kills": 0..100}`: `wave` = jumlah bos Goblin yang sudah kalah, `kills` = binatang kalah di tahap ini.
-Server menaikkan `kills` tiap kemenangan atas binatang di `hutan_lebat` (maks 100, lalu bos `goblin_hutan_<wave+1>` bisa dilawan di (85,25));
+State pemain punya `hutan: {"wave": 0..3, "kills": 0..100, "briefed": bool}`: `wave` = jumlah bos Goblin yang sudah kalah, `kills` = binatang kalah di tahap ini.
+Server menaikkan `kills` tiap kemenangan atas binatang di `hutan_lebat` (maks 100, lalu bos `goblin_hutan_<wave+1>` bisa dilawan di (142,47));
 mengalahkan bos menaikkan `wave` dan mengosongkan `kills`. `POST /v1/state` menolak nilai di luar rentang dengan `422`.
 
 Sejak v0.47.0 bos hutan dilawan di dunia: `POST /v1/battle/start {"enemy":"goblin_hutan_<wave+1>"}` memulai pertarungan dengan Goblin tahap ini bila
-pemain di `hutan_lebat` dalam 20 petak dari singgasana (85,25) dan `state.hutan.kills == 100`; selain itu `422`. Id bos tahap lain ditolak `422`.
+pemain di `hutan_lebat` dalam 20 petak dari singgasana (142,47) dan `state.hutan.kills == 100`; selain itu `422`. Id bos tahap lain ditolak `422`.
+
+Sejak v0.49.0 pertarungan di `hutan_lebat` (`POST /v1/battle/start`, musuh biasa maupun bos) baru boleh setelah pemain bicara dengan Kapten Rimba:
+sebelum itu `422`. Pemain yang sudah punya kemajuan (`wave > 0` atau `kills > 0`) dianggap sudah diarahkan.
+
+### `POST /v1/hutan/brief` (v0.49.0)
+
+Bicara dengan Kapten Rimba di kem hutan. Pemain harus ada di `perbatasan` dalam 8 petak dari Kapten (23,4), kalau tidak `422`.
+Server mengisi `state.hutan.briefed = true` dan memberi barang khusus `radar_musuh` (Radar Musuh, jenis `special`, tidak dijual; klien memakainya
+untuk menampilkan titik musuh di hutan). Aman diulang (radar yang hilang diberikan lagi, selain itu tidak berubah). `422` bila ransel penuh.
+`409` saat bertarung. Membalas `Player`.
 
 ## Patch isi game (v0.47.3)
 

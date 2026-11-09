@@ -17,18 +17,40 @@ const (
 	HutanWaves  = 3   // jumlah bos Goblin (Level 1..3)
 
 	// Singgasana bos di tengah Hutan Lebat; posisinya sama dengan petak 'K' di client/scripts/maps.gd.
-	HutanBossX = 85
-	HutanBossY = 25
+	// (v0.49.0: dipindah ke dekat gerbang Gua Goblin, di sebelah persimpangan tiga jalan.)
+	HutanBossX = 142
+	HutanBossY = 47
+
+	// Kapten Rimba, penjaga kem hutan di Perbatasan (client/scripts/maps.gd, NPC "kapten_kem"), dan jarak
+	// terjauh (petak) dari tempatnya berdiri agar pembicaraan dengannya sah.
+	KaptenX      = 23
+	KaptenY      = 4
+	KaptenRadius = 8
+
+	// RadarID: barang khusus pemberian Kapten Rimba; klien memakainya untuk menampilkan titik musuh di hutan.
+	RadarID = "radar_musuh"
 )
+
+// ErrNotBriefed: pemain melawan musuh di Hutan Lebat sebelum bicara dengan Kapten Rimba.
+var ErrNotBriefed = errors.New("bicaralah dulu dengan Kapten Rimba di kem hutan sebelum melawan musuh di hutan")
+
+// ErrNoKapten: pemain menyapa Kapten Rimba dari tempat yang terlalu jauh dari kem.
+var ErrNoKapten = errors.New("Kapten Rimba tidak ada di sini: temui dia di kem hutan")
 
 // ErrBossNotReady: pemain menginjak singgasana bos hutan sebelum 100 binatang tahap ini kalah (atau semua bos sudah kalah).
 var ErrBossNotReady = errors.New("bos Goblin belum muncul: kalahkan dulu semua binatang di hutan")
 
 // HutanProgress: Wave = jumlah bos Goblin yang sudah kalah (0..3); Kills = binatang yang sudah kalah di tahap ini (0..100).
+// Briefed: pemain sudah bicara dengan Kapten Rimba (pertarungan di hutan baru boleh dimulai setelahnya).
 type HutanProgress struct {
-	Wave  int `json:"wave"`
-	Kills int `json:"kills"`
+	Wave    int  `json:"wave"`
+	Kills   int  `json:"kills"`
+	Briefed bool `json:"briefed,omitempty"`
 }
+
+// Started: pemain boleh melawan musuh di Hutan Lebat. Pemain lama yang sudah punya kemajuan dianggap sudah
+// diberi arahan, supaya tidak terkunci setelah pembaruan.
+func (h HutanProgress) Started() bool { return h.Briefed || h.Wave > 0 || h.Kills > 0 }
 
 // Done: ketiga Goblin sudah kalah, pintu ke Gua Goblin terbuka.
 func (h HutanProgress) Done() bool { return h.Wave >= HutanWaves }
@@ -79,6 +101,32 @@ func hutanBoss(p *Player) (Enemy, error) {
 		return Enemy{}, ErrNoBoss
 	}
 	return e, nil
+}
+
+// BriefHutan: pemain bicara dengan Kapten Rimba. Ia memberi Radar Musuh dan sejak itu musuh di hutan boleh dilawan.
+// Aman diulang: radar yang hilang dari ransel diberikan lagi, selain itu tidak ada yang berubah.
+func (s *State) BriefHutan() error {
+	if s.Map != MapPerbatasan {
+		return ErrNoKapten
+	}
+	dx, dy := s.X-KaptenX, s.Y-KaptenY
+	if dx*dx+dy*dy > KaptenRadius*KaptenRadius {
+		return ErrNoKapten
+	}
+	if !s.hasRadar() && !s.AddItem(RadarID, 1) {
+		return ErrInventoryFull
+	}
+	s.Hutan.Briefed = true
+	return nil
+}
+
+func (s *State) hasRadar() bool {
+	for _, it := range s.Inventory {
+		if it.ID == RadarID && it.Qty > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // StartHutanBossBattle memulai pertarungan dengan bos hutan yang sedang menyambut pemain (dari musuh di dunia).

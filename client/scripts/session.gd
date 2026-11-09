@@ -139,7 +139,7 @@ func use_offline_player() -> void:
 ## Kemajuan misi Hutan Lebat dari server: {wave: Goblin yang sudah kalah 0..3, kills: binatang tahap ini 0..100}.
 func _hutan(v: Variant) -> Dictionary:
 	var d: Dictionary = v if v is Dictionary else {}
-	return {"wave": clampi(int(d.get("wave", 0)), 0, 3), "kills": clampi(int(d.get("kills", 0)), 0, 100)}
+	return {"wave": clampi(int(d.get("wave", 0)), 0, 3), "kills": clampi(int(d.get("kills", 0)), 0, 100), "briefed": bool(d.get("briefed", false))}
 
 
 func hutan_wave() -> int:
@@ -148,6 +148,18 @@ func hutan_wave() -> int:
 
 func hutan_kills() -> int:
 	return int(player.get("state", {}).get("hutan", {}).get("kills", 0))
+
+
+## Sudah boleh melawan musuh di Hutan Lebat: sudah bicara dengan Kapten Rimba (sama dengan Started() di server;
+## pemain yang sudah punya kemajuan dianggap sudah diarahkan).
+func hutan_started() -> bool:
+	var h: Dictionary = player.get("state", {}).get("hutan", {})
+	return bool(h.get("briefed", false)) or int(h.get("wave", 0)) > 0 or int(h.get("kills", 0)) > 0
+
+
+## Radar Musuh (pemberian Kapten Rimba) ada di ransel.
+func has_radar() -> bool:
+	return item_count("radar_musuh") > 0
 
 
 func _levels(v: Variant) -> Dictionary:

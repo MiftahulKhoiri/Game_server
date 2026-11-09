@@ -7,12 +7,13 @@ const Maps = preload("res://scripts/maps.gd")
 
 const PANEL_SIZE := Vector2(412, 150)
 const KEM_POINT := Vector2(22.5, 1.5)       # titik pulang: pintu masuk hutan (ke kem di Perbatasan)
-const GATE_POINT := Vector2(147.5, 48.5)    # gerbang Gua Goblin
+const GATE_POINT := Vector2(147.0, 48.5)    # gerbang Gua Goblin
 
 var kills := 0
 var wave := 0
 var player := Vector2.ZERO
 var cam_yaw := 0.0
+var started := true      # sudah bicara dengan Kapten Rimba; bila belum, papan menyuruh menemuinya
 
 
 func _init() -> void:
@@ -28,7 +29,8 @@ static func arrow_angle(from: Vector2, target: Vector2, yaw: float) -> float:
 	return atan2(d.dot(right), d.dot(fwd))
 
 
-func update_view(k: int, w: int, p: Vector2, yaw: float) -> void:
+func update_view(k: int, w: int, p: Vector2, yaw: float, briefed := true) -> void:
+	started = briefed
 	kills = k
 	wave = w
 	player = p
@@ -41,7 +43,9 @@ func _draw() -> void:
 	draw_style_box(_box(Color(0.05, 0.08, 0.05, 0.62)), Rect2(Vector2.ZERO, PANEL_SIZE))
 	var gold := Color("ffe27a")
 	var title: String
-	if wave >= 3:
+	if not started:
+		title = "Temui Kapten Rimba"
+	elif wave >= 3:
 		title = "Ketiga Goblin kalah!"
 	elif kills >= 100:
 		title = "Goblin Level %d menunggu!" % (wave + 1)
@@ -52,13 +56,14 @@ func _draw() -> void:
 	var ratio := 1.0 if (wave >= 3 or kills >= 100) else clampf(float(kills) / 100.0, 0.0, 1.0)
 	draw_rect(Rect2(14, 42, PANEL_SIZE.x - 28, 12), Color(0, 0, 0, 0.55))
 	draw_rect(Rect2(14, 42, (PANEL_SIZE.x - 28) * ratio, 12), Color("62d04a") if ratio < 1.0 else Color("ffb020"))
-	var sub := "Gerbang Gua Goblin terbuka" if wave >= 3 else "Goblin Level %d  -  kalah %d dari 3" % [wave + 1, wave]
+	var sub := "Dia menjaga kem di Perbatasan" if not started else "Gerbang Gua Goblin terbuka" if wave >= 3 else "Goblin Level %d  -  kalah %d dari 3" % [wave + 1, wave]
 	_text(font, sub, Vector2(14, 80), 22, Color("ffd7c0"))
 	# tiga penunjuk arah
 	var items: Array = []
-	if wave < 3:
+	if wave < 3 and started:
 		items.append(["Singgasana", Vector2(float(Maps.HUTAN_BOSS.x) + 0.5, float(Maps.HUTAN_BOSS.y) + 0.5), Color("ff8a5c")])
-	items.append(["Gerbang Gua", GATE_POINT, Color("ffe27a") if wave >= 3 else Color("9a9a9a")])
+	if started:
+		items.append(["Gerbang Gua", GATE_POINT, Color("ffe27a") if wave >= 3 else Color("9a9a9a")])
 	items.append(["Pulang", KEM_POINT, Color("8fe08f")])
 	var col_w := (PANEL_SIZE.x - 20.0) / float(items.size())
 	for i in items.size():

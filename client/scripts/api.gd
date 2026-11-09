@@ -64,6 +64,11 @@ func heal_ally(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/allies/heal", {"hero": hero}, true)
 
 
+## Bicara dengan Kapten Rimba di kem hutan: server memberi Radar Musuh dan membuka pertarungan di Hutan Lebat.
+func hutan_brief() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/hutan/brief", {}, true)
+
+
 ## Beli satu prajurit biasa untuk pasukan.
 func buy_soldier() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/buy", {}, true)

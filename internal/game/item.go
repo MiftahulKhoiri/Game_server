@@ -12,6 +12,7 @@ const (
 	KindTreasure   = "treasure"   // harta, hadiah misi
 	KindEquipment  = "equipment"  // bisa dipakai di slot perlengkapan
 	KindFood       = "food"       // makanan: dimakan memulihkan HP
+	KindSpecial    = "special"    // barang khusus pemberian NPC (mis. Radar Musuh); tidak bisa dijual atau dipakai
 )
 
 // Toko di desa. Pembelian hanya sah di toko yang menjualnya (pemain harus berada di toko itu).
@@ -58,6 +59,7 @@ var items = []ItemDef{
 	{ID: "sup_ayam", Name: "Sup Ayam", Kind: KindFood, BuyPrice: 20, SellPrice: 8, Shop: ShopFood, Heal: 25},
 	{ID: "daging_bakar", Name: "Daging Bakar", Kind: KindFood, BuyPrice: 45, SellPrice: 18, Shop: ShopFood, Heal: 50},
 	{ID: KartuKeahlianID, Name: "Kartu Keahlian", Kind: KindMaterial, BuyPrice: 60, SellPrice: 20, Shop: ShopGear},
+	{ID: RadarID, Name: "Radar Musuh", Kind: KindSpecial}, // pemberian Kapten Rimba; tidak dijual
 	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Shop: ShopGear, Slot: SlotWeapon, Attack: 3},
 	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Shop: ShopGear, Slot: SlotWeapon, Attack: 6},
 	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual

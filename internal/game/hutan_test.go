@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -130,5 +131,54 @@ func TestHutanEnemyPools(t *testing.T) {
 		if _, ok := worldMaps[m]; !ok {
 			t.Errorf("peta %s tidak terdaftar", m)
 		}
+	}
+}
+
+func TestBriefHutan(t *testing.T) {
+	p := newPlayer()
+	st := &p.State
+	if st.Hutan.Started() {
+		t.Fatal("pemain baru belum boleh bertarung di hutan")
+	}
+	st.Map, st.X, st.Y = MapHutanLebat, KaptenX, KaptenY
+	if err := st.BriefHutan(); !errors.Is(err, ErrNoKapten) {
+		t.Errorf("di hutan Kapten tidak terjangkau: %v", err)
+	}
+	st.Map, st.X, st.Y = MapPerbatasan, KaptenX+KaptenRadius+1, KaptenY
+	if err := st.BriefHutan(); !errors.Is(err, ErrNoKapten) {
+		t.Errorf("terlalu jauh: %v", err)
+	}
+	st.X = KaptenX
+	if err := st.BriefHutan(); err != nil || !st.Hutan.Briefed || !st.Hutan.Started() || !st.hasRadar() {
+		t.Fatalf("arahan gagal: %v %+v", err, st.Hutan)
+	}
+	if err := st.BriefHutan(); err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, it := range st.Inventory {
+		if it.ID == RadarID {
+			n += it.Qty
+		}
+	}
+	if n != 1 {
+		t.Errorf("radar harus satu, ada %d", n)
+	}
+	if def, ok := ItemByID(RadarID); !ok || def.SellPrice != 0 || def.BuyPrice != 0 {
+		t.Errorf("radar tidak boleh diperjualbelikan: %+v", def)
+	}
+	// Ransel penuh: radar tidak bisa diberikan, arahan tidak tercatat.
+	q := newPlayer()
+	q.State.Map, q.State.X, q.State.Y = MapPerbatasan, KaptenX, KaptenY
+	q.State.Inventory = nil
+	for i := 0; i < MaxInventory; i++ {
+		q.State.Inventory = append(q.State.Inventory, Item{ID: fmt.Sprintf("barang_%d", i), Qty: 1})
+	}
+	if err := q.State.BriefHutan(); !errors.Is(err, ErrInventoryFull) || q.State.Hutan.Briefed {
+		t.Errorf("ransel penuh: %v %+v", err, q.State.Hutan)
+	}
+	// Pemain lama yang sudah punya kemajuan tidak terkunci.
+	if !(HutanProgress{Kills: 3}).Started() || !(HutanProgress{Wave: 1}).Started() {
+		t.Error("kemajuan lama harus dianggap sudah diarahkan")
 	}
 }

@@ -370,3 +370,10 @@ membawa pemain; bawaannya halaman Releases terbaru.
 
 - v0.48.3 mengembalikan Bu Sari (dan Suster Mira) ke model GLB aslinya; model prosedural dari v0.48.2 dicabut karena
   tampil kusam dan kecil. Toon shading untuk NPC warga tetap. Hanya klien; `DefaultMinClient` tetap 0.18.0.
+
+- v0.49.0 menata ulang Hutan Lebat. Peta jalan: tiga cabang (utara, tengah, selatan) selebar 2 petak yang bertemu di satu
+  persimpangan tepat di depan gerbang Gua Goblin (gerbang kini 2 petak, 146-147). Singgasana bos pindah ke (142,47), dekat gerbang;
+  tembok dan gapura gerbang Gua Goblin dari batu, bukan kayu. Pertarungan di hutan baru dimulai setelah bicara dengan
+  Kapten Rimba, yang memberi barang khusus **Radar Musuh** (`radar_musuh`): titik musuh di layar hutan. Server: `POST /v1/hutan/brief`,
+  `hutan.briefed`, `422` untuk pertarungan hutan sebelum arahan (pemain yang sudah punya kemajuan hutan dianggap sudah diarahkan).
+  Item baru jenis `special` (tidak dijual). `DefaultMinClient` tetap 0.18.0.

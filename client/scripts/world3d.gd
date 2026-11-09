@@ -22,6 +22,7 @@ const Roamer = preload("res://scripts/roamer.gd")
 const WorldFight = preload("res://scripts/world_fight.gd")
 const HudBars = preload("res://scripts/hud_bars.gd")
 const HutanHud = preload("res://scripts/hutan_hud.gd")
+const RadarMusuh = preload("res://scripts/radar_musuh.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -111,6 +112,7 @@ var _bars: HudBars
 var _joy: Control
 var _cam_finger := -1
 var _status: Label
+var _radar: Control            # Radar Musuh (titik musuh di hutan); tampil bila Radar ada di ransel
 var _hutan_hud: Control        # papan misi Hutan Lebat: binatang X/100, Goblin, panah arah
 var _hutan_boss: Roamer        # Goblin yang menunggu di singgasana hutan (bila sudah waktunya)
 var _hutan_sig := -1           # tanda kemajuan terakhir (untuk pesan saat berubah)
@@ -473,12 +475,37 @@ func _update_roamers(delta: float) -> void:
 	if _roamers.is_empty() or _locked:
 		return
 	_roam_grace = maxf(0.0, _roam_grace - delta)
-	var can_aggro := _roam_grace <= 0.0 and not Session.offline and not _fight.busy()
+	var can_aggro := _roam_grace <= 0.0 and not Session.offline and not _fight.busy() and _hutan_ok()
 	for r: Roamer in _roamers.duplicate():
 		var touched := r.step(delta, _pos, can_aggro)
 		r.apply(r.pos.distance_to(_pos) < ROAM_NEAR)
 		if touched and not _fight.busy():
 			_fight.engage(r)
+
+
+## Musuh di Hutan Lebat baru aktif setelah pemain bicara dengan Kapten Rimba (server menolak pertarungannya sebelum itu).
+func _hutan_ok() -> bool:
+	return _map_id != Maps.HUTAN or Session.hutan_started()
+
+
+## Radar Musuh: tampil di Hutan Lebat bila radar ada di ransel; titik = musuh yang masih hidup, oranye = Goblin bos.
+func _update_radar() -> void:
+	if _radar == null:
+		return
+	var on := _map_id == Maps.HUTAN and Session.has_radar()
+	_radar.visible = on
+	if not on:
+		return
+	var pts: Array[Vector2] = []
+	var boss := Vector2(-1, -1)
+	for r: Roamer in _roamers:
+		if r.dying:
+			continue
+		if r == _hutan_boss:
+			boss = r.pos
+		else:
+			pts.append(r.pos)
+	_radar.update_view(_pos, _cam_yaw, pts, boss)
 
 
 ## Pukulan/tendangan mengenai musuh berkeliaran di depan: pertarungan langsung dimulai (bila belum)
@@ -509,6 +536,10 @@ func _hit_roamer(reach: float, cos_min: float, action := "attack") -> bool:
 		return false  # sedang melawan musuh lain
 	if _fight.busy():
 		return true  # pertarungan sedang dimulai
+	if not _hutan_ok():
+		_show_toast("Bicara dulu dengan Kapten Rimba")
+		_set_status("Temui Kapten Rimba di kem hutan (Perbatasan) sebelum melawan musuh di hutan")
+		return true
 	_fight.engage(best, action)
 	return true
 
@@ -558,7 +589,8 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 func _process(delta: float) -> void:
 	_update_world_life(delta)
 	if _hutan_hud != null and _hutan_hud.visible:
-		_hutan_hud.update_view(Session.hutan_kills(), Session.hutan_wave(), _pos, _cam_yaw)
+		_hutan_hud.update_view(Session.hutan_kills(), Session.hutan_wave(), _pos, _cam_yaw, Session.hutan_started())
+	_update_radar()
 	_tick_actions(delta)
 	var rig := _player as Node
 	if _locked:
@@ -1447,6 +1479,11 @@ func _build_ui() -> void:
 	_hutan_hud.visible = false
 	layer.add_child(_hutan_hud)
 
+	_radar = RadarMusuh.new()
+	_radar.position = Vector2(700.0 - RadarMusuh.SIZE, 216)
+	_radar.visible = false
+	layer.add_child(_radar)
+
 	_status = Label.new()
 	_status.position = Vector2(20, 240)
 	_status.size = Vector2(420, 60)
@@ -1574,7 +1611,7 @@ func _refresh_hutan() -> void:
 	_update_hutan_boss(boss_up, wave + 1)
 	if not on:
 		return
-	_hutan_hud.update_view(kills, wave, _pos, _cam_yaw)
+	_hutan_hud.update_view(kills, wave, _pos, _cam_yaw, Session.hutan_started())
 	var sig := wave * 1000 + kills
 	if _hutan_sig >= 0 and sig != _hutan_sig:
 		if wave >= 3 and _hutan_sig < 3000:

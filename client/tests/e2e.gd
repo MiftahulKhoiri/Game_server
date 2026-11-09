@@ -1549,11 +1549,11 @@ func _run() -> void:
 	_check(Maps.width(Maps.HUTAN) == 170 and Maps.height(Maps.HUTAN) == 50, "Hutan Lebat 170x50 (dua kali lebar Desa Awal)")
 	_check(Maps.width(Maps.HUTAN) == 2 * Maps.width(Maps.DEFAULT_MAP), "lebar Hutan Lebat dua kali Desa Awal")
 	_check(Maps.width(Maps.GUA_GOBLIN) == 25 and Maps.height(Maps.GUA_GOBLIN) == 30, "Gua Goblin 25x30")
-	_check(Maps.tile_at(Maps.HUTAN, Maps.HUTAN_BOSS.x, Maps.HUTAN_BOSS.y) == "K", "singgasana bos hutan di petak K (85,25)")
+	_check(Maps.tile_at(Maps.HUTAN, Maps.HUTAN_BOSS.x, Maps.HUTAN_BOSS.y) == "K", "singgasana bos hutan di petak K (142,47), dekat gerbang Gua Goblin")
 	_check(Maps.exit_at(Maps.PERBATASAN, 22, 49).get("to", "") == Maps.HUTAN, "Perbatasan selatan menuju Hutan Lebat")
 	_check(Maps.exit_at(Maps.HUTAN, 147, 49).get("to", "") == Maps.GUA_GOBLIN, "gerbang hutan menuju Gua Goblin")
 	_check(Maps.exit_at(Maps.GUA_GOBLIN, 12, 29).get("to", "") == Maps.GUNUNG, "Gua Goblin selatan menuju Gunung Batu")
-	_check(Maps.exit_locked(Maps.HUTAN, 147, 49, 0) and Maps.exit_locked(Maps.HUTAN, 146, 49, 2), "gerbang Gua Goblin terkunci sebelum tiga Goblin kalah")
+	_check(Maps.exit_locked(Maps.HUTAN, 147, 49, 0) and Maps.exit_locked(Maps.HUTAN, 146, 49, 2), "gerbang Gua Goblin (2 petak) terkunci sebelum tiga Goblin kalah")
 	_check(not Maps.exit_locked(Maps.HUTAN, 147, 49, 3) and not Maps.exit_locked(Maps.HUTAN, 22, 0, 0) and not Maps.exit_locked(Maps.PERBATASAN, 147, 49, 0), "gerbang terbuka setelah tiga Goblin; pintu lain tidak terkunci")
 	var seen_v46 := {Vector2i(22, 1): true}
 	var queue_v46: Array[Vector2i] = [Vector2i(22, 1)]
@@ -1606,7 +1606,7 @@ func _run() -> void:
 		has_fire_v47 = has_fire_v47 or ry_v47.contains("U")
 		tents_v47 += ry_v47.count("A")
 	_check(has_fire_v47 and tents_v47 >= 8, "kem di Perbatasan punya api unggun dan tenda")
-	for pt_v47: Vector2i in [Vector2i(22, 1), Vector2i(22, 12), Vector2i(60, 12), Vector2i(85, 12), Vector2i(85, 20), Vector2i(100, 25), Vector2i(147, 25), Vector2i(147, 40), Vector2i(85, 38), Vector2i(22, 30), Vector2i(120, 30)]:
+	for pt_v47: Vector2i in [Vector2i(22, 1), Vector2i(23, 10), Vector2i(22, 12), Vector2i(60, 12), Vector2i(100, 24), Vector2i(60, 25), Vector2i(146, 30), Vector2i(147, 40), Vector2i(162, 30), Vector2i(155, 44), Vector2i(100, 45), Vector2i(22, 30), Vector2i(23, 44), Vector2i(146, 46), Vector2i(147, 48)]:
 		_check(Maps.tile_at(Maps.HUTAN, pt_v47.x, pt_v47.y) == "=", "jalan hutan menyambung di %s" % str(pt_v47))
 	# bos Goblin berkeliaran di dunia (bukan layar penuh) begitu 100 binatang kalah
 	var saved_v47: Dictionary = Session.player.state.duplicate(true)
@@ -1628,7 +1628,7 @@ func _run() -> void:
 		else:
 			beasts_v47 += 1
 	_check(boss_v47 != null and boss_v47.id == "goblin_hutan_2" and beasts_v47 == 0, "kills 100 wave 1: hanya Goblin Level 2 berkeliaran di dunia")
-	_check(boss_v47 != null and boss_v47.pos.distance_to(Vector2(85.5, 23.5)) < 1.0, "Goblin muncul di dekat singgasana")
+	_check(boss_v47 != null and boss_v47.pos.distance_to(Vector2(142.5, 45.5)) < 1.0, "Goblin muncul di dekat singgasana")
 	_check(wh_v47._hutan_hud.visible, "papan misi hutan tampil di Hutan Lebat")
 	Session.player.state["hutan"] = {"wave": 1, "kills": 5}
 	wh_v47._refresh_hutan()
@@ -1641,6 +1641,119 @@ func _run() -> void:
 	await process_frame
 	Session.offline = false
 	Session.player.state = saved_v47
+
+	print("== v0.49: jalan hutan 2 petak, tiga cabang, Kapten Rimba, Radar Musuh")
+	var rows_v49 := Maps.rows(Maps.HUTAN)
+	var road_v49 := {}
+	for ry_v49 in range(1, rows_v49.size()):
+		for rx_v49 in rows_v49[ry_v49].length():
+			if rows_v49[ry_v49][rx_v49] == "=":
+				road_v49[Vector2i(rx_v49, ry_v49)] = true
+	var bad2_v49 := 0
+	var bad3_v49 := 0
+	for t_v49: Vector2i in road_v49:
+		var in2 := false
+		for o_v49: Vector2i in [Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1)]:
+			var q_v49: Vector2i = t_v49 + o_v49
+			if road_v49.has(q_v49) and road_v49.has(q_v49 + Vector2i(1, 0)) and road_v49.has(q_v49 + Vector2i(0, 1)) and road_v49.has(q_v49 + Vector2i(1, 1)):
+				in2 = true
+		if not in2:
+			bad2_v49 += 1
+		var in3 := true
+		for dy_v49 in 3:
+			for dx_v49 in 3:
+				if not road_v49.has(t_v49 + Vector2i(dx_v49, dy_v49)):
+					in3 = false
+		if in3:
+			bad3_v49 += 1
+	_check(road_v49.size() > 300 and bad2_v49 == 0, "setiap petak jalan hutan termasuk blok 2x2 (jalan menyambung)")
+	_check(bad3_v49 == 0, "tidak ada jalan hutan yang selebar 3 petak")
+	# tiga cabang: hanya lewat jalan, dari jalan masuk sampai persimpangan di depan gerbang
+	var junction_v49 := Vector2i(146, 44)
+	for blocked_v49: Array in [[Vector2i(100, 11), Vector2i(100, 12)], [Vector2i(100, 24), Vector2i(100, 25)], [Vector2i(100, 44), Vector2i(100, 45)]]:
+		var seen_v49 := {Vector2i(22, 1): true}
+		var q2_v49: Array[Vector2i] = [Vector2i(22, 1)]
+		while not q2_v49.is_empty():
+			var c2_v49: Vector2i = q2_v49.pop_back()
+			for d2_v49: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n2_v49: Vector2i = c2_v49 + d2_v49
+				if seen_v49.has(n2_v49) or not road_v49.has(n2_v49) or n2_v49 in blocked_v49:
+					continue
+				seen_v49[n2_v49] = true
+				q2_v49.append(n2_v49)
+		_check(seen_v49.has(junction_v49) and seen_v49.has(Vector2i(147, 48)), "jalan tetap sampai gerbang walau cabang di x=100 terputus %s" % str(blocked_v49[0]))
+	_check(Maps.tile_at(Maps.HUTAN, 146, 49) == "=" and Maps.tile_at(Maps.HUTAN, 147, 49) == "=" and Maps.tile_at(Maps.HUTAN, 148, 49) == "N" and Maps.tile_at(Maps.HUTAN, 145, 49) == "N" and Maps.tile_at(Maps.HUTAN, 160, 49) == "P", "gerbang Gua Goblin 2 petak diapit gapura batu, tembok di kiri-kanan")
+	_check(not Maps.exit_locked(Maps.HUTAN, 148, 49, 0), "petak 148 bukan lagi gerbang")
+	# Kapten Rimba memberi Radar Musuh; musuh hutan baru boleh dilawan setelah itu
+	var st0_v49: Dictionary = Session.player.state
+	var saved_h_v49: Variant = st0_v49.get("hutan", {})
+	st0_v49["hutan"] = {"wave": 0, "kills": 0, "briefed": false}
+	_check(not Session.hutan_started(), "pemain baru belum diarahkan Kapten")
+	st0_v49["hutan"] = {"wave": 0, "kills": 7}
+	_check(Session.hutan_started(), "pemain lama yang sudah punya kemajuan tidak terkunci")
+	st0_v49["hutan"] = {"wave": 0, "kills": 0, "briefed": true}
+	_check(Session.hutan_started() and Session._hutan({"briefed": true}).briefed, "briefed dibaca dari server")
+	st0_v49["hutan"] = saved_h_v49
+	_check(WDv47.kapten_line(0, 0, 0, false).contains("Radar Musuh") and not WDv47.kapten_line(0, 0, 0, true).is_empty(), "Kapten memberi radar saat pertemuan pertama")
+	var RMv49: Script = load("res://scripts/radar_musuh.gd")
+	var b_up_v49: Dictionary = RMv49.blip(Vector2(50, 50), Vector2(50, 40), 0.0, 85.0)
+	var b_right_v49: Dictionary = RMv49.blip(Vector2(50, 50), Vector2(60, 50), 0.0, 85.0)
+	_check(absf(b_up_v49.at.x) < 0.01 and b_up_v49.at.y < -10.0 and not b_up_v49.clamped, "titik radar: musuh di utara tampil di atas")
+	_check(b_right_v49.at.x > 10.0 and absf(b_right_v49.at.y) < 0.01, "titik radar: musuh di timur tampil di kanan")
+	_check(RMv49.blip(Vector2(50, 50), Vector2(150, 50), 0.0, 85.0).clamped, "musuh di luar jangkauan radar menempel di tepi")
+	var me_v49: Dictionary = await Api.get_me()
+	Session.set_player(me_v49.data)
+	var s49: Dictionary = Session.player.state.duplicate(true)
+	s49.map = Maps.PERBATASAN
+	s49.x = 35
+	s49.y = 40
+	var sv1_v49: Dictionary = await Api.save(Session.player.version, s49)
+	_check(sv1_v49.ok, "simpan posisi jauh dari kem")
+	Session.player.version = int(sv1_v49.data.version)
+	var far_v49: Dictionary = await Api.hutan_brief()
+	_check(not far_v49.ok and far_v49.status == 422, "Kapten tidak terjangkau dari jauh -> 422")
+	s49.map = Maps.HUTAN
+	s49.x = 60
+	s49.y = 12
+	var sv2_v49: Dictionary = await Api.save(Session.player.version, s49)
+	Session.player.version = int(sv2_v49.data.version)
+	var early_v49: Dictionary = await Api.battle_start(false, "kancil_hutan")
+	_check(not early_v49.ok and early_v49.status == 422, "musuh hutan sebelum bicara dengan Kapten ditolak server (422)")
+	s49.map = Maps.PERBATASAN
+	s49.x = 23
+	s49.y = 5
+	var sv3_v49: Dictionary = await Api.save(Session.player.version, s49)
+	Session.player.version = int(sv3_v49.data.version)
+	var brief_v49: Dictionary = await Api.hutan_brief()
+	_check(brief_v49.ok, "Kapten Rimba memberi arahan di kem")
+	if brief_v49.ok:
+		Session.merge_server_player(brief_v49.data)
+		_check(Session.hutan_started() and Session.has_radar(), "setelah arahan: radar ada di ransel dan hutan terbuka")
+		var again_v49: Dictionary = await Api.hutan_brief()
+		_check(again_v49.ok and int(Session.item_count("radar_musuh")) == 1, "arahan diulang: radar tetap satu")
+	# musuh hutan tidak aktif sebelum arahan; radar tampil setelahnya
+	var saved_w_v49: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state.map = Maps.HUTAN
+	Session.player.state.x = 22
+	Session.player.state.y = 2
+	Session.player.state["hutan"] = {"wave": 0, "kills": 0, "briefed": false}
+	Session.offline = true
+	var wr_v49: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wr_v49)
+	await process_frame
+	await process_frame
+	_check(not wr_v49._hutan_ok(), "sebelum arahan Kapten musuh hutan tidak aktif")
+	Session.player.state["hutan"] = {"wave": 0, "kills": 0, "briefed": true}
+	Session.player.state.inventory = [{"id": "radar_musuh", "qty": 1}]
+	wr_v49._update_radar()
+	_check(wr_v49._hutan_ok() and wr_v49._radar.visible, "setelah arahan musuh aktif dan Radar Musuh tampil")
+	Session.player.state.inventory = []
+	wr_v49._update_radar()
+	_check(not wr_v49._radar.visible, "tanpa radar di ransel, radar tidak tampil")
+	wr_v49.queue_free()
+	await process_frame
+	Session.offline = false
+	Session.player.state = saved_w_v49
 
 	print("== token salah")
 	Api.token = "salah"

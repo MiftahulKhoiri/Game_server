@@ -379,6 +379,10 @@ static func build(map_id: String) -> Node3D:
 	var pal_tip_x: Array[Transform3D] = []
 	var pal_tip_c: Array[Color] = []
 	var pal_rail_x: Array[Transform3D] = []
+	var wall_x: Array[Transform3D] = []      # tembok batu (Hutan Lebat): badan, tutup, dan gigi benteng
+	var wall_c: Array[Color] = []
+	var wall_cap_x: Array[Transform3D] = []
+	var wall_top_x: Array[Transform3D] = []
 	var use_trees := _dekor_mesh(TREE_SINGLE[0]) != null
 	var use_rocks := _dekor_mesh(MOUNTAINS[0]) != null
 	var sway_by: Dictionary = {}     # pohon: id model -> daftar transform (goyang angin)
@@ -470,7 +474,10 @@ static func build(map_id: String) -> Node3D:
 				"H", "D":
 					house_tiles.append(Vector2i(x, z))
 				"P":
-					_add_palisade_tile(rows, x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
+					if map_id == Maps.HUTAN:
+						_add_stone_wall_tile(x, z, c, wall_x, wall_c, wall_cap_x, wall_top_x)
+					else:
+						_add_palisade_tile(rows, x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
 				"N":
 					gate_tiles.append(Vector2i(x, z))
 				"W":
@@ -505,6 +512,9 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _cyl(0.105, 0.125, 1.0, 7), mat(Color.WHITE, true), pal_log_x, pal_log_c)
 	_multi(root, _cyl(0.0, 0.125, 0.3, 7), mat(Color.WHITE, true), pal_tip_x, pal_tip_c)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("4d3520")), pal_rail_x)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color.WHITE, true), wall_x, wall_c)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("77736b")), wall_cap_x)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("a7a398")), wall_top_x)
 	if not gate_tiles.is_empty():
 		_add_gate(root, gate_tiles, map_id)
 	if map_id == Maps.DEFAULT_MAP:
@@ -590,19 +600,30 @@ static func _add_palisade_tile(rows: Array[String], x: int, z: int, w: int, h: i
 		rail_x.append(Transform3D(Basis.from_euler(Vector3(0, rot, 0)) * Basis.from_scale(Vector3(1.0, 0.11, 0.09)), c + inward * 0.17 + Vector3(0, ry, 0)))
 
 
+## Satu petak tembok batu (pengganti pagar kayu di Hutan Lebat): badan batu abu setinggi sekitar 1,6 dengan
+## tutup gelap dan dua gigi benteng, searah dengan gapura batu Gua Goblin.
+static func _add_stone_wall_tile(x: int, z: int, c: Vector3, body_x: Array[Transform3D], body_c: Array[Color], cap_x: Array[Transform3D], top_x: Array[Transform3D]) -> void:
+	var top := 1.5 + 0.22 * _jitter(x, z, 81)
+	body_x.append(Transform3D(Basis.from_scale(Vector3(1.0, top, 0.62)), c + Vector3(0, top * 0.5, 0)))
+	body_c.append(Color("8d8a82").lerp(Color("b3afa3"), _jitter(x, z, 82)))
+	cap_x.append(Transform3D(Basis.from_scale(Vector3(1.02, 0.14, 0.8)), c + Vector3(0, top + 0.07, 0)))
+	for sx in [-0.25, 0.25]:
+		top_x.append(Transform3D(Basis.from_scale(Vector3(0.3, 0.3, 0.46)), c + Vector3(sx, top + 0.29, 0)))
+
+
 ## Palang kayu yang menutup gerbang Gua Goblin di Hutan Lebat sampai tiga Goblin kalah. Node "KunciGerbang"
 ## disembunyikan world3d.gd begitu misi selesai.
 static func _add_kunci_gerbang(root: Node3D) -> void:
 	var lock := Node3D.new()
 	lock.name = "KunciGerbang"
-	lock.position = Vector3(147.5, 0.0, 49.45)
+	lock.position = Vector3(147.0, 0.0, 49.45)
 	root.add_child(lock)
 	var wood := mat(Color("6b4423"))
 	var dark := mat(Color("3d2815"))
-	for sx in [-1.4, 1.4]:
+	for sx in [-0.95, 0.95]:
 		_gate_part(lock, _box(Vector3(0.22, 2.3, 0.22)), dark, Vector3(sx, 1.15, 0))
 	for yy in [0.45, 1.0, 1.55, 2.05]:
-		_gate_part(lock, _box(Vector3(3.0, 0.16, 0.14)), wood, Vector3(0, yy, 0))
+		_gate_part(lock, _box(Vector3(2.0, 0.16, 0.14)), wood, Vector3(0, yy, 0))
 	_gate_part(lock, _box(Vector3(0.14, 2.2, 0.12)), wood, Vector3(0, 1.1, 0.02))
 	_gate_part(lock, _box(Vector3(1.0, 0.4, 0.06)), mat(Color("8a1f1f")), Vector3(0, 1.3, -0.1))
 	var label := Label3D.new()

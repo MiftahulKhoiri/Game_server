@@ -71,6 +71,8 @@ const GREETINGS := {
 var _npc := ""
 var _warga_id := ""  # id warga desa bila lawan bicara bukan NPC misi
 var _stage := 0      # tahap cerita utama (untuk kalimat warga)
+var _kapten_first := false   # pertemuan pertama dengan Kapten Rimba: radar baru diberikan
+var _kapten_error := ""      # pesan server bila arahan Kapten gagal (mis. ransel penuh)
 var _quest: Dictionary = {}  # misi milik NPC ini (tampilan dari server), {} bila tidak ada
 var _others: Array[Dictionary] = []  # misi lain NPC ini yang sedang dikerjakan
 var _name_label: Label
@@ -92,6 +94,8 @@ func _ready() -> void:
 	_text.text = "..."
 	if _warga_id != "":
 		await _load_stage()
+		if _warga_id == "kapten_kem" and not Session.offline:
+			await _brief_kapten()
 		_render_warga()
 		return
 	await _load_quest()
@@ -104,11 +108,28 @@ func _load_stage() -> void:
 	_stage = WARGA_DIALOG.stage_from_quests(res.data.get("quests", [])) if res.ok else 0
 
 
+## Kapten Rimba: pertemuan pertama memberi Radar Musuh dan membuka pertarungan di hutan (aturan di server).
+## Memanggil server di tiap pertemuan juga memberi radar yang hilang; kalimatnya "baru" hanya bila belum pernah diarahkan.
+func _brief_kapten() -> void:
+	var was_started := Session.hutan_started()
+	var res: Dictionary = await Api.hutan_brief()
+	if res.ok:
+		Session.merge_server_player(res.data)
+		if not was_started:
+			_kapten_first = true
+	else:
+		_kapten_error = str(res.error)
+
+
 func _render_warga() -> void:
 	_name_label.text = WARGA_DIALOG.display_name(_warga_id)
 	_action.visible = false
 	var n := int(Session.talk_counts.get(_npc, 1)) - 1
 	_text.text = WARGA_DIALOG.line(_warga_id, _stage, n)
+	if _kapten_first:
+		_text.text = WARGA_DIALOG.kapten_line(Session.hutan_wave(), Session.hutan_kills(), n, false)
+	elif _kapten_error != "":
+		_text.text = "Kapten Rimba ingin memberimu Radar Musuh, tapi: %s. Beresi dulu, lalu bicara lagi denganku." % _kapten_error
 	Sound.npc_say(_text.text, hash(_warga_id))
 
 

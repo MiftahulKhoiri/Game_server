@@ -846,15 +846,57 @@ func TestHutanBossStartFromWorld(t *testing.T) {
 	ts := newTestServer(t)
 	cr := register(t, ts, "PenjelajahHutan")
 	st := cr.Player.State
-	st.Map, st.X, st.Y = game.MapHutanLebat, 80, 22
-	if resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st}); resp.StatusCode != http.StatusOK {
-		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
+	version := cr.Player.Version
+	pindah := func(m string, x, y int) {
+		t.Helper()
+		st.Map, st.X, st.Y = m, x, y
+		resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: version, State: st})
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("simpan: %d %s", resp.StatusCode, d)
+		}
+		var p game.Player
+		if err := json.Unmarshal(d, &p); err != nil {
+			t.Fatal(err)
+		}
+		version = p.Version
 	}
+	pindah(game.MapHutanLebat, 80, 22)
 	body := map[string]string{"enemy": "goblin_hutan_1"}
 	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", body); code != http.StatusUnprocessableEntity {
 		t.Errorf("bos hutan sebelum 100 binatang harus 422, dapat %d", code)
 	}
-	// Binatang biasa tetap bisa dilawan di hutan.
+	// Sebelum bicara dengan Kapten Rimba, musuh hutan belum boleh dilawan.
+	if code, _, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]string{"enemy": "kancil_hutan"}); code != http.StatusUnprocessableEntity {
+		t.Errorf("musuh hutan sebelum arahan Kapten harus 422, dapat %d %s", code, d)
+	}
+	// Jauh dari kem: Kapten tidak terjangkau.
+	if resp, d := do(t, "POST", ts.URL+"/v1/hutan/brief", cr.Token, nil); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("arahan dari jauh harus 422: %d %s", resp.StatusCode, d)
+	}
+	// Di kem hutan (Perbatasan): Kapten memberi Radar Musuh, aman diulang.
+	pindah(game.MapPerbatasan, game.KaptenX, game.KaptenY+1)
+	for i := 0; i < 2; i++ {
+		resp, d := do(t, "POST", ts.URL+"/v1/hutan/brief", cr.Token, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("arahan Kapten: %d %s", resp.StatusCode, d)
+		}
+		var p game.Player
+		if err := json.Unmarshal(d, &p); err != nil {
+			t.Fatal(err)
+		}
+		version = p.Version
+		radar := 0
+		for _, it := range p.State.Inventory {
+			if it.ID == game.RadarID {
+				radar += it.Qty
+			}
+		}
+		if !p.State.Hutan.Briefed || radar != 1 {
+			t.Fatalf("setelah arahan: briefed=%v radar=%d", p.State.Hutan.Briefed, radar)
+		}
+	}
+	// Setelah arahan, binatang hutan boleh dilawan.
+	pindah(game.MapHutanLebat, 80, 22)
 	code, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]string{"enemy": "kancil_hutan"})
 	if code != http.StatusCreated || start.Battle == nil || start.Battle.EnemyID != "kancil_hutan" {
 		t.Errorf("binatang hutan: %d %s", code, d)

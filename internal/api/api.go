@@ -92,6 +92,7 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/party", s.auth(http.HandlerFunc(s.setParty)))
 	mux.Handle("GET /v1/world", s.auth(http.HandlerFunc(s.worldState)))
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
+	mux.Handle("POST /v1/hutan/brief", s.auth(http.HandlerFunc(s.hutanBrief)))
 	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
@@ -411,13 +412,16 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 				return game.ErrBossNotReady // bos tahap lain: belum waktunya
 			}
 		} else {
+			if st := &sess.Player.State; st.Map == game.MapHutanLebat && !st.Hutan.Started() {
+				return game.ErrNotBriefed // belum bicara dengan Kapten Rimba
+			}
 			b = game.StartBattleWith(&sess.Player, req.Enemy, s.rng, now)
 		}
 		sess.Battle = &b
 		return nil
 	})
 	switch {
-	case errors.Is(err, game.ErrNoBoss), errors.Is(err, game.ErrBossNotReady):
+	case errors.Is(err, game.ErrNoBoss), errors.Is(err, game.ErrBossNotReady), errors.Is(err, game.ErrNotBriefed):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, errBattleActive):
 		writeError(w, http.StatusConflict, "masih ada pertarungan yang berjalan; lanjutkan lewat GET /v1/battle")
@@ -566,7 +570,7 @@ func isRuleError(err error) bool {
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
 		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
 		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax,
-		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy,
+		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy, game.ErrNoKapten, game.ErrInventoryFull,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -646,6 +650,12 @@ func (s *Server) buyAlly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.applyToState(w, r, func(st *game.State) error { return st.BuyAlly(req.Hero) })
+}
+
+// hutanBrief: pemain bicara dengan Kapten Rimba di kem hutan (Perbatasan). Memberi Radar Musuh dan membuka
+// pertarungan di Hutan Lebat. Mengembalikan Player.
+func (s *Server) hutanBrief(w http.ResponseWriter, r *http.Request) {
+	s.applyToState(w, r, func(st *game.State) error { return st.BriefHutan() })
 }
 
 // buySoldier membeli satu prajurit biasa (tidak bisa saat bertarung).
