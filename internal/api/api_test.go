@@ -879,7 +879,9 @@ func TestHealCompanionConsumesOnePotionAndRestoresHP(t *testing.T) {
 		sess.Player.State.AllyHP = map[string]int{"ksatria": 0}
 		return nil
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp, data = do(t, "POST", ts.URL+"/v1/allies/heal", cr.Token, map[string]string{"hero":"ksatria"})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("sembuhkan pendamping: %d %s", resp.StatusCode, data)
@@ -903,16 +905,22 @@ func TestHealCompanionRejectsFullHealthWithoutConsumingPotion(t *testing.T) {
 		sess.Player.State.Gold = 1000
 		return nil
 	})
-	if err != nil { t.Fatal(err) }
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp, data := do(t, "POST", ts.URL+"/v1/allies/buy", cr.Token, map[string]string{"hero":"ksatria"})
-	if resp.StatusCode != http.StatusOK { t.Fatalf("beli pendamping: %d %s", resp.StatusCode, data) }
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("beli pendamping: %d %s", resp.StatusCode, data)
+	}
 	resp, data = do(t, "POST", ts.URL+"/v1/allies/heal", cr.Token, map[string]string{"hero":"ksatria"})
 	if resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("HP penuh harus ditolak: %d %s", resp.StatusCode, data)
 	}
 	_, data = do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
 	var p game.Player
-	if err := json.Unmarshal(data, &p); err != nil { t.Fatal(err) }
+	if err := json.Unmarshal(data, &p); err != nil {
+		t.Fatal(err)
+	}
 	if p.State.Inventory[0].Qty != 2 {
 		t.Fatalf("ramuan tidak boleh terpakai: %+v", p.State.Inventory)
 	}
