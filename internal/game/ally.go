@@ -170,3 +170,14 @@ func (s *State) HealAlly(id string, amount int) (int, error) {
 	s.AllyHP[id] = min(AllyMaxHP, s.AllyHP[id]+amount)
 	return s.AllyHP[id], nil
 }
+
+
+// hasHealthyAlly reports whether at least one equipped companion can fight.
+func (s State) hasHealthyAlly() bool {
+	for _, id := range s.Party {
+		if hp, _, ok := s.AllyHealth(id); ok && hp > 0 {
+			return true
+		}
+	}
+	return false
+}
