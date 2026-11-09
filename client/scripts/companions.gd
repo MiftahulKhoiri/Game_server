@@ -17,11 +17,27 @@ const SNAP_DIST := 9.0
 var world = null            # world3d.gd
 var _units: Array = []      # {id, node, pos: Vector2, yaw: float, shadow}
 var _party_key := ""
+var _heal_button: Button
+var _heal_target := ""
+var _heal_busy := false
 
 
 func setup(w: Node) -> void:
 	world = w
 	sync()
+	var layer := CanvasLayer.new()
+	layer.layer = 6
+	add_child(layer)
+	_heal_button = Button.new()
+	_heal_button.text = "Sembuhkan Pendamping"
+	_heal_button.position = Vector2(24, 700)
+	_heal_button.size = Vector2(300, 68)
+	_heal_button.add_theme_font_size_override("font_size", 24)
+	_heal_button.visible = false
+	layer.add_child(_heal_button)
+	_heal_button.pressed.connect(_heal_first_down)
+	if world != null and "_buttons" in world:
+		world._buttons.append(_heal_button)
 
 
 ## Samakan pendamping di dunia dengan Session.player.state.party.
@@ -87,6 +103,49 @@ func position_of(hero_id: String) -> Vector3:
 	return Vector3.ZERO
 
 
+func _refresh_heal_button() -> void:
+	if _heal_button == null:
+		return
+	_heal_target = ""
+	var st: Dictionary = Session.player.get("state", {})
+	var hp_map: Dictionary = st.get("ally_hp", {})
+	for id: String in st.get("party", []):
+		if int(hp_map.get(id, 30)) <= 0:
+			_heal_target = id
+			break
+	var fighting := world._fight != null and world._fight.active
+	_heal_button.visible = _heal_target != "" and not fighting
+	_heal_button.disabled = _heal_busy or Session.item_count("ramuan") <= 0
+	if _heal_target != "":
+		var hero_name := _heal_target
+		if hero_name == "ksatria":
+			hero_name = "Ksatria"
+		elif hero_name == "pemanah":
+			hero_name = "Pemanah"
+		elif hero_name == "pendekar_kapak":
+			hero_name = "Pendekar Kapak"
+		_heal_button.text = "Sembuhkan %s (%d)" % [hero_name, Session.item_count("ramuan")]
+
+
+func _heal_first_down() -> void:
+	if _heal_busy or _heal_target == "":
+		return
+	_heal_busy = true
+	_heal_button.disabled = true
+	var target := _heal_target
+	var res: Dictionary = await Api.heal_ally(target)
+	_heal_busy = false
+	if not is_inside_tree():
+		return
+	if res.ok:
+		Session.merge_server_player(res.data)
+		sync()
+		world._set_status("%s telah disembuhkan dengan ramuan." % target)
+	else:
+		world._set_status(str(res.get("error", "Gagal menyembuhkan pendamping")))
+	_refresh_heal_button()
+
+
 func _slot(i: int) -> Vector2:
 	var yaw: float = world._yaw
 	var fwd := Vector2(sin(yaw), cos(yaw))
@@ -105,6 +164,7 @@ func _process(delta: float) -> void:
 	if world == null or world._player == null:
 		return
 	sync()
+	_refresh_heal_button()
 	var foe: Vector2 = Vector2.ZERO
 	var fighting := false
 	var fight: Variant = world._fight
