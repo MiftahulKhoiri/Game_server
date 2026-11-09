@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -529,7 +530,7 @@ func TestQuestEndToEnd(t *testing.T) {
 	}
 
 	// Selesaikan misi langsung lewat store (pertarungan ke-5 tergantung level musuh), lalu klaim.
-	if _, err := st.Update(t.Context(), cr.Player.ID, func(sess *store.Session) error {
+	if _, err := st.Update(context.Background(), cr.Player.ID, func(sess *store.Session) error {
 		sess.Player.State.Quests[0].Status = game.QuestDone
 		sess.Player.State.Quests[0].Progress = sess.Player.State.Quests[0].Progress + 4
 		return nil
