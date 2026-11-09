@@ -117,7 +117,7 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	if inst == null:
 		return null
 	if not is_hero(id):
-		_fix_materials(inst)
+		_fix_materials(inst, id == "warga_ibu")
 		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
 	var rig := Rig.new()
 	var holder := Node3D.new()  # badan utuh: digerakkan rig untuk model tanpa rangka
@@ -139,23 +139,28 @@ static func _from_glb(id: String, path: String) -> Node3D:
 
 
 ## Warna per titik (hasil gambar-ke-3D) dipakai sebagai warna dasar; dua sisi terlihat.
-static func _fix_materials(n: Node) -> void:
+## Bu Sari memakai diffuse toon agar shading-nya lebih terasa seperti RPG fantasi stylized.
+static func _fix_materials(n: Node, stylized := false) -> void:
 	if n is MeshInstance3D:
 		var mi := n as MeshInstance3D
-		for i in mi.mesh.get_surface_count():
-			var m := mi.mesh.surface_get_material(i)
-			var sm: StandardMaterial3D = (m.duplicate() as StandardMaterial3D) if m is StandardMaterial3D else StandardMaterial3D.new()
-			if sm.albedo_texture == null:
-				sm.vertex_color_use_as_albedo = true
-			sm.cull_mode = BaseMaterial3D.CULL_DISABLED
-			# beberapa glb (babi hutan) membawa alpha 0 + mode MASK -> model tak terlihat sama sekali
-			sm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-			sm.albedo_color = Color(sm.albedo_color.r, sm.albedo_color.g, sm.albedo_color.b, 1.0)
-			sm.roughness = 0.9
-			sm.metallic = 0.0
-			mi.set_surface_override_material(i, sm)
+		if mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.mesh.surface_get_material(i)
+				var sm: StandardMaterial3D = (m.duplicate() as StandardMaterial3D) if m is StandardMaterial3D else StandardMaterial3D.new()
+				if sm.albedo_texture == null:
+					sm.vertex_color_use_as_albedo = true
+				sm.cull_mode = BaseMaterial3D.CULL_DISABLED
+				# beberapa glb (babi hutan) membawa alpha 0 + mode MASK -> model tak terlihat sama sekali
+				sm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				sm.albedo_color = Color(sm.albedo_color.r, sm.albedo_color.g, sm.albedo_color.b, 1.0)
+				sm.roughness = 0.9
+				sm.metallic = 0.0
+				if stylized:
+					sm.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+					sm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+				mi.set_surface_override_material(i, sm)
 	for c in n.get_children():
-		_fix_materials(c)
+		_fix_materials(c, stylized)
 
 
 static func _aabb_of(n: Node, xf: Transform3D) -> AABB:
