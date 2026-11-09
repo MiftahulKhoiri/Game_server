@@ -153,7 +153,6 @@ func TestSoldiersStrike(t *testing.T) {
 	}
 }
 
-
 func TestAllyHealthDefaultsAndHealing(t *testing.T) {
 	st := NewState()
 	st.Allies = []string{"ksatria"}
@@ -194,9 +193,15 @@ func TestDownAllyStopsAttackingAndCanBeIgnoredByEnemyTargeting(t *testing.T) {
 	b.NextEnemyMs = 100000
 	b.NextAllyMs = 1000
 	res, err := b.Sync(p, 1000, seq(99))
-	if err != nil { t.Fatal(err) }
-	for _, ev := range res.Events {
-		if ev.Who == "ally" { t.Fatalf("pendamping tumbang tidak boleh menyerang: %+v", ev) }
+	if err != nil {
+		t.Fatal(err)
 	}
-	if res.Status != StatusOngoing { t.Fatalf("pertarungan harus berlanjut: %s", res.Status) }
+	for _, ev := range res.Events {
+		if ev.Who == "ally" {
+			t.Fatalf("pendamping tumbang tidak boleh menyerang: %+v", ev)
+		}
+	}
+	if res.Status != StatusOngoing {
+		t.Fatalf("pertarungan harus berlanjut: %s", res.Status)
+	}
 }
