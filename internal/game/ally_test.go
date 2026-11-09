@@ -152,3 +152,51 @@ func TestSoldiersStrike(t *testing.T) {
 		t.Fatalf("tiga prajurit harus menyerang, dapat %d: %+v", n, res.Events)
 	}
 }
+
+
+func TestAllyHealthDefaultsAndHealing(t *testing.T) {
+	st := NewState()
+	st.Allies = []string{"ksatria"}
+	st.Party = []string{"ksatria"}
+	if hp, maxHP, ok := st.AllyHealth("ksatria"); !ok || hp != AllyMaxHP || maxHP != AllyMaxHP {
+		t.Fatalf("akun lama harus memiliki HP penuh: hp=%d max=%d ok=%v", hp, maxHP, ok)
+	}
+	st.ensureAllyHealth()
+	if remaining, down := st.damageAlly("ksatria", AllyMaxHP); !down || remaining != 0 {
+		t.Fatalf("pendamping harus tumbang: hp=%d down=%v", remaining, down)
+	}
+	if _, err := st.HealAlly("ksatria", PotionHeal); err != nil {
+		t.Fatalf("ramuan harus menyembuhkan pendamping tumbang: %v", err)
+	}
+	if hp, _, _ := st.AllyHealth("ksatria"); hp != PotionHeal {
+		t.Fatalf("HP setelah sembuh=%d; ingin %d", hp, PotionHeal)
+	}
+	if _, err := st.HealAlly("ksatria", AllyMaxHP); err != nil {
+		t.Fatal(err)
+	}
+	if hp, _, _ := st.AllyHealth("ksatria"); hp != AllyMaxHP {
+		t.Fatalf("HP harus dibatasi maksimum: %d", hp)
+	}
+	if _, err := st.HealAlly("ksatria", 1); !errors.Is(err, ErrAllyFullHP) {
+		t.Fatalf("HP penuh harus ditolak: %v", err)
+	}
+	if err := st.Validate(); err != nil {
+		t.Fatalf("state pendamping tidak valid: %v", err)
+	}
+}
+
+func TestDownAllyStopsAttackingAndCanBeIgnoredByEnemyTargeting(t *testing.T) {
+	p := newPlayer()
+	p.State.Allies = []string{"ksatria"}
+	p.State.Party = []string{"ksatria"}
+	p.State.AllyHP = map[string]int{"ksatria": 0}
+	b := battleVs("tikus_sawah", 100)
+	b.NextEnemyMs = 100000
+	b.NextAllyMs = 1000
+	res, err := b.Sync(p, 1000, seq(99))
+	if err != nil { t.Fatal(err) }
+	for _, ev := range res.Events {
+		if ev.Who == "ally" { t.Fatalf("pendamping tumbang tidak boleh menyerang: %+v", ev) }
+	}
+	if res.Status != StatusOngoing { t.Fatalf("pertarungan harus berlanjut: %s", res.Status) }
+}
