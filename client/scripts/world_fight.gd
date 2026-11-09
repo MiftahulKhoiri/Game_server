@@ -438,14 +438,25 @@ func _play_event(e: Dictionary) -> void:
 ## Pendamping memukul musuh: animasi serang, percikan, dan angka kerusakan (lebih kecil dari pukulan pemain).
 func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> void:
 	var hero := str(e.get("hero", ""))
+	var kind := str(e.get("kind", "attack"))
 	var comp: Variant = world._companions
-	if comp != null:
-		comp.attack(hero)
-	if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
-		roamer.model.call("play_hurt")
-	var col := Color("9fd8ff")
-	HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.5, 0), col, 7, 2.6)
-	_float_text(enemy_at + Vector3(0.35, enemy_top + 0.4, 0), "-%d" % int(e.get("dmg", 0)), col, 44)
+	if kind == "attack":
+		if comp != null:
+			comp.attack(hero)
+		if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
+			roamer.model.call("play_hurt")
+		var col := Color("9fd8ff")
+		HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.5, 0), col, 7, 2.6)
+		_float_text(enemy_at + Vector3(0.35, enemy_top + 0.4, 0), "-%d" % int(e.get("dmg", 0)), col, 44)
+	else:
+		if comp != null and comp.has_method("hit"):
+			comp.hit(hero, kind == "down")
+		var at: Vector3 = comp.position_of(hero) if comp != null else Vector3.ZERO
+		var col := Color("ff6b5c") if kind == "down" else Color("ffb36b")
+		HeroFx.burst(world, at + Vector3(0, 0.9, 0), col, 12, 2.6)
+		_float_text(at + Vector3(0, 1.9, 0), "-%d" % int(e.get("dmg", 0)), col, 48)
+		if kind == "down":
+			_float_text(at + Vector3(0, 2.5, 0), "TUMBANG", col, 42)
 
 
 ## Angka/tulisan melayang yang naik lalu hilang (selalu menghadap kamera).
