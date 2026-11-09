@@ -205,3 +205,38 @@ func TestDownAllyStopsAttackingAndCanBeIgnoredByEnemyTargeting(t *testing.T) {
 		t.Fatalf("pertarungan harus berlanjut: %s", res.Status)
 	}
 }
+
+
+func TestEnemyCanDownCompanionAfterThreeStrikes(t *testing.T) {
+	p := newPlayer()
+	p.State.Allies = []string{"ksatria"}
+	p.State.Party = []string{"ksatria"}
+	p.State.AllyHP = map[string]int{"ksatria": 1}
+	b := battleVs("tikus_sawah", 1000)
+	b.NextEnemyMs = 1000
+	b.NextAllyMs = 100000 // cegah serangan balasan pendamping dalam tes ini
+
+	for _, now := range []int64{1000, 3000, 5000} {
+		res, err := b.Sync(p, now, seq(20))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if now == 5000 {
+			foundDown := false
+			for _, ev := range res.Events {
+				if ev.Who == "ally" && ev.Hero == "ksatria" && ev.Kind == "down" {
+					foundDown = true
+				}
+			}
+			if !foundDown {
+				t.Fatalf("serangan musuh ketiga harus menumbangkan pendamping: %+v", res.Events)
+			}
+		}
+	}
+	if hp, _, _ := p.State.AllyHealth("ksatria"); hp != 0 {
+		t.Fatalf("HP pendamping harus 0: %d", hp)
+	}
+	if p.State.HP >= p.State.MaxHP {
+		t.Fatalf("dua serangan pertama harus mengenai pemain: %d", p.State.HP)
+	}
+}
