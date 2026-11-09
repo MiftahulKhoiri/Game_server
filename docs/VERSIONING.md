@@ -360,3 +360,7 @@ membawa pemain; bawaannya halaman Releases terbaru.
 - v0.48.0 menambah **kesehatan pahlawan pendamping**: musuh bisa melukai pendamping, pendamping yang kalah
   disembunyikan dan tidak menyerang, serta bisa disembuhkan dengan ramuan (`POST /v1/allies/heal`, tombol heal
   di dunia). Lihat `docs/COMPANION_DEATH_AND_HEALING.md`. Hanya menambah; `DefaultMinClient` tetap 0.18.0.
+
+- v0.48.1 memperbaiki simpan otomatis yang gagal ("cannot unmarshal number 30.0 into ally_hp") sesudah v0.48.0:
+  klien kini mengirim HP pendamping sebagai bilangan bulat, dan server menerima bilangan bulat berdesimal (`HPMap`).
+  Tidak mengubah API; `DefaultMinClient` tetap 0.18.0.
