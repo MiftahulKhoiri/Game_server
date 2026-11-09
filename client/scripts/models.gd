@@ -117,7 +117,12 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	if inst == null:
 		return null
 	if not is_hero(id):
-		_fix_materials(inst, id == "warga_ibu")
+		# Gaya toon diterapkan konsisten pada seluruh NPC warga, bukan hanya Bu Sari.
+		var stylized_npc := [
+			"warga_ibu", "warga_ibu2", "warga_bapak", "warga_bapak2",
+			"anak_desa", "nenek_penjual", "petani"
+		].has(id)
+		_fix_materials(inst, stylized_npc)
 		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
 	var rig := Rig.new()
 	var holder := Node3D.new()  # badan utuh: digerakkan rig untuk model tanpa rangka
