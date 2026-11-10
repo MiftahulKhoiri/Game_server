@@ -1939,7 +1939,9 @@ func _place_talk_button(anchor: Vector3) -> void:
 		return
 	var sp := _camera.unproject_position(anchor)
 	var x := clampf(sp.x - sz.x * 0.5, 8.0, vs.x - sz.x - 8.0)
-	var y := clampf(sp.y - sz.y - 4.0, 190.0, vs.y * 0.7)
+	# Di bawah HUD kiri atas dan tombol Menu kanan atas; di tengah (layar mendatar) cukup di bawah jam.
+	var top := 190.0 if (x < 240.0 or x + sz.x > vs.x - 260.0) else 70.0
+	var y := clampf(sp.y - sz.y - 4.0, top, vs.y * 0.7)
 	_talk_button.position = Vector2(x, y)
 
 
