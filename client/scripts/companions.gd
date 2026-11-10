@@ -40,11 +40,16 @@ func setup(w: Node) -> void:
 		world._buttons.append(_heal_button)
 
 
+## Prajurit yang digambar di dunia paling banyak sekian (sisanya tetap ikut bertarung di server): pasukan 50
+## prajurit sekaligus terlalu berat untuk HP.
+const MAX_SHOWN_SOLDIERS := 6
+
+
 ## Samakan pendamping di dunia dengan Session.player.state.party.
 func sync() -> void:
 	var party: Array = (Session.player.get("state", {}).get("party", []) as Array).duplicate()
-	for n in Session.active_soldiers():
-		party.append("prajurit_%d" % (n + 1))  # pasukan prajurit biasa ikut berbaris
+	for n in mini(Session.active_soldiers(), MAX_SHOWN_SOLDIERS):
+		party.append("prajurit_%d" % (n + 1))  # pasukan prajurit biasa ikut berbaris (yang terlihat dibatasi)
 	var key := ",".join(PackedStringArray(party))
 	if key == _party_key:
 		return

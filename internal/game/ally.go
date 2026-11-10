@@ -16,8 +16,10 @@ const (
 	AllyIntervalMs = 1800 // jeda antar serangan pendamping
 	AllyFirstMs    = 800  // serangan pendamping pertama setelah pertarungan mulai
 
-	MaxSoldiers    = 5  // prajurit biasa yang boleh dibeli
+	MaxSoldiers    = 50 // prajurit biasa yang boleh dibeli (v0.66.0: dulu 5)
 	SoldierPrice   = 60 // harga satu prajurit
+	SoldierBaseHP  = 40 // HP prajurit di level pasukan 1
+	SoldierHPLevel = 20 // tambahan HP tiap level latihan pasukan
 	SoldierPercent = 20 // kerusakan satu prajurit = serangan dasar level pemain x ini persen
 	SoldierBonus   = 1
 )
@@ -63,6 +65,12 @@ func (s *State) SetActiveSoldiers(n int) error {
 	}
 	s.SoldiersRest = s.Soldiers - n
 	return nil
+}
+
+// SoldierMaxHP: HP satu prajurit, naik menurut level latihan pasukan (v0.66.0). Prajurit yang HP-nya habis
+// dalam pertarungan gugur selamanya (jumlah prajurit berkurang); yang selamat pulih penuh di pertarungan berikutnya.
+func (s State) SoldierMaxHP() int {
+	return SoldierBaseHP + SoldierHPLevel*(s.SquadLevel()-1)
 }
 
 // soldierPower adalah serangan satu prajurit; naik 5 poin persen tiap level latihan pasukan.

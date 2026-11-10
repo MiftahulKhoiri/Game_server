@@ -264,7 +264,7 @@ func _refresh_ally() -> void:
 	var names: PackedStringArray = []
 	for id: String in party:
 		names.append(str(Heroes.get_hero(id).short))
-	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d, Lv %d, dipasang %d" % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS, Session.squad_level(), Session.active_soldiers()]
+	_party_label.text = "Pendamping terpasang: %d/%d%s\nPasukan prajurit: %d/%d, Lv %d (HP %d tiap prajurit), dipasang %d\nPrajurit yang gugur dalam pertarungan tidak kembali. Pasukan menyerang sendiri musuh yang terlihat." % [party.size(), Heroes.MAX_PARTY, ("  (" + ", ".join(names) + ")") if not names.is_empty() else "", int(st.get("soldiers", 0)), Session.MAX_SOLDIERS, Session.squad_level(), Session.soldier_max_hp(), Session.active_soldiers()]
 	var total := int(st.get("soldiers", 0))
 	var active := Session.active_soldiers()
 	if _sol_pick < 0 or _sol_pick > total:

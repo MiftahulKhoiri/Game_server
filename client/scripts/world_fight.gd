@@ -483,7 +483,10 @@ func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> voi
 		HeroFx.burst(world, at + Vector3(0, 0.9, 0), col, 12, 2.6)
 		_float_text(at + Vector3(0, 1.9, 0), "-%d" % int(e.get("dmg", 0)), col, 48)
 		if kind == "down":
-			_float_text(at + Vector3(0, 2.5, 0), "TUMBANG", col, 42)
+			var soldier := hero.begins_with("prajurit_")
+			_float_text(at + Vector3(0, 2.5, 0), "GUGUR" if soldier else "TUMBANG", col, 42)
+			if soldier:
+				world._show_toast("Seorang prajurit gugur!")
 
 
 ## Percikan saat musuh terkena (bisa dimatikan di Pengaturan): darah, atau serpihan untuk batu/kerangka.

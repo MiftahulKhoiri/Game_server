@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -318,5 +319,82 @@ func TestAllyHPAcceptsDecimalWholeNumbers(t *testing.T) {
 	var s3 State
 	if err := json.Unmarshal([]byte(`{"ally_hp":null}`), &s3); err != nil || s3.AllyHP != nil {
 		t.Errorf("null harus jadi kosong: %v %v", err, s3.AllyHP)
+	}
+}
+
+// v0.66.0: prajurit punya HP menurut level pasukan, menerima serangan, dan gugur selamanya.
+func TestSoldiersTakeHitsAndFall(t *testing.T) {
+	p := newPlayer()
+	p.State.Soldiers = 3
+	p.State.HP, p.State.MaxHP = 500, 500
+	if p.State.SoldierMaxHP() != SoldierBaseHP {
+		t.Fatalf("HP prajurit level 1 = %d", p.State.SoldierMaxHP())
+	}
+	b := battleVs("goblin_hutan_3", 100000) // musuh sangat kuat: prajurit tumbang cepat
+	b.NextAllyMs = 10_000_000
+	b.NextEnemyMs = 1000
+	var res Result
+	var err error
+	for i := 0; i < 30 && p.State.Soldiers > 0; i++ {
+		res, err = b.Sync(p, b.NextEnemyMs, seq(50, 50, 50, 50))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Status != StatusOngoing {
+			break
+		}
+	}
+	if p.State.Soldiers != 0 || len(b.SoldierHP) != 0 {
+		t.Fatalf("semua prajurit harus gugur: tersisa %d, hp %v", p.State.Soldiers, b.SoldierHP)
+	}
+	if err := p.State.Validate(); err != nil {
+		t.Errorf("state setelah prajurit gugur tidak sah: %v", err)
+	}
+	// Level pasukan menaikkan HP prajurit.
+	q := NewState()
+	q.SoldierLevel = 5
+	if q.SoldierMaxHP() != SoldierBaseHP+4*SoldierHPLevel {
+		t.Errorf("HP prajurit level 5 = %d", q.SoldierMaxHP())
+	}
+	// Prajurit yang disimpan di kem tidak ikut terkena.
+	r := newPlayer()
+	r.State.Soldiers, r.State.SoldiersRest = 4, 4
+	b2 := battleVs("goblin_hutan_3", 100000)
+	b2.NextAllyMs = 10_000_000
+	b2.NextEnemyMs = 1000
+	r.State.HP, r.State.MaxHP = 5000, 5000
+	_, _ = b2.Sync(r, 1000, seq(50, 50))
+	if r.State.Soldiers != 4 || b2.SoldierHP != nil {
+		t.Errorf("prajurit di kem tidak boleh ikut: %d %v", r.State.Soldiers, b2.SoldierHP)
+	}
+}
+
+func TestManySoldiersOneLogLine(t *testing.T) {
+	p := newPlayer()
+	p.State.Soldiers = 30
+	b := battleVs("goblin_hutan_3", 100000)
+	b.NextEnemyMs = 10_000_000
+	b.NextAllyMs = 1000
+	rolls := make([]int, 100)
+	for i := range rolls {
+		rolls[i] = 20
+	}
+	res, err := b.Sync(p, 1000, seq(rolls...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	events, lines := 0, 0
+	for _, e := range res.Events {
+		if e.Who == "ally" && e.Kind == "attack" {
+			events++
+		}
+	}
+	for _, l := range res.Log {
+		if strings.Contains(l, "Pasukan 30 prajurit") {
+			lines++
+		}
+	}
+	if events != maxSoldierEvents || lines != 1 || len(b.SoldierHP) != 30 {
+		t.Errorf("30 prajurit: %d kejadian, %d baris log, %d HP", events, lines, len(b.SoldierHP))
 	}
 }

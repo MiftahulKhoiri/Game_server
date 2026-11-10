@@ -11,7 +11,7 @@ const REP_BEST := 10
 const REP_DISCOUNT := 10
 const SHOP_KEEPERS := {"toko": "penjaga_toko", "makan": "penjaga_makan", "peralatan": "penjaga_alat"}
 ## Pasukan prajurit biasa (sama dengan MaxSoldiers dan SoldierPrice di internal/game/ally.go).
-const MAX_SOLDIERS := 5
+const MAX_SOLDIERS := 50  # sama dengan MaxSoldiers di server (v0.66.0: dulu 5)
 ## Pelatihan di Aula Pelatihan (sama dengan train.go): level tertinggi, biaya emas/energi, detik per level.
 const MAX_TRAIN_LEVEL := 20
 const TRAIN := {
@@ -361,6 +361,11 @@ func active_soldiers() -> int:
 
 func squad_level() -> int:
 	return maxi(1, int(player.state.get("soldier_level", 1)))
+
+
+## HP satu prajurit menurut level pasukan (sama dengan State.SoldierMaxHP di server).
+func soldier_max_hp() -> int:
+	return 40 + 20 * (squad_level() - 1)
 
 
 ## Latihan yang sedang berjalan untuk tempat latihan itu ({} bila kosong).
