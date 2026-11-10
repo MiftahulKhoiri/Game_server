@@ -16,7 +16,7 @@ const (
 
 	// Nilai bawaan; bisa ditimpa lewat environment (lihat internal/config).
 	DefaultMinClient    = "0.18.0"
-	DefaultLatestClient = "0.50.0"
+	DefaultLatestClient = "0.51.0"
 	DefaultUpdateURL    = "https://github.com/MiftahulKhoiri/Game_server/releases/latest"
 )
 
