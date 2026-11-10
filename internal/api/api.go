@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +30,14 @@ const maxBodyBytes = 64 << 10 // 64 KiB
 var nameRe = regexp.MustCompile(`^[A-Za-z0-9_]{3,20}$`)
 
 type ctxKey struct{}
+
+// tokenKey: hash token permintaan ini (untuk daftar sesi / keluar dari perangkat lain).
+type tokenKey struct{}
+
+// reqInfo diisi sepanjang permintaan untuk catatan log (pemain diisi oleh middleware auth).
+type reqInfo struct{ player string }
+
+type reqInfoKey struct{}
 
 // Server adalah kumpulan handler HTTP.
 type Server struct {
@@ -69,6 +78,9 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.HandleFunc("POST /v1/players", s.createPlayer)
 	mux.HandleFunc("POST /v1/login", s.login)
 	mux.Handle("POST /v1/logout", s.auth(http.HandlerFunc(s.logout)))
+	mux.Handle("POST /v1/logout/others", s.auth(http.HandlerFunc(s.logoutOthers)))
+	mux.Handle("GET /v1/sessions", s.auth(http.HandlerFunc(s.listSessions)))
+	mux.Handle("POST /v1/players/me/password", s.auth(http.HandlerFunc(s.changePassword)))
 	mux.Handle("GET /v1/players/me", s.auth(http.HandlerFunc(s.getMe)))
 	mux.Handle("PUT /v1/players/me/save", s.auth(http.HandlerFunc(s.saveMe)))
 	mux.Handle("GET /v1/battle", s.auth(http.HandlerFunc(s.getBattle)))
@@ -117,7 +129,11 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
 	mux.Handle("POST /v1/shop/barter", s.auth(http.HandlerFunc(s.shopTrade(game.BarterAt))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.SellAt))))
-	return s.logRequests(s.clientGate(mux))
+	// Jalur yang tidak dikenal dijawab JSON (bukan teks bawaan Go) supaya klien selalu bisa membacanya.
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, "jalur tidak dikenal: "+r.Method+" "+r.URL.Path)
+	})
+	return s.logRequests(s.recoverPanic(s.clientGate(mux)))
 }
 
 // --- handler ---
@@ -259,6 +275,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.loginByName.Reset(key)
+	// Hash lama (putaran PBKDF2 lebih sedikit) diperbarui diam-diam saat kata sandinya terbukti benar.
+	if auth.NeedsRehash(hash) {
+		if nh, err := auth.Hash(req.Password); err == nil {
+			if err := s.store.SetPassword(r.Context(), p.ID, nh, ""); err != nil {
+				s.log.Warn("gagal memperbarui hash kata sandi", "player", p.ID, "err", err)
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, createResponse{Player: p, Token: token})
 }
 
@@ -328,6 +352,7 @@ func (s *Server) saveMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "posisi di luar peta atau peta tidak dikenal")
 		return
 	}
+	s.watchMovement(playerFrom(r), pose)
 	p, err := s.store.SavePosition(r.Context(), playerFrom(r).ID, pose, req.Version)
 	switch {
 	case errors.Is(err, store.ErrConflict):
@@ -901,14 +926,25 @@ func (s *Server) auth(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "token tidak ada")
 			return
 		}
-		p, err := s.store.PlayerByTokenHash(r.Context(), hashToken(token))
+		if len(token) > 128 {
+			writeError(w, http.StatusUnauthorized, "token tidak valid")
+			return
+		}
+		h := hashToken(token)
+		p, err := s.store.AuthSession(r.Context(), h, s.clock())
 		switch {
+		case errors.Is(err, store.ErrSessionExpired):
+			writeError(w, http.StatusUnauthorized, "sesi kedaluwarsa; silakan masuk lagi")
 		case errors.Is(err, store.ErrNotFound):
 			writeError(w, http.StatusUnauthorized, "token tidak valid")
 		case err != nil:
 			s.fail(w, r, err)
 		default:
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, p)))
+			if info, ok := r.Context().Value(reqInfoKey{}).(*reqInfo); ok {
+				info.player = p.ID
+			}
+			ctx := context.WithValue(context.WithValue(r.Context(), ctxKey{}, p), tokenKey{}, h)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
 }
@@ -934,13 +970,44 @@ func (s *Server) clientGate(next http.Handler) http.Handler {
 	})
 }
 
+// slowRequest: permintaan yang lebih lama dari ini dicatat sebagai peringatan (roadmap no. 233, 237).
+const slowRequest = time.Second
+
+// logRequests mencatat setiap permintaan: metode, jalur, status, lama, IP, dan pemain (bila masuk).
+// 5xx dicatat sebagai ERROR, 4xx dan permintaan lambat sebagai WARN, sisanya INFO.
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		info := &reqInfo{}
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(sw, r)
-		s.log.Info("request", "method", r.Method, "path", r.URL.Path,
-			"status", sw.status, "dur", time.Since(start).Round(time.Microsecond))
+		next.ServeHTTP(sw, r.WithContext(context.WithValue(r.Context(), reqInfoKey{}, info)))
+		dur := time.Since(start)
+		level := slog.LevelInfo
+		switch {
+		case sw.status >= 500:
+			level = slog.LevelError
+		case sw.status >= 400 || dur > slowRequest:
+			level = slog.LevelWarn
+		}
+		s.log.Log(r.Context(), level, "request", "method", r.Method, "path", r.URL.Path,
+			"status", sw.status, "dur", dur.Round(time.Microsecond), "ip", clientIP(r), "player", info.player)
+	})
+}
+
+// recoverPanic: kesalahan tak terduga di handler tidak mematikan server; peminta mendapat 500 JSON
+// dan jejaknya tercatat di log (roadmap no. 234).
+func (s *Server) recoverPanic(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if v := recover(); v != nil {
+				if v == http.ErrAbortHandler {
+					panic(v)
+				}
+				s.log.Error("panic di handler", "path", r.URL.Path, "panic", v, "stack", string(debug.Stack()))
+				writeError(w, http.StatusInternalServerError, "kesalahan internal server")
+			}
+		}()
+		next.ServeHTTP(w, r)
 	})
 }
 

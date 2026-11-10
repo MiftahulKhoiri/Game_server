@@ -172,6 +172,8 @@ var _toast_tw: Tween
 var _toast_queue: Array = []
 var _jurnal: CanvasLayer                     # Misi, Peta, Kabar (roadmap no. 212-213, 216)
 var _trade_acc := 50.0
+var _net_label: Label                       # "Koneksi terputus" (roadmap no. 231-232)
+var _net_acc := 0.0
 static var _trade_seen: Dictionary = {}
 const BASE_W := 720.0
 const BASE_H := 1280.0
@@ -295,6 +297,10 @@ func _ready() -> void:
 	if "_heal_button" in _companions and _companions._heal_button != null:
 		register_hud(_companions._heal_button, "bl")
 	get_viewport().size_changed.connect(_layout_hud)
+	if not Api.connection_changed.is_connected(_on_connection):
+		Api.connection_changed.connect(_on_connection)
+	if not Api.session_expired.is_connected(_on_session_expired):
+		Api.session_expired.connect(_on_session_expired)
 	if not Session.ui_changed.is_connected(_layout_hud):
 		Session.ui_changed.connect(_layout_hud)
 	_layout_hud()
@@ -841,6 +847,52 @@ func _update_world_life(delta: float) -> void:
 	if _life != null:
 		_life.tick(delta)
 	_poll_trades(delta)
+	_tick_reconnect(delta)
+
+
+## Koneksi putus/tersambung lagi (roadmap no. 231-232). Saat putus: tulisan peringatan dan server ditanya
+## tiap 5 detik. Saat tersambung lagi: data pemain diambil ulang dan posisi yang belum tersimpan dikirim.
+func _on_connection(is_online: bool) -> void:
+	if not is_inside_tree() or Session.offline:
+		return
+	if _net_label != null:
+		_net_label.visible = not is_online
+	if is_online:
+		_set_status("Tersambung lagi ke server")
+		notify("Koneksi ke server tersambung lagi.", "info", "")
+		var me: Dictionary = await Api.get_me()
+		if me.ok and is_inside_tree():
+			Session.merge_server_player(me.data)
+			_refresh_hud()
+		if _unsaved and not _saving and is_inside_tree():
+			_save()
+	else:
+		_net_acc = 0.0
+		_set_status("Koneksi terputus. Kemajuan disimpan setelah tersambung lagi.")
+
+
+func _tick_reconnect(delta: float) -> void:
+	if Api.online or Session.offline:
+		return
+	_net_acc += delta
+	if _net_acc >= 5.0:
+		_net_acc = 0.0
+		Api.health()  # hasilnya memicu connection_changed bila sudah tersambung
+
+
+## Token ditolak (sesi kedaluwarsa atau dicabut dari perangkat lain): kembali ke beranda untuk masuk lagi.
+func _on_session_expired(message: String) -> void:
+	if not is_inside_tree() or Session.offline:
+		return
+	Api.session_expired.disconnect(_on_session_expired)
+	Session.login_notice = "%s. Silakan masuk lagi." % message.trim_suffix(".")
+	Api.token = ""
+	Session.save_config()
+	_locked = true
+	_show_toast("Sesi berakhir")
+	await get_tree().create_timer(1.5).timeout
+	if is_inside_tree():
+		get_tree().change_scene_to_file(LOGIN_SCENE)
 
 
 ## Tawaran dagang masuk (roadmap no. 176, 216): diperiksa tiap 60 detik, pemberitahuan sekali per tawaran.
@@ -2055,6 +2107,18 @@ func _build_ui() -> void:
 	_clock.position = Vector2(300.0, 14.0)
 	layer.add_child(_clock)
 
+	_net_label = Label.new()
+	_net_label.position = Vector2(120, 196)
+	_net_label.size = Vector2(480, 40)
+	_net_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_net_label.add_theme_font_size_override("font_size", 24)
+	_net_label.add_theme_color_override("font_color", Color("ff9c8c"))
+	_net_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_net_label.add_theme_constant_override("outline_size", 8)
+	_net_label.text = "Koneksi terputus — mencoba lagi..."
+	_net_label.visible = false
+	layer.add_child(_net_label)
+
 	_toast = Label.new()
 	_toast.position = Vector2(0, 260)
 	_toast.size = Vector2(720, 80)
@@ -2139,7 +2203,7 @@ func _build_ui() -> void:
 	if not Session.achievement_unlocked.is_connected(_on_achievement):
 		Session.achievement_unlocked.connect(_on_achievement)
 	_profile.hero_changed.connect(_make_player)
-	for pair: Array in [[_bars, "tl"], [_status, "tl"], [_hutan_hud, "tc"], [_radar, "tr"], [menu_btn, "tr"], [_joy, "bl"]]:
+	for pair: Array in [[_bars, "tl"], [_status, "tl"], [_hutan_hud, "tc"], [_net_label, "tc"], [_radar, "tr"], [menu_btn, "tr"], [_joy, "bl"]]:
 		register_hud(pair[0], pair[1])
 	for b: Control in _act_buttons:
 		register_hud(b, "br")

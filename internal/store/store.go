@@ -36,7 +36,8 @@ var (
 //	1 = skema awal (players.token_hash, satu token per pemain)
 //	2 = akun: email + password_hash di players, token pindah ke tabel sessions
 //	3 = tabel trades (perdagangan antarpemain, roadmap no. 176)
-const schemaVersion = 3
+//	4 = sessions.last_used (masa berlaku token, roadmap no. 223)
+const schemaVersion = 4
 
 // playersDDL dipakai dua kali: tabel baru dan tabel bangun-ulang saat migrasi.
 const playersDDL = `CREATE TABLE %s (
@@ -54,7 +55,8 @@ const schemaRest = `
 CREATE TABLE IF NOT EXISTS sessions (
 	token_hash TEXT PRIMARY KEY,
 	player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-	created_at TEXT NOT NULL
+	created_at TEXT NOT NULL,
+	last_used  TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS sessions_player ON sessions(player_id);
 CREATE TABLE IF NOT EXISTS battles (
@@ -99,7 +101,10 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("buat folder database: %w", err)
 	}
 	dsn := "file:" + path +
-		"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)"
+		"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)" +
+		// WAL + synchronous NORMAL: aman dari kerusakan saat listrik padam (paling banyak transaksi
+		// terakhir hilang), jauh lebih cepat daripada FULL di kartu SD (roadmap no. 237).
+		"&_pragma=synchronous(NORMAL)&_pragma=temp_store(MEMORY)&_pragma=cache_size(-8000)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("buka database: %w", err)
@@ -127,12 +132,8 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('players') WHERE name = 'token_hash'`).Scan(&legacy); err != nil {
 		return err
 	}
-	if ver == 2 { // v2 -> v3: tambah tabel trades saja
-		if _, err := db.Exec(tradesDDL); err != nil {
-			return fmt.Errorf("migrasi v2 -> v3: %w", err)
-		}
-		_, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
-		return err
+	if ver == 2 || ver == 3 {
+		return migrateUp(db, ver)
 	}
 	if legacy == 0 { // database baru
 		if _, err := db.Exec(fmt.Sprintf(playersDDL, "players") + ";" + schemaRest); err != nil {
@@ -141,7 +142,37 @@ func migrate(db *sql.DB) error {
 		_, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
 		return err
 	}
-	return migrateFromV1(db)
+	if err := migrateFromV1(db); err != nil {
+		return err
+	}
+	return migrateUp(db, 3)
+}
+
+// migrateUp menjalankan langkah migrasi kecil berurutan dari versi `ver` sampai schemaVersion.
+func migrateUp(db *sql.DB, ver int) error {
+	steps := map[int]string{
+		2: tradesDDL, // v2 -> v3
+		3: `ALTER TABLE sessions ADD COLUMN last_used TEXT NOT NULL DEFAULT '';
+			UPDATE sessions SET last_used = created_at;`, // v3 -> v4
+	}
+	for ; ver < schemaVersion; ver++ {
+		if ver == 3 {
+			var has int
+			if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('sessions') WHERE name = 'last_used'`).Scan(&has); err != nil {
+				return err
+			}
+			if has > 0 { // kolom sudah ada (mis. database dibuat ulang sebagian): cukup naikkan versi
+				steps[3] = `UPDATE sessions SET last_used = created_at WHERE last_used = '';`
+			}
+		}
+		if _, err := db.Exec(steps[ver]); err != nil {
+			return fmt.Errorf("migrasi v%d -> v%d: %w", ver, ver+1, err)
+		}
+		if _, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, ver+1)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // migrateFromV1 membangun ulang tabel players (SQLite tidak bisa mencabut kolom UNIQUE) dengan
@@ -178,7 +209,7 @@ func migrateFromV1(db *sql.DB) error {
 			updated_at TEXT NOT NULL
 		)`,
 		tradesDDL,
-		fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion),
+		`PRAGMA user_version = 3`, // langkah selanjutnya (v3 -> v4) dijalankan migrateUp
 	}
 	for _, q := range steps {
 		if _, err := tx.Exec(q); err != nil {
@@ -240,8 +271,8 @@ type execer interface {
 // insertSession menyimpan hash token dan membuang sesi tertua bila melebihi maxSessions.
 func insertSession(ctx context.Context, q execer, playerID, tokenHash, stamp string) error {
 	if _, err := q.ExecContext(ctx,
-		`INSERT INTO sessions (token_hash, player_id, created_at) VALUES (?, ?, ?)`,
-		tokenHash, playerID, stamp); err != nil {
+		`INSERT INTO sessions (token_hash, player_id, created_at, last_used) VALUES (?, ?, ?, ?)`,
+		tokenHash, playerID, stamp, stamp); err != nil {
 		return fmt.Errorf("simpan sesi: %w", err)
 	}
 	if _, err := q.ExecContext(ctx,

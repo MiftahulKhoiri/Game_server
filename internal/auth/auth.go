@@ -80,6 +80,17 @@ func Verify(password, encoded string) bool {
 	return subtle.ConstantTimeCompare(got, want) == 1
 }
 
+// NeedsRehash: hash dibuat dengan putaran lebih sedikit dari Iterations sekarang (mis. akun lama),
+// sehingga sebaiknya dibuat ulang saat pemain berhasil masuk (roadmap no. 221).
+func NeedsRehash(encoded string) bool {
+	parts := strings.Split(encoded, "$")
+	if len(parts) != 4 || parts[0] != scheme {
+		return true
+	}
+	iter, err := strconv.Atoi(parts[1])
+	return err != nil || iter < Iterations
+}
+
 var (
 	dummyOnce sync.Once
 	dummyHash string

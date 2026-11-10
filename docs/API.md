@@ -22,7 +22,12 @@ Authorization: Bearer <token>
 - Server hanya menyimpan hash token (tabel `sessions`). Satu akun boleh punya beberapa token
   sekaligus (beberapa HP); paling banyak 10, yang tertua dibuang otomatis.
 - Token hilang bukan lagi akhir akun: cukup login ulang dengan nama/email dan kata sandi,
-  progress tetap ada. Token tidak kedaluwarsa sampai di-logout.
+  progress tetap ada.
+- **Masa berlaku (v0.61.0):** token kedaluwarsa bila 30 hari tidak dipakai, atau 180 hari setelah
+  dibuat walau terus dipakai. Jawabannya `401 {"error": "sesi kedaluwarsa; silakan masuk lagi"}` dan
+  token dihapus; klien kembali ke beranda untuk masuk lagi.
+- Hash kata sandi PBKDF2-SHA256 600.000 putaran; hash lama dengan putaran lebih sedikit diperbarui
+  otomatis saat pemain berhasil masuk.
 - Klien **tidak boleh** menyimpan kata sandi di HP, hanya token.
 - Percobaan login yang gagal dibatasi (lihat `429` di bawah).
 
@@ -96,6 +101,21 @@ login lewat endpoint ini.
 ### `POST /v1/logout`  (login)
 Mencabut token yang dipakai permintaan ini (token di perangkat lain tetap hidup). `204` tanpa isi,
 `401` bila token tidak valid.
+
+### `POST /v1/logout/others`  (login, v0.61.0)
+Mencabut semua token akun ini **kecuali** token permintaan ini. `200 {"revoked": N}`.
+
+### `GET /v1/sessions`  (login, v0.61.0)
+`200 {"sessions": [{"created", "last_used", "current"}], "idle_days": 30}` (tanpa token), terbaru dipakai di atas.
+
+### `POST /v1/players/me/password`  (login, v0.61.0)
+Body `{"old": "...", "new": "..."}`. `204` berhasil: semua sesi lain dicabut (token ini tetap). `401` kata sandi
+lama salah (dibatasi 5 kali / 15 menit, lalu `429`), `422` kata sandi baru tidak memenuhi aturan atau sama.
+
+### Kesalahan umum (v0.61.0)
+Semua kesalahan berbentuk JSON `{"error": "..."}`, termasuk jalur tidak dikenal (`404`) dan kesalahan tak
+terduga di server (`500`, dicatat di log beserta jejaknya; server tetap berjalan). Badan permintaan maksimal
+64 KiB dan kolom tak dikenal ditolak `400`.
 
 ### `GET /v1/players/me`  (login)
 Mengambil data pemain beserta progress. `200` berisi objek pemain (termasuk `email` milik sendiri), `401` jika token salah.

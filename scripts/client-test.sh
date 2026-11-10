@@ -22,7 +22,7 @@ cleanup() {
 trap cleanup EXIT
 
 go build -o "$TMP/gameserver" ./cmd/gameserver
-GAME_WORLD_START=2160000240 GAME_ADDR="127.0.0.1:$PORT" GAME_DB="$TMP/game.db" "$TMP/gameserver" >"$TMP/server.log" 2>&1 &
+GAME_BACKUP_DIR="$TMP/backup" GAME_WORLD_START=2160000240 GAME_ADDR="127.0.0.1:$PORT" GAME_DB="$TMP/game.db" "$TMP/gameserver" >"$TMP/server.log" 2>&1 &
 SERVER_PID=$!
 
 for _ in $(seq 1 50); do

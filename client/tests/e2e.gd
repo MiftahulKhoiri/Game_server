@@ -1488,6 +1488,35 @@ func _run() -> void:
 	lg.queue_free()
 	await process_frame
 
+	print("== v0.61: server & koneksi (roadmap no. 219-238)")
+	_check(wt._menu._akun != null, "Pengaturan dalam game punya bagian Akun")
+	var net_online: bool = Api.online
+	var net_events: Array = []
+	var net_cb := func(o: bool) -> void: net_events.append(o)
+	Api.connection_changed.connect(net_cb)
+	Api._track({"status": 0}, false, "/x")
+	Api._track({"status": 200}, false, "/x")
+	Api.connection_changed.disconnect(net_cb)
+	_check(net_events == [false, true] and Api.online, "Api mencatat koneksi putus lalu tersambung lagi")
+	var exp_msgs: Array = []
+	var exp_cb := func(m: String) -> void: exp_msgs.append(m)
+	Api.session_expired.connect(exp_cb)
+	var exp_tok: String = Api.token
+	Api.token = "uji"
+	Api._track({"status": 401, "error": "sesi kedaluwarsa; silakan masuk lagi"}, true, "/v1/players/me")
+	Api._track({"status": 401, "error": "kata sandi lama salah"}, true, "/v1/players/me/password")
+	Api.token = exp_tok
+	Api.session_expired.disconnect(exp_cb)
+	_check(exp_msgs.size() == 1 and str(exp_msgs[0]).contains("kedaluwarsa"), "token ditolak memicu masuk ulang (salah sandi lama tidak)")
+	var net_off: bool = Session.offline
+	Session.offline = false
+	wt._net_label.visible = false
+	wt._on_connection(false)
+	_check(wt._net_label.visible, "koneksi putus: tulisan peringatan muncul")
+	Session.offline = net_off
+	wt._net_label.visible = false
+	Api.online = net_online
+
 	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
 	var AtL = load("res://scripts/atmosphere.gd")
 	var lf: Node = wt._life
