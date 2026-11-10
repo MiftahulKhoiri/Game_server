@@ -59,6 +59,11 @@ func set_outfit(outfit: int) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/outfit", {"outfit": outfit}, true)
 
 
+## Beli rumah di Desa Awal (500 emas).
+func house_buy() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/house/buy", null, true)
+
+
 ## Catat pembicaraan dengan warga (ingatan + keakraban di server).
 func warga_talk(warga: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/warga/talk", {"warga": warga}, true)

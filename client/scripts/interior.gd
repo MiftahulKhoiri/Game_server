@@ -17,6 +17,8 @@ const LOOK := {
 	"rumah_makan": {"wall": Color("b98552"), "trim": Color("6e4527"), "floor_a": Color("c4985c"), "floor_b": Color("b78b50"), "counter": Color("6e4326"), "top": Color("d49a58"), "rug": Color("3a5a8e"), "sign": "RUMAH MAKAN"},
 	"toko_peralatan": {"wall": Color("8a7f74"), "trim": Color("4f4a46"), "floor_a": Color("a89d8c"), "floor_b": Color("9b9080"), "counter": Color("4d5058"), "top": Color("8a6a44"), "rug": Color("7a2f2f"), "sign": "TOKO PERALATAN"},
 	"aula_pelatihan": {"wall": Color("7a7390"), "trim": Color("3f3a58"), "floor_a": Color("b3a68c"), "floor_b": Color("a69a80"), "counter": Color("4d5058"), "top": Color("8a6a44"), "rug": Color("3a5a8e"), "sign": "AULA PELATIHAN"},
+	"penginapan": {"wall": Color("b07a4e"), "trim": Color("5e3a22"), "floor_a": Color("b88a5a"), "floor_b": Color("aa7e50"), "counter": Color("6a4024"), "top": Color("c88e52"), "rug": Color("7a3a5a"), "sign": "PENGINAPAN"},
+	"rumah_pemain": {"wall": Color("c9a77a"), "trim": Color("6b4a2c"), "floor_a": Color("a87a4c"), "floor_b": Color("9c7046"), "counter": Color("6a4024"), "top": Color("c88e52"), "rug": Color("3a6a4a"), "sign": "RUMAHKU"},
 	"rumah_sehat": {"wall": Color("d2dcdf"), "trim": Color("93a8ae"), "floor_a": Color("b9c8cd"), "floor_b": Color("aebec4"), "counter": Color("9fb4ba"), "top": Color("dfe9ec"), "rug": Color("4aa3a0"), "sign": "RUMAH SEHAT"},
 }
 
@@ -105,15 +107,21 @@ static func build(map_id: String) -> Node3D:
 				"S":
 					_counter(root, map_id, look, rows, x, z, c)
 				"R":
-					if map_id == Maps.RUMAH_SEHAT:
+					if map_id == Maps.RUMAH_SEHAT or map_id == Maps.PENGINAPAN or map_id == Maps.RUMAH_PEMAIN:
 						_bed(root, c)
 					else:
 						_shelf(root, map_id, c)
+				"L":  # lemari / rak (no. 124)
+					_cupboard(root, c)
+				"P":  # perapian
+					_fireplace(root, c)
+				"Q":  # tanaman pot
+					_plant(root, c)
 				"F":
 					match map_id:
 						Maps.TOKO_RAMUAN:
 							_barrel(root, c)
-						Maps.RUMAH_MAKAN:
+						Maps.RUMAH_MAKAN, Maps.PENGINAPAN, Maps.RUMAH_PEMAIN:
 							_dining_table(root, c)
 						Maps.TOKO_ALAT:
 							_armor_stand(root, c)
@@ -293,6 +301,33 @@ static func _bed(root: Node3D, c: Vector3) -> void:
 	_put(root, _box(Vector3(0.82, 0.14, 0.88)), Color("f6f8f8"), c + Vector3(0, 0.38, 0))
 	_put(root, _box(Vector3(0.84, 0.06, 0.5)), Color("4a8fd0"), c + Vector3(0, 0.46, 0.2))
 	_put(root, _box(Vector3(0.5, 0.1, 0.22)), Color("ffffff"), c + Vector3(0, 0.5, -0.32))
+
+
+## Lemari kayu dua pintu dengan gagang (roadmap no. 124).
+static func _cupboard(root: Node3D, c: Vector3) -> void:
+	_put(root, _box(Vector3(0.9, 1.25, 0.5)), Color("7a4e2c"), c + Vector3(0, 0.625, -0.2))
+	_put(root, _box(Vector3(0.02, 1.1, 0.02)), Color("4a2e18"), c + Vector3(0, 0.62, 0.06))
+	for gx in [-0.08, 0.08]:
+		_put(root, _ball(0.03), Color("e0c060"), c + Vector3(gx, 0.7, 0.07))
+	_put(root, _box(Vector3(0.96, 0.06, 0.56)), Color("5e3a20"), c + Vector3(0, 1.28, -0.2))
+
+
+## Perapian batu dengan api menyala dan cahaya hangat.
+static func _fireplace(root: Node3D, c: Vector3) -> void:
+	_put(root, _box(Vector3(1.0, 1.1, 0.5)), Color("8a8478"), c + Vector3(0, 0.55, -0.22))
+	_put(root, _box(Vector3(0.6, 0.5, 0.1)), Color("2a2420"), c + Vector3(0, 0.3, 0.04))
+	_put(root, _box(Vector3(1.1, 0.08, 0.6)), Color("6b655d"), c + Vector3(0, 1.12, -0.2))
+	var api := _put(root, _ball(0.14, 1.4), Color("ff9a3a"), c + Vector3(0, 0.22, 0.02))
+	var fm := (api.material_override as StandardMaterial3D).duplicate() as StandardMaterial3D  # bahan sendiri (bahan _mat dibagi)
+	fm.emission_enabled = true
+	fm.emission = Color("ff7a1a")
+	api.material_override = fm
+	var o := OmniLight3D.new()
+	o.light_color = Color("ffa050")
+	o.light_energy = 0.7
+	o.omni_range = 3.5
+	o.position = c + Vector3(0, 0.5, 0.3)
+	root.add_child(o)
 
 
 static func _plant(root: Node3D, c: Vector3) -> void:

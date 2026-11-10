@@ -13,6 +13,13 @@ const PLANG := {
 	"peralatan": {"teks": "TOKO\nPERALATAN", "papan": Color("4d5058")},
 	"rumah_sakit": {"teks": "RUMAH\nSEHAT", "papan": Color("2f8f86")},
 	"aula": {"teks": "AULA\nPELATIHAN", "papan": Color("6a3fa0")},
+	"pandai_besi": {"teks": "PANDAI\nBESI", "papan": Color("5a4a40")},
+	"kuil": {"teks": "KUIL\nDESA", "papan": Color("c9a23a")},
+	"bangsawan": {"teks": "RUMAH\nBANGSAWAN", "papan": Color("7a3fa0")},
+	"lumbung": {"teks": "LUMBUNG\nDESA", "papan": Color("8a6a2a")},
+	"markas": {"teks": "MARKAS\nPENJAGA", "papan": Color("8a2a2a")},
+	"penginapan": {"teks": "PENGINAPAN", "papan": Color("2f6a8a")},
+	"rumah_pemain": {"teks": "RUMAH\nPETUALANG", "papan": Color("3f7a3f")},
 }
 
 ## Letak ikon atap per jenis: (tinggi sebagai bagian dari tinggi bangunan, geser z dari muka bangunan; negatif = masuk ke atap).
@@ -110,6 +117,8 @@ static func pasang(root: Node3D, info: Dictionary, door: Vector2i, kind: String)
 	_put(root, _box(Vector3(1.24, 0.68, 0.07)), Color("2a1606"), Vector3(sx, 1.12, sz - 0.005))
 	_put(root, _box(Vector3(1.16, 0.6, 0.08)), cfg.papan, Vector3(sx, 1.12, sz + 0.005))
 	_label(root, str(cfg.teks), Vector3(sx, 1.12, sz + 0.055), 36, 0.0034, Color("fff1c2"))
+	if not IKON_POS.has(kind):
+		return  # bangunan tanpa ikon atap (cukup plang)
 	# Ikon atap di depan atap, di atas pintu.
 	var ikon := Node3D.new()
 	ikon.name = "IkonAtap"

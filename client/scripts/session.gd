@@ -155,7 +155,7 @@ func shop_discount(shop: String) -> int:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -265,6 +265,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"equipment": {"weapon": str(eq.get("weapon", "")), "armor": str(eq.get("armor", "")), "helmet": str(eq.get("helmet", ""))},
 		# Ingatan + keakraban warga (roadmap no. 58-59; server: state.reputation) {id: {p, t, l}}.
 		"reputation": _reputation(s.get("reputation", {})),
+		"house": bool(s.get("house", false)),  # rumah di Desa Awal sudah dibeli (roadmap no. 127)
 		# Variasi warna pakaian pahlawan 0..3 (roadmap no. 14; server: state.outfit).
 		"outfit": clampi(int(s.get("outfit", 0)), 0, 3),
 		"level": int(s.get("level", 1)),

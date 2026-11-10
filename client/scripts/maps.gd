@@ -26,10 +26,15 @@ const RUMAH_MAKAN := "rumah_makan"
 const RUMAH_SEHAT := "rumah_sehat"
 const TOKO_ALAT := "toko_peralatan"
 const AULA := "aula_pelatihan"
-const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan", "aula_pelatihan"]
+## v0.55.0 (roadmap no. 115, 123, 127): penginapan dan rumah milik pemain (masuk hanya bila sudah dibeli).
+const PENGINAPAN := "penginapan"
+const RUMAH_PEMAIN := "rumah_pemain"
+const RUMAH_PEMAIN_PINTU := Vector2i(15, 39)  # pintu rumah yang bisa dibeli di Desa Awal
+const HARGA_RUMAH := 500                      # sama dengan HousePrice di internal/game/house.go
+const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan", "aula_pelatihan", "penginapan", "rumah_pemain"]
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "hutan_lebat": "Hutan Lebat", "gua_goblin": "Gua Goblin", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan"}
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "hutan_lebat": "Hutan Lebat", "gua_goblin": "Gua Goblin", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan", "penginapan": "Penginapan", "rumah_pemain": "Rumahku"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
@@ -43,12 +48,16 @@ const EXITS := {
 		{"pos": Vector2i(16, 2), "to": "toko_ramuan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(22, 2), "to": "rumah_makan", "at": Vector2i(4, 6)},
 		{"pos": Vector2i(28, 2), "to": "rumah_sehat", "at": Vector2i(4, 6)},
+		{"pos": Vector2i(29, 39), "to": "penginapan", "at": Vector2i(4, 6)},
+		{"pos": Vector2i(15, 39), "to": "rumah_pemain", "at": Vector2i(4, 6)},
 	],
 	"toko_peralatan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(4, 3)}],
 	"aula_pelatihan": [{"pos": Vector2i(5, 7), "to": "desa_awal", "at": Vector2i(38, 21)}],
 	"toko_ramuan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(16, 3)}],
 	"rumah_makan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(22, 3)}],
 	"rumah_sehat": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(28, 3)}],
+	"penginapan": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(29, 40)}],
+	"rumah_pemain": [{"pos": Vector2i(4, 7), "to": "desa_awal", "at": Vector2i(15, 40)}],
 	"perbatasan": [
 		{"pos": Vector2i(21, 0), "to": "desa_awal", "at": Vector2i(21, 48)},
 		{"pos": Vector2i(22, 0), "to": "desa_awal", "at": Vector2i(22, 48)},
@@ -169,8 +178,8 @@ const NPCS := {
 const WARGA := [
 	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "peran": "Juru Masak", "baju": Color("ffb0a0"), "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7, "rumah": Vector2i(10, 2), "jadwal": [{"dari": 10.0, "sampai": 12.5, "pos": Vector2(18.5, 11.75), "kerja": "bicara", "hadap": 180.0, "kata": ["Kain biru ini berapa, Dik?", "Wah, mahal juga. Kurang sedikit, ya?"]}]},
 	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "peran": "Pedagang Kain", "baju": Color("f0a8e0"), "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75, "rumah": Vector2i(34, 2), "jadwal": [{"dari": 8.0, "sampai": 16.0, "pos": Vector2(18.5, 10.5), "kerja": "bicara", "hadap": 0.0, "alat": "lapak", "kata": ["Kain, kain! Kain halus dari kota!", "Mari, Bu, dilihat dulu kainnya.", "Untuk pahlawan, harga teman!"]}]},
-	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "peran": "Mantan Prajurit", "baju": Color("b8c4a0"), "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7, "rumah": Vector2i(13, 20), "jadwal": [{"dari": 13.0, "sampai": 15.5, "pos": Vector2(19.4, 11.75), "kerja": "bicara", "hadap": 180.0, "kata": ["Ada kain untuk ikat kepala prajurit?", "Dulu di istana kainnya lebih tebal, lho."]}]},
-	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "peran": "Petani Ladang", "baju": Color("d8c890"), "kulit": Color("e8cfb0"), "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(29, 39), "jadwal": [{"dari": 6.0, "sampai": 15.0, "pos": Vector2(12.5, 28.5), "kerja": "cangkul", "hadap": 270.0, "kata": ["Hup! Tanahnya keras sekali.", "Semoga panen tahun ini melimpah.", "Rumput liar ini tumbuh terus..."]}]},
+	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "peran": "Mantan Prajurit", "baju": Color("b8c4a0"), "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7, "rumah": Vector2i(29, 30), "jadwal": [{"dari": 13.0, "sampai": 15.5, "pos": Vector2(19.4, 11.75), "kerja": "bicara", "hadap": 180.0, "kata": ["Ada kain untuk ikat kepala prajurit?", "Dulu di istana kainnya lebih tebal, lho."]}]},
+	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "peran": "Petani Ladang", "baju": Color("d8c890"), "kulit": Color("e8cfb0"), "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(15, 30), "jadwal": [{"dari": 6.0, "sampai": 15.0, "pos": Vector2(12.5, 28.5), "kerja": "cangkul", "hadap": 270.0, "kata": ["Hup! Tanahnya keras sekali.", "Semoga panen tahun ini melimpah.", "Rumput liar ini tumbuh terus..."]}]},
 	{"id": "rina", "model": "anak_desa", "name": "Rina", "peran": "Anak Desa", "baju": Color("ffa8c8"), "kulit": Color("fff0e0"), "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "peran": "Anak Desa", "baju": Color("a8c8ff"), "kulit": Color("e0c0a0"), "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
 	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "peran": "Kepala Desa", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
@@ -202,6 +211,7 @@ const WARGA := [
 	# Pelatih di Aula Pelatihan: kiri melatih pahlawan pembantu berkelas, kanan melatih prajurit biasa.
 	{"id": "latih_pahlawan", "model": "pendekar_kapak", "name": "Guru Bima", "peran": "Pelatih Pahlawan", "map": "aula_pelatihan", "pos": Vector2(4.0, 2.6), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "latih_pahlawan"},
 	{"id": "latih_prajurit", "model": "pendekar_tombak", "name": "Sersan Anton", "peran": "Pelatih Prajurit", "map": "aula_pelatihan", "pos": Vector2(7.0, 2.6), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "latih_prajurit"},
+	{"id": "penjaga_inap", "model": "warga_ibu", "name": "Bu Ratna", "peran": "Pemilik Penginapan", "map": "penginapan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "inap", "baju": Color("f0c080"), "kulit": Color("f0d8c0")},
 	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "baju": Color("e8f4ff"), "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
 
@@ -667,6 +677,30 @@ const SEHAT_ROWS: Array[String] = [
 ]
 
 
+## Penginapan: R ranjang tamu, F meja makan, L rak di belakang meja penerima tamu.
+const INAP_ROWS: Array[String] = [
+	"HHHHHHHHH",
+	"HLLLLLLLH",
+	"HxxxxxxxH",
+	"HSSSSSSSH",
+	"H=======H",
+	"HR=F=F=RH",
+	"H=======H",
+	"HHHHDHHHH",
+]
+## Rumah pemain: R ranjang (istirahat), P perapian, L lemari, F meja makan, Q tanaman pot.
+const RUMAH_ROWS: Array[String] = [
+	"HHHHHHHHH",
+	"HR=P=LLQH",
+	"H=======H",
+	"H==F====H",
+	"H=======H",
+	"HQ======H",
+	"H=======H",
+	"HHHHDHHHH",
+]
+
+
 static func is_interior(map_id: String) -> bool:
 	return INTERIORS.has(map_id)
 
@@ -708,6 +742,10 @@ static func rows(map_id: String) -> Array[String]:
 			return ALAT_ROWS
 		AULA:
 			return AULA_ROWS
+		PENGINAPAN:
+			return INAP_ROWS
+		RUMAH_PEMAIN:
+			return RUMAH_ROWS
 	return []
 
 
