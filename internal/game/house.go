@@ -28,6 +28,7 @@ func (s *State) BuyHouse() error {
 	}
 	s.Gold -= HousePrice
 	s.House = true
+	s.checkAchievements()
 	return nil
 }
 

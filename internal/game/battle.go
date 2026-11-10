@@ -254,7 +254,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		b.Ready[action] = now + CooldownMs[action]
 	}
 	strike := func(power int, kind string) bool {
-		dmg, crit := rollDamage(power, e.Defense, rng, true)
+		dmg, crit := rollDamage(power, e.Defense, rng, st.CritPercent())
 		b.EnemyHP -= dmg
 		if crit && kind == "attack" {
 			kind = "crit"
@@ -284,7 +284,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 			return res, nil
 		}
 	case ActionSkill1:
-		if !st.spendEnergy(Skill1Energy) {
+		if !st.spendEnergy(st.skillCost(Skill1Energy)) {
 			return Result{}, ErrNoEnergy
 		}
 		cd()
@@ -297,7 +297,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		res.Events = append(res.Events, Event{Who: "player", Kind: "guard"})
 		logf("Kamu bersiap bertahan.")
 	case ActionSkill2:
-		if !st.spendEnergy(Skill2Energy) {
+		if !st.spendEnergy(st.skillCost(Skill2Energy)) {
 			return Result{}, ErrNoEnergy
 		}
 		cd()
@@ -370,7 +370,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		t := b.NextEnemyMs
-		dmg, _ := rollDamage(e.Attack, st.Defense(), rng, false)
+		dmg, _ := rollDamage(e.Attack, st.Defense(), rng, 0)
 		kind := "hit"
 		iv = b.interval(e)
 		next := t + iv
@@ -461,7 +461,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 		if hp, _, ok := st.AllyHealth(id); ok && hp <= 0 {
 			continue
 		}
-		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, false)
+		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, 0)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
 		name := id
@@ -476,7 +476,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 		}
 	}
 	for n := 1; n <= st.ActiveSoldiers(); n++ {
-		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, false)
+		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, 0)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: SoldierID(n)})
 		res.Log = append(res.Log, fmt.Sprintf("Prajurit %d membantu: %s -%d HP.", n, b.EnemyName, dmg))
@@ -503,7 +503,7 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	for st.Level < MaxLevel && st.XP >= XPToNext(st.Level) {
 		st.XP -= XPToNext(st.Level)
 		st.Level++
-		st.MaxHP = MaxHPForLevel(st.Level)
+		st.MaxHP = st.MaxHPNow()
 		st.HP = st.MaxHP
 		st.EnergyUsed = 0
 		rw.LeveledUp = true
@@ -521,6 +521,10 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 		if rw.Drop == "" {
 			rw.Drop = KartuKeahlianID
 		}
+	}
+	st.Wins++
+	for _, a := range st.checkAchievements() {
+		res.Log = append(res.Log, "Pencapaian baru: "+a+"!")
 	}
 	res.Log = append(res.Log, st.RecordKill(e.ID)...)
 	res.Log = append(res.Log, st.recordHutan(e)...)
@@ -541,10 +545,11 @@ func (b *Battle) lose(p *Player, res *Result) {
 
 // rollDamage menghitung kerusakan: (serang - pertahanan), minimal 1, dengan
 // variasi 80-120%. Serangan pemain bisa kritis (x1,5).
-func rollDamage(attack, defense int, rng Rand, canCrit bool) (dmg int, crit bool) {
+// critPct = peluang kritis (persen); 0 = tidak bisa kritis (serangan musuh).
+func rollDamage(attack, defense int, rng Rand, critPct int) (dmg int, crit bool) {
 	base := max(1, attack-defense)
 	dmg = max(1, base*(80+rng.Intn(41))/100)
-	if canCrit && rng.Intn(100) < CritChance {
+	if critPct > 0 && rng.Intn(100) < critPct {
 		dmg = dmg * 3 / 2
 		crit = true
 	}

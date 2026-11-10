@@ -38,7 +38,7 @@ func (s State) itemQty(id string) int {
 // Attack adalah serangan total: dari level ditambah bonus senjata.
 func (s State) Attack() int {
 	def, _ := ItemByID(s.Equipment.Weapon)
-	atk := AttackForLevel(s.Level) + def.Attack
+	atk := AttackForLevel(s.Level) + def.Attack + s.talentAttack()
 	if s.PowerLeft > 0 {
 		atk = atk * PowerPercent / 100
 	}
@@ -49,7 +49,7 @@ func (s State) Attack() int {
 func (s State) Defense() int {
 	def, _ := ItemByID(s.Equipment.Armor)
 	helm, _ := ItemByID(s.Equipment.Helmet)
-	return DefenseForLevel(s.Level) + def.Defense + helm.Defense
+	return DefenseForLevel(s.Level) + def.Defense + helm.Defense + s.talentDefense()
 }
 
 // Equip memakai barang dari tas (barang tetap ada di tas). Perlengkapan lama di slot yang sama diganti.

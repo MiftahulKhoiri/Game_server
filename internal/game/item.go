@@ -45,6 +45,14 @@ type ItemDef struct {
 	Slot    string `json:"slot,omitempty"`
 	Attack  int    `json:"attack,omitempty"`  // bonus serangan (SlotWeapon)
 	Defense int    `json:"defense,omitempty"` // bonus pertahanan (SlotArmor / SlotHelmet)
+	// Rarity: kelangkaan untuk warna nama (biasa / langka / epik), diisi otomatis (progress.go).
+	Rarity string `json:"rarity,omitempty"`
+}
+
+func init() {
+	for i := range items {
+		items[i].Rarity = Rarity(items[i].ID)
+	}
 }
 
 // Daftar barang. Barang baru: tambahkan satu baris di sini lalu (opsional)
@@ -61,6 +69,10 @@ var items = []ItemDef{
 	{ID: "daging_bakar", Name: "Daging Bakar", Kind: KindFood, BuyPrice: 45, SellPrice: 18, Shop: ShopFood, Heal: 50},
 	{ID: KartuKeahlianID, Name: "Kartu Keahlian", Kind: KindMaterial, BuyPrice: 60, SellPrice: 20, Shop: ShopGear},
 	{ID: RadarID, Name: "Radar Musuh", Kind: KindSpecial}, // pemberian Kapten Rimba; tidak dijual
+	// Bahan alam (v0.56.0): dari memukul pohon, batu, rumput; ditempa di pandai besi.
+	{ID: KayuID, Name: "Kayu", Kind: KindMaterial, SellPrice: 1},
+	{ID: BatuID, Name: "Bongkah Batu", Kind: KindMaterial, SellPrice: 2},
+	{ID: SeratID, Name: "Serat Rumput", Kind: KindMaterial, SellPrice: 1},
 	{ID: "pedang_besi", Name: "Pedang Besi", Kind: KindEquipment, BuyPrice: 120, SellPrice: 40, Shop: ShopGear, Slot: SlotWeapon, Attack: 3},
 	{ID: "pedang_baja", Name: "Pedang Baja", Kind: KindEquipment, BuyPrice: 320, SellPrice: 110, Shop: ShopGear, Slot: SlotWeapon, Attack: 6},
 	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual

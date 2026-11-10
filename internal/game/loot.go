@@ -247,6 +247,7 @@ func (s *State) BreakObjects(now time.Time, targets []BreakTarget, rng Rand) (Lo
 		if item != "" {
 			loot.addItem(item, 1)
 		}
+		loot.addItem(materialOf(t.Kind), 1) // bahan alam untuk menempa (roadmap no. 146)
 	}
 	s.grant(loot)
 	return loot, nil
