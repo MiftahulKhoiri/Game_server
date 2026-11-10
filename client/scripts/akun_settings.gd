@@ -84,6 +84,7 @@ func _edit(placeholder: String) -> LineEdit:
 func _label(text: String, size := 26) -> Label:
 	var l := Label.new()
 	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # teks panjang turun baris, panel tidak melebar
 	l.add_theme_font_size_override("font_size", size)
 	return l
 

@@ -47,6 +47,7 @@ var _confirm_key := ""
 var _confirm_btn: Button
 var _confirm_text := ""
 var _confirm_timer: Timer
+var panel: PanelContainer  # dipakai uji: lebar panel tidak boleh melebihi layar
 
 
 func _init() -> void:
@@ -65,7 +66,7 @@ func _ready() -> void:
 	add_child(center)
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	var panel := PanelContainer.new()
+	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(580, 0)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("1d2b22")
@@ -335,6 +336,7 @@ func _title(text: String) -> Label:
 func _label(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", 28)
 	return l
 

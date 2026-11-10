@@ -148,7 +148,23 @@ func _process(delta: float) -> void:
 		set_process(false)  # tidak ada yang bergerak: hemat tenaga
 
 
+var _sb_cache := {}  # StyleBoxFlat dipakai ulang (dulu dibuat baru tiap gambar ulang, ±20 per frame)
+
+
+func _q(kind: int, font: Font, pos: Vector2, text: String, size: int, color: Color, outline := 0) -> void:
+	if kind == 1:
+		draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, outline, color)
+	else:
+		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+
+
 func _rr(rect: Rect2, color: Color, radius: float, border := Color(0, 0, 0, 0), border_w := 0.0) -> void:
+	var key := "%s|%s|%s|%s" % [color.to_html(), radius, border.to_html(), border_w]
+	if _sb_cache.has(key):
+		draw_style_box(_sb_cache[key], rect)
+		return
+	if _sb_cache.size() > 64:
+		_sb_cache.clear()  # warna bar nyawa berubah halus: jangan menumpuk
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = color
 	sb.set_corner_radius_all(int(radius))
@@ -156,6 +172,7 @@ func _rr(rect: Rect2, color: Color, radius: float, border := Color(0, 0, 0, 0), 
 		sb.border_color = border
 		sb.set_border_width_all(int(border_w))
 	sb.anti_aliasing = true
+	_sb_cache[key] = sb
 	draw_style_box(sb, rect)
 
 
@@ -163,8 +180,8 @@ func _text(text: String, center: Vector2, font_size: int, color: Color) -> void:
 	var font: Font = FONT
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	var base := Vector2(center.x - w / 2.0, center.y + font_size * 0.35)
-	draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 6, Color(0, 0, 0, 0.85))
-	draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+	_q(1, font, base, text, font_size, Color(0, 0, 0, 0.85), 6)
+	_q(2, font, base, text, font_size, color)
 
 
 func _draw() -> void:
@@ -174,9 +191,9 @@ func _draw() -> void:
 	while nm.length() > 1 and font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27).x > BAR_X + BAR_W:
 		nm = nm.substr(0, nm.length() - 1)
 	var nbase := Vector2(6.0, NAME_H - 8.0)
-	draw_string(font, nbase + Vector2(2.0, 3.0), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, Color(0, 0, 0, 0.45))
-	draw_string_outline(font, nbase, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, 8, NAME_EDGE)
-	draw_string(font, nbase, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 27, NAME_FILL)
+	_q(0, font, nbase + Vector2(2.0, 3.0), nm, 27, Color(0, 0, 0, 0.45))
+	_q(1, font, nbase, nm, 27, NAME_EDGE, 8)
+	_q(2, font, nbase, nm, 27, NAME_FILL)
 	# --- level: piala emas bernomor level ---
 	_trophy(Vector2(27.0, XP_Y + XP_H / 2.0 + 2.0))
 	# --- poin menuju level berikutnya ---
@@ -234,8 +251,8 @@ func _draw() -> void:
 	_diamond(Vector2(27.0, DIA_Y))
 	var dtxt := str(diamonds)
 	var dbase := Vector2(BAR_X - 6.0, DIA_Y + 8.0)
-	draw_string_outline(font, dbase, dtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Color("0a3a55"))
-	draw_string(font, dbase, dtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("a8ecff"))
+	_q(1, font, dbase, dtxt, 24, Color("0a3a55"), 7)
+	_q(2, font, dbase, dtxt, 24, Color("a8ecff"))
 	# --- koin emas dan jumlahnya ---
 	var cc := Vector2(27.0, COIN_Y)
 	draw_circle(cc, 15.0, Color(0, 0, 0, 0.6))
@@ -245,8 +262,8 @@ func _draw() -> void:
 	draw_circle(cc + Vector2(-3.5, -4.2), 2.3, Color(1, 1, 1, 0.55))
 	var gtxt := str(gold)
 	var gbase := Vector2(BAR_X - 6.0, COIN_Y + 8.0)
-	draw_string_outline(font, gbase, gtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, 7, Color("5a3a05"))
-	draw_string(font, gbase, gtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color("ffe27a"))
+	_q(1, font, gbase, gtxt, 24, Color("5a3a05"), 7)
+	_q(2, font, gbase, gtxt, 24, Color("ffe27a"))
 
 
 ## Piala emas dengan nomor level di cangkirnya. `c` = titik tengah cangkir.

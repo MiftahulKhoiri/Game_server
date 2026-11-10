@@ -3,6 +3,7 @@ extends Node3D
 ## Warna pita menurut tingkat (1 kayu-emas, 2 perak, 3 biru, 4 ungu). Isi diundi server.
 
 const WorldBuild = preload("res://scripts/world_build.gd")
+const MeshMerge = preload("res://scripts/mesh_merge.gd")
 
 ## Ukuran peti dibuat lebih kecil supaya pas di dunia (hitbox dan jangkauan buka tidak berubah).
 const SIZE := 0.7
@@ -28,6 +29,7 @@ func build(id: String, tier: int) -> void:
 		_add_box(self, Vector3(0.07, 0.4, 0.55), Vector3(sx, 0.2, 0), band)
 
 	_lid = Node3D.new()  # engsel di tepi belakang atas badan
+	_lid.set_meta("no_merge", true)  # tutup berputar saat dibuka: digabung tersendiri
 	_lid.position = Vector3(0, 0.38, -0.26)
 	add_child(_lid)
 	_add_box(_lid, Vector3(0.78, 0.12, 0.52), Vector3(0, 0.06, 0.26), wood)
@@ -107,6 +109,8 @@ func build(id: String, tier: int) -> void:
 	_label.position = Vector3(0, 0.95, 0)
 	_label.visible = false
 	add_child(_label)
+	MeshMerge.merge(self)   # badan: 7 bentuk -> 2 mesh (panggilan gambar lebih sedikit)
+	MeshMerge.merge(_lid)
 	scale = Vector3.ONE * SIZE
 
 

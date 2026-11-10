@@ -14,6 +14,7 @@ const ROAM_LOD_FAR := [11.0, 16.0, 22.0]      # musuh lebih jauh dari ini diperb
 const FX_MULT := [0.5, 1.0, 1.3]              # jumlah partikel efek (hujan, percikan, sihir)
 const SHADOW_DIST := [0.0, 16.0, 26.0]        # 0 = tanpa bayangan
 const SCALE_3D := [0.6, 0.75, 1.0]            # resolusi 3D relatif layar (UI tetap tajam)
+const LIGHTS := [2, 5, 9]                     # lampu titik terdekat yang boleh menyala (malam, obor, tungku)
 
 
 static func q() -> int:

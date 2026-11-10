@@ -1570,6 +1570,55 @@ func _run() -> void:
 	pf_hero.free()
 	_check(int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)) == pf_o0, "membuat lalu membuang model pahlawan tidak meninggalkan node yatim")
 
+	print("== v0.63.1: perbaikan dari uji Samsung A50")
+	_check(int(wt._terrain.get_meta("digabung", 0)) >= 100, "bentuk kecil statis Desa digabung (%d bentuk)" % int(wt._terrain.get_meta("digabung", 0)))
+	var a5_chest: Node = wt._chest_nodes.values()[0] if not wt._chest_nodes.is_empty() else null
+	if a5_chest != null:
+		var a5_mi := 0
+		for a5_c in a5_chest.get_children():
+			if a5_c is MeshInstance3D and a5_c.visible:
+				a5_mi += 1
+		_check(a5_mi <= 4, "peti harta: badan digabung (%d mesh)" % a5_mi)
+		a5_chest.set_open(true, false)
+		_check(a5_chest._lid.rotation.x != 0.0, "tutup peti tetap bisa membuka setelah digabung")
+		a5_chest.set_open(false, false)
+	var AtN = load("res://scripts/atmosphere.gd")
+	var a5_hour: float = AtN.hour_override
+	AtN.hour_override = 1.0
+	wt._update_lamps()
+	wt._cull_lights()
+	var a5_on := 0
+	for a5_l in wt._lights:
+		if is_instance_valid(a5_l) and a5_l.visible:
+			a5_on += 1
+	_check(wt._lights.size() > 10 and a5_on <= int(PerfS.pick(PerfS.LIGHTS)) and a5_on > 0, "malam: hanya %d dari %d lampu terdekat yang menyala" % [a5_on, wt._lights.size()])
+	AtN.hour_override = a5_hour
+	wt._update_lamps()
+	wt._cull_lights()
+	# Nama di atas kepala tidak saling menumpuk.
+	wt._layout_names()
+	var a5_rects: Array = []
+	var a5_overlap := false
+	for a5_e: Dictionary in wt._names.entries:
+		var a5_lb: Label3D = a5_e.label
+		if is_instance_valid(a5_lb) and a5_lb.is_visible_in_tree():
+			var a5_r: Rect2 = wt._names._screen_rect(wt._camera, a5_lb, a5_lb.text.replace("  Zzz", ""), a5_lb.scale.x)
+			for a5_o: Rect2 in a5_rects:
+				a5_overlap = a5_overlap or a5_r.intersects(a5_o)
+			a5_rects.append(a5_r)
+	_check(not a5_overlap, "nama NPC yang tampil tidak saling menumpuk (%d nama tampil)" % a5_rects.size())
+	# Panel Pengaturan tidak boleh lebih lebar dari layar walau teks akun panjang.
+	wt._menu.open()
+	wt._menu._show_page(false)
+	if wt._menu._akun != null:
+		wt._menu._akun._devices.text = "Masuk di 3 perangkat (sesi berakhir bila 30 hari tidak dipakai) — teks panjang sekali untuk uji lebar panel"
+	await process_frame
+	await process_frame
+	var a5_w: float = wt._menu.panel.get_global_rect().size.x
+	_check(a5_w <= wt.get_viewport().get_visible_rect().size.x, "panel Pengaturan muat di layar (lebar %.0f)" % a5_w)
+	wt._menu._show_page(true)
+	wt._menu.close()
+
 	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
 	var AtL = load("res://scripts/atmosphere.gd")
 	var lf: Node = wt._life
