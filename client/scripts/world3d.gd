@@ -225,6 +225,7 @@ const WARGA_LOD_FAR := 18.0   # warga lebih jauh dari ini (petak) diperbarui jar
 const WARGA_LOD_STEP := 0.25
 const ROAM_LOD_FAR := 16.0    # musuh lebih jauh dari ini (petak) diperbarui jarang
 const ROAM_LOD_STEP := 0.2
+const SOLDIER_SIGHT := 5.0   # jarak (petak) pasukan prajurit melihat musuh lalu menyerang sendiri
 var _shadow_disc: MeshInstance3D
 var _energy := 0.0
 var _boost_t := 0.0
@@ -692,6 +693,21 @@ func _update_roamers(delta: float) -> void:
 		r.apply(r.pos.distance_to(_pos) < ROAM_NEAR)
 		if touched and not _fight.busy():
 			_fight.engage(r)
+	# Pasukan prajurit (v0.66.0) menyerang sendiri musuh yang terlihat: pertarungan dimulai tanpa menunggu
+	# musuh menyentuh pemain.
+	if can_aggro and not _fight.busy() and Session.active_soldiers() > 0:
+		var target: Roamer = null
+		var best := SOLDIER_SIGHT
+		for r: Roamer in _roamers:
+			if r.dying or r.fight:
+				continue
+			var d := r.pos.distance_to(_pos)
+			if d < best and Maps.roam_free(_map_id, r.pos):
+				best = d
+				target = r
+		if target != null:
+			_show_toast("Pasukan menyerang %s!" % str(target.label))
+			_fight.engage(target)
 
 
 ## Musuh di Hutan Lebat baru aktif setelah pemain bicara dengan Kapten Rimba (server menolak pertarungannya sebelum itu).

@@ -1618,6 +1618,20 @@ func _run() -> void:
 	_check(a5_w <= wt.get_viewport().get_visible_rect().size.x, "panel Pengaturan muat di layar (lebar %.0f)" % a5_w)
 	wt._menu._show_page(true)
 	wt._menu.close()
+	# Layar bicara: nama + peran panjang tidak boleh mendorong layar melebar (laporan dari HP, v0.66.0).
+	var dl_prev: String = Session.talk_npc
+	Session.talk_npc = "warga:kapten_kem"
+	var dl: Control = load("res://scenes/dialog.tscn").instantiate()
+	get_root().add_child(dl)
+	await process_frame
+	dl._name_label.text = "Kapten Rimba  ·  Penjaga Kem Hutan Lebat yang Sangat Panjang Sekali"
+	await process_frame
+	await process_frame
+	var dl_vw: float = dl.get_viewport().get_visible_rect().size.x
+	_check(dl._name_label.get_global_rect().end.x <= dl_vw + 1.0 and dl._text.get_global_rect().end.x <= dl_vw + 1.0, "layar bicara muat di layar walau nama panjang (%.0f <= %.0f)" % [dl._name_label.get_global_rect().end.x, dl_vw])
+	dl.queue_free()
+	Session.talk_npc = dl_prev
+	await process_frame
 
 	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
 	var AtL = load("res://scripts/atmosphere.gd")

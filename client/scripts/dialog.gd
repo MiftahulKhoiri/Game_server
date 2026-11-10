@@ -304,6 +304,7 @@ func _build_ui() -> void:
 		box.add_child(_portrait)
 
 	_name_label = Label.new()
+	_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # nama + peran panjang turun baris, layar tidak melebar
 	_name_label.add_theme_font_size_override("font_size", 40)
 	_name_label.add_theme_color_override("font_color", Color("e0c070"))
 	box.add_child(_name_label)

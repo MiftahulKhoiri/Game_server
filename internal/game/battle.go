@@ -91,6 +91,9 @@ type Battle struct {
 	DodgePress int64 `json:"dodge_press,omitempty"`
 	// Night: pertarungan di luar ruangan saat malam (roadmap no. 186): musuh lebih kuat, XP lebih besar.
 	Night bool `json:"night,omitempty"`
+	// SoldierHP: HP tiap prajurit yang ikut bertarung (v0.66.0); diisi saat pendamping pertama kali bergerak.
+	// Prajurit yang gugur dibuang dari daftar dan dari State.Soldiers.
+	SoldierHP []int `json:"soldier_hp,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -102,16 +105,17 @@ type BattleView struct {
 	EnemyMaxHP int    `json:"enemy_max_hp"`
 	Round      int    `json:"round"`
 
-	EnemyNextMs     int64            `json:"enemy_next_ms"`     // sisa waktu sampai serangan musuh berikutnya
-	AllyNextMs      int64            `json:"ally_next_ms"`      // sisa waktu sampai pendamping menyerang
-	AllyIntervalMs  int64            `json:"ally_interval_ms"`  // jeda antar serangan pendamping
-	EnemyIntervalMs int64            `json:"enemy_interval_ms"` // jeda antar serangan musuh
-	Cooldowns       map[string]int64 `json:"cooldowns"`         // sisa cooldown per aksi (ms)
-	CooldownMax     map[string]int64 `json:"cooldown_max"`      // cooldown penuh per aksi (ms)
-	GuardMs         int64            `json:"guard_ms"`          // sisa jendela bertahan
-	ShieldMs        int64            `json:"shield_ms"`         // sisa Perisai Cahaya
-	Combo           int              `json:"combo"`             // serangan biasa berturut-turut saat ini
-	ComboMs         int64            `json:"combo_ms"`          // sisa waktu agar kombo berlanjut
+	EnemyNextMs     int64            `json:"enemy_next_ms"`        // sisa waktu sampai serangan musuh berikutnya
+	AllyNextMs      int64            `json:"ally_next_ms"`         // sisa waktu sampai pendamping menyerang
+	AllyIntervalMs  int64            `json:"ally_interval_ms"`     // jeda antar serangan pendamping
+	EnemyIntervalMs int64            `json:"enemy_interval_ms"`    // jeda antar serangan musuh
+	Cooldowns       map[string]int64 `json:"cooldowns"`            // sisa cooldown per aksi (ms)
+	CooldownMax     map[string]int64 `json:"cooldown_max"`         // cooldown penuh per aksi (ms)
+	GuardMs         int64            `json:"guard_ms"`             // sisa jendela bertahan
+	ShieldMs        int64            `json:"shield_ms"`            // sisa Perisai Cahaya
+	Combo           int              `json:"combo"`                // serangan biasa berturut-turut saat ini
+	ComboMs         int64            `json:"combo_ms"`             // sisa waktu agar kombo berlanjut
+	SoldierHP       []int            `json:"soldier_hp,omitempty"` // HP tiap prajurit yang masih bertarung
 }
 
 // Event adalah satu kejadian untuk dianimasikan klien.
@@ -223,6 +227,7 @@ func (b *Battle) View(now int64) BattleView {
 		Cooldowns: map[string]int64{}, CooldownMax: map[string]int64{},
 		GuardMs: left(b.GuardUntil), ShieldMs: left(b.ShieldUntil),
 		Combo: b.ComboN, ComboMs: left(b.ComboUntil),
+		SoldierHP: b.SoldierHP,
 	}
 	if e, ok := EnemyByID(b.EnemyID); ok {
 		v.EnemyIntervalMs = enemyInterval(e)
@@ -399,7 +404,8 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		b.NextEnemyMs += lag - maxCatchUpHits*iv
 	}
 	st.ensureAllyHealth()
-	allyOn := st.hasHealthyAlly() || st.ActiveSoldiers() > 0
+	b.ensureSoldiers(st)
+	allyOn := st.hasHealthyAlly() || len(b.SoldierHP) > 0
 	if allyOn {
 		if b.NextAllyMs == 0 {
 			b.NextAllyMs = upto + AllyFirstMs
@@ -468,6 +474,22 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 					break
 				}
 			}
+		}
+		// Prajurit (v0.66.0): serangan yang tidak mengenai pahlawan pendamping, dua dari tiga, mengenai
+		// prajurit terdepan bila pasukan ikut bertarung.
+		if targetAlly == "" && kind != "perfect" && kind != "miss" && len(b.SoldierHP) > 0 && (b.Round-1)%3 != 2 {
+			b.SoldierHP[0] -= dmg
+			if b.SoldierHP[0] <= 0 {
+				b.SoldierHP = b.SoldierHP[1:]
+				st.Soldiers = max(0, st.Soldiers-1)
+				st.SoldiersRest = min(st.SoldiersRest, st.Soldiers)
+				res.Events = append(res.Events, Event{Who: "ally", Kind: "down", Dmg: dmg, Hero: SoldierID(1)})
+				res.Log = append(res.Log, fmt.Sprintf("Seorang prajurit gugur! Tersisa %d prajurit.", st.Soldiers))
+			} else {
+				res.Events = append(res.Events, Event{Who: "ally", Kind: "hit", Dmg: dmg, Hero: SoldierID(1)})
+				res.Log = append(res.Log, fmt.Sprintf("Prajurit terdepan terkena serangan: -%d HP (tersisa %d).", dmg, b.SoldierHP[0]))
+			}
+			continue
 		}
 		if targetAlly != "" {
 			remaining, down := st.damageAlly(targetAlly, dmg)
@@ -538,18 +560,46 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 			return true
 		}
 	}
-	for n := 1; n <= st.ActiveSoldiers(); n++ {
+	total := 0
+	for n := 1; n <= len(b.SoldierHP); n++ {
 		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, 0)
 		b.EnemyHP -= dmg
-		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: SoldierID(n)})
-		res.Log = append(res.Log, fmt.Sprintf("Prajurit %d membantu: %s -%d HP.", n, b.EnemyName, dmg))
+		total += dmg
+		if n <= maxSoldierEvents { // klien menggerakkan beberapa prajurit saja
+			res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: SoldierID(n)})
+		}
 		if b.EnemyHP <= 0 {
 			b.EnemyHP = 0
+			res.Log = append(res.Log, fmt.Sprintf("Pasukan %d prajurit menyerang: %s -%d HP.", n, b.EnemyName, total))
 			b.win(p, e, rng, res)
 			return true
 		}
 	}
+	if total > 0 {
+		res.Log = append(res.Log, fmt.Sprintf("Pasukan %d prajurit menyerang: %s -%d HP.", len(b.SoldierHP), b.EnemyName, total))
+	}
 	return false
+}
+
+// maxSoldierEvents: kejadian serangan prajurit yang dikirim ke klien per giliran (sisanya hanya dijumlah di log).
+const maxSoldierEvents = 8
+
+// ensureSoldiers mengisi HP prajurit yang ikut bertarung (sekali per pertarungan), dan membuang kelebihan bila
+// jumlah prajurit terpasang berkurang.
+func (b *Battle) ensureSoldiers(st *State) {
+	n := st.ActiveSoldiers()
+	if b.SoldierHP == nil && n > 0 {
+		b.SoldierHP = make([]int, n)
+		for i := range b.SoldierHP {
+			b.SoldierHP[i] = st.SoldierMaxHP()
+		}
+	}
+	if len(b.SoldierHP) > n {
+		b.SoldierHP = b.SoldierHP[:n]
+	}
+	if len(b.SoldierHP) == 0 {
+		b.SoldierHP = nil
+	}
 }
 
 func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {

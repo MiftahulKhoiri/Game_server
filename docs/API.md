@@ -471,7 +471,7 @@ server untuk posisi tersimpan, dan `POST /v1/rest` sah di sana.
 
 ## Prajurit biasa (v0.42.0)
 
-`POST /v1/soldiers/buy` (perlu token) membeli satu prajurit seharga 60 emas; maksimum 5. Hasil: `{state, ...}` dengan
+`POST /v1/soldiers/buy` (perlu token) membeli satu prajurit seharga 60 emas; maksimum 50 (v0.66.0, dulu 5). Hasil: `{state, ...}` dengan
 `state.soldiers` (jumlah). `409` saat bertarung, `422` bila emas kurang atau sudah penuh, `401` tanpa token. Prajurit
 menyerang sebagai pasukan terpisah di tiap giliran sekutu (event `Who:"ally"`, `Hero:"prajurit_n"`); daya serang = 20% serangan
 dasar + 1, tidak memakai slot party.
@@ -480,6 +480,13 @@ dasar + 1, tidak memakai slot party.
 sisanya menunggu di kem dan dicatat di `state.soldiers_rest` (kosong/0 = semua ikut, jadi akun lama tidak berubah). Hanya prajurit yang
 dipasang menyerang (`Hero:"prajurit_1".."prajurit_<n>"`). Prajurit yang baru dibeli langsung ikut. `409` saat bertarung, `422` bila `n`
 di luar rentang, `401` tanpa token. Membalas `Player`.
+
+**Prajurit bisa gugur (v0.66.0).** Tiap prajurit yang dipasang punya HP = 40 + 20 x (level pasukan - 1), dicatat di
+`battle.soldier_hp` (satu angka per prajurit, prajurit terdepan pertama). Serangan musuh yang tidak mengenai pahlawan
+pendamping, dua dari tiga, mengenai prajurit terdepan (event `Who:"ally"`, `Kind:"hit"`/`"down"`, `Hero:"prajurit_1"`).
+HP 0 = prajurit gugur selamanya: `state.soldiers` berkurang satu. Yang selamat pulih penuh di pertarungan berikutnya.
+Serangan pasukan dijumlah di satu baris log; event serangan dikirim untuk 8 prajurit pertama saja. Klien menggambar paling
+banyak 6 prajurit dan memulai pertarungan sendiri bila musuh berada 5 petak dari pemain selama ada prajurit terpasang.
 
 ## Aula Pelatihan (v0.43.0)
 
