@@ -130,11 +130,22 @@ satu baris di `internal/game/quest.go` dengan `CollectID` (tanpa `TargetIDs`).
 Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
 ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
 
-## Masih perlu diputuskan (pemilik proyek)
+## Cerita utama (diputuskan pemilik proyek, 11 Nov 2026)
 
-1. **Cerita.** Siapa dalang serangan monster, apa tujuan akhirnya?
-2. **Penduduk lain.** Siapa lagi yang perlu diselamatkan? Tiap NPC baru butuh gambar di `client/assets/characters/`.
-3. **Setelah Raja Goblin.** Cerita akhir atau lanjut ke ancaman baru? Gambar Raja Goblin dan musuh gua perlu dibuat.
+Naskah cerita resmi ada di [STORY.md](STORY.md), berjudul **The Last Dragon**. Alur utama:
+Desa Awal (penculikan Elara) → Hutan Binatang → Gua Goblin → Gunung Berapi (Orc Batu)
+→ Istana Kegelapan (Aldragor dan Malzareth) → epilog di Desa Awal.
+
+Malzareth adalah penyihir yang mengutuk binatang, Goblin, Orc, dan menguasai naga terakhir
+Aldragor. Semua makhluk itu pada awalnya hidup damai. Mengalahkan Malzareth adalah cara
+utama mematahkan kutukan; Aldragor dikalahkan tetapi tidak dibunuh dan pulih setelah kutukan
+berakhir. Naskah lengkap, dialog kunci, tujuan bab, dan aturan kesinambungan ada di
+[docs/STORY.md](STORY.md).
+
+**Catatan implementasi:** dokumen cerita belum dengan sendirinya mengubah perilaku permainan.
+Misi dan kemajuan utama perlu diterapkan di `internal/game/quest.go`; dialog di
+`client/scripts/dialog.gd` dan `client/scripts/warga_dialog.gd`; wilayah dan pintu di
+`client/scripts/maps.gd` serta sistem dunia terkait.
 
 ## Sistem yang sudah ada di server
 
