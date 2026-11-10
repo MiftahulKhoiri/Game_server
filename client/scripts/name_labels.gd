@@ -67,8 +67,22 @@ func layout(camera: Camera3D, obstacle: Rect2, owner_label: Label3D, hud: Array 
 		l.scale = Vector3.ONE * s
 		l.visible = true
 		var chosen := ""
+		l.offset = Vector2.ZERO
 		for text: String in ([e.full, e.short] if e.full != e.short else [e.full]):
 			var r := _screen_rect(camera, l, text, s)
+			# Terpotong tepi kiri/kanan: geser tulisan masuk ke layar (nama tetap terbaca).
+			var shift := 0.0
+			if r.position.x < screen.position.x:
+				shift = screen.position.x - r.position.x + 2.0
+			elif r.end.x > screen.end.x:
+				shift = screen.end.x - r.end.x - 2.0
+			# Hanya bila titik tengahnya masih di layar (sedikit terpotong), bukan nama orang di luar layar.
+			if shift != 0.0 and absf(shift) < r.size.x * 0.5 and r.size.x < screen.size.x:
+				var label_px := 0.0  # lebar tulisan dalam satuan label
+				for ln in text.split("\n"):
+					label_px = maxf(label_px, float(ln.length()) * l.font_size * 0.55)
+				l.offset = Vector2(shift * label_px / r.size.x, 0.0)
+				r.position.x += shift
 			var blocked := not screen.encloses(r)  # terpotong tepi layar
 			blocked = blocked or (l != owner_label and obstacle.has_area() and r.intersects(obstacle))
 			for hr: Rect2 in hud:
