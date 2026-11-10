@@ -335,6 +335,15 @@ func _run() -> void:
 	if of.ok:
 		Session.merge_server_player(of.data)
 		_check(int(Session.player.state.outfit) == 2, "pakaian ikut digabung ke data lokal")
+	# Roadmap no. 139, 145, 150: tempa, pohon kemampuan, pencapaian (aturan di server).
+	var g_pr: Dictionary = await Api.progress_get()
+	_check(g_pr.ok and g_pr.data.recipes.size() >= 5 and g_pr.data.talents.size() >= 5 and g_pr.data.achievements.size() >= 8, "server memberi resep tempa, pohon kemampuan, dan daftar pencapaian")
+	var g_cr: Dictionary = await Api.craft("pedang_besi", 1)
+	_check(not g_cr.ok and g_cr.status == 422, "menempa tanpa bahan ditolak 422")
+	var g_tl: Dictionary = await Api.learn_talent("mata_elang")
+	_check(not g_tl.ok and g_tl.status == 422, "kemampuan cabang tanpa prasyarat/poin ditolak 422")
+	var g_ac: Dictionary = await Api.claim_achievement("level_10")
+	_check(not g_ac.ok and g_ac.status == 422, "hadiah pencapaian yang belum terbuka ditolak 422")
 	# Roadmap no. 127: rumah pemain dibeli di server; tanpa rumah tidak boleh menyimpan posisi di dalamnya.
 	var r127_hb: Dictionary = await Api.house_buy()
 	_check(not r127_hb.ok and r127_hb.status == 422, "beli rumah tanpa 500 emas ditolak 422")
@@ -892,6 +901,18 @@ func _run() -> void:
 	var db := (dika.model.find_child("Rogue_Body", true, false) as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
 	_check(not rb.albedo_color.is_equal_approx(db.albedo_color), "variasi baju: Rina dan Dika (model sama) berbeda warna")
 	var HA = load("res://scripts/hero_actions.gd")
+	# Roadmap no. 135, 145: stamina dan layar tempa di pandai besi.
+	_check(w3._tempa != null and not w3._tempa.is_open, "layar tempa tersedia (tertutup)")
+	var g_karta = by_id.get("mpu_karta")
+	_check(g_karta != null and g_karta.toko == "tempa", "Mpu Karta membuka layar tempa saat diajak bicara")
+	w3.stamina = 100.0
+	w3._tired = false
+	for i in 200:
+		w3._tick_stamina(0.05, true)
+	_check(w3._tired and w3._speed_mul() < 1.0, "berlari terus: stamina habis dan hanya bisa berjalan")
+	for i in 200:
+		w3._tick_stamina(0.05, false)
+	_check(not w3._tired and w3.stamina > 90.0, "berjalan/diam: stamina pulih")
 	_check(HA.ACTIONS.has("bicara") and HA.ACTIONS.has("palu") and HA.POSES.has("duduk") and HA.POSES.has("tidur"), "gerakan bicara, menempa, duduk, tidur tersedia")
 	# Roadmap no. 45-60: jadwal, pergi bekerja, obrolan, takut monster, optimasi.
 	var WargaC = load("res://scripts/warga.gd")
@@ -1620,7 +1641,7 @@ func _run() -> void:
 	while atr._catalog.is_empty() and Time.get_ticks_msec() - ta < 4000:
 		await process_frame
 	await process_frame
-	_check(not atr._catalog.is_empty() and atr._tab_buttons.size() == 2 and atr._page_equip.visible and not atr._page_ally.visible, "layar Atribut terbuka di tab Perlengkapan")
+	_check(not atr._catalog.is_empty() and atr._tab_buttons.size() == 4 and atr._page_equip.visible and not atr._page_ally.visible, "layar Atribut terbuka di tab Perlengkapan")
 	_check(atr._equip_list.get_child_count() >= 3, "tab Perlengkapan menampilkan statistik dan slot (%d baris)" % atr._equip_list.get_child_count())
 	atr._show_page(1)
 	await process_frame
