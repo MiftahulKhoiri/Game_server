@@ -3,7 +3,6 @@ package game
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 )
 
@@ -25,52 +24,101 @@ func kalahkan(t *testing.T, p *Player, id string) Result {
 	return res
 }
 
-func TestHutanProgression(t *testing.T) {
-	p := newPlayer()
-	st := &p.State
-	st.Map, st.X, st.Y = MapHutanLebat, 22, 5
-	for wave := 0; wave < HutanWaves; wave++ {
-		// Belum 100 binatang: singgasana belum membuka bos.
-		st.X, st.Y = HutanBossX, HutanBossY
+// Tiga wilayah ujian: tahap 25, 75, 100 musuh, masing-masing ditutup bos Level 1..3 (v0.65.0).
+func TestTrialProgression(t *testing.T) {
+	if StageKills != [3]int{25, 75, 100} {
+		t.Fatalf("tahap harus 25/75/100: %v", StageKills)
+	}
+	foe := map[string]string{MapHutanLebat: "kancil_hutan", MapGuaGoblin: "goblin", MapGunungBatu: "goblin"}
+	for _, tr := range Trials {
+		p := newPlayer()
+		st := &p.State
+		st.Map = tr.Map
+		for wave := 0; wave < HutanWaves; wave++ {
+			st.X, st.Y = tr.BossX, tr.BossY
+			if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrBossNotReady) {
+				t.Fatalf("%s tahap %d: bos terlalu cepat muncul: %v", tr.Map, wave+1, err)
+			}
+			for i := 0; i < StageKills[wave]; i++ {
+				kalahkan(t, p, foe[tr.Map])
+			}
+			h := st.Trial(tr.Map)
+			if h.Wave != wave || h.Kills != StageKills[wave] || !h.BossReady() {
+				t.Fatalf("%s tahap %d: kemajuan salah %+v", tr.Map, wave+1, h)
+			}
+			kalahkan(t, p, foe[tr.Map]) // musuh tambahan tidak melewati batas tahap
+			if st.Trial(tr.Map).Kills != StageKills[wave] {
+				t.Fatalf("%s: kills melewati batas: %+v", tr.Map, st.Trial(tr.Map))
+			}
+			b, err := StartBossBattle(p, 0)
+			want := fmt.Sprintf("%s%d", tr.BossPrefix, wave+1)
+			if err != nil || b.EnemyID != want {
+				t.Fatalf("%s tahap %d: bos salah: %+v %v (mau %s)", tr.Map, wave+1, b, err, want)
+			}
+			res := kalahkan(t, p, b.EnemyID)
+			if h := st.Trial(tr.Map); h.Wave != wave+1 || h.Kills != 0 {
+				t.Fatalf("%s setelah bos %d: %+v", tr.Map, wave+1, h)
+			}
+			if len(res.Log) == 0 {
+				t.Error("kemenangan bos harus ada log")
+			}
+		}
+		if !st.Trial(tr.Map).Done() {
+			t.Fatalf("%s harus selesai: %+v", tr.Map, st.Trial(tr.Map))
+		}
 		if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrBossNotReady) {
-			t.Fatalf("wave %d: bos terlalu cepat muncul: %v", wave, err)
+			t.Errorf("%s setelah selesai tidak ada bos lagi: %v", tr.Map, err)
 		}
-		for i := 0; i < HutanBeasts; i++ {
-			kalahkan(t, p, "kancil_hutan")
+		kalahkan(t, p, foe[tr.Map])
+		if st.Trial(tr.Map) != (HutanProgress{Wave: HutanWaves}) {
+			t.Errorf("%s: kemajuan berubah setelah selesai: %+v", tr.Map, st.Trial(tr.Map))
 		}
-		if st.Hutan.Wave != wave || st.Hutan.Kills != HutanBeasts || !st.Hutan.BossReady() {
-			t.Fatalf("wave %d: kemajuan salah %+v", wave, st.Hutan)
+		if err := st.Validate(); err != nil {
+			t.Errorf("%s: state sah ditolak: %v", tr.Map, err)
 		}
-		// Binatang tambahan tidak melewati 100.
-		kalahkan(t, p, "kancil_hutan")
-		if st.Hutan.Kills != HutanBeasts {
-			t.Fatalf("kills melewati batas: %+v", st.Hutan)
-		}
-		b, err := StartBossBattle(p, 0)
-		if err != nil || !strings.HasPrefix(b.EnemyID, "goblin_hutan_") || b.EnemyID != st.Hutan.BossID() {
-			t.Fatalf("wave %d: bos salah: %+v %v", wave, b, err)
-		}
-		res := kalahkan(t, p, b.EnemyID)
-		if st.Hutan.Wave != wave+1 || st.Hutan.Kills != 0 {
-			t.Fatalf("setelah bos %d: %+v", wave+1, st.Hutan)
-		}
-		if len(res.Log) == 0 {
-			t.Error("kemenangan bos harus ada log")
+		// Wilayah lain tidak ikut berubah.
+		for _, other := range Trials {
+			if other.Map != tr.Map && st.Trial(other.Map) != (HutanProgress{}) {
+				t.Errorf("%s ikut berubah saat bermain di %s: %+v", other.Map, tr.Map, st.Trial(other.Map))
+			}
 		}
 	}
-	if !st.Hutan.Done() {
-		t.Fatalf("harus selesai: %+v", st.Hutan)
+}
+
+func TestTrialsOldPlayersAndValidation(t *testing.T) {
+	s := NewState()
+	s.Visited = []string{MapGunungBatu}
+	if !s.Trial(MapGuaGoblin).Done() || s.Trial(MapGunungBatu).Done() {
+		t.Errorf("pemain lama yang sudah sampai Gunung Batu: Gua Goblin lulus, Gunung belum: %+v %+v", s.Trial(MapGuaGoblin), s.Trial(MapGunungBatu))
 	}
-	if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrBossNotReady) {
-		t.Errorf("setelah selesai tidak ada bos lagi: %v", err)
+	// Kemajuan lama Hutan (tahap 1 dulu 100 binatang) tetap sah dan langsung membuka bos.
+	s.Hutan = HutanProgress{Kills: 60}
+	if s.Validate() != nil || !s.Hutan.BossReady() {
+		t.Errorf("kemajuan lama hutan harus sah dan bos siap: %+v", s.Hutan)
 	}
-	// Binatang setelah selesai tidak mengubah kemajuan.
-	kalahkan(t, p, "kancil_hutan")
-	if st.Hutan != (HutanProgress{Wave: HutanWaves}) {
-		t.Errorf("kemajuan berubah setelah selesai: %+v", st.Hutan)
+	for name, bad := range map[string]map[string]HutanProgress{
+		"peta bukan ujian": {MapDesaAwal: {}},
+		"hutan di trials":  {MapHutanLebat: {}},
+		"tahap mustahil":   {MapGuaGoblin: {Wave: 5}},
+		"kills mustahil":   {MapGunungBatu: {Kills: 101}},
+	} {
+		s := NewState()
+		s.Trials = bad
+		if s.Validate() == nil {
+			t.Errorf("%s harus ditolak", name)
+		}
 	}
-	if err := st.Validate(); err != nil {
-		t.Errorf("state sah ditolak: %v", err)
+	for _, id := range []string{"kepala_goblin_1", "kepala_goblin_3", "ogre_gunung_1", "ogre_gunung_3"} {
+		if e, ok := EnemyByID(id); !ok || !e.Boss || !IsHutanBossID(id) {
+			t.Errorf("bos ujian %s salah: %+v", id, e)
+		}
+	}
+	for _, m := range []string{MapGuaGoblin, MapGunungBatu} {
+		for i := 0; i < 300; i++ {
+			if e := PickEnemy(20, m, RandomSource{}); e.Boss {
+				t.Fatalf("bos acak di %s: %s", m, e.ID)
+			}
+		}
 	}
 }
 
@@ -85,12 +133,12 @@ func TestHutanNotCountedElsewhereAndValidation(t *testing.T) {
 	if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrNoBoss) {
 		t.Errorf("jauh dari singgasana harus ErrNoBoss: %v", err)
 	}
-	// Dekat singgasana (bos menyambut di dunia): sah bila 100 binatang sudah kalah.
+	// Dekat singgasana (bos menyambut di dunia): sah bila binatang tahap ini sudah kalah.
 	p.State.X, p.State.Y = HutanBossX+9, HutanBossY-6
 	if _, err := StartHutanBossBattle(p, 0); !errors.Is(err, ErrBossNotReady) {
 		t.Errorf("binatang belum habis harus ErrBossNotReady: %v", err)
 	}
-	p.State.Hutan.Kills = HutanBeasts
+	p.State.Hutan.Kills = StageNeed(0)
 	b, err := StartHutanBossBattle(p, 0)
 	if err != nil || b.EnemyID != "goblin_hutan_1" {
 		t.Errorf("bos menyambut dekat singgasana: %+v %v", b, err)

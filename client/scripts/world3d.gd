@@ -160,7 +160,7 @@ var _joy: Control
 var _cam_finger := -1
 var _status: Label
 var _radar: Control            # Radar Musuh (titik musuh di hutan); tampil bila Radar ada di ransel
-var _hutan_hud: Control        # papan misi Hutan Lebat: binatang X/100, Goblin, panah arah
+var _hutan_hud: Control        # papan misi wilayah ujian: musuh X/25|75|100, bos, panah arah
 var _hutan_boss: Roamer        # Goblin yang menunggu di singgasana hutan (bila sudah waktunya)
 var _hutan_sig := -1           # tanda kemajuan terakhir (untuk pesan saat berubah)
 var _toast: Label
@@ -533,9 +533,10 @@ func _add_tool(kind: String, at: Vector2, yaw: float) -> void:
 
 
 ## Munculkan musuh berkeliaran sesuai peta dan level pemain, jauh dari tempat pemain berdiri.
-## Hutan Lebat: setelah 100 binatang kalah, tidak ada binatang baru sampai Goblin tahap itu kalah.
+## Wilayah ujian (Hutan Lebat, Gua Goblin, Gunung Batu): setelah musuh tahap ini cukup (25/75/100), tidak ada
+## musuh baru sampai bos tahap itu kalah.
 func _hutan_boss_phase() -> bool:
-	return _map_id == Maps.HUTAN and Session.hutan_kills() >= 100 and Session.hutan_wave() < 3
+	return Maps.TRIALS.has(_map_id) and Session.trial_boss_ready(_map_id)
 
 
 func _spawn_roamers(map_id: String) -> void:
@@ -559,7 +560,7 @@ func _spawn_roamers(map_id: String) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var tries := 0
-	var cap := 0 if (map_id == Maps.HUTAN and Session.hutan_kills() >= 100 and Session.hutan_wave() < 3) else Perf.roam_cap(int(_roam_cfg.n))
+	var cap := 0 if (Maps.TRIALS.has(map_id) and Session.trial_boss_ready(map_id)) else Perf.roam_cap(int(_roam_cfg.n))
 	while _roamers.size() < cap and tries < 500:
 		tries += 1
 		var at := _roam_spot(map_id, rng)
@@ -702,7 +703,7 @@ func _hutan_ok() -> bool:
 func _update_radar() -> void:
 	if _radar == null:
 		return
-	var on := _map_id == Maps.HUTAN and Session.has_radar()
+	var on := Maps.TRIALS.has(_map_id) and Session.has_radar()
 	_radar.visible = on
 	if not on:
 		return
@@ -812,7 +813,7 @@ func _process(delta: float) -> void:
 		_lights_acc = 0.0
 		_cull_lights()
 	if _hutan_hud != null and _hutan_hud.visible:
-		_hutan_hud.update_view(Session.hutan_kills(), Session.hutan_wave(), _pos, _cam_yaw, Session.hutan_started())
+		_hutan_hud.update_view(Session.trial_kills(_map_id), Session.trial_wave(_map_id), _pos, _cam_yaw, Session.hutan_started() or _map_id != Maps.HUTAN, _map_id)
 	_update_radar()
 	_update_doors(delta)
 	_tick_actions(delta)
@@ -1112,12 +1113,12 @@ func _after_step(moved: float) -> void:
 				_show_toast("Rumah ini dijual")
 				_set_status("Rumah dijual %d emas: tekan \"Beli rumah\" di depan pintunya" % Maps.HARGA_RUMAH)
 				return
-			if Maps.exit_locked(_map_id, t.x, t.y, Session.hutan_wave()):
-				_pos = Vector2(_pos.x, float(t.y) - 0.6)   # gerbang Gua Goblin masih terkunci: mundur selangkah
+			if Maps.exit_locked(_map_id, t.x, t.y, Session.trial_wave(_map_id)):
+				_pos = Vector2(_pos.x, float(t.y) - 0.6)   # gerbang wilayah ujian masih terkunci: mundur selangkah
 				_tile = Movement.tile_of(_pos)
 				_apply_transform()
 				_show_toast("Gerbang terkunci!")
-				_set_status("Kalahkan 3 Goblin di hutan untuk membuka gerbang Gua Goblin")
+				_set_status("Kalahkan 3 bos di %s untuk membuka jalan ke %s" % [Maps.NAMES.get(_map_id, _map_id), Maps.NAMES.get(str(Maps.TRIALS[_map_id].next), "")])
 				return
 			_go_to_map(str(ex.to), ex.at)
 			return
@@ -2396,58 +2397,64 @@ func _refresh_hud() -> void:
 		_bars.set_energy(Session.energy(), Session.MAX_ENERGY)
 
 
-## Hutan Lebat: papan misi (binatang X/100, Goblin, panah arah), palang gerbang Gua Goblin, dan bos di singgasana.
+## Wilayah ujian: papan misi (musuh X/25|75|100, bos, panah arah), palang gerbang, dan bos di dekat singgasana.
 func _refresh_hutan() -> void:
 	if _hutan_hud == null:
 		return
-	var on := _map_id == Maps.HUTAN
+	var on := Maps.TRIALS.has(_map_id)
 	_hutan_hud.visible = on
-	var wave := Session.hutan_wave()
-	var kills := Session.hutan_kills()
+	var wave := Session.trial_wave(_map_id) if on else 0
+	var kills := Session.trial_kills(_map_id) if on else 0
+	var need := Session.stage_need(wave)
 	if _terrain != null:
 		var lock := _terrain.get_node_or_null("KunciGerbang")
 		if lock != null:
-			lock.visible = wave < 3
-	var boss_up := on and kills >= 100 and wave < 3
+			lock.visible = on and wave < 3
+	var boss_up := on and kills >= need and wave < 3
 	_update_hutan_boss(boss_up, wave + 1)
 	if not on:
 		return
-	_hutan_hud.update_view(kills, wave, _pos, _cam_yaw, Session.hutan_started())
+	var t: Dictionary = Maps.TRIALS[_map_id]
+	_hutan_hud.update_view(kills, wave, _pos, _cam_yaw, Session.hutan_started() or _map_id != Maps.HUTAN, _map_id)
 	var sig := wave * 1000 + kills
 	if _hutan_sig >= 0 and sig != _hutan_sig:
-		if wave >= 3 and _hutan_sig < 3000:
-			_show_toast("Gerbang Gua Goblin terbuka!")
-		elif kills >= 100 and _hutan_sig % 1000 < 100:
-			_show_toast("Goblin Level %d muncul!" % (wave + 1))
-		elif wave * 1000 > _hutan_sig - _hutan_sig % 1000:
-			_show_toast("Goblin Level %d kalah!" % wave)
+		var old_wave := _hutan_sig / 1000
+		if wave >= 3 and old_wave < 3:
+			_show_toast("Jalan ke %s terbuka!" % Maps.NAMES.get(str(t.next), ""))
+		elif wave > old_wave:
+			_show_toast((str(t.boss_name) % wave) + " kalah!")
+			_set_status("Tahap %d: kalahkan %d %s" % [wave + 1, need, str(t.foe).to_lower()])
 			for _i in int(_roam_cfg.get("n", 0)):
 				respawn_roamer()
+		elif kills >= need and _hutan_sig % 1000 < need:
+			_show_toast((str(t.boss_name) % (wave + 1)) + " muncul!")
 		elif kills > _hutan_sig % 1000:
-			_set_status("Binatang %d/100" % kills)
+			_set_status("%s %d/%d" % [t.foe, kills, need])
 	_hutan_sig = sig
 
 
-## Bos Goblin berkeliaran di sekitar singgasana seperti musuh biasa (pertarungan langsung di dunia, hanya lebih kuat).
+## Bos wilayah berkeliaran di sekitar singgasana seperti musuh biasa (pertarungan langsung di dunia, hanya lebih kuat).
 func _update_hutan_boss(show: bool, level: int) -> void:
 	var cur: Roamer = _hutan_boss
 	if cur != null and (cur.dying or cur.node == null or not is_instance_valid(cur.node)):
 		cur = null
 		_hutan_boss = null
-	if not show:
+	if not show or not Maps.TRIALS.has(_map_id):
 		if cur != null and not cur.fight:
 			_remove_roamer(cur)
 		_hutan_boss = null
 		return
-	var want := "goblin_hutan_%d" % level
+	var t: Dictionary = Maps.TRIALS[_map_id]
+	var want := "%s%d" % [t.prefix, level]
 	if cur != null and cur.id == want:
 		return
 	if cur != null and not cur.fight:
 		_remove_roamer(cur)
 	if _terrain == null or _npc_root == null:
 		return
-	var kind := {"id": want, "name": "Goblin Level %d" % level, "lv": 1}
-	var at := Vector2(float(Maps.HUTAN_BOSS.x) + 0.5, float(Maps.HUTAN_BOSS.y) - 1.5)
+	var kind := {"id": want, "name": str(t.boss_name) % level, "lv": 1}
+	var bp: Vector2i = t.boss
+	var at := Vector2(float(bp.x) + 0.5, float(bp.y) - 1.5)
 	var r := _make_roamer(kind, _map_id, at, 7000 + level)
 	r.chase_speed = 2.0
 	_roamers.append(r)

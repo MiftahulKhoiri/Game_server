@@ -31,6 +31,8 @@ var banner_text := ""            # isi papan (untuk uji)
 var crop_stage := -1
 
 var _banner: Label
+var _banner_top := 0.0
+var _banner_low := false
 var _claim: Button
 var _acc := 0.0
 var _respawn := 0.0
@@ -70,8 +72,10 @@ func setup(w: Node) -> void:
 
 ## Ikut tata letak layar world3d (roadmap no. 218): papan dan tombol hadiah menempel ke kanan atas.
 func layout(dx: float, top: float) -> void:
+	_banner_top = top
 	if _banner != null:
 		_banner.position = Vector2(300 + dx, 66 + top)
+		_update_banner()
 		_claim.position = Vector2(288 + dx, 130 + top)
 
 
@@ -242,6 +246,13 @@ func _on_claim() -> void:
 func _update_banner() -> void:
 	if _banner == null or world == null:
 		return
+	# Papan ujian wilayah (kanan atas) tampil: papan ini turun ke bawahnya supaya tidak bertumpuk.
+	var hud: Control = world._hutan_hud
+	_banner_low = hud != null and hud.visible
+	if _banner_low:
+		_banner.position.y = hud.position.y + hud.size.y + 6.0
+	else:
+		_banner.position.y = 66.0 + _banner_top
 	var map_id: String = world._map_id
 	var text := ""
 	var col := Color.WHITE

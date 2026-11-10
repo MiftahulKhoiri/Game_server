@@ -213,25 +213,26 @@ static func line(id: String, stage: int, n: int) -> String:
 
 
 ## Kapten Rimba (penjaga kem di pintu masuk Hutan Lebat) menjelaskan tugas sesuai kemajuan misi.
-## wave = Goblin yang sudah kalah (0-3), kills = binatang kalah di tahap ini (0-100), n = urutan bicara.
+## wave = Goblin yang sudah kalah (0-3), kills = binatang kalah di tahap ini (tahap 1: 25, 2: 75, 3: 100), n = urutan bicara.
 ## `briefed` = sudah pernah diarahkan; bila belum, ini pertemuan pertama: Kapten memberi Radar Musuh.
 static func kapten_line(wave: int, kills: int, n: int, briefed := true) -> String:
-	var tugas := "Tugasmu: kalahkan 100 binatang buas di Hutan Lebat. Setelah itu Goblin Level %d muncul di singgasana, dekat gerbang Gua Goblin." % (wave + 1)
+	var need: int = [25, 75, 100][clampi(wave, 0, 2)]
+	var tugas := "Tugasmu tahap %d: kalahkan %d binatang buas di Hutan Lebat. Setelah itu Goblin Level %d muncul di singgasana, dekat gerbang Gua Goblin." % [wave + 1, need, wave + 1]
 	var jalan := "Hutan Lebat ada di selatan kem ini: susuri jalan raja sampai ujung selatan. Di dalam, jalan tanah bercabang tiga (utara, tengah, selatan), tapi semuanya bertemu di satu persimpangan tepat di depan gerbang Gua Goblin. Singgasana ada di dekat situ. Panah di layar menunjukkan arahnya."
 	if not briefed:
 		return "Selamat datang di kem, Ksatria. Hutan Lebat di selatan dikuasai tiga Goblin. Terimalah Radar Musuh ini: titik merahnya menunjukkan binatang buas di sekitarmu. Sekarang kamu boleh melawan mereka. " + tugas
 	if wave >= 3:
 		return ["Tiga Goblin sudah kamu tumbangkan! Gerbang Gua Goblin sudah terbuka, di ujung selatan Hutan Lebat. Hati-hati di dalam.",
 			"Hutan ini aman berkat kamu. Isi bekalmu di sini sebelum masuk Gua Goblin."][n % 2]
-	if kills >= 100:
+	if kills >= need:
 		return ["Semua binatang tahap ini sudah habis! Goblin Level %d menunggumu di singgasana, dekat gerbang Gua Goblin. Ikuti jalan tanah sampai persimpangan." % (wave + 1),
 			"Goblin itu lebih kuat dari binatang biasa. Bawa ramuan dan jangan lupa bertahan, ya."][n % 2]
-	var progress := "Sudah %d dari 100 binatang kamu kalahkan." % kills if kills > 0 else "Belum ada binatang yang kamu kalahkan."
+	var progress := ("Sudah %d dari %d binatang kamu kalahkan." % [kills, need]) if kills > 0 else "Belum ada binatang yang kamu kalahkan."
 	if wave == 0:
 		return ["Hutan Lebat di selatan dikuasai tiga Goblin. " + tugas + " Radar Musuh di ranselmu menunjukkan di mana binatangnya.",
 			progress + " " + jalan,
-			"Setelah tiga Goblin tumbang, gerbang Gua Goblin terbuka. Gua itu jalan menuju Gunung Batu."][n % 3]
-	return ["Goblin Level %d sudah kamu kalahkan! %d binatang baru muncul di hutan. %s" % [wave, 100, tugas],
+			"Ada tiga tahap: 25, lalu 75, lalu 100 binatang, masing-masing ditutup satu Goblin. Setelah tiga Goblin tumbang, gerbang Gua Goblin terbuka. Di Gua Goblin dan Gunung Batu ujiannya sama."][n % 3]
+	return ["Goblin Level %d sudah kamu kalahkan! Binatang baru muncul di hutan. %s" % [wave, tugas],
 		progress + " " + jalan,
 		"Tersisa %d Goblin lagi. Terus semangat, Ksatria." % (3 - wave)][n % 3]
 

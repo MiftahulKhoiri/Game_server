@@ -685,8 +685,8 @@ static func build(map_id: String) -> Node3D:
 		_add_pasar(root)
 	_add_kecil(root, kecil, map_id)
 	_add_jerami(root, map_id)
-	if map_id == Maps.HUTAN:
-		_add_kunci_gerbang(root)
+	if Maps.TRIALS.has(map_id):
+		_add_kunci_gerbang(root, map_id)
 	if cave:
 		_add_torches(root, rows)
 	MeshMerge.merge(root, _jarak())  # ratusan bentuk kecil statis -> beberapa mesh (panggilan gambar turun)
@@ -770,12 +770,14 @@ static func _add_stone_wall_tile(x: int, z: int, c: Vector3, body_x: Array[Trans
 		top_x.append(Transform3D(Basis.from_scale(Vector3(0.3, 0.3, 0.46)), c + Vector3(sx, top + 0.29, 0)))
 
 
-## Palang kayu yang menutup gerbang Gua Goblin di Hutan Lebat sampai tiga Goblin kalah. Node "KunciGerbang"
-## disembunyikan world3d.gd begitu misi selesai.
-static func _add_kunci_gerbang(root: Node3D) -> void:
+## Palang kayu yang menutup gerbang wilayah ujian (Hutan Lebat -> Gua Goblin, Gua Goblin -> Gunung Batu,
+## Gunung Batu -> Gua Batu) sampai ketiga bos kalah. Node "KunciGerbang" disembunyikan world3d.gd begitu lulus.
+static func _add_kunci_gerbang(root: Node3D, map_id: String) -> void:
+	var t: Dictionary = Maps.TRIALS[map_id]
 	var lock := Node3D.new()
 	lock.name = "KunciGerbang"
-	lock.position = Vector3(147.0, 0.0, 49.45)
+	lock.position = t.lock
+	lock.scale = Vector3(float(t.lock_w) / 2.0, 1.0, 1.0)
 	root.add_child(lock)
 	var wood := mat(Color("6b4423"))
 	var dark := mat(Color("3d2815"))
@@ -796,6 +798,8 @@ static func _add_kunci_gerbang(root: Node3D) -> void:
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.position = Vector3(0, 2.7, -0.2)
+	label.scale = Vector3(2.0 / float(t.lock_w), 1.0, 1.0)  # tulisan tidak ikut melebar
+	label.visibility_range_begin = 4.5  # kamera tepat di depan gerbang: tulisan raksasa disembunyikan
 	lock.add_child(label)
 
 

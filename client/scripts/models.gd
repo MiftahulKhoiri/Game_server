@@ -60,6 +60,13 @@ const VARIANTS := {
 	"goblin_hutan_1": {"base": "goblin_penjaga", "size": 1.6, "tint": Color("b8e0a0")},
 	"goblin_hutan_2": {"base": "goblin_penjaga", "size": 1.95, "tint": Color("e8c070")},
 	"goblin_hutan_3": {"base": "goblin_penjaga", "size": 2.3, "tint": Color("e07060")},
+	# Bos ujian Gua Goblin dan Gunung Batu (v0.65.0): makin besar dan gelap tiap level.
+	"kepala_goblin_1": {"base": "goblin", "size": 1.8, "tint": Color("c0a8f0")},
+	"kepala_goblin_2": {"base": "goblin", "size": 2.15, "tint": Color("8fb4ff")},
+	"kepala_goblin_3": {"base": "goblin", "size": 2.5, "tint": Color("ff9a5a")},
+	"ogre_gunung_1": {"base": "ogre_batu", "size": 1.25, "tint": Color("d8d0b8")},
+	"ogre_gunung_2": {"base": "ogre_batu", "size": 1.5, "tint": Color("b8c8e8")},
+	"ogre_gunung_3": {"base": "ogre_batu", "size": 1.8, "tint": Color("e89a80")},
 	# Ogre Rawa (roadmap no. 63): Monster Batu yang lebih kecil dan hijau lumut.
 	"ogre_rawa": {"base": "ogre_batu", "size": 0.88, "tint": Color("a8d090")},
 	# Prajurit biasa (pasukan dari tenda hijau): pendekar tombak yang lebih kecil dan kehijauan.
