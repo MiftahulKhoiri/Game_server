@@ -186,6 +186,11 @@ Semua waktu di `battle` adalah **sisa milidetik relatif sekarang** (jam klien ti
 dengan jam server). `events` untuk animasi: `who` `player`/`enemy`; `kind` `attack`, `crit`,
 `skill1`, `skill2`, `guard`, `potion` (pemain) atau `hit`, `guard`, `shield`, `perfect` (musuh).
 
+Kemampuan khusus musuh (v0.53.0): serangan musuh ke-4 (bos: ke-3) memakai kemampuannya bila punya. Kejadiannya
+tetap `{"who":"enemy","kind":"hit"|"guard"|"shield",...}` ditambah `"skill":"Terkaman"` dan, untuk Kulit Batu /
+Kobaran Lava, `"heal":N` (HP yang dipulihkan musuh). Jenis: terkam (x1,6), racun (+serangan/4), kulit batu (pulih 8%),
+gempa (bos, x1,8). Bos yang HP-nya di bawah separuh menyerang 25% lebih cepat.
+
 `status`: `ongoing`, `won`, `lost`, atau `fled`. Saat selesai `battle` bernilai
 `null`. `rewards` (menang) berisi `xp`, `gold`, `drop`, `leveled_up`, `new_level`.
 Kalah: emas berkurang separuh, HP pulih separuh, dan pemain dipulangkan ke titik
