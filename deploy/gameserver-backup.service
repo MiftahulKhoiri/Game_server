@@ -1,0 +1,14 @@
+# Cadangan lengkap kode + database (roadmap no. 274), dijalankan oleh gameserver-backup.timer.
+# Ganti tujuan (mis. flashdisk) dengan: systemctl --user edit gameserver-backup
+#   [Service]
+#   Environment=BACKUP_DEST=/media/pi5/FLASHDISK/cadangan_game
+[Unit]
+Description=Cadangan lengkap Game_server (kode + database)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Game_server
+Environment=GAME_DB=%h/Game_server/data/game.db
+Environment=BACKUP_DEST=%h/cadangan_game
+Environment=BACKUP_KEEP=8
+ExecStart=/usr/bin/bash %h/Game_server/scripts/backup-all.sh

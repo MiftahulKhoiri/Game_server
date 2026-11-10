@@ -11,6 +11,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Push baru ke cabang yang sama membatalkan run lama yang belum selesai (tag tidak dibatalkan).
+concurrency:
+  group: client-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 env:
   GODOT_VERSION: "4.7.2"
   # Versi komponen Android mengikuti platform/android/java/app/config.gradle Godot 4.7.
@@ -21,9 +26,10 @@ jobs:
   test:
     name: Uji klien <-> server
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Pasang Godot
@@ -33,18 +39,28 @@ jobs:
           unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
           echo "GODOT=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
       - name: Uji ujung-ke-ujung
-        run: scripts/client-test.sh
+        run: LOG_DIR="$RUNNER_TEMP/log" scripts/client-test.sh 2>&1 | tee "$RUNNER_TEMP/client-test.log"; exit ${PIPESTATUS[0]}
+      - name: Simpan log bila gagal
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: log-uji-klien
+          path: |
+            ${{ runner.temp }}/client-test.log
+            ${{ runner.temp }}/log/
+          if-no-files-found: ignore
 
   apk:
     name: Bangun APK
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     permissions:
       contents: write # untuk melampirkan APK ke Release pada tag v*
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -58,7 +74,7 @@ jobs:
 
       - name: Cache export templates
         id: templates
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
           key: godot-templates-${{ env.GODOT_VERSION }}
@@ -175,18 +191,27 @@ jobs:
           grep -q "versionCode='${GITHUB_RUN_NUMBER}'" badging.txt || { echo "::error::versionCode bukan ${GITHUB_RUN_NUMBER}"; exit 1; }
           grep -q "versionName='${{ steps.ver.outputs.version }}'" badging.txt || { echo "::error::versionName bukan ${{ steps.ver.outputs.version }}"; exit 1; }
           grep -q "android.permission.INTERNET" badging.txt || { echo "::error::izin INTERNET hilang"; exit 1; }
+          # Kompatibilitas Android (no. 270): pustaka mesin arm64 harus ada, versi Android minimum dicatat.
+          grep -q "native-code: 'arm64-v8a'" badging.txt || { echo "::error::pustaka arm64-v8a tidak ada di APK"; exit 1; }
+          min_sdk="$(grep -oP "^sdkVersion:'\K[0-9]+" badging.txt || echo '?')"
+          target_sdk="$(grep -oP "^targetSdkVersion:'\K[0-9]+" badging.txt || echo '?')"
+          echo "Android minimum: API $min_sdk, target: API $target_sdk"
+          if [ "$min_sdk" != "?" ] && [ "$min_sdk" -gt 24 ]; then
+            echo "::warning title=Android minimum naik::APK butuh API $min_sdk (Android 7 = API 24); HP lama tidak bisa memasang"
+          fi
           # 3) Ukuran APK dan isi terbesar (untuk memantau pertumbuhan aset).
           size=$(stat -c %s "$apk")
           echo "Ukuran APK: $((size / 1048576)) MB ($APK_MODE)"
           unzip -lv "$apk" | sort -k3 -n -r | head -n 12
           echo "### APK ${{ steps.ver.outputs.apk }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- mode: $APK_MODE, ukuran: $((size / 1048576)) MB, versionCode: ${GITHUB_RUN_NUMBER}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Android minimum API $min_sdk, target API $target_sdk, arsitektur arm64-v8a" >> "$GITHUB_STEP_SUMMARY"
           echo "- sertifikat SHA-256: \`$got\`" >> "$GITHUB_STEP_SUMMARY"
           if [ "$size" -gt $((80 * 1048576)) ]; then
             echo "::warning title=APK besar::ukuran APK lebih dari 80 MB"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: GamePetualang-v${{ steps.ver.outputs.version }}-build${{ github.run_number }}
           path: build/${{ steps.ver.outputs.apk }}
@@ -194,7 +219,7 @@ jobs:
 
       - name: Lampirkan ke Release (tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: build/${{ steps.ver.outputs.apk }}
           name: Game Petualang v${{ steps.ver.outputs.version }}

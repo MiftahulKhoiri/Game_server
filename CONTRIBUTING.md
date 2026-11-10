@@ -12,7 +12,8 @@ Terima kasih sudah mau ikut. Proyek ini terbuka untuk semua orang.
 
 1. Fork repo, atau buat branch baru dari `main`.
 2. Ubah kode. Jika mengubah perilaku API, ubah juga `docs/API.md`.
-3. Jalankan `make check` (format, vet, tes). Harus lulus.
+3. Jalankan `make check` (format, vet, tes). Harus lulus. Bila mengubah klien, jalankan juga
+   `make client-test GODOT=...` (lihat [docs/TESTING.md](docs/TESTING.md)).
 4. Buka Pull Request dengan penjelasan singkat apa dan mengapa.
 
 ## Aturan kode (server Go)
