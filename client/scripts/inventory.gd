@@ -11,7 +11,7 @@ const KIND_COLORS := {
 	"equipment": Color("5a7fb0"),
 	"food": Color("c98a3c"),
 }
-const SLOTS := [["weapon", "Senjata"], ["armor", "Pelindung"]]
+const SLOTS := [["weapon", "Senjata"], ["armor", "Pelindung"], ["helmet", "Helm"]]
 
 var _catalog: Dictionary = {}  # id -> definisi dari server
 var _summary: Label
@@ -32,7 +32,7 @@ func _ready() -> void:
 
 
 func _equipment() -> Dictionary:
-	return Session.player.state.get("equipment", {"weapon": "", "armor": ""})
+	return Session.player.state.get("equipment", {"weapon": "", "armor": "", "helmet": ""})
 
 
 func _name_of(id: String) -> String:
@@ -101,7 +101,7 @@ func _add_item_row(id: String, qty: int) -> void:
 
 func _is_worn(id: String) -> bool:
 	var eq := _equipment()
-	return str(eq.get("weapon", "")) == id or str(eq.get("armor", "")) == id
+	return str(eq.get("weapon", "")) == id or str(eq.get("armor", "")) == id or str(eq.get("helmet", "")) == id
 
 
 # --- aksi ---

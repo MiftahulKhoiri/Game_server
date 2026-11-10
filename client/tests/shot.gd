@@ -32,6 +32,10 @@ func _gallery() -> void:
 	root.add_child(floor_mesh)
 	for i in ids.size():
 		var m: Node3D = Models.create(ids[i])
+		# SHOT_DRESS = "pakaian,senjata,pelindung,helm" (mis. "1,pedang_rune,zirah_besi,helm_besi")
+		if OS.get_environment("SHOT_DRESS") != "":
+			var d: PackedStringArray = OS.get_environment("SHOT_DRESS").split(",")
+			Models.dress(m, int(d[0]), {"weapon": d[1], "armor": d[2], "helmet": d[3]})
 		m.position = Vector3((i % 2) * 2.0 - 1.0, 0, (i / 2) * -2.0)
 		m.rotation.y = deg_to_rad(float(OS.get_environment("SHOT_TURN")) if OS.get_environment("SHOT_TURN") != "" else 0.0)
 		root.add_child(m)
@@ -39,7 +43,7 @@ func _gallery() -> void:
 	cam.fov = 34
 	cam.keep_aspect = Camera3D.KEEP_WIDTH
 	root.add_child(cam)
-	cam.position = Vector3(0, 4.2, 6.2)
+	cam.position = Vector3(0, 4.2, 6.2) * (float(OS.get_environment("SHOT_ZOOM")) if OS.get_environment("SHOT_ZOOM") != "" else 1.0)
 	cam.look_at(Vector3(0, 0.5, -1.6))
 	cam.current = true
 	await get_tree().create_timer(0.8).timeout

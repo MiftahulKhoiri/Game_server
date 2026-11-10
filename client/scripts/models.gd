@@ -200,6 +200,221 @@ static func _style_hero(n: Node) -> void:
 		_style_hero(c)
 
 
+# --- pakaian dan perlengkapan pahlawan (roadmap no. 14-18) ---
+
+## Variasi pakaian (sama urutannya dengan NumOutfits di server). Warna = pengali tekstur jubah/badan/kaki.
+const OUTFIT_NAMES := ["Asli", "Merah Kerajaan", "Hijau Rimba", "Biru Malam"]
+const OUTFIT_TINTS := [Color(1, 1, 1), Color("ff9c8c"), Color("a6e09a"), Color("9cb6ff")]
+## Pelindung: pengali warna badan/kaki, dan apakah ada bantalan bahu.
+const ARMOR_LOOK := {
+	"baju_kulit": {"tint": Color("d9b48a"), "pads": false},
+	"zirah_besi": {"tint": Color("c8d2e0"), "pads": true},
+}
+## Senjata: pengali warna bilah dan cahaya (pedang rune berpendar).
+const WEAPON_LOOK := {
+	"pedang_besi": {"tint": Color("e6eaf0")},
+	"pedang_baja": {"tint": Color("b4c6ee")},
+	"pedang_rune": {"tint": Color("9fd8ff"), "glow": Color("3fb6ff")},
+}
+## Helm: warna kubah dan pinggiran; helm besi punya jambul merah dan pelindung hidung.
+const HELMET_LOOK := {
+	"helm_kulit": {"dome": Color("b47c48"), "trim": Color("6e4628"), "crest": false},
+	"helm_besi": {"dome": Color("aeb8c6"), "trim": Color("5e6676"), "crest": true},
+}
+## Akhiran nama mesh KayKit.
+const CLOTH_PARTS := ["_Cape", "_Body", "_LegLeft", "_LegRight"]
+const ARMOR_PARTS := ["_Body", "_LegLeft", "_LegRight"]
+const WEAPON_PARTS := ["1H_Sword", "2H_Axe", "Spear", "2H_Crossbow"]
+const HEADGEAR_PARTS := ["Knight_Helmet", "Barbarian_Hat"]
+const DRESS_NODE := "Perlengkapan"
+
+
+static func _ends_with_any(n: String, parts: Array) -> bool:
+	for p: String in parts:
+		if n.ends_with(p) or n == p:
+			return true
+	return false
+
+
+## Warnai semua permukaan mesh: warna dasar asli (disimpan sekali) dikali c; glow = cahaya pendar.
+static func _paint(mi: MeshInstance3D, c: Color, glow := Color(0, 0, 0, 0)) -> void:
+	if mi.mesh == null:
+		return
+	for i in mi.mesh.get_surface_count():
+		var m := mi.get_surface_override_material(i) as StandardMaterial3D
+		if m == null:
+			continue
+		if not m.has_meta("base_col"):
+			m.set_meta("base_col", m.albedo_color)
+		m.albedo_color = (m.get_meta("base_col") as Color) * c
+		m.emission_enabled = glow.a > 0.0
+		if glow.a > 0.0:
+			m.emission = glow
+			m.emission_energy_multiplier = 0.9
+
+
+## Mesh di bawah n beserta transformasinya relatif terhadap n (model belum tentu sudah di pohon).
+static func _meshes(n: Node, xf: Transform3D, out: Array) -> void:
+	for c in n.get_children():
+		var cx := xf
+		if c is Node3D:
+			cx = xf * (c as Node3D).transform
+		if c is MeshInstance3D:
+			out.append([c, cx])
+		_meshes(c, cx, out)
+
+
+## Kenakan pakaian dan perlengkapan pada model pahlawan buatan create(). Boleh dipanggil berulang
+## (mis. setelah ganti perlengkapan): warna dihitung ulang dari warna asli dan tempelan lama dibuang.
+## equipment = {"weapon", "armor", "helmet"} (id barang, "" = kosong).
+static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
+	if rig == null:
+		return
+	var sk: Skeleton3D = null
+	for n in rig.find_children("*", "Skeleton3D", true, false):
+		sk = n as Skeleton3D
+		break
+	if sk == null:
+		return
+	for old in sk.get_children():
+		if old.has_meta(DRESS_NODE):  # tempelan lama (BoneAttachment3D harus anak langsung rangka)
+			sk.remove_child(old)
+			old.free()
+	var cloth: Color = OUTFIT_TINTS[clampi(outfit, 0, OUTFIT_TINTS.size() - 1)]
+	var armor: Dictionary = ARMOR_LOOK.get(str(equipment.get("armor", "")), {})
+	var weapon: Dictionary = WEAPON_LOOK.get(str(equipment.get("weapon", "")), {})
+	var helmet: Dictionary = HELMET_LOOK.get(str(equipment.get("helmet", "")), {})
+	var list: Array = []
+	_meshes(sk, Transform3D.IDENTITY, list)
+	var head_box := AABB()
+	var chest_y := 0.0
+	for pair: Array in list:
+		var mi := pair[0] as MeshInstance3D
+		var nm := str(mi.name)
+		var c := Color(1, 1, 1)
+		if _ends_with_any(nm, CLOTH_PARTS):
+			c = c * cloth
+		if not armor.is_empty() and _ends_with_any(nm, ARMOR_PARTS):
+			c = c * (armor.tint as Color)
+		var glow := Color(0, 0, 0, 0)
+		if not weapon.is_empty() and _ends_with_any(nm, WEAPON_PARTS):
+			c = c * (weapon.tint as Color)
+			glow = weapon.get("glow", glow)
+		_paint(mi, c, glow)
+		if _ends_with_any(nm, HEADGEAR_PARTS):
+			mi.visible = helmet.is_empty()  # helm yang dipakai menggantikan topi/helm bawaan
+		if nm.ends_with("_Head"):
+			head_box = (pair[1] as Transform3D) * mi.get_aabb()
+		if nm.ends_with("_Body"):
+			var bb := (pair[1] as Transform3D) * mi.get_aabb()
+			chest_y = bb.end.y
+	if not helmet.is_empty() and head_box.size != Vector3.ZERO:
+		_attach(sk, "head", _helmet_mesh(helmet, head_box))
+	if armor.get("pads", false) and chest_y > 0.0:
+		for side: String in ["l", "r"]:
+			_attach(sk, "upperarm." + side, _pad_mesh(armor.tint as Color))
+
+
+## Tempelkan `part` (posisi dalam ruang rangka) ke tulang `bone` supaya ikut bergerak.
+static func _attach(sk: Skeleton3D, bone: String, part: Node3D) -> void:
+	var bi := sk.find_bone(bone)
+	if bi < 0:
+		return
+	var ba := BoneAttachment3D.new()
+	ba.name = "%s_%s" % [DRESS_NODE, bone]
+	ba.set_meta(DRESS_NODE, true)
+	sk.add_child(ba)
+	ba.bone_name = bone
+	ba.transform = sk.get_bone_global_rest(bi)  # posisi awal; selanjutnya diikuti otomatis
+	var rest := sk.get_bone_global_rest(bi)
+	if part.has_meta("rig_pos"):
+		# bagian diletakkan di posisi rangka tertentu: ubah ke ruang tulang
+		var t := Transform3D(Basis.IDENTITY, part.get_meta("rig_pos") as Vector3)
+		part.transform = rest.affine_inverse() * t
+	ba.add_child(part)
+
+
+static func _mat(c: Color, metal := false) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = c
+	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+	m.specular_mode = BaseMaterial3D.SPECULAR_TOON
+	m.roughness = 0.45 if metal else 0.85
+	m.rim_enabled = true
+	m.rim = HERO_RIM
+	m.rim_tint = HERO_RIM_TINT
+	return m
+
+
+## Helm dari bentuk dasar, disesuaikan dengan ukuran kepala model.
+static func _helmet_mesh(look: Dictionary, head: AABB) -> Node3D:
+	var root := Node3D.new()
+	root.name = "helm"
+	var w := maxf(head.size.x, head.size.z)
+	var r := w * 0.52
+	var top := head.position.y + head.size.y * 0.56
+	root.set_meta("rig_pos", Vector3(head.get_center().x, top, head.get_center().z))
+	var metal: bool = look.crest
+	var dome := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = r
+	sm.height = r
+	sm.is_hemisphere = true
+	sm.radial_segments = 20
+	sm.rings = 8
+	dome.mesh = sm
+	dome.material_override = _mat(look.dome as Color, metal)
+	dome.scale = Vector3(1.0, 1.15, 1.05)
+	root.add_child(dome)
+	var brim := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = r * 1.06
+	cm.bottom_radius = r * 1.1
+	cm.height = r * 0.16
+	cm.radial_segments = 20
+	brim.mesh = cm
+	brim.material_override = _mat(look.trim as Color, metal)
+	brim.scale = Vector3(1.0, 1.0, 1.05)
+	root.add_child(brim)
+	if metal:
+		var crest := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(r * 0.14, r * 0.32, r * 1.3)
+		crest.mesh = bm
+		crest.material_override = _mat(Color("c23c32"))
+		crest.position = Vector3(0, r * 1.15, 0)
+		root.add_child(crest)
+		var nose := MeshInstance3D.new()
+		var nm := BoxMesh.new()
+		nm.size = Vector3(r * 0.14, r * 0.55, r * 0.1)
+		nose.mesh = nm
+		nose.material_override = _mat(look.trim as Color, true)
+		nose.position = Vector3(0, -r * 0.25, r * 1.08)
+		root.add_child(nose)
+	return root
+
+
+## Bantalan bahu zirah besi: bola pipih di sendi bahu.
+static func _pad_mesh(c: Color) -> Node3D:
+	var mi := MeshInstance3D.new()
+	mi.name = "bahu"
+	var sm := SphereMesh.new()
+	sm.radius = 0.24
+	sm.height = 0.34
+	sm.radial_segments = 14
+	sm.rings = 6
+	mi.mesh = sm
+	mi.material_override = _mat(c * Color("b8c0cc"), true)
+	mi.position = Vector3(0, 0.1, 0)  # sedikit ke arah lengan (sumbu Y tulang lengan atas)
+	return mi
+
+
+## Pakaian dan perlengkapan pemain yang sedang login.
+static func dress_current(rig: Node3D) -> void:
+	var st: Dictionary = Session.player.get("state", {})
+	dress(rig, int(st.get("outfit", 0)), st.get("equipment", {}))
+
+
 static func _aabb_of(n: Node, xf: Transform3D) -> AABB:
 	var box := AABB()
 	var has := false

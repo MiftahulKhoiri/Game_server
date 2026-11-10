@@ -626,6 +626,7 @@ func _build_arena() -> SubViewportContainer:
 	_cam = cam
 
 	_hero_rig = Models.create(str(Heroes.current().id))
+	Models.dress_current(_hero_rig)
 	_hero_rig.position = Vector3(HERO_X, 0, 0)
 	_hero_rig.rotation.y = PI / 2.0  # menghadap +x
 	vp.add_child(_hero_rig)

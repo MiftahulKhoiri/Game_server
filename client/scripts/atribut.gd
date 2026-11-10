@@ -7,7 +7,7 @@ const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ITEM_ART_DIR := "res://assets/items/"
 const Heroes = preload("res://scripts/heroes.gd")
 const Models = preload("res://scripts/models.gd")
-const SLOTS := [["weapon", "Senjata"], ["armor", "Pelindung"]]
+const SLOTS := [["weapon", "Senjata"], ["armor", "Pelindung"], ["helmet", "Helm"]]
 const KIND_COLOR := Color("5a7fb0")
 
 var _catalog: Dictionary = {}  # id -> definisi barang dari server
@@ -60,7 +60,7 @@ func _state() -> Dictionary:
 
 
 func _equipment() -> Dictionary:
-	return _state().get("equipment", {"weapon": "", "armor": ""})
+	return _state().get("equipment", {"weapon": "", "armor": "", "helmet": ""})
 
 
 func _def(id: String) -> Dictionary:

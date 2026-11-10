@@ -54,6 +54,11 @@ func set_hero(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/hero", {"hero": hero}, true)
 
 
+## Ganti variasi pakaian pahlawan (0..3).
+func set_outfit(outfit: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/outfit", {"outfit": outfit}, true)
+
+
 ## Beli pahlawan sebagai pendamping.
 func buy_ally(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/allies/buy", {"hero": hero}, true)
@@ -131,7 +136,7 @@ func inventory_equip(item: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/inventory/equip", {"item": item}, true)
 
 
-## Lepas perlengkapan dari slot ("weapon" atau "armor").
+## Lepas perlengkapan dari slot ("weapon", "armor", atau "helmet").
 func inventory_unequip(slot: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/inventory/unequip", {"slot": slot}, true)
 
