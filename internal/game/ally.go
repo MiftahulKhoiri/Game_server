@@ -47,6 +47,7 @@ func (s *State) BuySoldier() error {
 	}
 	s.Gold -= SoldierPrice
 	s.Soldiers++
+	s.record(LedgerPurchase, "Merekrut prajurit", -SoldierPrice)
 	return nil
 }
 
@@ -86,6 +87,7 @@ func (s *State) BuyAlly(id string) error {
 	}
 	s.Gold -= h.Price
 	s.Allies = append(s.Allies, h.ID)
+	s.record(LedgerPurchase, "Merekrut "+h.Name, -h.Price)
 	if len(s.Party) < MaxParty {
 		s.Party = append(s.Party, h.ID)
 	}

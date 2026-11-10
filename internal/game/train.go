@@ -121,6 +121,9 @@ func (s *State) StartTrain(kind, target string, now int64) error {
 		return ErrNoEnergy
 	}
 	s.Gold -= gold
+	if gold > 0 {
+		s.record(LedgerPurchase, "Biaya latihan", -gold)
+	}
 	s.RemoveItem(KartuKeahlianID, 1)
 	s.spendEnergy(energy)
 	s.Training = append(s.Training, TrainJob{Kind: kind, Target: target, ToLevel: from + 1, ReadyAt: now + int64(sec)})

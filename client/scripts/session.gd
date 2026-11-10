@@ -173,7 +173,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "bank", "storage", "ledger"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -317,4 +317,26 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"training": _jobs(s.get("training", [])),
 		"energy_used": clampi(int(s.get("energy_used", 0)), 0, MAX_ENERGY),
 		"hutan": _hutan(s.get("hutan", {})),
+		# Ekonomi (roadmap no. 180-182): tabungan bank, peti simpan di rumah, riwayat transaksi.
+		"bank": maxi(0, int(s.get("bank", 0))),
+		"storage": _stacks(s.get("storage", [])),
+		"ledger": _ledger(s.get("ledger", [])),
 	}
+
+
+static func _stacks(v: Variant) -> Array:
+	var out: Array = []
+	if v is Array:
+		for item: Variant in v:
+			if item is Dictionary:
+				out.append({"id": str(item.get("id", "")), "qty": int(item.get("qty", 1))})
+	return out
+
+
+static func _ledger(v: Variant) -> Array:
+	var out: Array = []
+	if v is Array:
+		for e: Variant in v:
+			if e is Dictionary:
+				out.append({"at": int(e.get("at", 0)), "kind": str(e.get("kind", "")), "note": str(e.get("note", "")), "gold": int(e.get("gold", 0))})
+	return out

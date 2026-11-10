@@ -554,7 +554,7 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	res.Log = append(res.Log, fmt.Sprintf("%s kalah! +%d XP, +%d emas.", b.EnemyName, e.XP, e.Gold))
 
 	st.XP += e.XP
-	st.Gold += e.Gold
+	st.gainGold(e.Gold)
 	st.gainEnergy(EnergyPerWin)
 	for st.Level < MaxLevel && st.XP >= XPToNext(st.Level) {
 		st.XP -= XPToNext(st.Level)
@@ -591,6 +591,9 @@ func (b *Battle) lose(p *Player, res *Result) {
 	st := &p.State
 	lost := st.Gold / 2
 	st.Gold -= lost
+	if lost > 0 {
+		st.record(LedgerBattle, "Pingsan saat bertarung: separuh emas hilang (tabungan di bank aman)", -lost)
+	}
 	st.HP = max(1, st.MaxHP/2)
 	st.Map, st.X, st.Y = SpawnMap, SpawnX, SpawnY
 	st.PlaceAtTileCenter()

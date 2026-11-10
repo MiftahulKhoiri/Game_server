@@ -276,7 +276,8 @@ func (s *State) ClaimAchievement(id string) error {
 		return ErrAchievementTaken
 	}
 	s.Taken = append(s.Taken, id)
-	s.Gold += a.Gold
+	s.gainGold(a.Gold)
+	s.record(LedgerQuest, "Hadiah pencapaian "+a.Name, a.Gold)
 	return nil
 }
 

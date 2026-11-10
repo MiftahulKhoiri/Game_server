@@ -255,7 +255,7 @@ func (s *State) BreakObjects(now time.Time, targets []BreakTarget, rng Rand) (Lo
 
 // grant memasukkan hadiah ke pemain. Barang yang tidak muat di tas dilewati.
 func (s *State) grant(l Loot) {
-	s.Gold += l.Gold
+	s.gainGold(l.Gold)
 	for _, it := range l.Items {
 		s.AddItem(it.ID, it.Qty)
 	}

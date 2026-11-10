@@ -238,3 +238,26 @@ func TestAccountUniquenessAndSessions(t *testing.T) {
 		t.Errorf("menghapus sesi yang tidak ada bukan error: %v", err)
 	}
 }
+
+func TestMigrateV2AddsTrades(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "v2.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.Exec(`DROP TABLE trades; PRAGMA user_version = 2`); err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+	s, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	var ver, n int
+	_ = s.db.QueryRow(`PRAGMA user_version`).Scan(&ver)
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE name = 'trades'`).Scan(&n)
+	if ver != schemaVersion || n != 1 {
+		t.Fatalf("migrasi v2 -> v3: versi %d, tabel trades %d", ver, n)
+	}
+}

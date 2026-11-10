@@ -277,7 +277,10 @@ func (s *State) ClaimQuest(id string) (QuestDef, error) {
 	}
 	s.Inventory = probe.Inventory
 	s.Quests[i].Status = QuestClaimed
-	s.Gold += def.RewardGold
+	s.gainGold(def.RewardGold)
+	if def.RewardGold > 0 {
+		s.record(LedgerQuest, "Hadiah misi "+def.Title, def.RewardGold)
+	}
 	s.addRep(def.Giver, RepQuestBonus) // pemberi misi makin akrab (roadmap no. 59)
 	s.checkAchievements()
 	return def, nil

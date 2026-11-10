@@ -12,7 +12,7 @@ var WargaIDs = []string{
 	"nenek_penjual", "petani", "bu_sari", "mbak_dewi", "pak_joko", "pak_budi", "rina", "dika",
 	"kepala_suku", "penjaga", "ayam", "mpu_karta", "tuan_wira", "prajurit_damar", "laras", "nyai_sekar",
 	"kapten_kem", "pak_ujang", "penjaga_toko", "penjaga_makan", "penjaga_alat", "penjaga_rawat",
-	"rekrut_pahlawan", "rekrut_prajurit", "latih_pahlawan", "latih_prajurit", "penjaga_inap",
+	"rekrut_pahlawan", "rekrut_prajurit", "latih_pahlawan", "latih_prajurit", "penjaga_inap", "pak_saleh",
 }
 
 // Aturan keakraban.

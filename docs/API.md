@@ -330,6 +330,40 @@ Membeli barang di toko yang tidak menjualnya, atau menjual ke toko yang tidak me
 | 409 | Sedang bertarung |
 | 422 | Jumlah salah, emas tidak cukup, barang kurang, tas penuh, atau barang tidak dijual / tidak dibeli |
 
+Sejak v0.58.0 membeli juga ditolak `422` (tas penuh) bila tumpukan barang akan melewati 999, sehingga emas
+tidak pernah terbayar untuk barang yang tidak masuk; menjual ditolak `422` bila emas dibawa akan melewati 99.999.999.
+
+## Ekonomi (v0.58.0, roadmap no. 171-185)
+
+Mata uang: **emas** (`state.gold`, dibawa) dan **berlian** (barang `berlian`, nilai 500 emas, untuk barter).
+State pemain menambah `bank` (emas tabungan), `storage` (peti simpan di rumah, `[{id, qty}]`, maks 30 tumpukan),
+dan `ledger` (30 transaksi terakhir: `{at, kind, note, gold}`; `at` detik Unix, `gold` perubahan emas dibawa).
+Semua hanya diubah server. Setiap perubahan state diperiksa lagi sebelum disimpan (emas 0..99.999.999, bank
+0..99.999.999, tumpukan 1..999 tanpa kembar): pelanggaran membatalkan seluruh transaksi.
+
+| Endpoint | Body | Efek |
+|----------|------|------|
+| `POST /v1/bank/deposit` | `{"amount": 100}` | Menabung (harus di Desa Awal atau bangunannya). Tabungan **tidak** hilang saat kalah bertarung |
+| `POST /v1/bank/withdraw` | `{"amount": 100}` | Mengambil tabungan |
+| `POST /v1/storage/put` | `{"item": "roti", "qty": 2}` | Ransel → peti simpan (harus di `rumah_pemain` dan punya rumah; perlengkapan terpakai terakhir ditolak) |
+| `POST /v1/storage/take` | `{"item": "roti", "qty": 2}` | Peti simpan → ransel |
+
+Semua `200` berisi objek pemain; `409` saat bertarung; `422` bila melanggar aturan.
+
+### Perdagangan antarpemain
+
+| Endpoint | Body | Efek |
+|----------|------|------|
+| `POST /v1/trades` | `{"to": "Budi", "item": "permata_merah", "qty": 2, "price": 120}` | Tawarkan barang (dititipkan: langsung keluar dari ransel penjual). `201` objek pemain penjual |
+| `GET /v1/trades` | — | `{"trades": [{"id", "from", "to", "item", "qty", "price", "status", "created"}]}`: semua yang `pending` lalu 10 terakhir yang selesai |
+| `POST /v1/trades/accept` | `{"id": 7}` | Penerima membayar `price` emas dan menerima barang; penjual menerima emas |
+| `POST /v1/trades/cancel` | `{"id": 7}` | Penjual membatalkan (`cancelled`) atau penerima menolak (`declined`); barang kembali ke penjual |
+
+`status`: `pending`, `done`, `cancelled`, `declined`. Kedua pemain diubah dalam satu transaksi database, jadi
+permintaan bersamaan tidak bisa menggandakan barang/emas (hanya satu yang berhasil, sisanya `404`). Maksimal 10
+tawaran `pending` per penjual; harga 0..1.000.000; barang khusus (Radar Musuh) tidak bisa diperdagangkan.
+`404` pemain/tawaran tidak ada; `409` sedang bertarung; `422` diri sendiri, barang/emas kurang, tas penuh, harga salah.
+
 ## Tas & perlengkapan (v0.11.0)
 
 Semua aksi atomik dan mengembalikan `200` berisi objek pemain terbaru. `409` bila sedang

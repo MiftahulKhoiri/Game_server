@@ -26,6 +26,8 @@ var (
 	ErrNameTaken  = errors.New("store: nama sudah dipakai")
 	ErrEmailTaken = errors.New("store: email sudah dipakai")
 	ErrConflict   = errors.New("store: versi data tidak cocok")
+	// ErrInvalidState: hasil perubahan melanggar batas ekonomi; transaksi dibatalkan.
+	ErrInvalidState = errors.New("store: data hasil perubahan tidak sah")
 )
 
 // schemaVersion disimpan di PRAGMA user_version. Naikkan saat skema berubah, dan tambahkan
@@ -33,7 +35,8 @@ var (
 //
 //	1 = skema awal (players.token_hash, satu token per pemain)
 //	2 = akun: email + password_hash di players, token pindah ke tabel sessions
-const schemaVersion = 2
+//	3 = tabel trades (perdagangan antarpemain, roadmap no. 176)
+const schemaVersion = 3
 
 // playersDDL dipakai dua kali: tabel baru dan tabel bangun-ulang saat migrasi.
 const playersDDL = `CREATE TABLE %s (
@@ -58,7 +61,23 @@ CREATE TABLE IF NOT EXISTS battles (
 	player_id  TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
 	state      TEXT NOT NULL,
 	updated_at TEXT NOT NULL
-);`
+);` + tradesDDL
+
+// tradesDDL: tawaran dagang. Barangnya sudah dikeluarkan dari ransel penjual (dititipkan) selama pending.
+const tradesDDL = `
+CREATE TABLE IF NOT EXISTS trades (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	from_id    TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+	to_id      TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+	item       TEXT NOT NULL,
+	qty        INTEGER NOT NULL,
+	price      INTEGER NOT NULL,
+	status     TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trades_from ON trades(from_id, status);
+CREATE INDEX IF NOT EXISTS trades_to ON trades(to_id, status);`
 
 // maxSessions membatasi jumlah token aktif per pemain (HP/perangkat); yang tertua dibuang.
 const maxSessions = 10
@@ -108,6 +127,13 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('players') WHERE name = 'token_hash'`).Scan(&legacy); err != nil {
 		return err
 	}
+	if ver == 2 { // v2 -> v3: tambah tabel trades saja
+		if _, err := db.Exec(tradesDDL); err != nil {
+			return fmt.Errorf("migrasi v2 -> v3: %w", err)
+		}
+		_, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
+		return err
+	}
 	if legacy == 0 { // database baru
 		if _, err := db.Exec(fmt.Sprintf(playersDDL, "players") + ";" + schemaRest); err != nil {
 			return err
@@ -151,6 +177,7 @@ func migrateFromV1(db *sql.DB) error {
 			state      TEXT NOT NULL,
 			updated_at TEXT NOT NULL
 		)`,
+		tradesDDL,
 		fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion),
 	}
 	for _, q := range steps {
@@ -323,6 +350,10 @@ func (s *Store) mutate(ctx context.Context, id string, expectedVersion int, fn f
 
 	if err := fn(&sess); err != nil {
 		return Session{}, err
+	}
+	// Penjaga terakhir (roadmap no. 183-185): emas/barang yang mustahil tidak pernah tersimpan.
+	if err := sess.Player.State.ValidEconomy(); err != nil {
+		return Session{}, fmt.Errorf("%w: %v", ErrInvalidState, err)
 	}
 
 	now := time.Now().UTC()
