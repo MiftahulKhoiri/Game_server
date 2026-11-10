@@ -159,7 +159,7 @@ tempo diselesaikan dan dilaporkan di `log`/`events`. `200` berisi respons pertar
 bila tidak ada. Pemain bisa kalah di sini (`status: "lost"`).
 
 ### `POST /v1/battle/start`  (login)
-Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana. Di singgasana Hutan Lebat (142,47) bos hanya ada bila 100 binatang tahap itu sudah kalah (`state.hutan.kills == 100`), selain itu `422`.
+Body boleh kosong. `{"boss": true}` melawan bos di petak pemain; `422` bila tidak ada bos di sana. Di singgasana wilayah ujian (lihat "Wilayah ujian") bos hanya ada bila musuh tahap itu sudah cukup dikalahkan (25/75/100), selain itu `422`.
 Mulai melawan musuh acak sesuai level pemain dan peta tempat ia berada (peta terakhir yang disimpan). `201` berisi respons pertarungan,
 `409` bila sudah ada pertarungan aktif. Musuh pertama menyerang 3 detik setelah mulai.
 
@@ -510,11 +510,28 @@ koin kuno (8), permata merah (7), berlian (3 + 2 x tingkat peti).
 ## Hutan Lebat (v0.46.0)
 
 State pemain punya `hutan: {"wave": 0..3, "kills": 0..100, "briefed": bool}`: `wave` = jumlah bos Goblin yang sudah kalah, `kills` = binatang kalah di tahap ini.
-Server menaikkan `kills` tiap kemenangan atas binatang di `hutan_lebat` (maks 100, lalu bos `goblin_hutan_<wave+1>` bisa dilawan di (142,47));
+Server menaikkan `kills` tiap kemenangan atas binatang di `hutan_lebat` (sampai 25/75/100 sesuai tahap sejak v0.65.0, dulu 100; lalu bos `goblin_hutan_<wave+1>` bisa dilawan di (142,47));
 mengalahkan bos menaikkan `wave` dan mengosongkan `kills`. `POST /v1/state` menolak nilai di luar rentang dengan `422`.
 
 Sejak v0.47.0 bos hutan dilawan di dunia: `POST /v1/battle/start {"enemy":"goblin_hutan_<wave+1>"}` memulai pertarungan dengan Goblin tahap ini bila
-pemain di `hutan_lebat` dalam 20 petak dari singgasana (142,47) dan `state.hutan.kills == 100`; selain itu `422`. Id bos tahap lain ditolak `422`.
+pemain di `hutan_lebat` dalam 20 petak dari singgasana (142,47) dan binatang tahap ini sudah cukup; selain itu `422`. Id bos tahap lain ditolak `422`.
+
+### Wilayah ujian bertingkat (v0.65.0)
+
+Hutan Lebat, Gua Goblin, dan Gunung Batu memakai aturan yang sama: tahap 1 kalahkan **25** musuh, tahap 2 **75**,
+tahap 3 **100**; tiap tahap ditutup satu bos. Setelah ketiga bos kalah, gerbang ke peta berikutnya terbuka
+(Hutan Lebat → Gua Goblin → Gunung Batu → Gua Batu; gerbang dikunci klien).
+
+| Peta | Bos | Singgasana | Gerbang terbuka ke |
+|------|-----|-----------|--------------------|
+| `hutan_lebat` | `goblin_hutan_1..3` | (142,47) | `gua_goblin` |
+| `gua_goblin` | `kepala_goblin_1..3` | (12,8) | `gunung_batu` |
+| `gunung_batu` | `ogre_gunung_1..3` | (21,27) | `gua_batu` |
+
+Kemajuan Hutan Lebat tetap di `state.hutan`; peta lain di `state.trials: {"gua_goblin": {"wave","kills"}, "gunung_batu": {...}}`
+(hanya diubah server; kunci lain / nilai di luar rentang ditolak `422`). `kills` naik tiap kemenangan atas musuh biasa di peta itu
+sampai kebutuhan tahap; bos dilawan lewat `POST /v1/battle/start {"enemy":"<bos tahap ini>"}` dalam 20 petak dari singgasana.
+Pemain lama yang sudah pernah sampai ke peta sesudahnya (`state.visited`) dianggap lulus ujian peta sebelumnya.
 
 Sejak v0.49.0 pertarungan di `hutan_lebat` (`POST /v1/battle/start`, musuh biasa maupun bos) baru boleh setelah pemain bicara dengan Kapten Rimba:
 sebelum itu `422`. Pemain yang sudah punya kemajuan (`wave > 0` atau `kills > 0`) dianggap sudah diarahkan.

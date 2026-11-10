@@ -88,6 +88,8 @@ type State struct {
 	Training     []TrainJob     `json:"training,omitempty"`
 	// Hutan: kemajuan misi Hutan Lebat (binatang dan bos Goblin), hanya diubah server (lihat hutan.go).
 	Hutan HutanProgress `json:"hutan"`
+	// Trials: kemajuan ujian Gua Goblin dan Gunung Batu (bentuknya sama dengan Hutan), hanya diubah server.
+	Trials map[string]HutanProgress `json:"trials,omitempty"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
@@ -219,8 +221,8 @@ func (s State) Validate() error {
 	if err := s.validateTraining(); err != nil {
 		return err
 	}
-	if !s.Hutan.valid() {
-		return errors.New("kemajuan hutan tidak sah")
+	if !s.validTrials() {
+		return errors.New("kemajuan hutan/wilayah tidak sah")
 	}
 	if !s.validTalents() || !s.validAchievements() {
 		return errors.New("data kemampuan/pencapaian tidak sah")

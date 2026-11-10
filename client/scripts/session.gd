@@ -232,7 +232,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -254,6 +254,52 @@ func use_offline_player() -> void:
 func _hutan(v: Variant) -> Dictionary:
 	var d: Dictionary = v if v is Dictionary else {}
 	return {"wave": clampi(int(d.get("wave", 0)), 0, 3), "kills": clampi(int(d.get("kills", 0)), 0, 100), "briefed": bool(d.get("briefed", false))}
+
+
+## Ujian Gua Goblin / Gunung Batu (v0.65.0): {peta: {wave, kills}} dari server.
+func _trials(v: Variant) -> Dictionary:
+	var out := {}
+	if v is Dictionary:
+		for k: Variant in v:
+			out[str(k)] = _hutan(v[k])
+	return out
+
+
+## Musuh yang harus dikalahkan pada tahap `wave` (0 = tahap 1): 25, 75, 100 (sama dengan StageKills di server).
+const STAGE_KILLS := [25, 75, 100]
+
+
+static func stage_need(wave: int) -> int:
+	return STAGE_KILLS[clampi(wave, 0, STAGE_KILLS.size() - 1)]
+
+
+## Kemajuan ujian di peta `map_id` ({wave, kills}); sama dengan State.Trial di server, termasuk pemain lama
+## yang sudah pernah sampai ke peta sesudahnya (dianggap lulus).
+func trial(map_id: String) -> Dictionary:
+	var st: Dictionary = player.get("state", {})
+	if map_id == "hutan_lebat":
+		return st.get("hutan", {"wave": 0, "kills": 0})
+	var tr: Dictionary = st.get("trials", {})
+	if tr.has(map_id):
+		return tr[map_id]
+	var nxt := str(load("res://scripts/maps.gd").TRIALS.get(map_id, {}).get("next", ""))
+	if nxt != "" and (st.get("visited", []) as Array).has(nxt):
+		return {"wave": 3, "kills": 0}
+	return {"wave": 0, "kills": 0}
+
+
+func trial_wave(map_id: String) -> int:
+	return int(trial(map_id).get("wave", 0))
+
+
+func trial_kills(map_id: String) -> int:
+	return int(trial(map_id).get("kills", 0))
+
+
+## Bos tahap ini sudah menunggu di singgasana peta itu.
+func trial_boss_ready(map_id: String) -> bool:
+	var w := trial_wave(map_id)
+	return w < 3 and trial_kills(map_id) >= stage_need(w)
 
 
 func hutan_wave() -> int:
@@ -376,6 +422,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"training": _jobs(s.get("training", [])),
 		"energy_used": clampi(int(s.get("energy_used", 0)), 0, MAX_ENERGY),
 		"hutan": _hutan(s.get("hutan", {})),
+		"trials": _trials(s.get("trials", {})),
 		# Ekonomi (roadmap no. 180-182): tabungan bank, peti simpan di rumah, riwayat transaksi.
 		"bank": maxi(0, int(s.get("bank", 0))),
 		"storage": _stacks(s.get("storage", [])),

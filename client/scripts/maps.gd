@@ -66,7 +66,7 @@ const EXITS := {
 	],
 	"hutan_lebat": [
 		{"pos": Vector2i(22, 0), "to": "perbatasan", "at": Vector2i(22, 48)},
-		# Gerbang Gua Goblin: terkunci sampai tiga Goblin kalah (lihat exit_locked).
+		# Gerbang Gua Goblin: terkunci sampai tiga Goblin kalah (lihat exit_locked dan TRIALS).
 		{"pos": Vector2i(146, 49), "to": "gua_goblin", "at": Vector2i(11, 1)},
 		{"pos": Vector2i(147, 49), "to": "gua_goblin", "at": Vector2i(12, 1)},
 	],
@@ -90,6 +90,17 @@ const WALKABLE := ".=fTBDMGK"
 const BOSS_TILE := "K"
 ## Singgasana bos Goblin di Hutan Lebat (sama dengan HutanBossX/Y di internal/game/hutan.go).
 const HUTAN_BOSS := Vector2i(142, 47)
+## Wilayah ujian (v0.65.0, sama dengan game.Trials di server): kalahkan 25, 75, lalu 100 musuh; tiap tahap ditutup
+## bos Level 1..3 di dekat singgasana. Setelah ketiganya kalah gerbang `gate` (petak x0..x1 di baris y) ke peta
+## `next` terbuka. `gate_point` / `home` = titik panah papan misi; `lock` = letak palang kayu gerbang.
+const TRIALS := {
+	"hutan_lebat": {"boss": Vector2i(142, 47), "prefix": "goblin_hutan_", "boss_name": "Goblin Level %d", "next": "gua_goblin",
+		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
+	"gua_goblin": {"boss": Vector2i(12, 8), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "next": "gunung_batu",
+		"gate": [11, 13, 29], "gate_point": Vector2(12.5, 28.5), "home": Vector2(12.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(12.5, 0.0, 29.45), "lock_w": 3.0},
+	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Ogre Gunung Lv %d", "next": "gua_batu",
+		"gate": [22, 22, 49], "gate_point": Vector2(22.5, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Gua Goblin", "foe": "Musuh", "lock": Vector3(22.5, 0.0, 49.45), "lock_w": 3.0},
+}
 ## Kem Kapten Rimba (api unggun, tenda, panji) tepat di bawah gapura desa di Perbatasan: zona aman per peta, binatang tidak masuk.
 const KEM_ZONES := {"perbatasan": Rect2i(23, 1, 7, 6)}  # x 23..29, y 1..6
 const ENCOUNTER_TILES := "TG"
@@ -281,7 +292,7 @@ const ROAMERS := {
 		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
 		{"id": "serigala_alfa", "name": "Serigala Alfa", "lv": 5},
 	]},
-	# Hutan Lebat: 100 binatang per tahap (server menghitung), yang hidup bersamaan dibatasi `n`.
+	# Hutan Lebat: 25/75/100 binatang per tahap (server menghitung), yang hidup bersamaan dibatasi `n`.
 	"hutan_lebat": {"n": 22, "tiles": ".f", "min_y": 3, "kinds": [
 		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1, "pemalu": true, "waktu": "siang"},
 		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 2},
@@ -738,9 +749,12 @@ static func exit_at(map_id: String, x: int, y: int) -> Dictionary:
 	return {}
 
 
-## Gerbang Gua Goblin di Hutan Lebat terkunci sampai tiga Goblin kalah (`hutan_wave` dari Session.player.state.hutan).
-static func exit_locked(map_id: String, x: int, y: int, hutan_wave: int) -> bool:
-	return map_id == HUTAN and y == 49 and x >= 146 and x <= 147 and hutan_wave < 3
+## Gerbang wilayah ujian masih terkunci (bos belum ketiganya kalah). `wave` = kemajuan ujian peta itu.
+static func exit_locked(map_id: String, x: int, y: int, wave: int) -> bool:
+	if not TRIALS.has(map_id) or wave >= 3:
+		return false
+	var g: Array = TRIALS[map_id].gate
+	return y == int(g[2]) and x >= int(g[0]) and x <= int(g[1])
 
 
 static func rows(map_id: String) -> Array[String]:

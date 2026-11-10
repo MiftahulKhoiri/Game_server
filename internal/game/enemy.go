@@ -52,7 +52,7 @@ var enemies = []Enemy{
 	{ID: "serigala_hutan", Zones: []string{MapPerbatasan}, Name: "Serigala Hutan", HP: 32, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 2, DropID: PotionID, DropPercent: 20, Special: SpecialTerkam, SpecialName: "Terkaman"},
 	{ID: "serigala_alfa", Zones: []string{MapPerbatasan}, Name: "Serigala Alfa", HP: 55, Attack: 12, Defense: 4, XP: 38, Gold: 16, MinLevel: 5, DropID: PotionID, DropPercent: 30, Special: SpecialTerkam, SpecialName: "Terkaman Alfa"},
 	// Gunung Batu: goblin, dan Monster Batu sebagai penjaga.
-	// Hutan Lebat (v0.46.0): binatang hutan, 100 per tahap; bos Goblin Level 1..3 hanya lewat singgasana (hutan.go).
+	// Hutan Lebat (v0.46.0): binatang hutan, 25/75/100 per tahap (v0.65.0); bos Goblin Level 1..3 hanya lewat singgasana (hutan.go).
 	{ID: "kancil_hutan", Zones: []string{MapHutanLebat}, Name: "Kancil Hutan", HP: 24, Attack: 6, Defense: 1, XP: 7, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 8, Time: TimeDay},
 	{ID: "rubah_hutan", Zones: []string{MapHutanLebat}, Name: "Rubah Hutan", HP: 32, Attack: 8, Defense: 2, XP: 10, Gold: 4, MinLevel: 2, DropID: PotionID, DropPercent: 10},
 	{ID: "ular_belang", Zones: []string{MapHutanLebat}, Name: "Ular Belang", HP: 38, Attack: 11, Defense: 2, XP: 13, Gold: 5, MinLevel: 3, DropID: PotionID, DropPercent: 10, Special: SpecialRacun, SpecialName: "Gigitan Racun"},
@@ -62,6 +62,13 @@ var enemies = []Enemy{
 	{ID: "goblin_hutan_1", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 1", HP: 170, Attack: 14, Defense: 6, XP: 90, Gold: 40, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Goblin"},
 	{ID: "goblin_hutan_2", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 2", HP: 300, Attack: 19, Defense: 9, XP: 180, Gold: 80, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Goblin"},
 	{ID: "goblin_hutan_3", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 3", HP: 520, Attack: 25, Defense: 12, XP: 320, Gold: 150, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Goblin"},
+	// Bos ujian Gua Goblin dan Gunung Batu (v0.65.0): muncul setelah 25/75/100 musuh kalah di peta itu (hutan.go).
+	{ID: "kepala_goblin_1", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 1", HP: 380, Attack: 20, Defense: 8, XP: 200, Gold: 90, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
+	{ID: "kepala_goblin_2", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 2", HP: 560, Attack: 24, Defense: 11, XP: 300, Gold: 130, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
+	{ID: "kepala_goblin_3", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 3", HP: 780, Attack: 29, Defense: 14, XP: 450, Gold: 200, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
+	{ID: "ogre_gunung_1", Zones: []string{MapGunungBatu}, Boss: true, Name: "Ogre Gunung Lv 1", HP: 650, Attack: 27, Defense: 13, XP: 400, Gold: 180, MinLevel: 1, DropID: "koin_kuno", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hentakan Ogre"},
+	{ID: "ogre_gunung_2", Zones: []string{MapGunungBatu}, Boss: true, Name: "Ogre Gunung Lv 2", HP: 900, Attack: 31, Defense: 16, XP: 560, Gold: 240, MinLevel: 1, DropID: "koin_kuno", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hentakan Ogre"},
+	{ID: "ogre_gunung_3", Zones: []string{MapGunungBatu}, Boss: true, Name: "Ogre Gunung Lv 3", HP: 1200, Attack: 36, Defense: 19, XP: 750, Gold: 330, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hentakan Ogre"},
 	// Gua Goblin (peta 3, v0.46.0): penjaga gua selain goblin biasa.
 	{ID: "goblin_penjaga", Zones: []string{MapGuaGoblin}, Name: "Goblin Penjaga", HP: 66, Attack: 12, Defense: 4, XP: 38, Gold: 16, MinLevel: 5, DropID: "taring_goblin", DropPercent: 40},
 	{ID: "goblin", Zones: []string{MapGunungBatu, MapGuaGoblin}, Name: "Goblin Gunung", HP: 34, Attack: 9, Defense: 2, XP: 24, Gold: 10, MinLevel: 2, DropID: "taring_goblin", DropPercent: 35},

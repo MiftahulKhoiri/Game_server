@@ -2329,7 +2329,7 @@ func _run() -> void:
 	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(20, 10), PI / 2.0) - PI) < 0.01, "kamera diputar: panah ikut berputar")
 	var WDv47: Script = load("res://scripts/warga_dialog.gd")
 	_check(WDv47.display_name("kapten_kem") == "Kapten Rimba", "Kapten Rimba punya nama dialog")
-	_check(WDv47.kapten_line(0, 0, 0).contains("100 binatang") and WDv47.kapten_line(0, 37, 1).contains("37"), "Kapten menjelaskan tugas dan kemajuan binatang")
+	_check(WDv47.kapten_line(0, 0, 0).contains("25 binatang") and WDv47.kapten_line(0, 17, 1).contains("17") and WDv47.kapten_line(1, 40, 1).contains("40 dari 75"), "Kapten menjelaskan tugas bertahap (25/75/100) dan kemajuan binatang")
 	_check(WDv47.kapten_line(1, 100, 0).contains("Level 2"), "Kapten menyebut Goblin berikutnya bila binatang habis")
 	_check(WDv47.kapten_line(3, 0, 0).contains("terbuka"), "Kapten menyebut gerbang terbuka setelah tiga Goblin")
 	var kapten_v47 := {}
@@ -2380,6 +2380,60 @@ func _run() -> void:
 	await process_frame
 	Session.offline = false
 	Session.player.state = saved_v47
+
+	print("== v0.65: ujian bertingkat 25/75/100 di Hutan Lebat, Gua Goblin, Gunung Batu")
+	_check(Session.stage_need(0) == 25 and Session.stage_need(1) == 75 and Session.stage_need(2) == 100, "tahap ujian 25, 75, 100")
+	_check(Maps.exit_locked(Maps.GUA_GOBLIN, 12, 29, 0) and not Maps.exit_locked(Maps.GUA_GOBLIN, 12, 29, 3) and not Maps.exit_locked(Maps.GUA_GOBLIN, 12, 0, 0), "Gua Goblin: jalan ke Gunung Batu terkunci sampai 3 bos kalah, jalan pulang tidak")
+	_check(Maps.exit_locked(Maps.GUNUNG, 22, 49, 2) and not Maps.exit_locked(Maps.GUNUNG, 22, 49, 3), "Gunung Batu: jalan ke Gua Batu terkunci sampai 3 bos kalah")
+	var tr_ok := true
+	for tr_m: String in Maps.TRIALS:
+		var tr_b: Vector2i = Maps.TRIALS[tr_m].boss
+		tr_ok = tr_ok and Maps.walkable(tr_m, tr_b.x, tr_b.y) and Maps.walkable(tr_m, tr_b.x, tr_b.y - 2)
+		var tr_g: Array = Maps.TRIALS[tr_m].gate
+		tr_ok = tr_ok and not Maps.exit_at(tr_m, int(tr_g[0]), int(tr_g[2])).is_empty()
+	_check(tr_ok, "singgasana tiap wilayah ujian bisa didatangi dan gerbangnya memang pintu keluar")
+	var saved_v65: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state["visited"] = []
+	Session.player.state["trials"] = {}
+	_check(Session.trial_wave(Maps.GUA_GOBLIN) == 0, "pemain baru: ujian Gua Goblin belum lulus")
+	Session.player.state["visited"] = ["gunung_batu"]
+	_check(Session.trial_wave(Maps.GUA_GOBLIN) == 3 and Session.trial_wave(Maps.GUNUNG) == 0, "pemain lama yang sudah sampai Gunung Batu tidak terkunci di Gua Goblin")
+	Session.player.state["visited"] = []
+	Session.player.state.map = Maps.GUA_GOBLIN
+	Session.player.state.x = 12
+	Session.player.state.y = 2
+	Session.player.state.level = 6
+	Session.player.state["trials"] = {"gua_goblin": {"wave": 0, "kills": 25}}
+	Session.offline = true
+	var wg_v65: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wg_v65)
+	await process_frame
+	await process_frame
+	var boss_v65 = null
+	var foes_v65 := 0
+	for r_v65 in wg_v65._roamers:
+		if r_v65.id.begins_with("kepala_goblin_"):
+			boss_v65 = r_v65
+		else:
+			foes_v65 += 1
+	_check(boss_v65 != null and boss_v65.id == "kepala_goblin_1" and foes_v65 == 0, "Gua Goblin 25/25: Kepala Goblin Lv 1 muncul, musuh biasa berhenti muncul")
+	_check(wg_v65._hutan_hud.visible and wg_v65._hutan_hud.map_id == Maps.GUA_GOBLIN, "papan ujian tampil di Gua Goblin")
+	var lock_v65: Node = wg_v65._terrain.get_node_or_null("KunciGerbang")
+	_check(lock_v65 != null and lock_v65.visible, "palang gerbang ke Gunung Batu terpasang")
+	Session.player.state["trials"] = {"gua_goblin": {"wave": 1, "kills": 30}}
+	wg_v65._refresh_hutan()
+	var boss2_v65 := false
+	for r_v65 in wg_v65._roamers:
+		if r_v65.id.begins_with("kepala_goblin_") and not r_v65.fight:
+			boss2_v65 = true
+	_check(not boss2_v65, "tahap 2 baru 30/75: bos belum muncul")
+	Session.player.state["trials"] = {"gua_goblin": {"wave": 3, "kills": 0}}
+	wg_v65._refresh_hutan()
+	_check(not lock_v65.visible, "setelah 3 bos kalah palang gerbang Gua Goblin hilang")
+	wg_v65.queue_free()
+	await process_frame
+	Session.offline = false
+	Session.player.state = saved_v65
 
 	print("== v0.49: jalan hutan 2 petak, tiga cabang, Kapten Rimba, Radar Musuh")
 	var rows_v49 := Maps.rows(Maps.HUTAN)
