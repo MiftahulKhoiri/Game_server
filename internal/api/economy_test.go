@@ -183,3 +183,40 @@ func TestConcurrentSellNoDuplicate(t *testing.T) {
 		t.Fatalf("emas harus %d (3 permata), dapat %d", 3*def.SellPrice, p.State.Gold)
 	}
 }
+
+func TestWorldEventsAndSecret(t *testing.T) {
+	ts, st := newTestServerWithStore(t)
+	cr := register(t, ts, "Penjelajah")
+	resp, data := do(t, "GET", ts.URL+"/v1/world/events", cr.Token, nil)
+	var ev struct {
+		Hour    float64           `json:"hour"`
+		Night   bool              `json:"night"`
+		Events  []game.WorldEvent `json:"events"`
+		Secrets []map[string]any  `json:"secrets"`
+		Zones   []game.Zone       `json:"zones"`
+	}
+	_ = json.Unmarshal(data, &ev)
+	if resp.StatusCode != http.StatusOK || ev.Night || len(ev.Events) != 2 || len(ev.Secrets) != len(game.Secrets) || len(ev.Zones) == 0 {
+		t.Fatalf("kejadian dunia: %d %s", resp.StatusCode, data)
+	}
+	sec := game.Secrets[0]
+	if resp, _ := do(t, "POST", ts.URL+"/v1/world/secret", cr.Token, map[string]string{"id": sec.ID}); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("jauh dari rahasia harus 422: %d", resp.StatusCode)
+	}
+	setState(t, st, cr.Player.ID, func(s *game.State) { s.Map, s.X, s.Y = sec.Map, sec.X, sec.Y })
+	resp, data = do(t, "POST", ts.URL+"/v1/world/secret", cr.Token, map[string]string{"id": sec.ID})
+	if p := playerOf(t, data); resp.StatusCode != http.StatusOK || len(p.State.Secrets) != 1 {
+		t.Fatalf("menemukan rahasia: %d %s", resp.StatusCode, data)
+	}
+	if resp, _ := do(t, "POST", ts.URL+"/v1/world/raid/claim", cr.Token, nil); resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("tanpa serbuan harus 422: %d", resp.StatusCode)
+	}
+	// Penjelajahan dicatat server saat posisi disimpan.
+	_, data = do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
+	me := playerOf(t, data)
+	body := map[string]any{"version": me.Version, "state": map[string]any{"map": "perbatasan", "x": 22, "y": 2, "level": 1, "hp": 30, "max_hp": 30}}
+	resp, data = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, body)
+	if resp.StatusCode != http.StatusOK || len(playerOf(t, data).State.Visited) == 0 {
+		t.Fatalf("kunjungan tercatat: %d %s", resp.StatusCode, data)
+	}
+}

@@ -80,10 +80,14 @@ func (s *State) TalkTo(id string, now int64) error {
 
 // ShopDiscount adalah potongan harga (persen) di toko `shop` menurut keakraban dengan penjaganya.
 func (s State) ShopDiscount(shop string) int {
+	d := 0
 	if k, ok := shopKeepers[shop]; ok && s.Reputation[k].Points >= RepBestFriend {
-		return RepDiscountPercent
+		d = RepDiscountPercent
 	}
-	return 0
+	if MarketActive(Now()) {
+		d += MarketPercent // Hari Pasar (roadmap no. 189, 200)
+	}
+	return d
 }
 
 func (s State) validReputation() bool {

@@ -163,7 +163,10 @@ func rep_tier(id: String) -> String:
 ## Potongan harga (persen) di toko `shop` bila bersahabat dengan penjaganya (server: ShopDiscount).
 func shop_discount(shop: String) -> int:
 	var keeper: String = SHOP_KEEPERS.get(shop, "")
-	return REP_DISCOUNT if keeper != "" and rep_points(keeper) >= REP_BEST else 0
+	var d := REP_DISCOUNT if keeper != "" and rep_points(keeper) >= REP_BEST else 0
+	if load("res://scripts/atmosphere.gd").market_active():
+		d += 10  # Hari Pasar (roadmap no. 189; MarketPercent di server)
+	return d
 
 
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
@@ -173,7 +176,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "bank", "storage", "ledger"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -321,6 +324,13 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"bank": maxi(0, int(s.get("bank", 0))),
 		"storage": _stacks(s.get("storage", [])),
 		"ledger": _ledger(s.get("ledger", [])),
+		# Dunia (roadmap no. 190-199): wilayah dikunjungi, tempat rahasia, pertahanan desa.
+		"visited": _strings(s.get("visited", [])),
+		"secrets": _strings(s.get("secrets", [])),
+		"raid": {"id": int((s.get("raid", {}) as Dictionary).get("id", 0)) if s.get("raid", {}) is Dictionary else 0,
+			"kills": int((s.get("raid", {}) as Dictionary).get("kills", 0)) if s.get("raid", {}) is Dictionary else 0,
+			"claimed": bool((s.get("raid", {}) as Dictionary).get("claimed", false)) if s.get("raid", {}) is Dictionary else false},
+		"defended": int(s.get("defended", 0)),
 	}
 
 

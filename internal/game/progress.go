@@ -209,6 +209,10 @@ var Achievements = []AchievementDef{
 	{ID: "rumah", Name: "Tuan Rumah: memiliki rumah sendiri", Gold: 50},
 	{ID: "sahabat", Name: "Kawan Sejati: bersahabat dengan seorang warga", Gold: 40},
 	{ID: "kemampuan_1", Name: "Berkembang: mempelajari kemampuan pertama", Gold: 20},
+	// Dunia yang hidup (roadmap no. 191, 198-199).
+	{ID: "penjelajah", Name: "Penjelajah: mengunjungi semua wilayah", Gold: 100},
+	{ID: "pembela_desa", Name: "Pembela Desa: menghalau Serbuan Goblin", Gold: 80},
+	{ID: "pencari_rahasia", Name: "Pencari Rahasia: menemukan semua tempat rahasia", Gold: 150},
 }
 
 // AchievementByID mencari pencapaian.
@@ -246,6 +250,8 @@ func (s *State) checkAchievements() []string {
 		"level_5": s.Level >= 5, "level_10": s.Level >= 10,
 		"misi_1": claimed >= 1, "misi_5": claimed >= 5,
 		"tempa_1": s.Crafted >= 1, "rumah": s.House, "sahabat": friend, "kemampuan_1": learned >= 1,
+		"penjelajah": len(s.Visited) >= len(ExploreMaps), "pembela_desa": s.Defended >= 1,
+		"pencari_rahasia": len(s.Secrets) >= len(Secrets),
 	}
 	var out []string
 	for _, a := range Achievements {

@@ -102,6 +102,9 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
 	mux.Handle("POST /v1/hutan/brief", s.auth(http.HandlerFunc(s.hutanBrief)))
 	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
+	mux.Handle("GET /v1/world/events", s.auth(http.HandlerFunc(s.worldEvents)))
+	mux.Handle("POST /v1/world/secret", s.auth(http.HandlerFunc(s.findSecret)))
+	mux.Handle("POST /v1/world/raid/claim", s.auth(http.HandlerFunc(s.claimRaid)))
 	mux.Handle("POST /v1/bank/deposit", s.auth(s.bankAction(true)))
 	mux.Handle("POST /v1/bank/withdraw", s.auth(s.bankAction(false)))
 	mux.Handle("POST /v1/storage/put", s.auth(s.storageAction(true)))
@@ -593,6 +596,7 @@ func isRuleError(err error) bool {
 		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy, game.ErrNoKapten, game.ErrInventoryFull,
 		game.ErrBankFar, game.ErrBankEmpty, game.ErrBankFull, game.ErrGoldMax, game.ErrBadAmount, game.ErrStorageFar, game.ErrStorageFull,
 		game.ErrNotStored, game.ErrBadPrice, game.ErrNotTradable, game.ErrEquipped, store.ErrInvalidState,
+		game.ErrUnknownSecret, game.ErrSecretFar, game.ErrSecretFound, game.ErrNoRaid, game.ErrRaidGoal, game.ErrRaidClaimed,
 	} {
 		if errors.Is(err, e) {
 			return true

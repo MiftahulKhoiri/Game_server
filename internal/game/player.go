@@ -58,6 +58,12 @@ type State struct {
 	Bank    int           `json:"bank,omitempty"`
 	Storage []Item        `json:"storage,omitempty"`
 	Ledger  []LedgerEntry `json:"ledger,omitempty"`
+	// Dunia (roadmap no. 190-199): peta yang pernah dikunjungi, tempat rahasia yang ditemukan,
+	// kemajuan pertahanan desa saat Serbuan Goblin, dan jumlah serbuan yang berhasil dihalau.
+	Visited  []string     `json:"visited,omitempty"`
+	Secrets  []string     `json:"secrets,omitempty"`
+	Raid     RaidProgress `json:"raid,omitempty"`
+	Defended int          `json:"defended,omitempty"`
 	// House: sudah membeli rumah di Desa Awal (roadmap no. 127), hanya diubah server (house.go).
 	House bool `json:"house,omitempty"`
 	// Reputation: ingatan dan keakraban tiap warga (roadmap no. 58-59), hanya diubah server (warga.go).
@@ -195,6 +201,9 @@ func (s State) Validate() error {
 	}
 	if err := s.ValidEconomy(); err != nil {
 		return err
+	}
+	if !s.validWorld() {
+		return errors.New("data penjelajahan tidak sah")
 	}
 	if _, ok := HeroByID(s.Hero); !ok {
 		return ErrUnknownHero

@@ -364,6 +364,33 @@ permintaan bersamaan tidak bisa menggandakan barang/emas (hanya satu yang berhas
 tawaran `pending` per penjual; harga 0..1.000.000; barang khusus (Radar Musuh) tidak bisa diperdagangkan.
 `404` pemain/tawaran tidak ada; `409` sedang bertarung; `422` diri sendiri, barang/emas kurang, tas penuh, harga salah.
 
+## Dunia yang hidup (v0.59.0, roadmap no. 186-200)
+
+**Jam dunia bersama:** jam permainan dihitung dari jam server, `jam = (unix mod 720) / 720 x 24`
+(12 menit nyata = 1 hari), sehingga semua pemain melihat siang/malam yang sama. Klien menyelaraskan jam lewat
+`GET /v1/time`. Malam = 19.00-05.00. Cuaca per blok 150 detik: hujan bila
+`(((blok x 7919 + 13) mod 1000003) x 2654435761) & 0xFFFFFFFF) mod 100 < 30`.
+
+- **Malam di luar ruangan** (Desa, Perbatasan, Hutan Lebat, Gunung Batu): serangan musuh 110% (minimal +1),
+  XP kemenangan 125% (`battle.night` di data pertarungan). Gua dan bangunan tidak terpengaruh.
+- **Musuh siang/malam:** Ayam Liar dan Kancil Hutan hanya siang, Serigala Hitam hanya malam (kelonggaran 30
+  detik). Bila klien meminta musuh yang tidak sesuai jamnya, server memilih musuh lain di peta itu.
+- **Serbuan Goblin:** malam hari ke-`d` dengan `d mod 3 == 1`. Selama serbuan `goblin_penyerbu` / `orc_penyerbu`
+  (Lv 4+) bisa dilawan di Desa Awal. Setiap kemenangan menambah `state.raid.kills` (`state.raid = {id, kills, claimed}`,
+  `id` = hari mulai malam itu). Setelah 5 kemenangan, `POST /v1/world/raid/claim` (selama serbuan) memberi 200 emas dan
+  menambah `state.defended`. `422`: tidak ada serbuan / belum 5 / sudah diambil.
+- **Hari Pasar:** hari `d mod 3 == 2`, jam 8-17: potongan 10% di semua toko (bertambah dengan potongan sahabat).
+- **Penjelajahan:** server mencatat peta yang dikunjungi di `state.visited` saat posisi disimpan (6 wilayah).
+- **Tempat rahasia:** `POST /v1/world/secret` `{"id": "batu_bertulis"}`: pemain (posisi tersimpan) harus berada ≤ 2 petak
+  dari tempatnya; hadiah emas + barang sekali saja, dicatat di `state.secrets`. `422` jauh / sudah ditemukan / tidak dikenal.
+- Pencapaian baru: `penjelajah` (semua wilayah, 100 emas), `pembela_desa` (menghalau serbuan, 80), `pencari_rahasia`
+  (semua tempat rahasia, 150).
+
+### `GET /v1/world/events`  (login)
+`200 {"unix", "hour", "day", "night", "raining", "events": [{"kind": "serbuan"|"pasar", "name", "active", "ends_in", "next_in"}],
+"zones": [{"map", "danger": "aman"|"waspada"|"berbahaya", "level"}], "secrets": [{"id", "name", "map", "x", "y", "hint", "found"}],
+"raid": {"id", "kills", "claimed"}, "raid_goal": 5, "raid_reward": 200, "visited", "explore"}`.
+
 ## Tas & perlengkapan (v0.11.0)
 
 Semua aksi atomik dan mengembalikan `200` berisi objek pemain terbaru. `409` bila sedang

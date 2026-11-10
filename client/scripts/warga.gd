@@ -288,6 +288,10 @@ func start_chat(face: Vector2, line: String) -> void:
 	say_t = CHAT_TIME
 
 
+## Hujan deras atau Serbuan Goblin: warga biasa berteduh di rumah (diatur world3d tiap bingkai).
+var shelter := false
+
+
 ## Maju delta detik. `player` = posisi pemain, `others` = posisi warga lain, `night` = sudah malam
 ## (warga yang punya rumah pulang dan bermalam di dalam), `hour` = jam (untuk jadwal),
 ## `monsters` = posisi musuh di dekatnya.
@@ -298,11 +302,13 @@ func step(delta: float, player: Vector2, others: Array[Vector2], night := false,
 	if say_t <= 0.0:
 		say = ""
 	chat_cd = maxf(0.0, chat_cd - delta)
+	# Berteduh (roadmap no. 190, 193): saat hujan deras / serbuan, warga tanpa pekerjaan tetap pulang.
+	var to_home := night or (shelter and not diam and kerja == "")
 	if door.x >= 0:
-		if night and not inside:
+		if to_home and not inside:
 			_step_home(delta)
 			return
-		if not night and inside:
+		if not to_home and inside:
 			leave_home()
 		if inside:
 			return

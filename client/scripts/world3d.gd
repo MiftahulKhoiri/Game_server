@@ -13,6 +13,7 @@ const Companions = preload("res://scripts/companions.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
 const TempaScreen = preload("res://scripts/tempa.gd")
 const EkonomiScreen = preload("res://scripts/ekonomi.gd")
+const WorldLife = preload("res://scripts/world_life.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const Warga = preload("res://scripts/warga.gd")
@@ -161,6 +162,7 @@ var _menu: CanvasLayer
 var _profile: CanvasLayer
 var _tempa: CanvasLayer                     # layar tempa di pandai besi (roadmap no. 145)
 var _ekonomi: CanvasLayer                   # bank, peti simpan, dagang (roadmap no. 176-182)
+var _life: Node                             # serbuan, Hari Pasar, wilayah, rahasia, hujan, ladang (roadmap no. 186-200)
 var stamina := 100.0                        # stamina lari dan lompat (roadmap no. 135), hanya di klien
 var _tired := false                         # stamina habis: tidak bisa berlari sampai pulih sebagian
 
@@ -238,6 +240,11 @@ func _ready() -> void:
 	add_child(_rain)
 
 	_make_player()
+	_life = WorldLife.new()
+	add_child(_life)
+	_life.setup(self)
+	if not Session.offline and not Atmosphere.clock_locked:
+		_sync_world_clock()
 
 	var st: Dictionary = Session.player.state
 	var map_id := str(st.map)
@@ -337,6 +344,16 @@ func _load_map(map_id: String) -> void:
 	Atmosphere.set_rain(_rain, map_id)
 	_update_lamps()
 	_sync_world()
+	if _life != null:
+		_life.on_map(map_id)
+
+
+## Jam dunia bersama (roadmap no. 186): selisih jam server dan jam HP, sekali per jalannya aplikasi.
+func _sync_world_clock() -> void:
+	var t: Dictionary = await Api.server_time()
+	if t.ok and t.data.has("unix"):
+		Atmosphere.clock_offset = float(t.data.unix) - Time.get_unix_time_from_system()
+		Atmosphere.clock_locked = true
 
 
 ## Peti harta di peta ini (isi diundi server saat dibuka).
@@ -489,6 +506,8 @@ func _spawn_roamers(map_id: String) -> void:
 	var level := int(Session.player.state.level)
 	var weakest: Dictionary = {}
 	for k: Dictionary in _roam_cfg.kinds:
+		if not _kind_time_ok(k, map_id):
+			continue  # musuh siang/malam (roadmap no. 188)
 		if int(k.lv) <= level:
 			_roam_kinds.append(k)
 		if weakest.is_empty() or int(k.lv) < int(weakest.lv):
@@ -506,6 +525,14 @@ func _spawn_roamers(map_id: String) -> void:
 			break
 		var kind: Dictionary = _roam_kinds[rng.randi() % _roam_kinds.size()]
 		_roamers.append(_make_roamer(kind, map_id, at, int(rng.randi())))
+
+
+## Musuh yang hanya muncul siang atau malam ("waktu" di Maps.ROAMERS; server memeriksanya juga).
+func _kind_time_ok(k: Dictionary, map_id: String) -> bool:
+	var w := str(k.get("waktu", ""))
+	if w == "" or not Atmosphere.outdoors(map_id):
+		return true
+	return (w == "malam") == Atmosphere.is_night()
 
 
 ## Titik acak yang cocok untuk musuh berkeliaran: petak yang sesuai, jauh dari pemain dan musuh lain.
@@ -544,7 +571,13 @@ func respawn_roamer() -> void:
 	var at := _roam_spot(_map_id, rng)
 	if at == Vector2.ZERO:
 		return
-	var kind: Dictionary = _roam_kinds[rng.randi() % _roam_kinds.size()]
+	var ok_kinds: Array = []
+	for k: Dictionary in _roam_kinds:
+		if _kind_time_ok(k, _map_id):
+			ok_kinds.append(k)
+	if ok_kinds.is_empty():
+		return
+	var kind: Dictionary = ok_kinds[rng.randi() % ok_kinds.size()]
 	_roamers.append(_make_roamer(kind, _map_id, at, int(rng.randi())))
 
 
@@ -715,7 +748,12 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 	_mark_dirty()
 	_apply_transform()
 	_update_talk_button()
-	_show_toast(str(Maps.NAMES.get(map_id, map_id)))
+	var visited: Array = Session.player.state.get("visited", [])
+	if Maps.ZONA.has(map_id) and not visited.has(map_id) and not Session.offline:
+		visited.append(map_id)  # server mencatat sendiri saat posisi disimpan (roadmap no. 198)
+		_show_toast("Wilayah baru: %s" % Maps.NAMES.get(map_id, map_id))
+	else:
+		_show_toast(str(Maps.NAMES.get(map_id, map_id)))
 	_set_status("Memasuki %s" % Maps.NAMES.get(map_id, map_id))
 
 
@@ -780,6 +818,8 @@ func _update_world_life(delta: float) -> void:
 		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
 	_update_npcs(delta)
 	_update_roamers(delta)
+	if _life != null:
+		_life.tick(delta)
 
 
 ## Jam di atas layar: ikon matahari (siang) atau bulan (malam); di Gua Batu ikon gua.
@@ -857,6 +897,8 @@ func _update_warga(delta: float) -> void:
 			if o != w and not o.inside:
 				others.append(o.pos)
 		var was_sleeping: bool = w.sleeping
+		# Berteduh saat hujan deras / serbuan (roadmap no. 190, 193); penjaga desa tetap di luar.
+		w.shelter = Atmosphere.outdoors(_map_id) and (Atmosphere.rain > 0.85 or (_life != null and _life.raid_on)) and not Maps.RAID_GUARDS.has(w.id)
 		w.step(dt, _pos, others, night, hour, monsters)
 		w.apply()
 		if w.sleeping != was_sleeping and w.node != null:
@@ -1629,6 +1671,13 @@ func _update_talk_button() -> void:
 		_talk_button.disabled = Session.offline
 		_place_talk_button(Vector3(BED_AT.x, 1.4, BED_AT.y))
 		return
+	var secret: String = _life.secret_near() if _life != null else ""
+	if secret != "" and not Session.offline:
+		_talk_button.text = "Periksa"
+		_talk_button.visible = true
+		_talk_button.disabled = false
+		_place_talk_button(_life.secret_anchor(secret))
+		return
 	if _store_near():
 		_talk_button.text = "Peti simpan"
 		_talk_button.visible = true
@@ -1688,6 +1737,10 @@ func _talk() -> void:
 		return
 	if _house_for_sale_near():
 		await _buy_house()
+		return
+	var secret: String = _life.secret_near() if _life != null else ""
+	if secret != "" and not Session.offline:
+		await _life.inspect(secret)
 		return
 	if _store_near():
 		await open_ekonomi(EkonomiScreen.MODE_PETI)
