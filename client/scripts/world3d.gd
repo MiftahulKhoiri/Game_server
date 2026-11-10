@@ -150,6 +150,10 @@ var _dress_sig := ""     # pakaian + perlengkapan yang terakhir dipakaikan ke mo
 var _chat_acc := 0.0     # jeda pemeriksaan obrolan antar-warga
 var _chat_n := 0
 const CHAT_CHECK := 1.0
+const HOUSE_RANGE := 1.4
+const DOOR_NEAR := 2.2
+const BED_AT := Vector2(1.5, 1.5)  # ranjang di rumah pemain (Maps.RUMAH_ROWS, petak R)
+var _doors: Array = []          # pintu interaktif peta ini (lihat _make_doors)
 const CHAT_DIST := 1.3
 const WARGA_LOD_FAR := 18.0   # warga lebih jauh dari ini (petak) diperbarui jarang
 const WARGA_LOD_STEP := 0.25
@@ -259,6 +263,7 @@ func _load_map(map_id: String) -> void:
 	_npc_root = Node3D.new()
 	_npc_root.name = "NPC"
 	add_child(_npc_root)
+	_make_doors(map_id)
 	_npc_models = {}
 	_pending.clear()
 	for id: String in Maps.NPCS:
@@ -415,19 +420,10 @@ func _add_tool(kind: String, at: Vector2, yaw: float) -> void:
 		fire.omni_range = 1.4
 		fire.position = Vector3(0, 0.5, 0)
 		root.add_child(fire)
-	elif kind == "lapak":  # lapak kain pedagang (no. 51): meja beratap kain
+	elif kind == "lapak":  # lapak kain pedagang (no. 51)
 		var p := at + fwd * 0.6
-		root.position = Vector3(p.x, 0, p.y)
-		root.rotation.y = yaw
-		Models.box(root, Vector3(0.9, 0.08, 0.42), Vector3(0, 0.42, 0), Color("8a5a34"))
-		for x: float in [-0.4, 0.4]:
-			Models.box(root, Vector3(0.06, 0.42, 0.06), Vector3(x, 0.21, -0.17), Color("6b4426"))
-			Models.box(root, Vector3(0.06, 0.42, 0.06), Vector3(x, 0.21, 0.17), Color("6b4426"))
-			Models.box(root, Vector3(0.05, 0.6, 0.05), Vector3(x, 0.72, -0.17), Color("6b4426"))
-		Models.box(root, Vector3(1.0, 0.04, 0.5), Vector3(0, 1.02, -0.05), Color("d24a4a"))  # atap kain
-		for k in 4:  # gulungan kain warna-warni
-			var cols := [Color("4a7ad2"), Color("e8c040"), Color("5ab060"), Color("c060c0")]
-			Models.box(root, Vector3(0.16, 0.1, 0.32), Vector3(-0.3 + k * 0.2, 0.51, 0), cols[k])
+		WorldBuild.lapak(root, Vector3(p.x, 0, p.y), yaw)
+		root.name = "Alat_lapak"
 	elif kind == "batu":
 		root.position = Vector3(at.x, 0, at.y)
 		Models.cyl(root, 0.26, 0.32, 0.22, Vector3(0, 0.11, 0), Color("8a8478"))
@@ -687,6 +683,7 @@ func _process(delta: float) -> void:
 	if _hutan_hud != null and _hutan_hud.visible:
 		_hutan_hud.update_view(Session.hutan_kills(), Session.hutan_wave(), _pos, _cam_yaw, Session.hutan_started())
 	_update_radar()
+	_update_doors(delta)
 	_tick_actions(delta)
 	var rig := _player as Node
 	if _locked:
@@ -906,6 +903,13 @@ func _after_step(moved: float) -> void:
 			return
 		var ex := Maps.exit_at(_map_id, t.x, t.y)
 		if not ex.is_empty():
+			if str(ex.to) == Maps.RUMAH_PEMAIN and not bool(Session.player.state.get("house", false)):
+				_pos = Vector2(_pos.x, float(t.y) + 1.6)  # rumah belum dibeli: mundur dari pintu (no. 127)
+				_tile = Movement.tile_of(_pos)
+				_apply_transform()
+				_show_toast("Rumah ini dijual")
+				_set_status("Rumah dijual %d emas: tekan \"Beli rumah\" di depan pintunya" % Maps.HARGA_RUMAH)
+				return
 			if Maps.exit_locked(_map_id, t.x, t.y, Session.hutan_wave()):
 				_pos = Vector2(_pos.x, float(t.y) - 0.6)   # gerbang Gua Goblin masih terkunci: mundur selangkah
 				_tile = Movement.tile_of(_pos)
@@ -1464,6 +1468,18 @@ func _update_talk_button() -> void:
 		var cn := _chest_nodes[chest] as Node3D
 		_place_talk_button(cn.position + Vector3(0, 1.5, 0))
 		return
+	if _bed_near():
+		_talk_button.text = "Tidur"
+		_talk_button.visible = true
+		_talk_button.disabled = Session.offline
+		_place_talk_button(Vector3(BED_AT.x, 1.4, BED_AT.y))
+		return
+	if _house_for_sale_near():
+		_talk_button.text = "Beli rumah (%d emas)" % Maps.HARGA_RUMAH
+		_talk_button.visible = true
+		_talk_button.disabled = Session.offline
+		_place_talk_button(Vector3(Maps.RUMAH_PEMAIN_PINTU.x + 0.5, 2.2, Maps.RUMAH_PEMAIN_PINTU.y + 1.0))
+		return
 	var npc := _npc_in_range()
 	_talk_button.text = "Bicara"
 	_talk_button.visible = npc != ""
@@ -1509,6 +1525,20 @@ func _talk() -> void:
 	if chest != "" and not Session.offline:
 		_open_chest(chest)
 		return
+	if _house_for_sale_near():
+		await _buy_house()
+		return
+	if _bed_near():
+		_set_status("Kamu berbaring di ranjangmu...")
+		var rb: Dictionary = await Api.rest()
+		if rb.ok:
+			Session.merge_server_player(rb.data)
+			_refresh_hud()
+			_show_toast("Segar kembali!")
+			_set_status("Tidur nyenyak di rumah sendiri: HP dan energi pulih penuh.")
+		else:
+			_set_status(str(rb.error))
+		return
 	var npc := _npc_in_range()
 	if npc == "":
 		return
@@ -1521,6 +1551,91 @@ func _talk() -> void:
 	Session.talk_counts[npc] = int(Session.talk_counts.get(npc, 0)) + 1
 	await _flush_save()  # versi pemain harus sinkron sebelum hadiah diambil
 	get_tree().change_scene_to_file(DIALOG_SCENE)
+
+
+## Pintu interaktif (roadmap no. 125): di dalam ruangan daun pintu keluar membuka sendiri saat pemain
+## mendekat; di desa, pintu bangunan yang bisa dimasuki menampilkan nama tujuannya (atau "Dijual" /
+## "Terkunci") saat pemain mendekat.
+func _make_doors(map_id: String) -> void:
+	_doors = []
+	for ex: Dictionary in Maps.EXITS.get(map_id, []):
+		var to := str(ex.to)
+		var p: Vector2i = ex.pos
+		if Maps.is_interior(map_id):
+			var hinge := Node3D.new()
+			hinge.name = "Pintu"
+			hinge.position = Vector3(p.x + 0.08, 0.0, p.y + 0.55)
+			_npc_root.add_child(hinge)
+			var leaf := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = Vector3(0.84, 0.9, 0.07)  # rendah: tidak menutupi pemain dari kamera
+			leaf.mesh = bm
+			var lm := StandardMaterial3D.new()
+			lm.albedo_color = Color("6b4426")
+			leaf.material_override = lm
+			leaf.position = Vector3(0.42, 0.45, 0.0)
+			hinge.add_child(leaf)
+			_doors.append({"hinge": hinge, "at": Vector2(p.x + 0.5, p.y + 0.5), "open": 0.0})
+		elif Maps.is_interior(to):
+			var tag := Label3D.new()
+			tag.name = "PapanPintu"
+			tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			tag.no_depth_test = true
+			tag.pixel_size = 0.005
+			tag.font_size = 38
+			tag.outline_size = 10
+			tag.modulate = Color("bff0ff")
+			tag.position = Vector3(p.x + 0.5, 1.9, p.y + 1.2)
+			tag.visible = false
+			_npc_root.add_child(tag)
+			_doors.append({"tag": tag, "to": to, "at": Vector2(p.x + 0.5, p.y + 1.0)})
+
+
+func _update_doors(delta: float) -> void:
+	for d: Dictionary in _doors:
+		var near: bool = _pos.distance_to(d.at) < DOOR_NEAR
+		if d.has("hinge"):
+			d.open = move_toward(float(d.open), 1.0 if near else 0.0, delta * 3.0)
+			(d.hinge as Node3D).rotation.y = -1.6 * smoothstep(0.0, 1.0, float(d.open))
+		else:
+			var tag := d.tag as Label3D
+			tag.visible = near
+			if near:
+				var to := str(d.to)
+				var nama := str(Maps.NAMES.get(to, to))
+				if to == Maps.RUMAH_PEMAIN and not bool(Session.player.state.get("house", false)):
+					tag.text = "Rumah dijual: %d emas" % Maps.HARGA_RUMAH
+				else:
+					tag.text = "Masuk: " + nama
+
+
+## Dekat ranjang di rumah sendiri (roadmap no. 123, 127)?
+func _bed_near() -> bool:
+	return _map_id == Maps.RUMAH_PEMAIN and _pos.distance_to(BED_AT) < 1.6
+
+
+## Pemain berdiri di depan rumah yang dijual (belum punya rumah)?
+func _house_for_sale_near() -> bool:
+	if _map_id != Maps.DEFAULT_MAP or bool(Session.player.state.get("house", false)):
+		return false
+	var front := Vector2(Maps.RUMAH_PEMAIN_PINTU.x + 0.5, Maps.RUMAH_PEMAIN_PINTU.y + 1.5)
+	return _pos.distance_to(front) < HOUSE_RANGE
+
+
+## Membeli rumah (roadmap no. 127): server memeriksa emas dan tempat.
+func _buy_house() -> void:
+	if Session.offline:
+		return
+	await _flush_save()  # posisi tersimpan dulu: server memeriksa pemain ada di Desa Awal
+	var res: Dictionary = await Api.house_buy()
+	if res.ok:
+		Session.merge_server_player(res.data)
+		_refresh_hud()
+		_show_toast("Rumah ini milikmu!")
+		_set_status("Selamat! Masuk lewat pintunya. Di dalam ada ranjang untuk beristirahat.")
+		HeroFx.burst(self, Vector3(Maps.RUMAH_PEMAIN_PINTU.x + 0.5, 1.0, Maps.RUMAH_PEMAIN_PINTU.y + 1.0), Color("ffd24a"), 30, 3.5)
+	else:
+		_set_status(str(res.error))
 
 
 ## Penjaga toko dari id lawan bicara "warga:<id>", atau null bila bukan penjaga toko.
@@ -1536,6 +1651,16 @@ func _keeper_of(npc_id: String) -> Warga:
 
 ## Masuk ke toko lewat penjaganya: toko ramuan / rumah makan membuka layar toko, rumah sehat memulihkan pemain.
 func _visit_keeper(w: Warga) -> void:
+	if w.toko == "inap":  # penginapan (no. 115): menginap semalam, pulih penuh
+		_set_status("%s: Kamarmu sudah siap. Selamat beristirahat!" % w.nama)
+		var ri: Dictionary = await Api.rest()
+		if ri.ok:
+			Session.merge_server_player(ri.data)
+			_refresh_hud()
+			_set_status("Kamu menginap di penginapan: HP dan energi pulih penuh.")
+		else:
+			_set_status("%s: %s" % [w.nama, str(ri.error)])
+		return
 	if w.toko == "rawat":
 		_set_status("%s: Duduklah, biar kurawat lukamu." % w.nama)
 		var res: Dictionary = await Api.rest()

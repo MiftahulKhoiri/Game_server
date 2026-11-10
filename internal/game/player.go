@@ -46,6 +46,8 @@ type State struct {
 	Inventory []Item  `json:"inventory"`
 	// Hero adalah id pahlawan yang dipakai (lihat hero.go); kosong = pahlawan bawaan.
 	Hero string `json:"hero,omitempty"`
+	// House: sudah membeli rumah di Desa Awal (roadmap no. 127), hanya diubah server (house.go).
+	House bool `json:"house,omitempty"`
 	// Reputation: ingatan dan keakraban tiap warga (roadmap no. 58-59), hanya diubah server (warga.go).
 	Reputation map[string]Rep `json:"reputation,omitempty"`
 	// Outfit: variasi warna pakaian pahlawan 0..NumOutfits-1 (roadmap no. 14); 0 = warna asli.

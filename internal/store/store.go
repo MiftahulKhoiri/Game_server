@@ -283,6 +283,9 @@ func (s *Store) Battle(ctx context.Context, playerID string) (game.Battle, error
 func (s *Store) SavePosition(ctx context.Context, id string, pose game.Pose, expectedVersion int) (game.Player, error) {
 	sess, err := s.mutate(ctx, id, expectedVersion, func(sess *Session) error {
 		st := &sess.Player.State
+		if !st.CanEnter(pose.Map) {
+			return game.ErrHouseLocked
+		}
 		st.Map, st.X, st.Y = pose.Map, pose.X, pose.Y
 		st.FX, st.FZ, st.Yaw = pose.FX, pose.FZ, pose.Yaw
 		return nil

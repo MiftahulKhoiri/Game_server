@@ -19,6 +19,8 @@ const ALAM_DIR := "res://assets/models/alam/"
 ## model kandang, jadi kandang berpagar di Desa Awal diberi alas jerami (building_grain).
 ## Pengali ukuran model rumah terhadap petak H/D-nya (atap sedikit melebar ke rumput; tabrakan tetap sama).
 const BANGUNAN_SKALA := 1.45
+## Bangunan lebih jauh dari ini (meter dari kamera) tidak digambar; kabut sudah menutupinya.
+const BANGUNAN_JARAK := 42.0
 
 const BANGUNAN_MODEL := {
 	"rumah_a": "building_home_A_red",
@@ -29,6 +31,14 @@ const BANGUNAN_MODEL := {
 	"dapur": "building_tavern_red",
 	"rumah_sakit": "building_church_red",
 	"kepala_suku": "building_castle_red",
+	# v0.55.0 (roadmap no. 112-119, 127)
+	"pandai_besi": "building_blacksmith_red",
+	"kuil": "building_church_red",
+	"bangsawan": "building_tower_A_red",
+	"lumbung": "building_windmill_red",
+	"markas": "building_barracks_red",
+	"penginapan": "building_tavern_red",
+	"rumah_pemain": "building_home_B_red",
 }
 const JERAMI_MODEL := "building_grain"
 ## Pusat alas jerami di dalam kandang berpagar, per peta.
@@ -43,6 +53,13 @@ const BANGUNAN_KHUSUS := {
 		Vector2i(27, 1): "rumah_sakit",
 		Vector2i(37, 19): "aula",
 		Vector2i(38, 1): "kepala_suku",
+		Vector2i(5, 19): "pandai_besi",
+		Vector2i(12, 19): "kuil",
+		Vector2i(30, 19): "bangsawan",
+		Vector2i(14, 29): "lumbung",
+		Vector2i(28, 29): "markas",
+		Vector2i(14, 38): "rumah_pemain",
+		Vector2i(28, 38): "penginapan",
 	},
 }
 const TREE_SINGLE := ["tree_single_A", "tree_single_B"]
@@ -655,6 +672,8 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _sphere(0.08, 5), mat(Color("968a7c")), pebble_x, [], false)
 	_multi(root, _sphere(0.07, 5), mat(Color.WHITE, true), flower_x, flower_c, false)
 	_add_houses(root, house_tiles, rows, map_id)
+	if map_id == Maps.DEFAULT_MAP:
+		_add_pasar(root)
 	_add_kecil(root, kecil, map_id)
 	_add_jerami(root, map_id)
 	if map_id == Maps.HUTAN:
@@ -1127,6 +1146,7 @@ static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx:
 	var s := minf((w - 0.2) / box.size.x, (d - 0.2) / box.size.z) * BANGUNAN_SKALA
 	var inst := MeshInstance3D.new()
 	inst.mesh = mesh
+	inst.visibility_range_end = BANGUNAN_JARAK  # optimasi (no. 128): bangunan jauh tidak digambar
 	inst.scale = Vector3(s, s, s)
 	inst.position = Vector3(cx - (box.position.x + box.size.x / 2.0) * s, -box.position.y * s, cz - (box.position.z + box.size.z / 2.0) * s)
 	root.add_child(inst)
@@ -1168,6 +1188,9 @@ static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String
 		var cz := z0 + d / 2.0
 		var info := _pasang_bangunan(root, map_id, x0, z0, cx, cz, w, d)
 		if not info.is_empty():
+			var daftar: Array = root.get_meta("bangunan", [])
+			daftar.append(_jenis_bangunan(map_id, x0, z0))
+			root.set_meta("bangunan", daftar)
 			var door := Vector2i(-1, -1)
 			for t: Vector2i in comp:
 				if rows[t.y][t.x] == "D":
@@ -1202,6 +1225,53 @@ static func _add_houses(root: Node3D, tiles: Array[Vector2i], rows: Array[String
 				win.material_override = mat(Color("9fd0ff"), false, 0.2)
 				win.position = Vector3(t.x + 0.5, 0.95, t.y + 1.0 - 0.02)
 				root.add_child(win)
+
+
+## Lapak pasar beratap kain (roadmap no. 51, 121). Dipakai juga oleh world3d untuk lapak Mbak Dewi.
+static func lapak(root: Node3D, pos: Vector3, yaw: float, atap := Color("d24a4a")) -> Node3D:
+	var n := Node3D.new()
+	n.name = "Lapak"
+	n.position = pos
+	n.rotation.y = yaw
+	root.add_child(n)
+	var kayu := mat(Color("8a5a34"))
+	var tiang := mat(Color("6b4426"))
+	_gate_part(n, _box(Vector3(0.9, 0.08, 0.42)), kayu, Vector3(0, 0.42, 0))
+	for x: float in [-0.4, 0.4]:
+		for z: float in [-0.17, 0.17]:
+			_gate_part(n, _box(Vector3(0.06, 0.42, 0.06)), tiang, Vector3(x, 0.21, z))
+		_gate_part(n, _box(Vector3(0.05, 0.6, 0.05)), tiang, Vector3(x, 0.72, -0.17))
+	_gate_part(n, _box(Vector3(1.0, 0.04, 0.5)), mat(atap), Vector3(0, 1.02, -0.05))
+	var cols := [Color("4a7ad2"), Color("e8c040"), Color("5ab060"), Color("c060c0")]
+	for k in 4:
+		_gate_part(n, _box(Vector3(0.16, 0.1, 0.32)), mat(cols[k]), Vector3(-0.3 + k * 0.2, 0.51, 0))
+	return n
+
+
+## Pasar desa (roadmap no. 121): dua lapak tambahan, tong, karung, peti, gerobak, dan papan PASAR di alun-alun.
+const PASAR_LAPAK := [Vector3(22.5, 0, 11.1), Vector3(25.5, 0, 11.1)]
+const PASAR_PROPS := [["barrel", Vector3(21.2, 0, 9.3)], ["sack", Vector3(21.6, 0, 9.6)], ["crate_A_big", Vector3(26.9, 0, 9.4)],
+	["crate_B_small", Vector3(27.3, 0, 9.9)], ["wheelbarrow", Vector3(24.0, 0, 9.1)], ["sack", Vector3(19.7, 0, 9.2)], ["barrel", Vector3(26.7, 0, 12.4)]]
+
+static func _add_pasar(root: Node3D) -> void:
+	lapak(root, PASAR_LAPAK[0], 0.0, Color("4a8ad2"))
+	lapak(root, PASAR_LAPAK[1], 0.0, Color("e0a030"))
+	var n := 0
+	for pr: Array in PASAR_PROPS:
+		var mesh := _dekor_mesh(str(pr[0]))
+		if mesh == null:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		var p: Vector3 = pr[1]
+		mi.position = p - Vector3(0, mesh.get_aabb().position.y * 1.6, 0)
+		mi.scale = Vector3.ONE * 1.6
+		mi.rotation.y = float(n) * 1.3
+		mi.visibility_range_end = BANGUNAN_JARAK
+		root.add_child(mi)
+		n += 1
+	_label_kecil(root, "PASAR", Vector3(23.9, 1.7, 8.6), 48, 0.006)
+	root.set_meta("pasar", n + 2)
 
 
 # --- lampu malam ---
@@ -1300,8 +1370,10 @@ static func _lampu_rumah(root: Node3D, info: Dictionary, door: Vector2i, kind: S
 	var big := kind == "kepala_suku"
 	var win_y := 0.34 * h
 	var win_dx := hw * (0.6 if big else 0.55)
+	var model_id: String = BANGUNAN_MODEL.get(kind, "")
+	var jendela := model_id.contains("home") or model_id.contains("market") or model_id.contains("tavern")
 	for sx in [-1.0, 1.0]:
-		if not big:  # jendela hangat di kiri-kanan pintu (istana kepala suku punya jendelanya sendiri)
+		if not big and jendela:  # jendela hangat di kiri-kanan pintu (istana kepala suku punya jendelanya sendiri)
 			_gate_part(root, _box(Vector3(0.28, 0.34, 0.04)), lamp, Vector3(dx + sx * win_dx, win_y, fz + 0.02))
 			_gate_part(root, _box(Vector3(0.36, 0.05, 0.05)), wood, Vector3(dx + sx * win_dx, win_y + 0.2, fz + 0.03))
 			_gate_part(root, _box(Vector3(0.36, 0.05, 0.05)), wood, Vector3(dx + sx * win_dx, win_y - 0.2, fz + 0.03))
@@ -1318,7 +1390,7 @@ static func _lampu_rumah(root: Node3D, info: Dictionary, door: Vector2i, kind: S
 		_gate_part(root, _cyl(0.04, 0.05, 1.3, 6), wood, Vector3(sx, 0.65, sz))
 		_gate_part(root, _box(Vector3(1.5, 0.42, 0.06)), mat(Color("7a5530")), Vector3(sx, 1.25, sz))
 		var label := Label3D.new()
-		label.text = "RUMAH\nKEPALA SUKU"
+		label.text = "ISTANA\nKEPALA DESA"
 		label.font = load("res://assets/fonts/LilitaOne-Regular.ttf")
 		label.font_size = 36
 		label.pixel_size = 0.0033

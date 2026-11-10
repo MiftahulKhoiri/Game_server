@@ -213,6 +213,12 @@ Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
 Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
 dikenal, `409` bila sedang bertarung. Nama skill di `log` pertarungan mengikuti pahlawan.
 
+### `POST /v1/house/buy`  (login, v0.55.0)
+Membeli rumah di Desa Awal (pintu 15,39) seharga 500 emas; pemain harus berada di `desa_awal`. `state.house` jadi
+`true`. `422` bila emas kurang, sudah punya, atau tidak di desa. Peta `rumah_pemain` hanya boleh disimpan sebagai
+posisi oleh pemiliknya (`PUT /v1/players/me/save` lainnya `422`). Istirahat (`POST /v1/rest`) juga boleh di
+`rumah_pemain` dan `penginapan`.
+
 ### `POST /v1/warga/talk`  (login, v0.52.0)
 Body: `{"warga": "bu_sari"}`. Server mencatat pembicaraan di `state.reputation[id] = {"p": poin, "t": kali bicara,
 "l": detik terakhir poin naik}`. Poin +1 paling sering sekali per 600 d; menyelesaikan misi dari warga itu +5;
