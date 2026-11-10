@@ -17,9 +17,9 @@ signal settings_changed
 
 const QUALITY_NAMES := ["Hemat", "Normal", "Tinggi"]
 const QUALITY_HINTS := [
-	"Hemat: tanpa bayangan. Paling ringan, cocok untuk HP lama.",
-	"Normal: bayangan di sekitar pemain.",
-	"Tinggi: bayangan lebih jauh dan tepi gambar lebih halus.",
+	"Hemat: tanpa bayangan, 30 FPS, musuh dan efek lebih sedikit. Paling ringan dan hemat baterai.",
+	"Normal: bayangan di sekitar pemain, 60 FPS.",
+	"Tinggi: bayangan dan jarak pandang lebih jauh, efek lebih ramai, tepi gambar halus.",
 ]
 
 var is_open := false
@@ -30,6 +30,7 @@ var _settings_scroll: ScrollContainer
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
 var _toggle_keep: CheckButton
+var _toggle_perf: CheckButton
 var _vol_npc_value: Label
 var _vol_music_value: Label
 var _quality_buttons: Array[Button] = []
@@ -144,6 +145,8 @@ func _ready() -> void:
 	_settings.add_child(_sens_value)
 	_toggle_keep = _toggle("Layar tetap menyala", _on_toggle_keep)
 	_settings.add_child(_toggle_keep)
+	_toggle_perf = _toggle("Tampilkan FPS & memori", _on_toggle_perf)
+	_settings.add_child(_toggle_perf)
 
 	_settings.add_child(load("res://scripts/kontrol_settings.gd").new())
 	_akun = load("res://scripts/akun_settings.gd").new()
@@ -207,6 +210,7 @@ func _show_page(main: bool) -> void:
 
 func _on_quality(i: int) -> void:
 	Session.quality = i
+	Session.apply_display()
 	Session.save_config()
 	_refresh_settings()
 	settings_changed.emit()
@@ -220,6 +224,12 @@ func _on_sens(v: float) -> void:
 
 func _on_toggle_keep(on: bool) -> void:
 	Session.keep_on = on
+	Session.apply_display()
+	Session.save_config()
+
+
+func _on_toggle_perf(on: bool) -> void:
+	Session.show_perf = on
 	Session.apply_display()
 	Session.save_config()
 
@@ -254,6 +264,7 @@ func _refresh_settings() -> void:
 	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
 	_toggle_music.set_pressed_no_signal(Session.snd_music)
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
+	_toggle_perf.set_pressed_no_signal(Session.show_perf)
 	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)
 	_vol_music_value.text = "%d%%" % roundi(Session.vol_music * 100.0)
 	for i in _quality_buttons.size():

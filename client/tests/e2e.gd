@@ -1517,6 +1517,59 @@ func _run() -> void:
 	wt._net_label.visible = false
 	Api.online = net_online
 
+	print("== v0.62: Android dan performa (roadmap no. 239-255)")
+	var PerfS = load("res://scripts/perf.gd")
+	var pf_q: int = Session.quality
+	Session.quality = 0
+	var pf_low := [PerfS.roam_cap(10), PerfS.fx(20), PerfS.pick(PerfS.FPS_CAP)]
+	wt._apply_quality()
+	var pf_low_view := [wt._camera.far, wt.get_viewport().scaling_3d_scale, wt._sun.shadow_enabled]
+	Session.quality = 2
+	var pf_high := [PerfS.roam_cap(10), PerfS.fx(20)]
+	Session.quality = pf_q
+	wt._apply_quality()
+	_check(pf_low == [6, 10, 30] and pf_high == [10, 26], "profil kualitas: Hemat 30 FPS, musuh & efek lebih sedikit (%s / %s)" % [pf_low, pf_high])
+	_check(is_equal_approx(pf_low_view[0], 60.0) and is_equal_approx(pf_low_view[1], 0.6) and not pf_low_view[2], "Hemat: jarak pandang 60, resolusi 3D 60%, tanpa bayangan")
+	_check(PerfS.roam_cap(0) == 0 and PerfS.roam_cap(1) >= 1, "batas musuh tidak pernah nol bila peta punya musuh")
+	var pf_show: bool = Session.show_perf
+	Session.show_perf = true
+	Session.apply_display()
+	await process_frame
+	var pf_ov: Node = Session._perf_overlay
+	_check(pf_ov != null and pf_ov.is_inside_tree() and str(pf_ov.label.text).begins_with("FPS"), "lapisan FPS & memori tampil (%s)" % (pf_ov.label.text if pf_ov != null else "-"))
+	Session.show_perf = false
+	Session.apply_display()
+	await process_frame
+	_check(Session._perf_overlay == null and not is_instance_valid(pf_ov), "lapisan FPS & memori dimatikan lagi")
+	Session.show_perf = pf_show
+	_check(wt._menu._toggle_perf != null, "Pengaturan dalam game punya pilihan FPS & memori")
+	# Uji ketahanan (no. 252-255): bolak-balik antarpeta berkali-kali; jumlah node/objek tidak boleh terus naik.
+	var pf_home: String = wt._map_id
+	var pf_nodes: Array = []
+	var pf_objs: Array = []
+	var pf_orph: Array = []
+	for pf_i in 8:
+		wt._go_to_map(Maps.PERBATASAN if pf_i % 2 == 0 else Maps.DEFAULT_MAP, Vector2i(12, 12))
+		for pf_f in 3:
+			wt._process(0.05)
+			await process_frame
+		var pf_s: Dictionary = PerfS.snapshot()
+		pf_nodes.append(pf_s.nodes)
+		pf_objs.append(pf_s.objects)
+		pf_orph.append(pf_s.orphans)
+	if wt._map_id != pf_home:
+		wt._go_to_map(pf_home, Vector2i(12, 12))
+		await process_frame
+	print("    node per putaran: %s" % [pf_nodes])
+	print("    objek per putaran: %s" % [pf_objs])
+	_check(pf_nodes[7] <= pf_nodes[3] * 1.05 + 40 and pf_nodes[6] <= pf_nodes[2] * 1.05 + 40, "uji ketahanan: jumlah node stabil setelah 8 kali pindah peta")
+	_check(pf_objs[7] <= pf_objs[3] * 1.08 + 200, "uji ketahanan: jumlah objek tidak bocor (%d -> %d)" % [pf_objs[3], pf_objs[7]])
+	_check(pf_orph[7] <= pf_orph[3] + 1, "uji ketahanan: tidak ada node yatim yang menumpuk (%d -> %d)" % [pf_orph[3], pf_orph[7]])
+	var pf_o0: int = int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
+	var pf_hero: Node = load("res://scripts/models.gd").create("ksatria")
+	pf_hero.free()
+	_check(int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)) == pf_o0, "membuat lalu membuang model pahlawan tidak meninggalkan node yatim")
+
 	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
 	var AtL = load("res://scripts/atmosphere.gd")
 	var lf: Node = wt._life

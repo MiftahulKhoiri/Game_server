@@ -48,6 +48,9 @@ var cam_sens := 1.0
 var keep_on := false
 ## Percikan darah saat memukul makhluk hidup (roadmap no. 165); bisa dimatikan di Pengaturan.
 var fx_blood := true
+## Lapisan FPS & memori di tepi atas layar (roadmap no. 251); bisa dinyalakan di Pengaturan.
+var show_perf := false
+var _perf_overlay: CanvasLayer = null
 ## Kontrol layar sentuh (roadmap no. 217): ukuran tombol/joystick (0 kecil, 1 normal, 2 besar) dan
 ## mode tangan kiri (joystick di kanan, tombol aksi di kiri).
 const UI_SCALES := [0.85, 1.0, 1.2]
@@ -68,6 +71,7 @@ var vol_music := 0.6
 
 func _ready() -> void:
 	load_config()
+	apply_display()
 	# Layar lebih tinggi/lebar dari 9:16 memakai seluruh layar, tanpa pita hitam (roadmap no. 218). Diatur
 	# di sini juga (selain project.godot) supaya berlaku lewat patch tanpa APK baru.
 	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
@@ -86,6 +90,7 @@ func load_config() -> void:
 	fx_blood = bool(cfg.get_value("game", "fx_blood", true))
 	ui_size = clampi(int(cfg.get_value("game", "ui_size", 1)), 0, UI_SCALES.size() - 1)
 	left_hand = bool(cfg.get_value("game", "left_hand", false))
+	show_perf = bool(cfg.get_value("game", "show_perf", false))
 	apply_display()
 	snd_npc = bool(cfg.get_value("sound", "npc", true))
 	snd_music = bool(cfg.get_value("sound", "music", true))
@@ -101,9 +106,18 @@ func item_count(id: String) -> int:
 	return 0
 
 
-## Terapkan pengaturan layar yang berlaku di seluruh aplikasi (layar tetap menyala).
+## Terapkan pengaturan layar yang berlaku di seluruh aplikasi: layar tetap menyala, batas FPS menurut
+## kualitas grafis (Hemat 30 FPS supaya baterai awet, no. 249) dan lapisan FPS & memori (no. 251).
 func apply_display() -> void:
 	DisplayServer.screen_set_keep_on(keep_on)
+	if DisplayServer.get_name() != "headless":  # uji otomatis berjalan secepat mungkin
+		Engine.max_fps = int(load("res://scripts/perf.gd").FPS_CAP[clampi(quality, 0, 2)])
+	if show_perf and _perf_overlay == null:
+		_perf_overlay = load("res://scripts/perf_overlay.gd").new()
+		add_child(_perf_overlay)
+	elif not show_perf and _perf_overlay != null:
+		_perf_overlay.queue_free()
+		_perf_overlay = null
 
 
 func save_config() -> void:
@@ -119,6 +133,7 @@ func save_config() -> void:
 	cfg.set_value("game", "fx_blood", fx_blood)
 	cfg.set_value("game", "ui_size", ui_size)
 	cfg.set_value("game", "left_hand", left_hand)
+	cfg.set_value("game", "show_perf", show_perf)
 	cfg.set_value("sound", "npc", snd_npc)
 	cfg.set_value("sound", "music", snd_music)
 	cfg.set_value("sound", "vol_npc", vol_npc)

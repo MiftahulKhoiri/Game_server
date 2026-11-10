@@ -20,7 +20,13 @@ const ALAM_DIR := "res://assets/models/alam/"
 ## Pengali ukuran model rumah terhadap petak H/D-nya (atap sedikit melebar ke rumput; tabrakan tetap sama).
 const BANGUNAN_SKALA := 1.45
 ## Bangunan lebih jauh dari ini (meter dari kamera) tidak digambar; kabut sudah menutupinya.
+const _Perf = preload("res://scripts/perf.gd")
 const BANGUNAN_JARAK := 42.0
+
+
+## Jarak gambar bangunan menurut kualitas grafis (roadmap no. 247).
+static func _jarak() -> float:
+	return float(_Perf.pick(_Perf.BANGUNAN_JARAK))
 
 const BANGUNAN_MODEL := {
 	"rumah_a": "building_home_A_red",
@@ -1146,7 +1152,7 @@ static func _pasang_bangunan(root: Node3D, map_id: String, x0: int, z0: int, cx:
 	var s := minf((w - 0.2) / box.size.x, (d - 0.2) / box.size.z) * BANGUNAN_SKALA
 	var inst := MeshInstance3D.new()
 	inst.mesh = mesh
-	inst.visibility_range_end = BANGUNAN_JARAK  # optimasi (no. 128): bangunan jauh tidak digambar
+	inst.visibility_range_end = _jarak()  # optimasi (no. 128/247): bangunan jauh tidak digambar
 	inst.scale = Vector3(s, s, s)
 	inst.position = Vector3(cx - (box.position.x + box.size.x / 2.0) * s, -box.position.y * s, cz - (box.position.z + box.size.z / 2.0) * s)
 	root.add_child(inst)
@@ -1267,7 +1273,7 @@ static func _add_pasar(root: Node3D) -> void:
 		mi.position = p - Vector3(0, mesh.get_aabb().position.y * 1.6, 0)
 		mi.scale = Vector3.ONE * 1.6
 		mi.rotation.y = float(n) * 1.3
-		mi.visibility_range_end = BANGUNAN_JARAK
+		mi.visibility_range_end = _jarak()
 		root.add_child(mi)
 		n += 1
 	_label_kecil(root, "PASAR", Vector3(23.9, 1.7, 8.6), 48, 0.006)

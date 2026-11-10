@@ -28,6 +28,7 @@ const WorldFight = preload("res://scripts/world_fight.gd")
 const HudBars = preload("res://scripts/hud_bars.gd")
 const HutanHud = preload("res://scripts/hutan_hud.gd")
 const RadarMusuh = preload("res://scripts/radar_musuh.gd")
+const Perf = preload("res://scripts/perf.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -247,7 +248,7 @@ func _ready() -> void:
 	_apply_quality()
 	_camera = Camera3D.new()
 	_camera.fov = 52.0
-	_camera.far = 90.0
+	_camera.far = float(Perf.pick(Perf.CAMERA_FAR))
 	add_child(_camera)
 	_camera.current = true
 	_rain = Atmosphere.make_rain(Vector3(6, 0.2, 6), Atmosphere.rain_amount(Session.quality))
@@ -543,7 +544,7 @@ func _spawn_roamers(map_id: String) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var tries := 0
-	var cap := 0 if (map_id == Maps.HUTAN and Session.hutan_kills() >= 100 and Session.hutan_wave() < 3) else int(_roam_cfg.n)
+	var cap := 0 if (map_id == Maps.HUTAN and Session.hutan_kills() >= 100 and Session.hutan_wave() < 3) else Perf.roam_cap(int(_roam_cfg.n))
 	while _roamers.size() < cap and tries < 500:
 		tries += 1
 		var at := _roam_spot(map_id, rng)
@@ -590,7 +591,7 @@ func _roam_spot(map_id: String, rng: RandomNumberGenerator) -> Vector2:
 
 ## Satu musuh pengganti muncul (dipanggil WorldFight setelah satu musuh tumbang).
 func respawn_roamer() -> void:
-	if _roam_cfg.is_empty() or _roam_kinds.is_empty() or _roamers.size() >= int(_roam_cfg.n) or _hutan_boss_phase():
+	if _roam_cfg.is_empty() or _roam_kinds.is_empty() or _roamers.size() >= Perf.roam_cap(int(_roam_cfg.n)) or _hutan_boss_phase():
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -665,7 +666,7 @@ func _update_roamers(delta: float) -> void:
 	for r: Roamer in _roamers.duplicate():
 		# Optimasi (roadmap no. 88): musuh jauh dari pemain (yang tidak sedang mengejar/bertarung) diperbarui jarang.
 		var dt := delta
-		if not r.chasing and not r.fight and r.pos.distance_to(_pos) > ROAM_LOD_FAR:
+		if not r.chasing and not r.fight and r.pos.distance_to(_pos) > float(Perf.pick(Perf.ROAM_LOD_FAR)):
 			r.lod_acc += delta
 			if r.lod_acc < ROAM_LOD_STEP:
 				continue
@@ -977,7 +978,7 @@ func _update_warga(delta: float) -> void:
 	for w in _warga:
 		# Optimasi (no. 60): warga jauh dari pemain diperbarui jarang (4x sedetik, bukan tiap bingkai).
 		var dt := delta
-		var far := w.pos.distance_to(_pos) > WARGA_LOD_FAR
+		var far := w.pos.distance_to(_pos) > float(Perf.pick(Perf.WARGA_LOD_FAR))
 		if far:
 			w.lod_acc += delta
 			if w.lod_acc < WARGA_LOD_STEP:
@@ -2485,8 +2486,10 @@ func _apply_quality() -> void:
 	var q: int = Session.quality
 	_sun.shadow_enabled = q >= 1
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL if q == 1 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-	_sun.directional_shadow_max_distance = 16.0 if q == 1 else 26.0
+	_sun.directional_shadow_max_distance = maxf(float(Perf.pick(Perf.SHADOW_DIST)), 1.0)
 	RenderingServer.directional_shadow_atlas_set_size(1024 if q == 1 else 2048, true)
 	get_viewport().msaa_3d = Viewport.MSAA_2X if q >= 2 else Viewport.MSAA_DISABLED
 	# Resolusi 3D lebih rendah di HP beresolusi tinggi (UI tetap tajam): jauh lebih ringan bagi GPU.
-	get_viewport().scaling_3d_scale = [0.6, 0.75, 1.0][clampi(q, 0, 2)]
+	get_viewport().scaling_3d_scale = float(Perf.pick(Perf.SCALE_3D))
+	if _camera != null:
+		_camera.far = float(Perf.pick(Perf.CAMERA_FAR))

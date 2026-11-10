@@ -91,3 +91,20 @@ server berjalan) setiap 24 jam dan menyimpan 7 terbaru. Manual: `make backup`. P
 **Koneksi klien.** GET diulang sekali bila jaringan putus; layar dunia menampilkan "Koneksi terputus",
 menanyai server tiap 5 detik, lalu mengambil ulang data dan mengirim posisi yang tertunda saat tersambung.
 Token yang ditolak (kedaluwarsa/dicabut) membawa pemain ke beranda untuk masuk lagi.
+
+## Android dan performa (v0.62.0, roadmap no. 239-255)
+
+- **APK rilis.** CI mengekspor dengan templat rilis (`--export-release`), ditandatangani kunci yang sama
+  dengan APK lama (`deploy/android/debug.keystore`) supaya APK baru tetap bisa menimpa tanpa uninstall.
+  Bila ekspor rilis gagal, atau manifest rilis tidak mengizinkan HTTP biasa (`usesCleartextTraffic`),
+  CI kembali ke ekspor debug. Langkah "Periksa APK" memeriksa sertifikat (harus sama dengan kunci),
+  nama paket, versionCode/versionName, izin INTERNET, dan mencatat ukuran serta isi terbesar.
+- **Profil kualitas** ada di `client/scripts/perf.gd` (satu tempat): batas FPS (Hemat 30), jarak pandang
+  kamera, jarak gambar bangunan, jumlah musuh berkeliaran, jarak LOD warga/musuh, jumlah partikel,
+  jarak bayangan dan resolusi 3D.
+- **Lapisan FPS & memori** (`perf_overlay.gd`), dinyalakan di Pengaturan: FPS, RAM, VRAM, panggilan
+  gambar, jumlah node. Dipasang oleh `Session` agar tetap tampil saat berganti layar.
+- **Uji ketahanan** di `client/tests/e2e.gd`: 8 kali pindah peta; jumlah node, objek dan node yatim
+  harus stabil. Uji ini menemukan kebocoran node "body" pada setiap model pahlawan (sudah diperbaiki).
+- **Aset:** gambar judul (`judul.jpg`) diimpor lossy (dulu lossless ~2 MB di dalam APK); animasi model
+  diimpor dengan `trimming` agar kunci diam di awal/akhir dibuang.

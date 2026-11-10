@@ -5,9 +5,9 @@ extends VBoxContainer
 
 const QUALITY_NAMES := ["Hemat", "Normal", "Tinggi"]
 const QUALITY_HINTS := [
-	"Hemat: tanpa bayangan. Paling ringan, cocok untuk HP lama.",
-	"Normal: bayangan di sekitar pemain.",
-	"Tinggi: bayangan lebih jauh dan tepi gambar lebih halus.",
+	"Hemat: tanpa bayangan, 30 FPS, musuh dan efek lebih sedikit. Paling ringan dan hemat baterai.",
+	"Normal: bayangan di sekitar pemain, 60 FPS.",
+	"Tinggi: bayangan dan jarak pandang lebih jauh, efek lebih ramai, tepi gambar halus.",
 ]
 
 var _quality_buttons: Array[Button] = []
@@ -17,6 +17,7 @@ var _toggle_keep: CheckButton
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
 var _toggle_blood: CheckButton
+var _toggle_perf: CheckButton
 var _vol_npc_value: Label
 var _vol_music_value: Label
 
@@ -57,6 +58,8 @@ func _ready() -> void:
 	add_child(_toggle_keep)
 	_toggle_blood = _toggle("Percikan darah saat memukul", _on_blood)
 	add_child(_toggle_blood)
+	_toggle_perf = _toggle("Tampilkan FPS & memori", _on_perf)
+	add_child(_toggle_perf)
 
 	add_child(load("res://scripts/kontrol_settings.gd").new())
 
@@ -78,6 +81,13 @@ func _ready() -> void:
 
 func _on_quality(i: int) -> void:
 	Session.quality = i
+	Session.apply_display()
+	_simpan()
+
+
+func _on_perf(on: bool) -> void:
+	Session.show_perf = on
+	Session.apply_display()
 	_simpan()
 
 
@@ -134,6 +144,7 @@ func _refresh() -> void:
 	_sens_value.text = "%.1fx" % Session.cam_sens
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
 	_toggle_blood.set_pressed_no_signal(Session.fx_blood)
+	_toggle_perf.set_pressed_no_signal(Session.show_perf)
 	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
 	_toggle_music.set_pressed_no_signal(Session.snd_music)
 	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)
