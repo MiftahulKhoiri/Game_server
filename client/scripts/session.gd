@@ -3,6 +3,8 @@ extends Node
 ## Data sesi yang dipakai antar-layar: pemain yang sedang main + pengaturan tersimpan.
 
 const CONFIG_PATH := "user://settings.cfg"
+## Pencapaian baru terbuka (id); world3d menampilkannya sebagai pemberitahuan.
+signal achievement_unlocked(id: String)
 ## Keakraban warga (sama dengan RepFriend, RepBestFriend, RepDiscountPercent di internal/game/warga.go).
 const REP_FRIEND := 3
 const REP_BEST := 10
@@ -131,6 +133,14 @@ func _reputation(v: Variant) -> Dictionary:
 	return out
 
 
+## Poin kemampuan yang belum dipakai: 1 per naik level (sama dengan TalentPoints di server).
+func talent_points() -> int:
+	var used := 0
+	for k: String in player.state.get("talent", {}):
+		used += int(player.state.talent[k])
+	return maxi(0, int(player.state.get("level", 1)) - 1 - used)
+
+
 ## Poin keakraban dan berapa kali bicara dengan warga `id` (roadmap no. 58-59).
 func rep_points(id: String) -> int:
 	return int(player.state.get("reputation", {}).get(id, {}).get("p", 0))
@@ -155,7 +165,11 @@ func shop_discount(shop: String) -> int:
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
+	var before: Array = st.get("achievements", [])
+	for a: String in incoming.achievements:
+		if not before.has(a):
+			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -266,6 +280,12 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		# Ingatan + keakraban warga (roadmap no. 58-59; server: state.reputation) {id: {p, t, l}}.
 		"reputation": _reputation(s.get("reputation", {})),
 		"house": bool(s.get("house", false)),  # rumah di Desa Awal sudah dibeli (roadmap no. 127)
+		# Pohon kemampuan, pencapaian, kemenangan, barang ditempa (roadmap no. 139, 145, 150).
+		"talent": _levels(s.get("talent", {})),
+		"achievements": _strings(s.get("achievements", [])),
+		"achievements_taken": _strings(s.get("achievements_taken", [])),
+		"wins": int(s.get("wins", 0)),
+		"crafted": int(s.get("crafted", 0)),
 		# Variasi warna pakaian pahlawan 0..3 (roadmap no. 14; server: state.outfit).
 		"outfit": clampi(int(s.get("outfit", 0)), 0, 3),
 		"level": int(s.get("level", 1)),

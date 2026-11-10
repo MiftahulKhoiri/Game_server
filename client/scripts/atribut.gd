@@ -33,6 +33,10 @@ var _sol_pick := -1              # jumlah yang sedang dipilih (belum dikirim ke 
 var _selected := 0
 var _busy := false
 var _page := 0
+var _page_prog: ScrollContainer   # halaman Kemampuan / Pencapaian (roadmap no. 139, 150)
+var _prog_list: VBoxContainer
+var _talents: Array = []
+var _achievements: Array = []
 
 
 func _ready() -> void:
@@ -46,6 +50,12 @@ func _ready() -> void:
 		_catalog[str(def.id)] = def
 	_selected = maxi(0, Heroes.ids().find(str(Heroes.current().id)))
 	_refresh()
+	var pr: Dictionary = await Api.progress_get()  # daftar kemampuan dan pencapaian (halaman 3 dan 4)
+	if pr.ok:
+		_talents = pr.data.get("talents", [])
+		_achievements = pr.data.get("achievements", [])
+		if _page >= 2:
+			_refresh()
 
 
 func _process(delta: float) -> void:
@@ -150,9 +160,10 @@ func _show_page(i: int) -> void:
 	_page = i
 	_page_equip.visible = i == 0
 	_page_ally.visible = i == 1
+	_page_prog.visible = i >= 2
 	for k in _tab_buttons.size():
 		_tab_buttons[k].set_pressed_no_signal(k == i)
-	if i == 1:
+	if i >= 1:
 		_refresh()
 
 
@@ -161,8 +172,12 @@ func _refresh() -> void:
 	_info.text = "%s  Lv %d\nHP %d/%d   Emas %d" % [Session.player.name, st.level, st.hp, st.max_hp, st.gold]
 	if _page == 0:
 		_rebuild_equipment()
-	else:
+	elif _page == 1:
 		_refresh_ally()
+	elif _page == 2:
+		_rebuild_talents()
+	else:
+		_rebuild_achievements()
 
 
 func _rebuild_equipment() -> void:
@@ -310,8 +325,9 @@ func _build_ui() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 10)
 	box.add_child(tabs)
-	for i in 2:
-		var b := _button(["Perlengkapan", "Pendamping"][i], _show_page.bind(i), 0, 76)
+	for i in 4:
+		var b := _button(["Perlengkapan", "Pendamping", "Kemampuan", "Pencapaian"][i], _show_page.bind(i), 0, 76)
+		b.add_theme_font_size_override("font_size", 22)
 		b.toggle_mode = true
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tabs.add_child(b)
@@ -330,6 +346,16 @@ func _build_ui() -> void:
 	_equip_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_equip_list.add_theme_constant_override("separation", 12)
 	_page_equip.add_child(_equip_list)
+
+	_page_prog = ScrollContainer.new()
+	_page_prog.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_page_prog.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_page_prog.visible = false
+	box.add_child(_page_prog)
+	_prog_list = VBoxContainer.new()
+	_prog_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_prog_list.add_theme_constant_override("separation", 12)
+	_page_prog.add_child(_prog_list)
 
 	_page_ally = VBoxContainer.new()
 	_page_ally.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -420,6 +446,85 @@ func _build_preview() -> SubViewport:
 	cam.look_at_from_position(Vector3(0, 0.65, 2.35), Vector3(0, 0.5, 0))
 	cam.current = true
 	return vp
+
+
+# --- Kemampuan (pohon kemampuan, no. 139) ---
+
+const TALENT_INFO := {
+	"tajam": "Serangan +%d", "kulit_tebal": "Pertahanan +%d", "vitalitas": "HP maksimum +%d",
+	"mata_elang": "Peluang kritis +%d%%", "hemat_tenaga": "Biaya jurus -%d energi", "benteng": "HP +%d dan pertahanan +1",
+}
+
+
+func _rebuild_talents() -> void:
+	for c in _prog_list.get_children():
+		c.queue_free()
+	var pts := Session.talent_points()
+	_prog_list.add_child(_label("Poin kemampuan: %d   (dapat 1 poin tiap naik level)" % pts, 26))
+	if _talents.is_empty():
+		_prog_list.add_child(_label("Daftar kemampuan belum termuat.", 24))
+		return
+	var ranks: Dictionary = _state().get("talent", {})
+	for t: Dictionary in _talents:
+		var id := str(t.id)
+		var rk := int(ranks.get(id, 0))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var needs := str(t.get("needs", ""))
+		var locked := needs != "" and int(ranks.get(needs, 0)) < int(t.get("need_rank", 0))
+		var pre := "   " if needs != "" else ""  # cabang digeser ke kanan: terlihat seperti pohon
+		var desc: String = str(TALENT_INFO.get(id, "%d")) % (int(t.per) * maxi(1, rk))
+		var sub := ("Butuh %s %d" % [_talent_name(needs), int(t.need_rank)]) if locked else desc
+		var label := _label("%s%s  %d/%d\n%s%s" % [pre, str(t.name), rk, int(t.max), pre, sub], 24)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if locked:
+			label.add_theme_color_override("font_color", Color("8a9a8e"))
+		row.add_child(label)
+		var b := _button("+", _on_learn.bind(id), 90, 72)
+		b.disabled = _busy or pts < 1 or locked or rk >= int(t.max)
+		row.add_child(b)
+		_prog_list.add_child(row)
+
+
+func _talent_name(id: String) -> String:
+	for t: Dictionary in _talents:
+		if str(t.id) == id:
+			return str(t.name)
+	return id
+
+
+func _on_learn(id: String) -> void:
+	await _act(Api.learn_talent.bind(id), "%s naik peringkat." % _talent_name(id))
+
+
+# --- Pencapaian (no. 150) ---
+
+func _rebuild_achievements() -> void:
+	for c in _prog_list.get_children():
+		c.queue_free()
+	var done: Array = _state().get("achievements", [])
+	var taken: Array = _state().get("achievements_taken", [])
+	_prog_list.add_child(_label("Terbuka %d dari %d   Kemenangan: %d" % [done.size(), _achievements.size(), int(_state().get("wins", 0))], 26))
+	for a: Dictionary in _achievements:
+		var id := str(a.id)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var open := done.has(id)
+		var label := _label("%s %s\nHadiah %d emas" % ["★" if open else "☆", str(a.name), int(a.gold)], 23)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.add_theme_color_override("font_color", Color("ffe08a") if open else Color("8a9a8e"))
+		row.add_child(label)
+		if open:
+			var got := taken.has(id)
+			var b := _button("Diambil" if got else "Ambil", _on_claim.bind(id), 150, 72)
+			b.disabled = got or _busy
+			row.add_child(b)
+		_prog_list.add_child(row)
+
+
+func _on_claim(id: String) -> void:
+	await _act(Api.claim_achievement.bind(id), "Hadiah pencapaian diambil.")
 
 
 func _header(text: String) -> Label:

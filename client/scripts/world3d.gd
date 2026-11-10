@@ -11,6 +11,7 @@ const Joystick = preload("res://scripts/joystick.gd")
 const GameMenu = preload("res://scripts/game_menu.gd")
 const Companions = preload("res://scripts/companions.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
+const TempaScreen = preload("res://scripts/tempa.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const Warga = preload("res://scripts/warga.gd")
@@ -74,7 +75,7 @@ const BREAK_FLUSH := 0.25      # kumpulkan benda hancur sebentar lalu lapor ke s
 const CHEST_RANGE := 1.9
 const ROAM_GRACE := 3.0        # detik setelah masuk peta: musuh berkeliaran belum mengejar
 const ROAM_NEAR := 6.5         # jarak (petak) nama musuh mulai tampil
-const ITEM_NAMES := {"ramuan": "Ramuan", "berlian": "Berlian", "ramuan_kekuatan": "Ramuan Kekuatan", "kartu_keahlian": "Kartu Keahlian", "koin_kuno": "Koin Kuno", "permata_merah": "Permata Merah"}
+const ITEM_NAMES := {"kayu": "Kayu", "bongkah_batu": "Bongkah Batu", "serat": "Serat Rumput", "ramuan": "Ramuan", "berlian": "Berlian", "ramuan_kekuatan": "Ramuan Kekuatan", "kartu_keahlian": "Kartu Keahlian", "koin_kuno": "Koin Kuno", "permata_merah": "Permata Merah"}
 
 var _map_id := Maps.DEFAULT_MAP
 var _pos := Vector2(5.5, 5.5)  # (x, z) di dunia
@@ -126,6 +127,9 @@ var _talk_button: Button
 var _buttons: Array[Button] = []
 var _menu: CanvasLayer
 var _profile: CanvasLayer
+var _tempa: CanvasLayer                     # layar tempa di pandai besi (roadmap no. 145)
+var stamina := 100.0                        # stamina lari dan lompat (roadmap no. 135), hanya di klien
+var _tired := false                         # stamina habis: tidak bisa berlari sampai pulih sebagian
 
 var _breakables: Breakables
 var _chest_nodes: Dictionary = {}   # id peti -> Chest
@@ -151,6 +155,11 @@ var _chat_acc := 0.0     # jeda pemeriksaan obrolan antar-warga
 var _chat_n := 0
 const CHAT_CHECK := 1.0
 const HOUSE_RANGE := 1.4
+const STAMINA_DRAIN := 14.0   # per detik saat berlari
+const STAMINA_REGEN := 9.0
+const STAMINA_JUMP := 12.0
+const STAMINA_RECOVER := 35.0 # setelah habis, berlari lagi setelah pulih sampai sini
+const TIRED_SPEED := 0.6
 const DOOR_NEAR := 2.2
 const BED_AT := Vector2(1.5, 1.5)  # ranjang di rumah pemain (Maps.RUMAH_ROWS, petak R)
 var _doors: Array = []          # pintu interaktif peta ini (lihat _make_doors)
@@ -711,6 +720,7 @@ func _process(delta: float) -> void:
 		_pos = Movement.move(_map_id, _pos, _dash_vel * step)
 	var moved := (_pos - before).length()
 	_set_moving(walking and moved > 0.0001)
+	_tick_stamina(delta, walking and input.length() > 0.85 and moved > 0.0001)
 	if "move_speed" in _player and delta > 0.0:
 		_player.move_speed = moved / delta  # klip jalan/lari mengikuti kecepatan (roadmap no. 6-7)
 	if rig != null:
@@ -945,7 +955,31 @@ func _speed_mul() -> float:
 	var m := 1.0
 	if _boost_t > 0.0:
 		m *= BOOST_SPEED
+	if _tired:
+		m *= TIRED_SPEED  # kehabisan stamina: hanya bisa berjalan (no. 135)
 	return m
+
+
+## Stamina (no. 135): berkurang saat berlari (joystick didorong penuh) dan melompat, pulih saat berjalan/diam.
+func _tick_stamina(delta: float, running: bool) -> void:
+	if running and not _tired:
+		stamina = maxf(0.0, stamina - STAMINA_DRAIN * delta)
+		if stamina <= 0.0:
+			_tired = true
+			_set_status("Kehabisan napas! Berjalan dulu sebentar.")
+	else:
+		stamina = minf(100.0, stamina + STAMINA_REGEN * delta * (1.6 if not running else 1.0))
+		if _tired and stamina >= STAMINA_RECOVER:
+			_tired = false
+	if _bars != null:
+		_bars.set_stamina(stamina / 100.0, _tired)
+
+
+## Pencapaian baru (no. 150): pemberitahuan; hadiahnya diambil di Atribut > Pencapaian.
+func _on_achievement(id: String) -> void:
+	_show_toast("Pencapaian baru!")
+	_set_status("Pencapaian terbuka: ambil hadiahnya di menu Atribut > Pencapaian")
+	HeroFx.ring(self, Vector3(_pos.x, 0.1, _pos.y), Color("ffd24a"), 2.2, 0.6)
 
 
 ## Tubuh model pahlawan (anak rig), dipakai untuk gerakan tambahan seperti menendang dan berguling.
@@ -1179,6 +1213,10 @@ func _do_dodge() -> void:
 func _do_lompat() -> void:
 	if _locked or _jump_t > 0.0 or float(_cd.lompat) > 0.0:
 		return
+	if stamina < STAMINA_JUMP:
+		_set_status("Terlalu lelah untuk melompat")
+		return
+	stamina -= STAMINA_JUMP
 	_jump_t = JUMP_TIME
 	_cd.lompat = 0.85
 	_cd_len.lompat = 0.85
@@ -1651,6 +1689,12 @@ func _keeper_of(npc_id: String) -> Warga:
 
 ## Masuk ke toko lewat penjaganya: toko ramuan / rumah makan membuka layar toko, rumah sehat memulihkan pemain.
 func _visit_keeper(w: Warga) -> void:
+	if w.toko == "tempa":  # pandai besi: layar tempa (no. 145)
+		_locked = true
+		_set_moving(false)
+		_tempa.keeper = w.nama
+		_tempa.open()
+		return
 	if w.toko == "inap":  # penginapan (no. 115): menginap semalam, pulih penuh
 		_set_status("%s: Kamarmu sudah siap. Selamat beristirahat!" % w.nama)
 		var ri: Dictionary = await Api.rest()
@@ -1826,6 +1870,14 @@ func _build_ui() -> void:
 	_profile = ProfileScreen.new()
 	add_child(_profile)
 	_profile.closed.connect(_close_profile)
+	_tempa = TempaScreen.new()
+	add_child(_tempa)
+	_tempa.closed.connect(func() -> void:
+		_tempa.close()
+		_locked = false
+		_refresh_hud())
+	if not Session.achievement_unlocked.is_connected(_on_achievement):
+		Session.achievement_unlocked.connect(_on_achievement)
 	_profile.hero_changed.connect(_make_player)
 
 

@@ -194,7 +194,7 @@ const WARGA := [
 	# "duduk"), `malam` = pose saat malam bagi yang tidak punya rumah ("tidur"), `hadap` = arah muka awal
 	# (derajat, 0 = selatan/+z), `alat` = benda di depannya ("landasan" pandai besi, "batu" tempat duduk),
 	# `baju` / `kulit` = warna pakaian dan kulit (variasi NPC, no. 31-32), `ukuran` = pengali tinggi.
-	{"id": "mpu_karta", "model": "warga_bapak2", "name": "Mpu Karta", "peran": "Pandai Besi", "map": "desa_awal", "pos": Vector2(13.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true, "kerja": "palu", "rumah": Vector2i(6, 20), "hadap": 0.0, "alat": "landasan", "baju": Color("8c7c6c"), "kulit": Color("ecd2b8"), "ukuran": 1.08},
+	{"id": "mpu_karta", "model": "warga_bapak2", "name": "Mpu Karta", "peran": "Pandai Besi", "map": "desa_awal", "pos": Vector2(13.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true, "kerja": "palu", "toko": "tempa", "rumah": Vector2i(6, 20), "hadap": 0.0, "alat": "landasan", "baju": Color("8c7c6c"), "kulit": Color("ecd2b8"), "ukuran": 1.08},
 	{"id": "tuan_wira", "model": "warga_bapak", "name": "Tuan Wiranata", "peran": "Bangsawan Kerajaan", "map": "desa_awal", "pos": Vector2(25.5, 15.5), "radius": 3.0, "speed": 0.45, "rumah": Vector2i(31, 20), "baju": Color("b890ff"), "kulit": Color("fff0e0"), "ukuran": 1.04},
 	{"id": "prajurit_damar", "model": "prajurit", "name": "Damar", "peran": "Prajurit Kerajaan", "map": "desa_awal", "pos": Vector2(30.5, 23.5), "radius": 8.0, "speed": 0.9},
 	{"id": "laras", "model": "pemanah", "name": "Laras", "peran": "Pemanah Penjaga", "map": "desa_awal", "pos": Vector2(27.5, 47.5), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 180.0, "baju": Color("c8e0a0")},
