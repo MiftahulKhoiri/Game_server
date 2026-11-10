@@ -1,7 +1,13 @@
 extends Node
+
 ## Data sesi yang dipakai antar-layar: pemain yang sedang main + pengaturan tersimpan.
 
 const CONFIG_PATH := "user://settings.cfg"
+## Keakraban warga (sama dengan RepFriend, RepBestFriend, RepDiscountPercent di internal/game/warga.go).
+const REP_FRIEND := 3
+const REP_BEST := 10
+const REP_DISCOUNT := 10
+const SHOP_KEEPERS := {"toko": "penjaga_toko", "makan": "penjaga_makan", "peralatan": "penjaga_alat"}
 ## Pasukan prajurit biasa (sama dengan MaxSoldiers dan SoldierPrice di internal/game/ally.go).
 const MAX_SOLDIERS := 5
 ## Pelatihan di Aula Pelatihan (sama dengan train.go): level tertinggi, biaya emas/energi, detik per level.
@@ -115,10 +121,41 @@ func energy() -> int:
 	return MAX_ENERGY - int(player.state.get("energy_used", 0))
 
 
+func _reputation(v: Variant) -> Dictionary:
+	var out := {}
+	if v is Dictionary:
+		for k: String in v:
+			var r: Variant = v[k]
+			if r is Dictionary:
+				out[k] = {"p": int(r.get("p", 0)), "t": int(r.get("t", 0)), "l": int(r.get("l", 0))}
+	return out
+
+
+## Poin keakraban dan berapa kali bicara dengan warga `id` (roadmap no. 58-59).
+func rep_points(id: String) -> int:
+	return int(player.state.get("reputation", {}).get(id, {}).get("p", 0))
+
+
+func rep_talks(id: String) -> int:
+	return int(player.state.get("reputation", {}).get(id, {}).get("t", 0))
+
+
+## Tingkat keakraban: Kenalan (0-2), Teman (3-9), Sahabat (10+) — sama dengan RepFriend/RepBestFriend di server.
+func rep_tier(id: String) -> String:
+	var p := rep_points(id)
+	return "Sahabat" if p >= REP_BEST else ("Teman" if p >= REP_FRIEND else "Kenalan")
+
+
+## Potongan harga (persen) di toko `shop` bila bersahabat dengan penjaganya (server: ShopDiscount).
+func shop_discount(shop: String) -> int:
+	var keeper: String = SHOP_KEEPERS.get(shop, "")
+	return REP_DISCOUNT if keeper != "" and rep_points(keeper) >= REP_BEST else 0
+
+
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	var incoming := _normalize_state(p.get("state", {}))
 	var st: Dictionary = player.state
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -226,6 +263,8 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 	var eq: Dictionary = s.get("equipment", {})
 	return {
 		"equipment": {"weapon": str(eq.get("weapon", "")), "armor": str(eq.get("armor", "")), "helmet": str(eq.get("helmet", ""))},
+		# Ingatan + keakraban warga (roadmap no. 58-59; server: state.reputation) {id: {p, t, l}}.
+		"reputation": _reputation(s.get("reputation", {})),
 		# Variasi warna pakaian pahlawan 0..3 (roadmap no. 14; server: state.outfit).
 		"outfit": clampi(int(s.get("outfit", 0)), 0, 3),
 		"level": int(s.get("level", 1)),

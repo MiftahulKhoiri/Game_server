@@ -52,7 +52,7 @@ func _rebuild() -> void:
 	for def: Dictionary in _catalog:
 		if int(def.buy_price) > 0 and str(def.get("shop", "")) == _shop:
 			_add_row(def, "Beli", int(def.buy_price), "buy",
-				int(Session.player.state.gold) < int(def.buy_price))
+				int(Session.player.state.gold) < _pay(int(def.buy_price)))
 	_add_header("Jual")
 	var any_sale := false
 	for def: Dictionary in _catalog:
@@ -118,7 +118,10 @@ func _add_row(def: Dictionary, verb: String, price: int, kind: String, disabled:
 	var name_text := str(def.name)
 	if owned >= 0:
 		name_text += "  x%d" % owned
-	var label := _make_label("%s\n%d emas" % [name_text, price], 26)
+	var price_text := "%d emas" % price
+	if kind == "buy" and Session.shop_discount(_shop) > 0:  # sahabat penjaga toko (roadmap no. 59)
+		price_text = "%d emas (potongan %d%%)" % [_pay(price), Session.shop_discount(_shop)]
+	var label := _make_label("%s\n%s" % [name_text, price_text], 26)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 	var button := Button.new()
@@ -146,6 +149,11 @@ func _add_row(def: Dictionary, verb: String, price: int, kind: String, disabled:
 		row.add_child(swap)
 	row.add_child(button)
 	_list.add_child(row)
+
+
+## Harga yang dibayar setelah potongan keakraban (sama dengan BuyAt di server).
+func _pay(price: int) -> int:
+	return int(floor(price * (100 - Session.shop_discount(_shop)) / 100.0))
 
 
 ## Berlian yang dibutuhkan untuk menukar satu barang berharga `price` emas.
