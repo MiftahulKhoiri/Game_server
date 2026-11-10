@@ -110,6 +110,9 @@ type Event struct {
 	Dmg  int    `json:"dmg,omitempty"`  // kerusakan yang diterima target
 	Heal int    `json:"heal,omitempty"` // HP yang dipulihkan
 	Hero string `json:"hero,omitempty"` // id pahlawan pendamping (Who == "ally")
+	// Skill: nama kemampuan khusus musuh pada serangan ini (roadmap no. 85-86); Heal pada kejadian musuh =
+	// HP yang dipulihkan musuh sendiri.
+	Skill string `json:"skill,omitempty"`
 }
 
 // Rewards adalah hadiah setelah menang.
@@ -169,6 +172,27 @@ func enemyInterval(e Enemy) int64 {
 		return BossIntervalMs
 	}
 	return EnemyIntervalMs
+}
+
+// interval: jeda serangan musuh saat ini. Bos yang HP-nya di bawah separuh mengamuk: 25% lebih cepat.
+func (b *Battle) interval(e Enemy) int64 {
+	iv := enemyInterval(e)
+	if e.Boss && b.EnemyHP*2 < b.EnemyMaxHP {
+		iv = iv * 3 / 4
+	}
+	return iv
+}
+
+// special: kemampuan khusus musuh pada serangan bernomor `round` (1, 2, ...); "" bila serangan biasa.
+func special(e Enemy, round int) string {
+	every := SpecialEvery
+	if e.Boss {
+		every = BossSpecialEvery
+	}
+	if e.Special == "" || round%every != 0 {
+		return ""
+	}
+	return e.Special
 }
 
 // View membuat tampilan relatif untuk klien.
@@ -315,7 +339,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 // pemain kalah (res sudah diisi).
 func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) bool {
 	st := &p.State
-	iv := enemyInterval(e)
+	iv := b.interval(e)
 	if b.NextEnemyMs == 0 { // pertarungan lama tanpa jadwal
 		b.NextEnemyMs = upto + FirstHitDelayMs
 	}
@@ -348,7 +372,22 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		t := b.NextEnemyMs
 		dmg, _ := rollDamage(e.Attack, st.Defense(), rng, false)
 		kind := "hit"
+		iv = b.interval(e)
 		next := t + iv
+		// Kemampuan khusus (tanpa memakai angka acak tambahan, jadi urutan acak tetap sama).
+		sp := special(e, b.Round)
+		healed := 0
+		switch sp {
+		case SpecialTerkam:
+			dmg = dmg * 16 / 10
+		case SpecialGempa:
+			dmg = dmg * 18 / 10
+		case SpecialRacun:
+			dmg += max(1, e.Attack/4)
+		case SpecialBatu:
+			healed = min(b.EnemyMaxHP-b.EnemyHP, max(1, b.EnemyMaxHP*8/100))
+			b.EnemyHP += healed
+		}
 		guarded := t >= b.GuardPress-LagGraceMs && t <= b.GuardUntil && b.GuardUntil > 0
 		switch {
 		case guarded && t-b.GuardPress <= PerfectMs:
@@ -391,10 +430,19 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		st.HP -= dmg
-		res.Events = append(res.Events, Event{Who: "enemy", Kind: kind, Dmg: dmg})
-		if kind == "perfect" {
+		ev := Event{Who: "enemy", Kind: kind, Dmg: dmg}
+		if sp != "" {
+			ev.Skill, ev.Heal = e.SpecialName, healed
+		}
+		res.Events = append(res.Events, ev)
+		switch {
+		case kind == "perfect":
 			res.Log = append(res.Log, fmt.Sprintf("Tangkisan sempurna! Serangan %s tidak berefek.", b.EnemyName))
-		} else {
+		case sp != "" && healed > 0:
+			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s: -%d HP, ia pulih %d HP.", b.EnemyName, e.SpecialName, dmg, healed))
+		case sp != "":
+			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s! -%d HP.", b.EnemyName, e.SpecialName, dmg))
+		default:
 			res.Log = append(res.Log, fmt.Sprintf("%s menyerang: -%d HP.", b.EnemyName, dmg))
 		}
 		if st.HP <= 0 {

@@ -13,6 +13,10 @@ const CONTACT := 0.95       # sedekat ini = menyentuh pemain
 const WANDER_RADIUS := 4.0
 const TURN_RATE := 8.0
 const STAND := 1.15         # jarak berdiri musuh yang sedang bertarung dengan pemain (petak)
+const TERRITORY := 7.0      # jari-jari wilayah musuh dari titik asalnya (roadmap no. 82)
+const FEAR_GAP := 5         # pemain sekian level di atas musuh: musuh takut dan lari (no. 81)
+const FLEE_SPEED := 1.9
+const PATROL_R := 2.5       # jari-jari jalur patroli (no. 78)
 
 var id := ""                # id musuh (server)
 var label := ""             # nama untuk ditampilkan
@@ -32,6 +36,16 @@ var fight := false          # sedang bertarung dengan pemain (pertarungan langsu
 var warn := false           # tanda seru berkedip: sebentar lagi menyerang
 var stun := 0.0             # > 0: belum mau mengejar (habis ditinggal kabur / gagal memulai)
 var dying := false          # sudah kalah: tidak bergerak lagi
+var lv := 1                 # level musuh (no. 84)
+var origin := Vector2.ZERO  # pusat wilayahnya; mengejar tidak sampai keluar wilayah
+var shy := false            # pemalu: selalu menghindari pemain
+var patrol := false         # berpatroli berkeliling, bukan berkeliaran acak
+var fleeing := false        # sedang lari dari pemain
+var returning := false      # kembali ke wilayahnya setelah berhenti mengejar
+var steps := 0              # berapa kali step() dijalankan (uji optimasi no. 88)
+var lod_acc := 0.0
+var _patrol_pts: Array[Vector2] = []
+var _patrol_i := 0
 
 var _target := Vector2.ZERO
 var _has_target := false
@@ -42,8 +56,12 @@ var _rng := RandomNumberGenerator.new()
 func _init(kind: Dictionary, map: String, at: Vector2, seed_value: int) -> void:
 	id = str(kind.id)
 	label = str(kind.name)
+	lv = int(kind.get("lv", 1))
+	shy = bool(kind.get("pemalu", false))
+	patrol = bool(kind.get("patroli", false))
 	map_id = map
 	home = at
+	origin = at
 	pos = at
 	_rng.seed = seed_value
 	_wait = _rng.randf_range(0.0, 3.0)  # tidak semua mulai berjalan serentak
@@ -53,6 +71,8 @@ func _init(kind: Dictionary, map: String, at: Vector2, seed_value: int) -> void:
 
 ## Memilih tujuan acak di sekitar `home` yang bisa dicapai lurus. false bila tidak ada.
 func _pick_target() -> bool:
+	if patrol:
+		return _next_patrol()
 	for _i in 10:
 		var ang := _rng.randf() * TAU
 		var dist := _rng.randf_range(1.0, WANDER_RADIUS)
@@ -64,10 +84,40 @@ func _pick_target() -> bool:
 	return false
 
 
+## Patroli (no. 78): titik-titik keliling di sekitar asalnya yang bisa dicapai, didatangi bergiliran.
+func _next_patrol() -> bool:
+	if _patrol_pts.is_empty():
+		var prev := origin
+		for k in 6:
+			var ang := TAU * k / 6.0
+			var p := origin + Vector2(cos(ang), sin(ang)) * PATROL_R
+			if Maps.roam_free(map_id, p) and Maps.roam_path_free(map_id, prev, p):
+				_patrol_pts.append(p)
+				prev = p
+		if _patrol_pts.size() < 2:
+			patrol = false  # tempatnya terlalu sempit: berkeliaran biasa
+			return _pick_target()
+	var p: Vector2 = _patrol_pts[_patrol_i % _patrol_pts.size()]
+	_patrol_i += 1
+	if not Maps.roam_path_free(map_id, pos, p):
+		return false
+	_target = p
+	_has_target = true
+	return true
+
+
+## Takut pada pemain: pemalu, atau pemain jauh lebih kuat (no. 81).
+func afraid_of(player_level: int) -> bool:
+	return shy or player_level >= lv + FEAR_GAP
+
+
 ## Maju delta detik. `player` = posisi pemain; `can_aggro` = boleh mengejar (false saat jeda
-## awal, di layar lain, atau mode uji). Mengembalikan true bila menyentuh pemain.
-func step(delta: float, player: Vector2, can_aggro: bool) -> bool:
+## awal, di layar lain, atau mode uji); `player_level` = level pemain (musuh lemah takut pada
+## pemain yang jauh lebih kuat). Mengembalikan true bila menyentuh pemain.
+func step(delta: float, player: Vector2, can_aggro: bool, player_level := 1) -> bool:
+	steps += 1
 	walking = false
+	fleeing = false
 	if dying:
 		return false
 	if stun > 0.0:
@@ -77,13 +127,31 @@ func step(delta: float, player: Vector2, can_aggro: bool) -> bool:
 		_step_fight(delta, player)
 		return false
 	var d := pos.distance_to(player)
-	if chasing and (not can_aggro or d > LOSE):
+	if can_aggro and d < AGGRO and afraid_of(player_level):
 		chasing = false
-		home = pos
+		_flee(delta, player)
+		return false
+	# Wilayah (no. 82): berhenti mengejar bila pemain jauh atau musuh sudah keluar wilayahnya, lalu pulang.
+	if chasing and (not can_aggro or d > LOSE or pos.distance_to(origin) > TERRITORY):
+		chasing = false
+		returning = pos.distance_to(origin) > WANDER_RADIUS
 		_wait = _rng.randf_range(0.8, 2.0)
-	if not chasing and can_aggro and d < AGGRO and Maps.roam_path_free(map_id, pos, player):
+	if not chasing and not returning and can_aggro and d < AGGRO and player.distance_to(origin) < TERRITORY \
+			and Maps.roam_path_free(map_id, pos, player):
 		chasing = true
 		_has_target = false
+	if returning and not chasing:
+		var to_o := origin - pos
+		var od := to_o.length()
+		var nxt_o := pos + to_o / maxf(od, 0.001) * minf(WANDER_SPEED * 1.4 * delta, od)
+		if od < 0.3 or not Maps.roam_free(map_id, nxt_o):
+			returning = false
+			home = pos if od >= 0.3 else origin
+		else:
+			pos = nxt_o
+			walking = true
+			yaw = lerp_angle(yaw, atan2(to_o.x, to_o.y), minf(1.0, delta * TURN_RATE))
+			return false
 	var want_yaw := yaw
 	if chasing:
 		if d < CONTACT:
@@ -132,6 +200,22 @@ func step(delta: float, player: Vector2, can_aggro: bool) -> bool:
 	if walking:
 		yaw = lerp_angle(yaw, want_yaw, minf(1.0, delta * TURN_RATE))
 	return false
+
+
+## Lari menjauhi pemain (dicoba beberapa arah supaya tidak menabrak tembok).
+func _flee(delta: float, player: Vector2) -> void:
+	var away := pos - player
+	away = away.normalized() if away.length() > 0.001 else Vector2(1, 0)
+	for ang: float in [0.0, 0.6, -0.6, 1.3, -1.3]:
+		var dir := away.rotated(ang)
+		var nxt := pos + dir * FLEE_SPEED * delta
+		if Maps.roam_free(map_id, nxt):
+			pos = nxt
+			walking = true
+			fleeing = true
+			yaw = lerp_angle(yaw, atan2(dir.x, dir.y), minf(1.0, delta * TURN_RATE))
+			break
+	_has_target = false
 
 
 ## Musuh yang sedang bertarung: menghadap pemain dan menempel di jaraknya (tanpa menyentuh = tanpa memulai lagi).

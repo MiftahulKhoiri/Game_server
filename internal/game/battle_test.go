@@ -532,7 +532,8 @@ func TestPickEnemyForUsesVisibleEnemyOnlyWhenAllowed(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{"kelelawar_gua", "golem_kerikil", "goblin_penjaga", "golem_lava"} {
+	// kelelawar_gua (Gua Goblin) dan golem_lava (Gua Batu) aktif lagi sejak v0.53.0; goblin_penjaga hanya di Gua Goblin.
+	for _, id := range []string{"golem_kerikil"} {
 		for _, zone := range []string{MapDesaAwal, MapPerbatasan, MapGunungBatu, MapGuaBatu} {
 			if e, _ := EnemyByID(id); e.inZone(zone) {
 				t.Errorf("%s sudah pensiun tetapi masih muncul di %s", id, zone)

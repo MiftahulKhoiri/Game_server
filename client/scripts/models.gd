@@ -54,9 +54,32 @@ const VARIANTS := {
 	"goblin_hutan_1": {"base": "goblin_penjaga", "size": 1.6, "tint": Color("b8e0a0")},
 	"goblin_hutan_2": {"base": "goblin_penjaga", "size": 1.95, "tint": Color("e8c070")},
 	"goblin_hutan_3": {"base": "goblin_penjaga", "size": 2.3, "tint": Color("e07060")},
+	# Ogre Rawa (roadmap no. 63): Monster Batu yang lebih kecil dan hijau lumut.
+	"ogre_rawa": {"base": "ogre_batu", "size": 0.88, "tint": Color("a8d090")},
 	# Prajurit biasa (pasukan dari tenda hijau): pendekar tombak yang lebih kecil dan kehijauan.
 	"prajurit": {"base": "pendekar_tombak", "size": 0.88, "tint": Color("b6d8a4")},
 }
+
+
+## Warna hewan Quaternius per nama bahan (roadmap no. 61-70): warna aslinya hilang saat diubah ke GLB
+## ringan (semua bahan abu-abu 0,8), sehingga Ayam Liar, Kucing Liar, Rubah, dan Serigala tampil putih polos.
+const ANIMAL_COLORS := {
+	"tikus_sawah": {"Material.001": Color("f2c94c"), "Material.002": Color("f08a24")},       # anak ayam: kuning, paruh/kaki oranye
+	"belalang_raksasa": {"Grey": Color("8a8f99"), "White": Color("f0ece4"), "Pink": Color("f2a6b4")},  # kucing
+	"ular_sawah": {"Material.001": Color("e07a2c"), "Material.002": Color("f4ede0")},        # rubah: oranye, dada putih
+	"serigala_hutan": {"Wolf": Color("8a8478")},                                             # serigala abu-cokelat
+}
+
+
+static func _color_by_material(n: Node, colors: Dictionary) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_surface_override_material(i) as StandardMaterial3D
+			if m != null and colors.has(m.resource_name):
+				m.albedo_color = colors[m.resource_name]
+	for c in n.get_children():
+		_color_by_material(c, colors)
 
 
 ## Mengalikan warna semua bahan model (hanya bahan hasil _fix_materials / bentuk dasar).
@@ -123,6 +146,8 @@ static func _from_glb(id: String, path: String) -> Node3D:
 			"anak_desa", "nenek_penjual", "petani"
 		].has(id)
 		_fix_materials(inst, stylized_npc)
+		if ANIMAL_COLORS.has(id):
+			_color_by_material(inst, ANIMAL_COLORS[id])
 		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
 	else:
 		_style_hero(inst)

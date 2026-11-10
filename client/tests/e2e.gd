@@ -659,6 +659,52 @@ func _run() -> void:
 	_check(is_equal_approx(rk.anim_player.speed_scale, 1.0) and float(rk._actions.get("lean")) == 0.0, "diam: klip kembali kecepatan normal tanpa condong")
 	_check(rk.play_action("ambil"), "aksi ambil barang tersedia")
 	rk.free()
+	# Roadmap no. 61-88: warna hewan, musuh baru, pemalu, takut, wilayah, patroli.
+	var q_ay: Node3D = Models.create("tikus_sawah")
+	var q_ay_ok := false
+	for q_mi in q_ay.find_children("*", "MeshInstance3D", true, false):
+		var q_am := (q_mi as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+		if q_am != null and q_am.albedo_color.b < 0.5 and q_am.albedo_color.r > 0.8:
+			q_ay_ok = true
+	_check(q_ay_ok, "Ayam Liar berwarna kuning, bukan putih polos")
+	q_ay.free()
+	var q_orw: Node3D = Models.create("ogre_rawa")
+	_check(q_orw != null and q_orw.name == "ogre_rawa", "model Ogre Rawa ada")
+	q_orw.free()
+	var q_RoamerC = load("res://scripts/roamer.gd")
+	var q_pm_map := Maps.PERBATASAN
+	var q_mspot := Vector2.ZERO
+	for q_my in range(6, 20):
+		for q_mx in range(2, 40):
+			var q_c := Vector2(q_mx + 0.5, q_my + 0.5)
+			if q_mspot == Vector2.ZERO and Maps.roam_free(q_pm_map, q_c) and Maps.roam_free(q_pm_map, q_c + Vector2(2, 0)) \
+					and Maps.roam_free(q_pm_map, q_c + Vector2(-2, 0)) and Maps.roam_free(q_pm_map, q_c + Vector2(0, 2)) and Maps.roam_free(q_pm_map, q_c + Vector2(0, -2)):
+				q_mspot = q_c
+	var q_shy_r = q_RoamerC.new({"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1, "pemalu": true}, q_pm_map, q_mspot, 5)
+	var q_pl := q_mspot + Vector2(1.5, 0.0)
+	var q_d0: float = q_shy_r.pos.distance_to(q_pl)
+	var q_shy_touch := false
+	for i in 20:
+		q_shy_touch = q_shy_touch or q_shy_r.step(0.1, q_pl, true, 1)
+	_check(not q_shy_touch and not q_shy_r.chasing and q_shy_r.pos.distance_to(q_pl) > q_d0 + 0.5, "musuh pemalu lari dari pemain (no. 81)")
+	var q_weak = q_RoamerC.new({"id": "serigala_hutan", "name": "Serigala Hutan", "lv": 2}, q_pm_map, q_mspot, 6)
+	_check(q_weak.afraid_of(7) and not q_weak.afraid_of(3), "musuh lemah takut pada pemain yang 5 level lebih tinggi")
+	var q_guard_r = q_RoamerC.new({"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 5, "patroli": true}, q_pm_map, q_mspot, 8)
+	var q_tgt_ok: bool = q_guard_r._pick_target()
+	_check(q_tgt_ok and q_guard_r._patrol_pts.size() >= 2 and q_guard_r._patrol_pts.has(q_guard_r._target), "musuh penjaga berpatroli di titik-titik kelilingnya (no. 78)")
+	var q_lane := Vector2.ZERO  # jalur lurus bebas 9 petak untuk uji wilayah
+	for q_ly in range(3, 40):
+		for q_lx in range(1, 40):
+			var q_c2 := Vector2(q_lx + 0.5, q_ly + 0.5)
+			if q_lane == Vector2.ZERO and Maps.roam_free(q_pm_map, q_c2) and Maps.roam_free(q_pm_map, q_c2 + Vector2(9, 0)) and Maps.roam_path_free(q_pm_map, q_c2, q_c2 + Vector2(9, 0)):
+				q_lane = q_c2
+	_check(q_lane != Vector2.ZERO, "ada jalur lurus untuk uji wilayah musuh")
+	var q_ter = q_RoamerC.new({"id": "serigala_hutan", "name": "Serigala Hutan", "lv": 2}, q_pm_map, q_lane, 9)
+	q_ter.chasing = true
+	q_ter.pos = q_lane + Vector2(8.0, 0.0)  # sudah 8 petak dari asalnya (wilayah 7)
+	var q_d_awal: float = q_ter.pos.distance_to(q_ter.origin)
+	q_ter.step(0.1, q_lane + Vector2(9.0, 0.0), true, 1)
+	_check(not q_ter.chasing and q_ter.returning and q_ter.pos.distance_to(q_ter.origin) < q_d_awal, "musuh berhenti mengejar di luar wilayahnya lalu pulang (no. 82)")
 	for mdl in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)
 		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
@@ -1218,6 +1264,8 @@ func _run() -> void:
 			var target := Vector2.ZERO
 			var found := false
 			for cand_r in wr._roamers:
+				if cand_r.shy:
+					continue  # musuh pemalu lari, bukan mengejar
 				for dist: float in [2.5, 2.0, 1.5]:
 					for dir: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
 						var cand: Vector2 = cand_r.pos + dir * dist

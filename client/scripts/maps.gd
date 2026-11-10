@@ -235,9 +235,10 @@ static func warga_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
 ## di peta itu; `lv` = MinLevel-nya (musuh yang terlalu kuat untuk level pemain tidak dimunculkan,
 ## kecuali tidak ada yang lain). `n` = jumlah di peta, `tiles` = jenis petak tempat mereka muncul,
 ## `min_y` = batas utara (desa: menjauh dari rumah-rumah). Server tetap yang menentukan lawan sebenarnya.
+## `pemalu` = selalu lari dari pemain (roadmap no. 81); `patroli` = berjalan berkeliling di wilayahnya (no. 78).
 const ROAMERS := {
 	"perbatasan": {"n": 16, "tiles": ".fT", "min_y": 3, "kinds": [
-		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1},
+		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1, "pemalu": true},
 		{"id": "belalang_raksasa", "name": "Kucing Liar", "lv": 1},
 		{"id": "ular_sawah", "name": "Rubah Sawah", "lv": 2},
 		{"id": "ular_hutan", "name": "Ular Hutan", "lv": 1},
@@ -247,7 +248,7 @@ const ROAMERS := {
 	]},
 	# Hutan Lebat: 100 binatang per tahap (server menghitung), yang hidup bersamaan dibatasi `n`.
 	"hutan_lebat": {"n": 22, "tiles": ".f", "min_y": 3, "kinds": [
-		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1},
+		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1, "pemalu": true},
 		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 2},
 		{"id": "ular_belang", "name": "Ular Belang", "lv": 3},
 		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 3},
@@ -257,16 +258,19 @@ const ROAMERS := {
 	"gua_goblin": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
-		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 5},
+		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 5, "patroli": true},
+		{"id": "kelelawar_gua", "name": "Kerangka Gua", "lv": 3},
 	]},
 	"gunung_batu": {"n": 14, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
+		{"id": "ogre_rawa", "name": "Ogre Rawa", "lv": 4},
 		{"id": "ogre_batu", "name": "Monster Batu", "lv": 5},
 	]},
 	"gua_batu": {"n": 7, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "orc_gua", "name": "Orc Gua", "lv": 5},
-		{"id": "orc_penjaga", "name": "Orc Penjaga", "lv": 6},
+		{"id": "orc_penjaga", "name": "Orc Penjaga", "lv": 6, "patroli": true},
+		{"id": "golem_lava", "name": "Iblis Lava", "lv": 6},
 		{"id": "orc_buas", "name": "Orc Buas", "lv": 7},
 	]},
 }
