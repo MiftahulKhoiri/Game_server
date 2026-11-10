@@ -56,6 +56,11 @@ func run(log *slog.Logger) error {
 		return err
 	}
 	defer st.Close()
+	if msg, err := st.QuickCheck(context.Background()); err != nil || msg != "" {
+		log.Error("pemeriksaan database menemukan masalah", "pesan", msg, "err", err)
+	} else {
+		log.Info("pemeriksaan database: sehat")
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
@@ -68,6 +73,9 @@ func run(log *slog.Logger) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if cfg.BackupDir != "" && cfg.BackupEvery > 0 {
+		go backupLoop(ctx, log, st, cfg)
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -88,6 +96,34 @@ func run(log *slog.Logger) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
+	}
+}
+
+// backupLoop mencadangkan database secara otomatis (roadmap no. 235): segera bila cadangan terakhir sudah
+// lebih tua dari BackupEvery (atau belum ada), lalu setiap BackupEvery. Menyisakan BackupKeep cadangan.
+func backupLoop(ctx context.Context, log *slog.Logger, st *store.Store, cfg config.Config) {
+	run := func() {
+		path, err := st.Backup(ctx, cfg.BackupDir, cfg.BackupKeep, time.Now())
+		if err != nil {
+			log.Error("cadangan database gagal", "err", err)
+			return
+		}
+		log.Info("cadangan database dibuat", "path", path)
+	}
+	wait := time.Minute // beri server waktu menyala dulu
+	if _, last := store.LatestBackup(cfg.BackupDir); !last.IsZero() && time.Since(last) < cfg.BackupEvery {
+		wait = cfg.BackupEvery - time.Since(last)
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			run()
+			timer.Reset(cfg.BackupEvery)
+		}
 	}
 }
 

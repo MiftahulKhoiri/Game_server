@@ -1,4 +1,4 @@
-.PHONY: build run test vet fmt check client-test patch install-user-service restart clean
+.PHONY: build run test vet fmt check client-test patch install-user-service restart clean backup restore
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -44,6 +44,12 @@ install-user-service: build
 # Bangun ulang lalu mulai ulang layanan (setelah mengubah kode server).
 restart: build
 	systemctl --user restart gameserver
+
+backup:
+	bash scripts/backup-db.sh
+
+restore:
+	bash scripts/restore-db.sh $(FILE)
 
 clean:
 	rm -rf bin

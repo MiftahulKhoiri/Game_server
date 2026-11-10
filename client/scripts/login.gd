@@ -609,6 +609,9 @@ func _test_server() -> void:
 	_server_label.text = "Server tersambung\n%s  |  v%s" % [Api.base_url, str(info.get("server", "?"))]
 	_set_server_ok(true)
 	_home_msg("Server tersambung", GREEN)
+	if Session.login_notice != "":  # mis. sesi kedaluwarsa (roadmap no. 223)
+		_home_msg(Session.login_notice, RED)
+		Session.login_notice = ""
 	_apply_version_info(info)
 
 

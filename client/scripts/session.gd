@@ -56,6 +56,8 @@ var left_hand := false
 signal ui_changed
 ## Pemberitahuan (roadmap no. 216): 30 terakhir, terbaru di akhir. {text, kind, at, read}
 var notices: Array = []
+## Pesan untuk beranda setelah dikeluarkan dari dunia (mis. sesi kedaluwarsa).
+var login_notice := ""
 signal notice_added(n: Dictionary)
 ## Pengaturan suara (disimpan di HP): suara bicara NPC dan musik, masing-masing nyala/mati + volume 0..1.
 var snd_npc := true

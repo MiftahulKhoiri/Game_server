@@ -13,6 +13,30 @@ var token: String = ""
 ## Dikirim ke server di setiap permintaan; server menolak (426) bila di bawah batas minimum.
 var client_version: String = Version.app_version()
 
+## Koneksi ke server (roadmap no. 231-232): false setelah permintaan gagal karena jaringan, true lagi saat
+## permintaan berikutnya berhasil. Layar dunia menampilkan pemberitahuan dan menyelaraskan ulang data.
+var online := true
+signal connection_changed(is_online: bool)
+## Token ditolak server (sesi kedaluwarsa / dicabut dari perangkat lain): pemain harus masuk lagi.
+signal session_expired(message: String)
+## Jeda percobaan ulang GET saat jaringan putus (detik); 0 = tanpa ulang (dipakai uji).
+var retry_delay := 1.5
+
+
+## Daftar perangkat yang sedang masuk ke akun ini: {"sessions": [{created, last_used, current}], "idle_days"}.
+func sessions_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/sessions", null, true)
+
+
+## Keluarkan akun dari semua perangkat lain. {"revoked": N}
+func logout_others() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/logout/others", null, true)
+
+
+## Ganti kata sandi (sesi di perangkat lain ikut dicabut). Sukses = 204.
+func change_password(old_pw: String, new_pw: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/password", {"old": old_pw, "new": new_pw}, true)
+
 
 func health() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/healthz", null, false)
@@ -261,6 +285,25 @@ func shop_sell(item: String, qty: int, shop := "toko") -> Dictionary:
 
 
 func _call(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -> Dictionary:
+	var res := await _call_once(method, path, body, auth)
+	# GET aman diulang sekali bila jaringan sempat putus (mis. pindah Wi-Fi ke data seluler).
+	if int(res.status) == 0 and method == HTTPClient.METHOD_GET and retry_delay > 0.0 and is_inside_tree():
+		await get_tree().create_timer(retry_delay).timeout
+		res = await _call_once(method, path, body, auth)
+	_track(res, auth, path)
+	return res
+
+
+func _track(res: Dictionary, auth: bool, path: String) -> void:
+	var now_online := int(res.status) != 0
+	if now_online != online:
+		online = now_online
+		connection_changed.emit(online)
+	if auth and int(res.status) == 401 and token != "" and path != "/v1/players/me/password":
+		session_expired.emit(str(res.get("error", "Sesi berakhir; silakan masuk lagi")))
+
+
+func _call_once(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -> Dictionary:
 	var req := HTTPRequest.new()
 	req.timeout = 10.0
 	add_child(req)

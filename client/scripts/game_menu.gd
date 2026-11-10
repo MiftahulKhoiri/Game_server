@@ -41,6 +41,7 @@ var _btn_atribut: Button
 var _btn_dagang: Button
 var _btn_jurnal: Button
 var _btn_kabar: Button
+var _akun: VBoxContainer
 var _confirm_key := ""
 var _confirm_btn: Button
 var _confirm_text := ""
@@ -145,6 +146,8 @@ func _ready() -> void:
 	_settings.add_child(_toggle_keep)
 
 	_settings.add_child(load("res://scripts/kontrol_settings.gd").new())
+	_akun = load("res://scripts/akun_settings.gd").new()
+	_settings.add_child(_akun)
 	_settings.add_child(_section("Suara"))
 	_toggle_npc = _toggle("Suara orang (NPC)", _on_toggle_npc)
 	_settings.add_child(_toggle_npc)
@@ -198,6 +201,8 @@ func _show_page(main: bool) -> void:
 	_reset_confirm()
 	_main.visible = main
 	_settings_scroll.visible = not main
+	if _akun != null:
+		_akun.visible = not main and not Session.offline
 
 
 func _on_quality(i: int) -> void:
