@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/MiftahulKhoiri/Game_server/internal/api"
 	"github.com/MiftahulKhoiri/Game_server/internal/config"
+	"github.com/MiftahulKhoiri/Game_server/internal/game"
 	"github.com/MiftahulKhoiri/Game_server/internal/store"
 	"github.com/MiftahulKhoiri/Game_server/internal/version"
 )
@@ -28,6 +30,15 @@ func main() {
 
 func run(log *slog.Logger) error {
 	cfg := config.Load()
+	// Khusus uji (scripts/client-test.sh): GAME_WORLD_START = detik Unix jam dunia saat server mulai, supaya
+	// siang/malam dan kejadian dunia sama dengan jam klien uji. Produksi: kosong = jam server biasa.
+	if v := os.Getenv("GAME_WORLD_START"); v != "" {
+		if start, err := strconv.ParseInt(v, 10, 64); err == nil {
+			began := time.Now().Unix()
+			game.Now = func() int64 { return start + time.Now().Unix() - began }
+			log.Info("jam dunia uji", "mulai", start)
+		}
+	}
 	info := version.Info{
 		Server:       version.Server,
 		Commit:       version.Commit,

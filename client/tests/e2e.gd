@@ -78,6 +78,13 @@ func _run() -> void:
 	Patcher = root.get_node("Patcher")
 	Session = root.get_node("Session")
 	Sound = root.get_node("Sound")
+	# Jam dunia bersama (v0.59.0) mengikuti jam server; supaya uji tidak bergantung kapan dijalankan,
+	# dunia dimulai pagi (jam 8, seperti sebelum v0.59.0) pada hari biasa tanpa serbuan/pasar, dan cuaca
+	# cerah kecuali diuji.
+	var AtmoT = load("res://scripts/atmosphere.gd")
+	AtmoT.clock_offset = (3000000.0 * 720.0 + 240.0) - Time.get_unix_time_from_system()
+	AtmoT.clock_locked = true
+	AtmoT.weather_override = 0
 	print("== peta")
 	var WB: GDScript = load("res://scripts/world_build.gd")
 	for y in Maps.height(Maps.DEFAULT_MAP):
@@ -555,7 +562,7 @@ func _run() -> void:
 	world2.queue_free()
 	await process_frame
 	var pb: Dictionary = await Api.battle_start()
-	_check(pb.ok and ["tikus_sawah", "belalang_raksasa", "ular_hutan", "serigala_hutan"].has(str(pb.data.battle.enemy_id)), "musuh di hutan Perbatasan adalah hewan hutan (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
+	_check(pb.ok and ["tikus_sawah", "belalang_raksasa", "ular_sawah", "ular_hutan", "serigala_hutan"].has(str(pb.data.battle.enemy_id)), "musuh di hutan Perbatasan adalah hewan hutan (%s)" % (pb.data.battle.enemy_id if pb.ok else "gagal"))
 	if pb.ok:
 		for i in 40:  # kabur dari pertarungan acak (peluang 60%, cooldown 3 d) supaya tidak menggantung
 			var fl: Dictionary = await Api.battle_action("flee")
@@ -791,7 +798,12 @@ func _run() -> void:
 	Atmo.hour_override = -1.0
 	Atmo.rain = 0.0
 	Atmo.apply(env_a, w3._sun, w3._atmo_base, Maps.DEFAULT_MAP)
-	_check(Atmo.hour() >= 0.0 and Atmo.hour() < 24.0 and not Atmo.raining_now(), "jam permainan wajar dan blok cuaca pertama cerah")
+	var rain_tbl: Array = []
+	for rb in 12:
+		rain_tbl.append(Atmo.raining_block(rb))
+	# Sama persis dengan RainingAt di server (internal/game/worldtime.go) untuk blok 0..11.
+	_check(Atmo.hour() >= 0.0 and Atmo.hour() < 24.0 and rain_tbl == [true, false, false, false, false, true, false, false, true, false, false, true], "jam dunia wajar dan rumus cuaca sama dengan server")
+	_check(absf(Atmo.hour_at(3.0 * 720.0 + 300.0) - 10.0) < 0.01 and Atmo.day_at(3.0 * 720.0 + 300.0) == 3, "jam dan hari dunia dari detik Unix")
 	# NPC: menoleh ke pemain yang dekat, dan tetap di dalam petaknya.
 	w3._pos = Vector2(3.5, 8.5)  # selatan Nenek (3,6)
 	for i in 90:
@@ -1389,6 +1401,74 @@ func _run() -> void:
 	_check(wt._store_near(), "dekat lemari di rumah: Peti simpan")
 	wt._map_id = Maps.DEFAULT_MAP
 	Session.player.state = ek_saved
+
+	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
+	var AtL = load("res://scripts/atmosphere.gd")
+	var lf: Node = wt._life
+	var lf_ok := true
+	for lf_s: Dictionary in Maps.RAHASIA:
+		lf_ok = lf_ok and Maps.walkable(str(lf_s.map), lf_s.pos.x, lf_s.pos.y)
+	for lf_p: Vector2 in Maps.RAID_SPAWNS:
+		lf_ok = lf_ok and Maps.walkable(Maps.DEFAULT_MAP, int(lf_p.x), int(lf_p.y))
+	_check(lf_ok, "tempat rahasia dan titik muncul penyerbu berada di petak yang bisa dilewati")
+	_check(lf.crop_stage >= 0 and wt._npc_root.find_child("Tanaman", false, false) != null, "tanaman ladang desa tumbuh (tahap: %s)" % lf.CROP_STAGES[maxi(lf.crop_stage, 0)])
+	lf._update_banner()
+	_check(lf.banner_text == "Wilayah aman", "papan wilayah: Desa Awal aman (%s)" % lf.banner_text)
+	var lf_r0: int = wt._roamers.size()
+	AtL.event_override = "serbuan"
+	lf._check_raid()
+	_check(lf.raid_on and lf.raiders.size() == Maps.RAID_N and wt._roamers.size() == lf_r0 + Maps.RAID_N, "Serbuan Goblin: %d penyerbu muncul di tepi desa" % lf.raiders.size())
+	lf._update_banner()
+	_check(lf.banner_text.begins_with("SERBUAN GOBLIN"), "papan menampilkan serbuan dan pertahanan desa (%s)" % lf.banner_text)
+	var lf_hide := false
+	var lf_guard_out := true
+	for lf_i in 60:
+		wt._update_warga(0.1)
+	for lf_w in wt._warga:
+		if lf_w.shelter:
+			lf_hide = true
+		if Maps.RAID_GUARDS.has(lf_w.id) and lf_w.shelter:
+			lf_guard_out = false
+	_check(lf_hide and lf_guard_out, "saat serbuan warga berlindung, penjaga desa tetap di luar")
+	var lf_g = null
+	for lf_w in wt._warga:
+		if lf_w.id == "penjaga":
+			lf_g = lf_w
+	var lf_r = lf.raiders[0]
+	lf_r.pos = lf_g.pos + Vector2(1.5, 0)
+	lf_r.stun = 0.0
+	lf._guards_hold()
+	_check(lf_r.stun > 1.0, "penjaga desa menahan penyerbu di dekatnya")
+	AtL.event_override = "none"
+	lf._check_raid()
+	_check(not lf.raid_on and wt._roamers.size() == lf_r0, "serbuan berakhir: penyerbu mundur")
+	AtL.event_override = "pasar"
+	lf._update_banner()
+	_check(lf.banner_text.begins_with("Hari Pasar") and Session.shop_discount("toko") >= 10, "Hari Pasar: papan dan potongan toko")
+	AtL.event_override = ""
+	_check(not wt._kind_time_ok({"waktu": "malam"}, Maps.HUTAN) or AtL.is_night(), "musuh malam tidak muncul siang hari")
+	AtL.hour_override = 22.0
+	_check(wt._kind_time_ok({"waktu": "malam"}, Maps.HUTAN) and not wt._kind_time_ok({"waktu": "siang"}, Maps.HUTAN), "malam: musuh malam muncul, musuh siang tidak")
+	AtL.hour_override = 10.0
+	AtL.rain = 1.0
+	wt._update_warga(0.1)
+	var lf_rain := false
+	for lf_w in wt._warga:
+		lf_rain = lf_rain or lf_w.shelter
+	lf.tick(0.1)
+	_check(lf_rain and not lf._puddles.is_empty() and lf._puddles[0].visible, "hujan deras: warga berteduh dan genangan air muncul")
+	AtL.rain = 0.0
+	wt._update_warga(0.1)
+	wt._load_map(Maps.PERBATASAN)
+	var lf_sec: Dictionary = Maps.RAHASIA[0]
+	wt._pos = Vector2(lf_sec.pos) + Vector2(0.5, 1.5)
+	lf.tick(0.1)
+	_check(lf.secret_near() == str(lf_sec.id), "dekat tempat rahasia: ada yang bisa diperiksa")
+	wt._pos = Vector2(lf_sec.pos) + Vector2(6.5, 0.5)
+	_check(lf.secret_near() == "", "jauh dari tempat rahasia: tidak terlihat")
+	wt._load_map(Maps.DEFAULT_MAP)
+	var lf_norm: Dictionary = Session._normalize_state({"visited": ["desa_awal"], "secrets": ["batu_bertulis"], "raid": {"id": 7, "kills": 3}, "defended": 1})
+	_check(lf_norm.visited == ["desa_awal"] and lf_norm.secrets == ["batu_bertulis"] and lf_norm.raid.kills == 3 and lf_norm.defended == 1, "state klien membaca penjelajahan, rahasia, dan pertahanan desa")
 	wt.queue_free()
 	await process_frame
 	Session.player.state.hero = wt_hero

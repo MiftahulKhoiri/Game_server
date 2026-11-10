@@ -91,6 +91,18 @@ func storage(put: bool, item: String, qty: int) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/storage/put" if put else "/v1/storage/take", {"item": item, "qty": qty}, true)
 
 
+func world_events() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/world/events", null, true)
+
+
+func world_secret(id: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/world/secret", {"id": id}, true)
+
+
+func raid_claim() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/world/raid/claim", null, true)
+
+
 func trades_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/trades", null, true)
 

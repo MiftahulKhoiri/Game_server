@@ -9,10 +9,12 @@ const H := 44.0
 const PAD := 14.0
 const ICON_W := 38.0
 const FONT_SIZE := 24
+const MAX_TEXT_W := 170.0
 
 var center_x := 440.0
 var _kind := "sun"
 var _text := ""
+var _fs := FONT_SIZE
 
 
 func _init() -> void:
@@ -26,7 +28,12 @@ func set_info(kind: String, text: String) -> void:
 		return
 	_kind = kind
 	_text = text
-	var w := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+	# Tulisan panjang (mis. "Malam 22:17, hujan") diperkecil supaya tidak menabrak tombol Menu.
+	_fs = FONT_SIZE
+	var w := FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs).x
+	while w > MAX_TEXT_W and _fs > 16:
+		_fs -= 2
+		w = FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs).x
 	size = Vector2(PAD + ICON_W + w + PAD, H)
 	position.x = center_x - size.x / 2.0
 	queue_redraw()
@@ -51,10 +58,10 @@ func _draw() -> void:
 			_draw_cave(c)
 		_:
 			_draw_sun(c)
-	var ty := H * 0.5 + float(FONT_SIZE) * 0.34
+	var ty := H * 0.5 + float(_fs) * 0.34
 	var tx := PAD + ICON_W
-	draw_string_outline(FONT, Vector2(tx, ty), _text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, 6, Color(0, 0, 0, 0.8))
-	draw_string(FONT, Vector2(tx, ty), _text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color("ffe9b0"))
+	draw_string_outline(FONT, Vector2(tx, ty), _text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs, 6, Color(0, 0, 0, 0.8))
+	draw_string(FONT, Vector2(tx, ty), _text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs, Color("ffe9b0"))
 
 
 func _draw_sun(c: Vector2) -> void:

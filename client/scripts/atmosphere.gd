@@ -37,12 +37,75 @@ static var rain := 0.0
 ## Hanya untuk uji: bila >= 0, dipakai sebagai jam permainan.
 static var hour_override := -1.0
 
+## Jam dunia bersama (roadmap no. 186): selisih jam server - jam HP (detik), dari GET /v1/time. Jam,
+## cuaca, dan kejadian dunia dihitung dari jam server dengan rumus yang sama dengan internal/game/worldtime.go.
+static var clock_offset := 0.0
+## true setelah jam diselaraskan dengan server (sekali per jalannya aplikasi; uji menguncinya sendiri).
+static var clock_locked := false
+## Hanya untuk uji: "serbuan" / "pasar" / "none" memaksa kejadian dunia ("" = menurut jam).
+static var event_override := ""
+## Hanya untuk uji: 0 = selalu cerah, 1 = selalu hujan, -1 = menurut jam dunia.
+static var weather_override := -1
+const RAID_EVERY := 3      # Serbuan Goblin: malam hari ke-3 (hari % 3 == 1)
+const MARKET_EVERY := 3    # Hari Pasar: siang hari % 3 == 2, jam 8-17
+const MARKET_FROM := 8.0
+const MARKET_TO := 17.0
+const MARKET_PERCENT := 10
+
+
+static func world_unix() -> float:
+	return Time.get_unix_time_from_system() + clock_offset
+
+
+static func hour_at(unix: float) -> float:
+	return fposmod(unix / DAY_SECONDS * 24.0, 24.0)
+
+
+static func day_at(unix: float) -> int:
+	return int(floorf(unix / DAY_SECONDS))
+
+
+## Serbuan Goblin sedang berlangsung di Desa Awal?
+static func raid_active() -> bool:
+	if event_override != "":
+		return event_override == "serbuan"
+	if hour_override >= 0.0:
+		return false
+	var u := world_unix()
+	var h := hour_at(u)
+	if not (h >= NIGHT_FROM or h < NIGHT_TO):
+		return false
+	var night_day := day_at(u) - (1 if h < NIGHT_TO else 0)
+	return posmod(night_day, RAID_EVERY) == 1
+
+
+## Nomor serbuan (hari mulai malamnya), sama dengan RaidID di server.
+static func raid_id() -> int:
+	var u := world_unix()
+	return day_at(u) - (1 if hour_at(u) < NIGHT_TO else 0)
+
+
+## Hari Pasar (potongan harga toko) sedang berlangsung?
+static func market_active() -> bool:
+	if event_override != "":
+		return event_override == "pasar"
+	if hour_override >= 0.0:
+		return false
+	var u := world_unix()
+	var h := hour_at(u)
+	return posmod(day_at(u), MARKET_EVERY) == 2 and h >= MARKET_FROM and h < MARKET_TO
+
+
+## Hari permainan ke berapa (untuk tanaman yang tumbuh, roadmap no. 194).
+static func world_day() -> int:
+	return day_at(world_unix())
+
 
 ## Jam permainan sekarang, 0.0 sampai 24.0.
 static func hour() -> float:
 	if hour_override >= 0.0:
 		return hour_override
-	return fposmod(START_HOUR + float(Time.get_ticks_msec()) / 1000.0 / DAY_SECONDS * 24.0, 24.0)
+	return hour_at(world_unix())
 
 
 ## Kekuatan malam untuk lampu: 0 siang .. 1 malam penuh (mengikuti langit di apply()). Gua punya obor sendiri.
@@ -59,10 +122,15 @@ static func is_night() -> bool:
 
 ## Hujan sedang/akan turun pada blok waktu ini?
 static func raining_now() -> bool:
-	var block := int(float(Time.get_ticks_msec()) / 1000.0 / WEATHER_BLOCK_S)
-	if block == 0:
-		return false
-	return absi(hash(block * 7919 + 13)) % 100 < RAIN_PERCENT
+	if weather_override >= 0:
+		return weather_override == 1
+	return raining_block(int(floorf(world_unix() / WEATHER_BLOCK_S)))
+
+
+## Rumus cuaca bersama dengan server (worldtime.go RainingAt).
+static func raining_block(block: int) -> bool:
+	var v := (((block * 7919 + 13) % 1000003) * 2654435761) & 0xFFFFFFFF
+	return v % 100 < RAIN_PERCENT
 
 
 ## Majukan peralihan cuaca; dipanggil tiap bingkai oleh layar yang menampilkan dunia.

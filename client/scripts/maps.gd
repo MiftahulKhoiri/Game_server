@@ -248,9 +248,32 @@ static func warga_path_free(map_id: String, a: Vector2, b: Vector2) -> bool:
 ## kecuali tidak ada yang lain). `n` = jumlah di peta, `tiles` = jenis petak tempat mereka muncul,
 ## `min_y` = batas utara (desa: menjauh dari rumah-rumah). Server tetap yang menentukan lawan sebenarnya.
 ## `pemalu` = selalu lari dari pemain (roadmap no. 81); `patroli` = berjalan berkeliling di wilayahnya (no. 78).
+## Serbuan Goblin ke Desa Awal (roadmap no. 190-192; server: internal/game/worldtime.go): penyerbu muncul
+## di tepi desa selama kejadian berlangsung; penjaga desa menahan penyerbu di dekatnya.
+const RAID_N := 5
+const RAID_SPAWNS: Array[Vector2] = [Vector2(2.5, 17.5), Vector2(42.5, 17.5), Vector2(20.5, 47.5), Vector2(40.5, 47.5), Vector2(2.5, 23.5)]
+const RAID_KINDS := [
+	{"id": "goblin_penyerbu", "name": "Goblin Penyerbu", "lv": 1},
+	{"id": "orc_penyerbu", "name": "Orc Penyerbu", "lv": 4},
+]
+const RAID_GUARDS := ["penjaga", "prajurit_damar", "laras", "pak_joko"]
+
+## Tempat rahasia (roadmap no. 199). Harus sama dengan Secrets di internal/game/worldtime.go.
+const RAHASIA := [
+	{"id": "batu_bertulis", "name": "Batu Bertulis Kuno", "map": "perbatasan", "pos": Vector2i(2, 47)},
+	{"id": "pohon_keramat", "name": "Pohon Keramat", "map": "hutan_lebat", "pos": Vector2i(84, 2)},
+	{"id": "sarang_naga", "name": "Sarang Naga Tua", "map": "gunung_batu", "pos": Vector2i(41, 7)},
+]
+
+## Wilayah (roadmap no. 195-196): tingkat bahaya dan level yang disarankan (sama dengan Zones di server).
+const ZONA := {
+	"desa_awal": ["aman", 1], "perbatasan": ["waspada", 1], "hutan_lebat": ["berbahaya", 3],
+	"gunung_batu": ["berbahaya", 4], "gua_goblin": ["berbahaya", 5], "gua_batu": ["berbahaya", 6],
+}
+
 const ROAMERS := {
 	"perbatasan": {"n": 16, "tiles": ".fT", "min_y": 3, "kinds": [
-		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1, "pemalu": true},
+		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1, "pemalu": true, "waktu": "siang"},
 		{"id": "belalang_raksasa", "name": "Kucing Liar", "lv": 1},
 		{"id": "ular_sawah", "name": "Rubah Sawah", "lv": 2},
 		{"id": "ular_hutan", "name": "Ular Hutan", "lv": 1},
@@ -260,11 +283,11 @@ const ROAMERS := {
 	]},
 	# Hutan Lebat: 100 binatang per tahap (server menghitung), yang hidup bersamaan dibatasi `n`.
 	"hutan_lebat": {"n": 22, "tiles": ".f", "min_y": 3, "kinds": [
-		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1, "pemalu": true},
+		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1, "pemalu": true, "waktu": "siang"},
 		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 2},
 		{"id": "ular_belang", "name": "Ular Belang", "lv": 3},
 		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 3},
-		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 4},
+		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 4, "waktu": "malam"},
 		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
 	]},
 	"gua_goblin": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [

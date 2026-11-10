@@ -315,6 +315,7 @@ func (s *Store) SavePosition(ctx context.Context, id string, pose game.Pose, exp
 		}
 		st.Map, st.X, st.Y = pose.Map, pose.X, pose.Y
 		st.FX, st.FZ, st.Yaw = pose.FX, pose.FZ, pose.Yaw
+		st.Visit(pose.Map) // penjelajahan (roadmap no. 198)
 		return nil
 	})
 	return sess.Player, err

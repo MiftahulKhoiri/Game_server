@@ -22,7 +22,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	auth.Iterations = 1000 // hash cepat untuk tes
+	auth.Iterations = 1000                                                       // hash cepat untuk tes
+	game.Now = func() int64 { return 3*game.DaySeconds + game.DaySeconds*10/24 } // siang biasa (bukan serbuan/pasar)
 	os.Exit(m.Run())
 }
 

@@ -89,6 +89,8 @@ type Battle struct {
 	ComboN     int   `json:"combo_n,omitempty"`     // serangan biasa berturut-turut
 	ComboUntil int64 `json:"combo_until,omitempty"` // batas waktu serangan berikutnya agar kombo berlanjut
 	DodgePress int64 `json:"dodge_press,omitempty"`
+	// Night: pertarungan di luar ruangan saat malam (roadmap no. 186): musuh lebih kuat, XP lebih besar.
+	Night bool `json:"night,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -150,6 +152,7 @@ func StartBattle(p *Player, rng Rand, now int64) Battle {
 // styled mencatat isi ulang serangan biasa sesuai gaya senjata pahlawan (untuk View).
 func styled(p *Player, b Battle) Battle {
 	b.AttackMs = p.State.cooldown(ActionAttack)
+	b.Night = Outdoors(p.State.Map) && IsNightAt(Now())
 	return b
 }
 
@@ -418,7 +421,11 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		t := b.NextEnemyMs
-		dmg, _ := rollDamage(e.Attack, st.Defense(), rng, 0)
+		attack := e.Attack
+		if b.Night {
+			attack = max(attack+1, attack*NightAttack/100) // minimal +1 supaya musuh lemah pun terasa
+		}
+		dmg, _ := rollDamage(attack, st.Defense(), rng, 0)
 		kind := "hit"
 		iv = b.interval(e)
 		next := t + iv
@@ -547,13 +554,20 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 
 func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	st := &p.State
-	rw := &Rewards{XP: e.XP, Gold: e.Gold}
+	xp := e.XP
+	if b.Night {
+		xp = xp * NightXP / 100
+	}
+	rw := &Rewards{XP: xp, Gold: e.Gold}
 	res.Status = StatusWon
 	st.endBattleBuffs()
 	res.Rewards = rw
-	res.Log = append(res.Log, fmt.Sprintf("%s kalah! +%d XP, +%d emas.", b.EnemyName, e.XP, e.Gold))
+	res.Log = append(res.Log, fmt.Sprintf("%s kalah! +%d XP, +%d emas.", b.EnemyName, xp, e.Gold))
+	if b.Night {
+		res.Log = append(res.Log, "Bonus malam: XP +25%.")
+	}
 
-	st.XP += e.XP
+	st.XP += xp
 	st.gainGold(e.Gold)
 	st.gainEnergy(EnergyPerWin)
 	for st.Level < MaxLevel && st.XP >= XPToNext(st.Level) {
@@ -579,6 +593,9 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 		}
 	}
 	st.Wins++
+	if e.Raid {
+		res.Log = append(res.Log, st.recordRaid(Now()))
+	}
 	for _, a := range st.checkAchievements() {
 		res.Log = append(res.Log, "Pencapaian baru: "+a+"!")
 	}

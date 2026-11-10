@@ -41,6 +41,9 @@ const SCALES := {
 ## supaya satu model bisa jadi goblin kecil, orc besar, atau serigala alfa tanpa berkas baru.
 const VARIANTS := {
 	"goblin_pemburu": {"base": "goblin", "size": 1.2, "tint": Color("9fd8d0")},
+	# Penyerbu desa saat Serbuan Goblin (roadmap no. 190): goblin kemerahan dan orc besar.
+	"goblin_penyerbu": {"base": "goblin", "size": 1.1, "tint": Color("ff9c8c")},
+	"orc_penyerbu": {"base": "goblin", "size": 1.7, "tint": Color("c9785a")},
 	"orc_gua": {"base": "goblin", "size": 1.55, "tint": Color("b8a070")},
 	"orc_penjaga": {"base": "goblin", "size": 1.8, "tint": Color("d9906a")},
 	"orc_buas": {"base": "goblin", "size": 2.05, "tint": Color("cc6a62")},

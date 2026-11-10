@@ -19,6 +19,10 @@ type Enemy struct {
 	// Kemampuan khusus (roadmap no. 85-86): jenis (lihat Special*) dan nama yang tampil di layar.
 	Special     string
 	SpecialName string
+	// Roadmap no. 188, 190: Time = "malam"/"siang" (hanya muncul pada waktu itu; "" = kapan saja);
+	// Raid = penyerbu desa, hanya ada saat Serbuan Goblin.
+	Time string
+	Raid bool
 }
 
 // Jenis kemampuan khusus musuh. Dipakai pada setiap serangan ke-SpecialEvery (bos: ke-BossSpecialEvery).
@@ -36,7 +40,10 @@ const ZoneRetired = "pensiun"
 
 var enemies = []Enemy{
 	// Hutan Perbatasan (sejak v0.32.0 desa aman dari musuh): hewan kecil yang paling mudah dikalahkan.
-	{ID: "tikus_sawah", Zones: []string{MapPerbatasan}, Name: "Ayam Liar", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10},
+	{ID: "tikus_sawah", Zones: []string{MapPerbatasan}, Name: "Ayam Liar", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10, Time: TimeDay},
+	// Serbuan Goblin ke Desa Awal (roadmap no. 190): hanya saat kejadian berlangsung.
+	{ID: "goblin_penyerbu", Zones: []string{MapDesaAwal}, Name: "Goblin Penyerbu", HP: 28, Attack: 7, Defense: 2, XP: 22, Gold: 9, MinLevel: 1, DropID: PotionID, DropPercent: 25, Raid: true, Time: TimeNight},
+	{ID: "orc_penyerbu", Zones: []string{MapDesaAwal}, Name: "Orc Penyerbu", HP: 52, Attack: 11, Defense: 4, XP: 40, Gold: 16, MinLevel: 4, DropID: "taring_goblin", DropPercent: 35, Raid: true, Time: TimeNight, Special: SpecialTerkam, SpecialName: "Hantaman Orc"},
 	{ID: "belalang_raksasa", Zones: []string{MapPerbatasan}, Name: "Kucing Liar", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
 	{ID: "ular_sawah", Zones: []string{MapPerbatasan}, Name: "Rubah Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
 	{ID: "babi_hutan", Zones: []string{MapPerbatasan}, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25, Special: SpecialTerkam, SpecialName: "Serudukan"},
@@ -46,11 +53,11 @@ var enemies = []Enemy{
 	{ID: "serigala_alfa", Zones: []string{MapPerbatasan}, Name: "Serigala Alfa", HP: 55, Attack: 12, Defense: 4, XP: 38, Gold: 16, MinLevel: 5, DropID: PotionID, DropPercent: 30, Special: SpecialTerkam, SpecialName: "Terkaman Alfa"},
 	// Gunung Batu: goblin, dan Monster Batu sebagai penjaga.
 	// Hutan Lebat (v0.46.0): binatang hutan, 100 per tahap; bos Goblin Level 1..3 hanya lewat singgasana (hutan.go).
-	{ID: "kancil_hutan", Zones: []string{MapHutanLebat}, Name: "Kancil Hutan", HP: 24, Attack: 6, Defense: 1, XP: 7, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 8},
+	{ID: "kancil_hutan", Zones: []string{MapHutanLebat}, Name: "Kancil Hutan", HP: 24, Attack: 6, Defense: 1, XP: 7, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 8, Time: TimeDay},
 	{ID: "rubah_hutan", Zones: []string{MapHutanLebat}, Name: "Rubah Hutan", HP: 32, Attack: 8, Defense: 2, XP: 10, Gold: 4, MinLevel: 2, DropID: PotionID, DropPercent: 10},
 	{ID: "ular_belang", Zones: []string{MapHutanLebat}, Name: "Ular Belang", HP: 38, Attack: 11, Defense: 2, XP: 13, Gold: 5, MinLevel: 3, DropID: PotionID, DropPercent: 10, Special: SpecialRacun, SpecialName: "Gigitan Racun"},
 	{ID: "babi_bertaring", Zones: []string{MapHutanLebat}, Name: "Babi Bertaring", HP: 48, Attack: 10, Defense: 3, XP: 14, Gold: 6, MinLevel: 3, DropID: PotionID, DropPercent: 12, Special: SpecialTerkam, SpecialName: "Serudukan"},
-	{ID: "serigala_hitam", Zones: []string{MapHutanLebat}, Name: "Serigala Hitam", HP: 54, Attack: 12, Defense: 3, XP: 17, Gold: 7, MinLevel: 4, DropID: PotionID, DropPercent: 15, Special: SpecialTerkam, SpecialName: "Terkaman"},
+	{ID: "serigala_hitam", Zones: []string{MapHutanLebat}, Name: "Serigala Hitam", HP: 54, Attack: 12, Defense: 3, XP: 17, Gold: 7, MinLevel: 4, DropID: PotionID, DropPercent: 15, Special: SpecialTerkam, SpecialName: "Terkaman", Time: TimeNight},
 	{ID: "beruang_hutan", Zones: []string{MapHutanLebat}, Name: "Beruang Hutan", HP: 82, Attack: 14, Defense: 5, XP: 26, Gold: 10, MinLevel: 6, DropID: PotionID, DropPercent: 20, Special: SpecialTerkam, SpecialName: "Cakaran Beruang"},
 	{ID: "goblin_hutan_1", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 1", HP: 170, Attack: 14, Defense: 6, XP: 90, Gold: 40, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Goblin"},
 	{ID: "goblin_hutan_2", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 2", HP: 300, Attack: 19, Defense: 9, XP: 180, Gold: 80, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Goblin"},
@@ -94,8 +101,9 @@ func (e Enemy) inZone(mapID string) bool {
 // di peta itu (masuk wilayah berbahaya terlalu dini memang berisiko).
 func PickEnemy(level int, mapID string, rng Rand) Enemy {
 	var eligible, inMap []Enemy
+	now := Now()
 	for _, e := range enemies {
-		if e.Boss || !e.inZone(mapID) {
+		if e.Boss || !e.inZone(mapID) || !e.timeAllows(now) {
 			continue
 		}
 		inMap = append(inMap, e)
@@ -106,7 +114,7 @@ func PickEnemy(level int, mapID string, rng Rand) Enemy {
 	if len(eligible) == 0 {
 		if len(inMap) == 0 {
 			for _, e := range enemies { // peta tak dikenal: semua musuh biasa
-				if !e.Boss {
+				if !e.Boss && !e.Raid {
 					inMap = append(inMap, e)
 				}
 			}
@@ -127,10 +135,8 @@ func PickEnemy(level int, mapID string, rng Rand) Enemy {
 // pemain ini (sama seperti pilihan acak); selain itu server memilih sendiri.
 func PickEnemyFor(level int, mapID, want string, rng Rand) Enemy {
 	if want != "" {
-		if e, ok := EnemyByID(want); ok && !e.Boss && e.inZone(mapID) && e.MinLevel <= level {
-			return e
-		}
-		if e, ok := EnemyByID(want); ok && !e.Boss && e.inZone(mapID) && e.MinLevel == weakestMinLevel(mapID) {
+		if e, ok := EnemyByID(want); ok && !e.Boss && e.inZone(mapID) && e.timeAllows(Now()) &&
+			(e.MinLevel <= level || e.MinLevel == weakestMinLevel(mapID)) {
 			return e
 		}
 	}
