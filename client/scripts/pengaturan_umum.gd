@@ -58,6 +58,8 @@ func _ready() -> void:
 	_toggle_blood = _toggle("Percikan darah saat memukul", _on_blood)
 	add_child(_toggle_blood)
 
+	add_child(load("res://scripts/kontrol_settings.gd").new())
+
 	add_child(_section("Suara"))
 	_toggle_npc = _toggle("Suara orang (NPC)", _on_npc)
 	add_child(_toggle_npc)

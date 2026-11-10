@@ -68,6 +68,13 @@ func setup(w: Node) -> void:
 	layer.add_child(_claim)
 
 
+## Ikut tata letak layar world3d (roadmap no. 218): papan dan tombol hadiah menempel ke kanan atas.
+func layout(dx: float, top: float) -> void:
+	if _banner != null:
+		_banner.position = Vector2(300 + dx, 66 + top)
+		_claim.position = Vector2(288 + dx, 130 + top)
+
+
 ## Dipanggil world3d setiap kali peta baru dimuat (node lama sudah ikut terhapus bersama _npc_root).
 func on_map(map_id: String) -> void:
 	raiders = []
@@ -124,7 +131,7 @@ func _check_raid() -> void:
 	if want and not raid_on:
 		raid_on = true
 		_respawn = 0.0
-		world._show_toast("SERBUAN GOBLIN!")
+		world.notify("Serbuan Goblin ke Desa Awal! Kalahkan %d penyerbu untuk hadiah." % RAID_GOAL, "kejadian", "SERBUAN GOBLIN!")
 		world._set_status("Goblin menyerbu desa! Warga berlindung, penjaga bersiap. Kalahkan %d penyerbu." % RAID_GOAL)
 		for _i in Maps.RAID_N:
 			_spawn_raider()
@@ -224,7 +231,7 @@ func _on_claim() -> void:
 	if res.ok:
 		Session.merge_server_player(res.data)
 		world._refresh_hud()
-		world._show_toast("Desa terlindungi! +%d emas" % RAID_REWARD)
+		world.notify("Desa terlindungi! Hadiah pertahanan +%d emas." % RAID_REWARD, "hadiah", "Desa terlindungi! +%d emas" % RAID_REWARD)
 	else:
 		world._set_status(str(res.error))
 	_update_banner()
@@ -332,7 +339,7 @@ func inspect(id: String) -> void:
 	for s: Dictionary in Maps.RAHASIA:
 		if s.id == id:
 			nama = str(s.name)
-	world._show_toast("Tempat rahasia: %s!" % nama)
+	world.notify("Tempat rahasia ditemukan: %s." % nama, "hadiah", "Tempat rahasia: %s!" % nama)
 	world._set_status("Kamu menemukan %s. Hadiahnya masuk ke ransel." % nama)
 	var n := _sparkles.get(id) as Node3D
 	if n != null and is_instance_valid(n):

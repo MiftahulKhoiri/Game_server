@@ -129,7 +129,27 @@ func _dialog() -> void:
 	get_tree().quit()
 
 
+## Layar apa saja dari SHOT_PATH (mis. res://scenes/login.tscn), pemain uji tanpa server.
+func _file() -> void:
+	if OS.get_environment("SHOT_OFFLINE") != "0":
+		Session.use_offline_player()
+	var scene: Node = load(OS.get_environment("SHOT_PATH")).instantiate()
+	get_tree().root.add_child.call_deferred(scene)
+	await get_tree().create_timer(1.2).timeout
+	if OS.get_environment("SHOT_CALL") != "" and scene.has_method(OS.get_environment("SHOT_CALL")):
+		scene.call(OS.get_environment("SHOT_CALL"))
+		await get_tree().create_timer(0.8).timeout
+	var img := get_viewport().get_texture().get_image()
+	var vs := img.get_size()
+	img.resize(540, int(540.0 * vs.y / vs.x), Image.INTERPOLATE_BILINEAR)
+	img.save_png(OS.get_environment("SHOT_OUT"))
+	get_tree().quit()
+
+
 func _ready() -> void:
+	if OS.get_environment("SHOT_SCENE") == "file":
+		_file()
+		return
 	if OS.get_environment("SHOT_SCENE") == "dialog":
 		_dialog()
 		return
@@ -168,6 +188,10 @@ func _ready() -> void:
 		scene._cam_yaw = deg_to_rad(float(OS.get_environment("SHOT_YAW")))
 	if OS.get_environment("SHOT_PITCH") != "":
 		scene._cam_pitch = deg_to_rad(float(OS.get_environment("SHOT_PITCH")))
+	if OS.get_environment("SHOT_JURNAL") != "":
+		scene._jurnal.quests = [{"id": "q1", "title": "Selamatkan Nenek", "status": "active", "progress": 2, "target_count": 5, "giver": "nenek_penjual", "reward_text": "30 emas, 2 Ramuan", "description": "Kalahkan Ayam Liar yang merusak kebun Nenek."},
+			{"id": "q2", "title": "Selamatkan Petani", "status": "available", "giver": "petani", "reward_gold": 40, "description": "Bantu Petani mengusir rubah."}]
+		scene._jurnal.open(int(OS.get_environment("SHOT_JURNAL")))
 	if OS.get_environment("SHOT_MENU") != "":
 		scene._toggle_menu()
 		if OS.get_environment("SHOT_MENU") == "pengaturan":

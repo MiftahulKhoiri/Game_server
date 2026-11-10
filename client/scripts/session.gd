@@ -48,6 +48,15 @@ var cam_sens := 1.0
 var keep_on := false
 ## Percikan darah saat memukul makhluk hidup (roadmap no. 165); bisa dimatikan di Pengaturan.
 var fx_blood := true
+## Kontrol layar sentuh (roadmap no. 217): ukuran tombol/joystick (0 kecil, 1 normal, 2 besar) dan
+## mode tangan kiri (joystick di kanan, tombol aksi di kiri).
+const UI_SCALES := [0.85, 1.0, 1.2]
+var ui_size := 1
+var left_hand := false
+signal ui_changed
+## Pemberitahuan (roadmap no. 216): 30 terakhir, terbaru di akhir. {text, kind, at, read}
+var notices: Array = []
+signal notice_added(n: Dictionary)
 ## Pengaturan suara (disimpan di HP): suara bicara NPC dan musik, masing-masing nyala/mati + volume 0..1.
 var snd_npc := true
 var snd_music := true
@@ -57,6 +66,9 @@ var vol_music := 0.6
 
 func _ready() -> void:
 	load_config()
+	# Layar lebih tinggi/lebar dari 9:16 memakai seluruh layar, tanpa pita hitam (roadmap no. 218). Diatur
+	# di sini juga (selain project.godot) supaya berlaku lewat patch tanpa APK baru.
+	get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 
 
 func load_config() -> void:
@@ -70,6 +82,8 @@ func load_config() -> void:
 	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
 	keep_on = bool(cfg.get_value("game", "keep_on", false))
 	fx_blood = bool(cfg.get_value("game", "fx_blood", true))
+	ui_size = clampi(int(cfg.get_value("game", "ui_size", 1)), 0, UI_SCALES.size() - 1)
+	left_hand = bool(cfg.get_value("game", "left_hand", false))
 	apply_display()
 	snd_npc = bool(cfg.get_value("sound", "npc", true))
 	snd_music = bool(cfg.get_value("sound", "music", true))
@@ -101,6 +115,8 @@ func save_config() -> void:
 	cfg.set_value("game", "cam_sens", cam_sens)
 	cfg.set_value("game", "keep_on", keep_on)
 	cfg.set_value("game", "fx_blood", fx_blood)
+	cfg.set_value("game", "ui_size", ui_size)
+	cfg.set_value("game", "left_hand", left_hand)
 	cfg.set_value("sound", "npc", snd_npc)
 	cfg.set_value("sound", "music", snd_music)
 	cfg.set_value("sound", "vol_npc", vol_npc)
@@ -167,6 +183,29 @@ func shop_discount(shop: String) -> int:
 	if load("res://scripts/atmosphere.gd").market_active():
 		d += 10  # Hari Pasar (roadmap no. 189; MarketPercent di server)
 	return d
+
+
+func ui_scale() -> float:
+	return float(UI_SCALES[clampi(ui_size, 0, UI_SCALES.size() - 1)])
+
+
+## Tambah pemberitahuan (kind: info, dagang, kejadian, hadiah, peringatan). Pesan sama berturut-turut digabung.
+func notify(text: String, kind := "info") -> void:
+	if not notices.is_empty() and str(notices[-1].text) == text:
+		return
+	var n := {"text": text, "kind": kind, "at": int(Time.get_unix_time_from_system()), "read": false}
+	notices.append(n)
+	if notices.size() > 30:
+		notices = notices.slice(notices.size() - 30)
+	notice_added.emit(n)
+
+
+func unread_notices() -> int:
+	var c := 0
+	for n: Dictionary in notices:
+		if not bool(n.read):
+			c += 1
+	return c
 
 
 func merge_server_player(p: Dictionary, adopt_position := false) -> void:

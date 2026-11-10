@@ -85,6 +85,9 @@ func _run() -> void:
 	AtmoT.clock_offset = (3000000.0 * 720.0 + 240.0) - Time.get_unix_time_from_system()
 	AtmoT.clock_locked = true
 	AtmoT.weather_override = 0
+	# Headless tidak punya jendela (ukuran 0): dengan aspect "expand" layar uji jadi 1280x1280. Uji umum
+	# memakai ukuran dasar 720x1280 ("keep"); tata letak layar lain diuji tersendiri (v0.60.0).
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	print("== peta")
 	var WB: GDScript = load("res://scripts/world_build.gd")
 	for y in Maps.height(Maps.DEFAULT_MAP):
@@ -1401,6 +1404,89 @@ func _run() -> void:
 	_check(wt._store_near(), "dekat lemari di rumah: Peti simpan")
 	wt._map_id = Maps.DEFAULT_MAP
 	Session.player.state = ek_saved
+
+	print("== v0.60: UI dan UX (roadmap no. 201-218)")
+	var jr: CanvasLayer = wt._jurnal
+	_check(wt._menu._btn_jurnal != null and wt._menu._btn_kabar != null, "menu punya Misi dan Peta serta Kabar")
+	jr.quests = [{"id": "q1", "title": "Selamatkan Nenek", "status": "active", "progress": 2, "target_count": 5, "giver": "nenek_penjual", "reward_text": "30 emas", "description": "Usir hama"},
+		{"id": "q2", "title": "Misi Hutan", "status": "locked", "giver": "kapten_kem", "reward_gold": 50}]
+	jr.open(0)
+	await process_frame
+	var jr_cards := 0
+	var jr_bar := false
+	for jr_c in jr._body.get_children():
+		if jr_c is PanelContainer:
+			jr_cards += 1
+			if not jr_c.find_children("*", "ProgressBar", true, false).is_empty():
+				jr_bar = true
+	_check(jr.visible and jr_cards == 2 and jr_bar, "jurnal Misi: kartu misi dengan status dan kemajuan")
+	jr._show_tab(1)
+	await process_frame
+	var jr_img: Image = jr.map_texture.get_image() if jr.map_texture != null else null
+	_check(jr_img != null and jr_img.get_width() == Maps.width(wt._map_id) and jr_img.get_height() == Maps.height(wt._map_id), "jurnal Peta: peta wilayah digambar dari petak (%dx%d)" % [jr_img.get_width() if jr_img else 0, jr_img.get_height() if jr_img else 0])
+	var jr_ppos := Vector2i(int(Session.player.state.get("x", 0)), int(Session.player.state.get("y", 0)))
+	_check(jr_img != null and jr_img.get_pixelv(jr_ppos).is_equal_approx(Color("ffffff")), "peta menandai posisi pemain")
+	Session.notices = []
+	wt.notify("Uji kabar", "dagang", "")
+	jr._show_tab(2)
+	await process_frame
+	_check(Session.notices.size() == 1 and bool(Session.notices[0].read) and Session.unread_notices() == 0, "jurnal Kabar: pemberitahuan tampil lalu tandai sudah dibaca")
+	wt.notify("Kabar kedua", "info", "")
+	wt._menu.open()
+	_check(wt._menu._btn_kabar.text.contains("1 baru"), "tombol Kabar menunjukkan jumlah kabar baru (%s)" % wt._menu._btn_kabar.text)
+	wt._menu.close()
+	jr.closed.emit()
+	_check(not jr.visible, "jurnal tertutup")
+	wt._toast_queue = []
+	if wt._toast_tw != null:
+		wt._toast_tw.kill()
+	wt._show_toast("Satu")
+	wt._show_toast("Dua")
+	_check(wt._toast.text == "Satu" and wt._toast_queue == ["Dua"], "tulisan besar bergantian, tidak saling menimpa")
+	var joy0: float = wt._joy.position.x
+	var tg0: float = wt._btn_tangan.position.x
+	Session.left_hand = true
+	wt._layout_hud()
+	_check(wt._joy.position.x > joy0 + 200.0 and wt._btn_tangan.position.x < 360.0, "mode tangan kiri: joystick di kanan, tombol aksi di kiri")
+	Session.left_hand = false
+	Session.ui_size = 2
+	wt._layout_hud()
+	_check(is_equal_approx(wt._btn_tangan.scale.x, 1.2) and wt._btn_tangan.position.x + wt._btn_tangan.size.x * 0.5 < tg0 + wt._btn_tangan.size.x * 0.5, "ukuran kontrol Besar: tombol membesar ke arah tengah")
+	Session.ui_size = 1
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	await process_frame
+	wt._layout_hud()
+	var ui_vs: Vector2 = wt.get_viewport().get_visible_rect().size
+	var ui_menu_x: float = (wt._hud_items.filter(func(it: Array) -> bool: return it[0] is MenuBubble)[0][0] as Control).position.x
+	_check(ui_vs.x > 720.0 and ui_menu_x > 574.0 + (ui_vs.x - 720.0) - 1.0 and wt._btn_tangan.position.x > tg0, "layar lebih lebar: tombol Menu dan tombol aksi menempel ke kanan (%.0f)" % ui_vs.x)
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+	await process_frame
+	wt._layout_hud()
+	_check(absf(wt._btn_tangan.position.x - tg0) < 0.5, "tata letak kembali ke ukuran dasar")
+	var ks: Node = load("res://scripts/kontrol_settings.gd").new()
+	root.add_child(ks)
+	await process_frame
+	ks._size_buttons[0].emit_signal("pressed")
+	_check(Session.ui_size == 0, "pengaturan Kontrol: ukuran Kecil")
+	ks._size_buttons[1].emit_signal("pressed")
+	ks.queue_free()
+	var lg: Node = load("res://scenes/login.tscn").instantiate()
+	root.add_child(lg)
+	await process_frame
+	lg._name_edit.text = "ab"
+	lg._email_edit.text = "bukan-email"
+	lg._rpass_edit.text = "123"
+	lg._rpass2_edit.text = "1234"
+	var lg_bad: bool = lg.update_reg_hints()
+	var lg_bad_text: String = lg._reg_hint.text
+	lg._name_edit.text = "Petualang_1"
+	lg._email_edit.text = "aku@contoh.id"
+	lg._rpass_edit.text = "sandi-rahasia"
+	lg._rpass2_edit.text = "sandi-rahasia"
+	_check(not lg_bad and lg_bad_text.contains("✗") and lg.update_reg_hints() and not lg._reg_hint.text.contains("✗"), "daftar: isian diperiksa saat mengetik")
+	_check(lg.home_footer != null and lg.home_footer.text.contains(str(ProjectSettings.get_setting("application/config/version"))), "beranda menampilkan versi aplikasi")
+	lg.queue_free()
+	await process_frame
 
 	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
 	var AtL = load("res://scripts/atmosphere.gd")
