@@ -9,6 +9,15 @@
 - Mode: **satu pemain**; server menyimpan progress (bukan multiplayer).
 - Platform: **Android (APK)**; server berjalan di Raspberry Pi 5.
 
+## Layar mendatar (diputuskan pemilik proyek, 11 Nov 2026; v0.68.0)
+
+Seluruh game dimainkan dengan HP **posisi tidur (landscape)**: ukuran dasar 1280x720, orientasi sensor landscape
+(HP boleh diputar ke kiri atau kanan), aspect "expand" sehingga layar 20:9 mendapat ruang lebih lebar. Beranda
+menampilkan gambar judul The Last Dragon selebar layar dengan tombol berjajar di bawahnya; layar pertarungan dan
+dialog dua kolom (arena / lawan bicara di kiri, catatan dan tombol di kanan); Menu tiga kolom; Profil dan Atribut
+dengan pratinjau 3D di kiri; daftar (Ransel, toko, rekrut, latihan, Jurnal, Bank, tempa) di kolom tengah
+(`client/scripts/layar.gd`).
+
 ## Keputusan gameplay
 
 - Gerak: **per kotak (grid)**, tampak atas (top-down).

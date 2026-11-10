@@ -535,16 +535,25 @@ func _build_ui() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 28)
+	for edge in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + edge, 22)
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	# Layar mendatar (v0.68.0): kiri = nama musuh, bar, dan arena 3D; kanan = catatan, pemain, dan tombol aksi.
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 22)
+	margin.add_child(cols)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
+	box.add_theme_constant_override("separation", 8)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(box)
+	var side := VBoxContainer.new()
+	side.add_theme_constant_override("separation", 10)
+	side.custom_minimum_size = Vector2(470, 0)
+	cols.add_child(side)
 
-	_enemy_name = _make_label("", 38)
+	_enemy_name = _make_label("", 34)
 	_enemy_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_enemy_name)
 
@@ -553,54 +562,57 @@ func _build_ui() -> void:
 
 	# Penunjuk waktu serangan musuh berikutnya: penuh = musuh menyerang.
 	_telegraph = _make_bar(Color("f0a030"))
-	_telegraph.custom_minimum_size = Vector2(0, 16)
+	_telegraph.custom_minimum_size = Vector2(0, 14)
 	_telegraph.max_value = 1.0
 	box.add_child(_telegraph)
 
 	_enemy_view = _build_arena()
 	box.add_child(_enemy_view)
 
-	_log = _make_label("", 26)
-	_log.custom_minimum_size = Vector2(0, 120)
+	_log = _make_label("", 22)
+	_log.custom_minimum_size = Vector2(0, 104)
 	_log.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_log)
+	side.add_child(_log)
 
-	_player_label = _make_label("", 28)
-	box.add_child(_player_label)
+	_player_label = _make_label("", 24)
+	_player_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	side.add_child(_player_label)
 
 	_player_bar = _make_bar(Color("4c9a4c"))
-	box.add_child(_player_bar)
+	side.add_child(_player_bar)
 
 	_controls = VBoxContainer.new()
-	_controls.add_theme_constant_override("separation", 14)
-	box.add_child(_controls)
+	_controls.add_theme_constant_override("separation", 10)
+	_controls.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_controls.alignment = BoxContainer.ALIGNMENT_END
+	side.add_child(_controls)
 
 	var grid := GridContainer.new()
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 14)
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
 	_controls.add_child(grid)
 	for entry: Array in MAIN_ACTIONS:
-		var button := _make_button(str(entry[1]), 32, 118)
+		var button := _make_button(str(entry[1]), 28, 92)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_on_action.bind(str(entry[0])))
 		grid.add_child(button)
 		_buttons[str(entry[0])] = button
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 10)
 	_controls.add_child(row)
 	for entry: Array in [["potion", "Ramuan"], ["dodge", "Hindar"], ["flee", "Kabur"]]:
-		var small := _make_button(str(entry[1]), 28, 84)
+		var small := _make_button(str(entry[1]), 24, 70)
 		small.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		small.pressed.connect(_on_action.bind(str(entry[0])))
 		row.add_child(small)
 		_buttons[str(entry[0])] = small
 
-	_btn_continue = _make_button("Lanjut", 34, 110)
+	_btn_continue = _make_button("Lanjut", 32, 100)
 	_btn_continue.visible = false
 	_btn_continue.pressed.connect(_on_continue)
-	box.add_child(_btn_continue)
+	side.add_child(_btn_continue)
 
 	# Lapisan teks melayang (angka kerusakan) di atas segalanya.
 	_fx = Control.new()

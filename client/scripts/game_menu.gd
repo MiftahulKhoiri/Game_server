@@ -67,7 +67,7 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(580, 0)
+	panel.custom_minimum_size = Vector2(960, 0)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("1d2b22")
 	sb.border_color = Color("5fb35a")
@@ -84,29 +84,35 @@ func _ready() -> void:
 	_main.add_theme_constant_override("separation", 14)
 	holder.add_child(_main)
 	_main.add_child(_title("Menu"))
-	_main.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
+	# Layar mendatar (v0.68.0): tombol menu tersusun tiga kolom supaya muat tanpa digulir.
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	_main.add_child(grid)
+	grid.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
 	_btn_tas = _button("Ransel", func() -> void: inventory_requested.emit())
-	_main.add_child(_btn_tas)
+	grid.add_child(_btn_tas)
 	_btn_jurnal = _button("Misi dan Peta", func() -> void: journal_requested.emit(0))
-	_main.add_child(_btn_jurnal)
+	grid.add_child(_btn_jurnal)
 	_btn_kabar = _button("Kabar", func() -> void: journal_requested.emit(2))
-	_main.add_child(_btn_kabar)
+	grid.add_child(_btn_kabar)
 	_btn_atribut = _button("Atribut", func() -> void: atribut_requested.emit())
-	_main.add_child(_btn_atribut)
+	grid.add_child(_btn_atribut)
 	_btn_dagang = _button("Dagang dengan pemain", func() -> void: trade_requested.emit())
-	_main.add_child(_btn_dagang)
-	_main.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
-	_main.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
-	_main.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
+	grid.add_child(_btn_dagang)
+	grid.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
+	grid.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
+	grid.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
 	_btn_logout = _button("Keluar akun", Callable())
 	_btn_logout.pressed.connect(func() -> void: _ask(_btn_logout, "logout", "Yakin? Ketuk lagi", func() -> void: logout.emit()))
-	_main.add_child(_btn_logout)
+	grid.add_child(_btn_logout)
 	var btn_quit := _button("Tutup game", Callable())
 	btn_quit.pressed.connect(func() -> void: _ask(btn_quit, "quit", "Yakin? Ketuk lagi", func() -> void: quit_game.emit()))
-	_main.add_child(btn_quit)
+	grid.add_child(btn_quit)
 
 	_settings_scroll = ScrollContainer.new()
-	_settings_scroll.custom_minimum_size = Vector2(0, 980)
+	_settings_scroll.custom_minimum_size = Vector2(0, 560)
 	_settings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_settings_scroll.visible = false
 	holder.add_child(_settings_scroll)
@@ -344,9 +350,10 @@ func _label(text: String) -> Label:
 func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 84)
+	b.custom_minimum_size = Vector2(290, 76)
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 32)
+	b.add_theme_font_size_override("font_size", 28)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if cb.is_valid():
 		b.pressed.connect(cb)
 	return b

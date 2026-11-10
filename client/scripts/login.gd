@@ -14,7 +14,10 @@ const Updater = preload("res://scripts/updater.gd")
 const JudulLatar = preload("res://scripts/judul_latar.gd")
 const PengaturanUmum = preload("res://scripts/pengaturan_umum.gd")
 const JUDUL_GAMBAR := "res://assets/ui/judul.jpg"  # gambar judul The Last Dragon 16:9 (1672x941); bila tidak ada, dipakai diorama 3D
-const JUDUL_TINGGI := 405.0  # tinggi gambar judul di layar 720 lebar (720 x 941 / 1672)
+const JUDUL_TINGGI := 490.0  # tinggi gambar judul di layar mendatar (tinggi 720); lebarnya mengikuti 16:9
+## Layar mendatar (v0.68.0): isi halaman di kolom tengah selebar ini (Beranda lebih lebar: tombol berjajar).
+const KOLOM_FORM := 820.0
+const KOLOM_HOME := 1180.0
 const TEPI := Color("382e2c")  # warna tepi bawah gambar judul
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const MIN_PASSWORD := 8
@@ -27,6 +30,7 @@ var _latar: SubViewportContainer  # diorama 3D di belakang Beranda (hanya bila g
 var _judul_gambar := false
 var _dim: ColorRect                # menggelapkan diorama di halaman selain Beranda
 var _scroll: ScrollContainer
+var _margin: MarginContainer
 var _box: VBoxContainer
 var _kb_spacer: Control  # ruang kosong di dasar isi setinggi papan ketik, supaya isian bisa digulir naik
 var _kb_px := 0
@@ -119,7 +123,11 @@ func _ready() -> void:
 	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 48)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 20)
 	_scroll.add_child(margin)
+	_margin = margin
+	get_viewport().size_changed.connect(_atur_kolom)
 
 	_box = VBoxContainer.new()
 	_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -194,9 +202,10 @@ func _filler() -> Control:
 
 func _build_home() -> void:
 	var p := _new_page("home", "")
+	p.add_theme_constant_override("separation", 12)
 	if _judul_gambar:
 		var ruang := Control.new()  # gambar judul menempati bagian atas layar
-		ruang.custom_minimum_size = Vector2(0, JUDUL_TINGGI - 48.0 + 20.0)
+		ruang.custom_minimum_size = Vector2(0, JUDUL_TINGGI - 24.0 + 6.0)
 		p.add_child(ruang)
 	else:
 		var top := Control.new()
@@ -206,24 +215,28 @@ func _build_home() -> void:
 		p.add_child(_ribbon("MEMBERANTAS MONSTER"))
 		p.add_child(_filler())  # diorama 3D tampil di ruang ini
 
+	# Layar mendatar: tombol Beranda berjajar dalam satu baris di bawah gambar judul.
+	var baris := HBoxContainer.new()
+	baris.add_theme_constant_override("separation", 16)
+	p.add_child(baris)
 	_btn_continue = _make_button("Lanjutkan petualangan")
 	_btn_continue.pressed.connect(_on_continue)
 	_btn_continue.visible = Api.token != ""
 	if Session.saved_name != "":
 		_btn_continue.text = "Lanjutkan sebagai %s" % Session.saved_name
-	p.add_child(_btn_continue)
-
 	var b_login := _make_button("Masuk")
 	b_login.pressed.connect(func() -> void: _open_form("login"))
-	p.add_child(b_login)
 	var b_reg := _make_button("Daftar")
 	b_reg.pressed.connect(func() -> void: _open_form("register"))
-	p.add_child(b_reg)
 	_btn_settings = _make_button("Pengaturan")
 	_btn_settings.pressed.connect(func() -> void: _show_page("settings"))
-	p.add_child(_btn_settings)
 	for b: Button in [_btn_continue, b_login, b_reg, _btn_settings]:
 		_style_home_button(b)
+		b.custom_minimum_size = Vector2(0, 78)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.clip_text = true
+		baris.add_child(b)
+	_btn_continue.size_flags_stretch_ratio = 1.8  # namanya panjang
 
 	_home_status = _make_status()
 	_home_status.add_theme_color_override("font_outline_color", Color("1a0d05"))
@@ -485,8 +498,20 @@ func _build_settings() -> void:
 
 # --- Halaman -----------------------------------------------------------------------------
 
+## Lebar kolom isi di tengah layar mendatar: tepi kiri-kanan diberi ruang supaya isian tidak memanjang selebar layar.
+func _atur_kolom() -> void:
+	if _margin == null:
+		return
+	var w := get_viewport().get_visible_rect().size.x
+	var kol := KOLOM_HOME if _page == "home" else KOLOM_FORM
+	var side := int(maxf(36.0, (w - kol) / 2.0))
+	_margin.add_theme_constant_override("margin_left", side)
+	_margin.add_theme_constant_override("margin_right", side)
+
+
 func _show_page(id: String) -> void:
 	_page = id
+	_atur_kolom()
 	if _dim != null:
 		_dim.visible = id != "home"
 		if _latar != null:

@@ -87,7 +87,7 @@ func _run() -> void:
 	AtmoT.clock_locked = true
 	AtmoT.weather_override = 0
 	# Headless tidak punya jendela (ukuran 0): dengan aspect "expand" layar uji jadi 1280x1280. Uji umum
-	# memakai ukuran dasar 720x1280 ("keep"); tata letak layar lain diuji tersendiri (v0.60.0).
+	# memakai ukuran dasar 1280x720 mendatar ("keep", sejak v0.68.0); tata letak layar lain diuji tersendiri (v0.60.0).
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	print("== peta")
 	var WB: GDScript = load("res://scripts/world_build.gd")
@@ -1283,7 +1283,7 @@ func _run() -> void:
 		_check(tb.visible and tb.text == "Bicara", "tombol Bicara muncul dekat NPC")
 		var head: Vector2 = wt._camera.unproject_position(wt._npc_anchor(npc_id))
 		_check(tb.position.y + tb.size.y <= head.y + 1.0, "tombol Bicara berada di atas kepala NPC (%.0f <= %.0f)" % [tb.position.y + tb.size.y, head.y])
-		_check(absf(tb.position.x + tb.size.x * 0.5 - head.x) < 120.0 or tb.position.x <= 9.0 or tb.position.x + tb.size.x >= 710.0, "tombol Bicara sejajar dengan NPC")
+		_check(absf(tb.position.x + tb.size.x * 0.5 - head.x) < 120.0 or tb.position.x <= 9.0 or tb.position.x + tb.size.x >= wt.get_viewport().get_visible_rect().size.x - 10.0, "tombol Bicara sejajar dengan NPC")
 	var tree: Dictionary = {}
 	for e: Dictionary in wt._breakables._entries:
 		if e.kind == "pohon" and e.tile.x < 10 and e.tile.y > 3 and e.tile.y < 44 and Maps.walkable(wt._map_id, e.tile.x + 1, e.tile.y) and Maps.walkable(wt._map_id, e.tile.x + 2, e.tile.y):
@@ -1478,7 +1478,7 @@ func _run() -> void:
 	var tg0: float = wt._btn_tangan.position.x
 	Session.left_hand = true
 	wt._layout_hud()
-	_check(wt._joy.position.x > joy0 + 200.0 and wt._btn_tangan.position.x < 360.0, "mode tangan kiri: joystick di kanan, tombol aksi di kiri")
+	_check(wt._joy.position.x > joy0 + 200.0 and wt._btn_tangan.position.x < wt.get_viewport().get_visible_rect().size.x * 0.5, "mode tangan kiri: joystick di kanan, tombol aksi di kiri")
 	Session.left_hand = false
 	Session.ui_size = 2
 	wt._layout_hud()
@@ -1489,7 +1489,7 @@ func _run() -> void:
 	wt._layout_hud()
 	var ui_vs: Vector2 = wt.get_viewport().get_visible_rect().size
 	var ui_menu_x: float = (wt._hud_items.filter(func(it: Array) -> bool: return it[0] is MenuBubble)[0][0] as Control).position.x
-	_check(ui_vs.x > 720.0 and ui_menu_x > 574.0 + (ui_vs.x - 720.0) - 1.0 and wt._btn_tangan.position.x > tg0, "layar lebih lebar: tombol Menu dan tombol aksi menempel ke kanan (%.0f)" % ui_vs.x)
+	_check(ui_vs.x >= 1280.0 and ui_menu_x > 574.0 + (ui_vs.x - 720.0) - 1.0 and wt._btn_tangan.position.x >= tg0 - 0.5, "layar mendatar: tombol Menu dan tombol aksi menempel ke kanan (%.0f)" % ui_vs.x)
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	await process_frame
 	wt._layout_hud()
@@ -2026,7 +2026,8 @@ func _run() -> void:
 	get_root().add_child(wc)
 	await process_frame
 	await process_frame
-	_check(wc._clock != null and wc._clock.position.x > 150.0 and wc._clock.position.x + wc._clock.size.x < 570.0 and wc._clock._text != "", "jam berada di tengah atas, di antara nama pemain dan tombol Menu (%s)" % wc._clock._text)
+	var vw_c: float = wc.get_viewport().get_visible_rect().size.x
+	_check(wc._clock != null and wc._clock.position.x > 150.0 and wc._clock.position.x + wc._clock.size.x < vw_c - 150.0 and wc._clock._text != "", "jam berada di tengah atas, di antara nama pemain dan tombol Menu (%s)" % wc._clock._text)
 	Atmo.hour_override = 12.0
 	wc._update_clock()
 	_check(wc._clock._kind == "sun" and wc._clock._text.begins_with("Siang"), "siang: ikon matahari")
@@ -2125,8 +2126,8 @@ func _run() -> void:
 	_check(wtk._bars.EN_Y > wtk._bars.HP_Y + wtk._bars.HP_H and wtk._bars.COIN_Y > wtk._bars.EN_Y + wtk._bars.EN_H, "bar energi di bawah bar nyawa, di atas koin")
 	# Menu tidak lagi punya tombol Toko
 	var has_toko_btn_v39 := false
-	for ch in wtk._menu._main.get_children():
-		if ch is Button and (ch as Button).text == "Toko":
+	for ch in wtk._menu._main.find_children("*", "Button", true, false):
+		if (ch as Button).text == "Toko":
 			has_toko_btn_v39 = true
 	_check(not has_toko_btn_v39 and not wtk._menu.has_signal("shop_requested"), "tombol Toko tidak ada di Menu (belanja lewat penjaga di toko)")
 	# Pintu bangunan di desa menuju ruangan; ruangannya tersambung penuh dan pintu keluarnya kembali ke desa

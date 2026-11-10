@@ -310,12 +310,13 @@ func _build_ui() -> void:
 		margin.add_theme_constant_override("margin_" + side, 32)
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	preload("res://scripts/layar.gd").kolom(margin, 1100.0)  # layar mendatar: isi di kolom tengah
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 12)
 	margin.add_child(box)
 
-	var title := _label("Atribut", 44)
+	var title := _label("Atribut", 34)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_color_override("font_color", Color("d8f0c8"))
 	box.add_child(title)
@@ -326,7 +327,7 @@ func _build_ui() -> void:
 	tabs.add_theme_constant_override("separation", 10)
 	box.add_child(tabs)
 	for i in 4:
-		var b := _button(["Perlengkapan", "Pendamping", "Kemampuan", "Pencapaian"][i], _show_page.bind(i), 0, 76)
+		var b := _button(["Perlengkapan", "Pendamping", "Kemampuan", "Pencapaian"][i], _show_page.bind(i), 0, 64)
 		b.add_theme_font_size_override("font_size", 22)
 		b.toggle_mode = true
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -365,34 +366,48 @@ func _build_ui() -> void:
 	row.add_theme_constant_override("separation", 8)
 	_page_ally.add_child(row)
 	for i in Heroes.LIST.size():
-		var hb := _button(str(Heroes.LIST[i].short), _select_hero.bind(i), 0, 72)
+		var hb := _button(str(Heroes.LIST[i].short), _select_hero.bind(i), 0, 60)
 		hb.toggle_mode = true
 		hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		hb.add_theme_font_size_override("font_size", 24 if Heroes.LIST.size() <= 4 else 20)
 		hb.clip_text = true
 		row.add_child(hb)
 		_hero_tabs.append(hb)
+	# Layar mendatar (v0.68.0): pratinjau 3D di kiri, rincian dan tombol pendamping di kanan (bisa digulir).
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 16)
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_page_ally.add_child(cols)
 	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(0, 220)
-	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.custom_minimum_size = Vector2(340, 0)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.size_flags_stretch_ratio = 0.75
 	holder.stretch = true
-	_page_ally.add_child(holder)
+	cols.add_child(holder)
 	holder.add_child(_build_preview())
-	_hero_name = _label("", 38)
+	var ally_scroll := ScrollContainer.new()
+	ally_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	ally_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(ally_scroll)
+	var ally_box := VBoxContainer.new()
+	ally_box.add_theme_constant_override("separation", 8)
+	ally_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ally_scroll.add_child(ally_box)
+	_hero_name = _label("", 32)
 	_hero_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_page_ally.add_child(_hero_name)
+	ally_box.add_child(_hero_name)
 	_hero_detail = _label("", 24)
 	_hero_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_page_ally.add_child(_hero_detail)
+	ally_box.add_child(_hero_detail)
 	_party_label = _label("", 26)
 	_party_label.add_theme_color_override("font_color", Color("e0c070"))
 	_party_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_page_ally.add_child(_party_label)
-	_ally_btn = _button("", _on_ally_pressed, 0, 84)
-	_page_ally.add_child(_ally_btn)
+	ally_box.add_child(_party_label)
+	_ally_btn = _button("", _on_ally_pressed, 0, 70)
+	ally_box.add_child(_ally_btn)
 	_sol_row = HBoxContainer.new()
 	_sol_row.add_theme_constant_override("separation", 10)
-	_page_ally.add_child(_sol_row)
+	ally_box.add_child(_sol_row)
 	var sol_title := _label("Prajurit dipasang:", 26)
 	sol_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sol_row.add_child(sol_title)
@@ -405,10 +420,10 @@ func _build_ui() -> void:
 	_sol_row.add_child(_sol_count)
 	_sol_plus = _button("+", _on_sol_step.bind(1), 84, 72)
 	_sol_row.add_child(_sol_plus)
-	_sol_btn = _button("", _on_sol_deploy, 0, 76)
-	_page_ally.add_child(_sol_btn)
+	_sol_btn = _button("", _on_sol_deploy, 0, 68)
+	ally_box.add_child(_sol_btn)
 
-	box.add_child(_button("Kembali", _on_back, 0, 84))
+	box.add_child(_button("Kembali", _on_back, 0, 68))
 
 
 func _build_preview() -> SubViewport:

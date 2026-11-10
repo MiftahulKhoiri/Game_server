@@ -285,22 +285,30 @@ func _build_ui() -> void:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 36)
+		margin.add_theme_constant_override("margin_" + side, 28)
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 16)
-	margin.add_child(box)
-
+	# Layar mendatar (v0.68.0): kiri = lawan bicara (model 3D / gambar), kanan = nama, kalimat, dan tombol.
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 28)
+	margin.add_child(cols)
 	var def := _warga_def()
+	var left: Control
 	if _tex == null and not def.is_empty():
-		box.add_child(_build_speaker(def))  # warga tanpa gambar: model 3D-nya berbicara
+		left = _build_speaker(def)  # warga tanpa gambar: model 3D-nya berbicara
 	else:
 		_portrait = Control.new()
-		_portrait.custom_minimum_size = Vector2(0, 520)
 		_portrait.draw.connect(_draw_portrait)
-		box.add_child(_portrait)
+		left = _portrait
+	left.custom_minimum_size = Vector2(440, 0)
+	left.size_flags_stretch_ratio = 0.8
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(left)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(box)
 
 	_name_label = Label.new()
 	_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # nama + peran panjang turun baris, layar tidak melebar
@@ -308,11 +316,16 @@ func _build_ui() -> void:
 	_name_label.add_theme_color_override("font_color", Color("e0c070"))
 	box.add_child(_name_label)
 
+	# Kalimat panjang (cerita, tawaran misi) bisa digulir supaya tombol tetap terlihat di layar mendatar.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(scroll)
 	_text = Label.new()
-	_text.add_theme_font_size_override("font_size", 30)
+	_text.add_theme_font_size_override("font_size", 28)
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(_text)
+	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_text)
 
 	_action = _make_button("")
 	_action.visible = false
@@ -336,7 +349,6 @@ func _warga_def() -> Dictionary:
 ## Panggung kecil berisi model 3D warga yang terus berbicara (gerak tangan dan mengangguk).
 func _build_speaker(def: Dictionary) -> Control:
 	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(0, 520)
 	holder.stretch = true
 	var vp := SubViewport.new()
 	vp.own_world_3d = true
@@ -393,6 +405,6 @@ func _draw_portrait() -> void:
 func _make_button(text: String) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.add_theme_font_size_override("font_size", 34)
-	button.custom_minimum_size = Vector2(0, 100)
+	button.add_theme_font_size_override("font_size", 30)
+	button.custom_minimum_size = Vector2(0, 84)
 	return button
