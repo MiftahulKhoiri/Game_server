@@ -160,6 +160,17 @@ const WARGA := {
 		"Kabut di gua akan menyesatkan pikiranmu. Ingatlah selalu nama desamu."],
 		["Langit sudah jernih kembali. Sihir hitam itu telah padam berkat kamu.",
 		"Aku melihat masa depan yang cerah untuk desa ini. Dan untukmu, petualangan baru."]]},
+	"pak_ujang": {"name": "Pak Ujang", "stages": [
+		["Aku pedagang keliling. Hati-hati di Perbatasan, binatang liar sering menyerang pejalan kaki.",
+		"Kalau binatang mendekat, aku lari dulu! Kamu yang bertarung, ya, Ksatria."],
+		["Goblin hijau mencegat pedagang di jalan ke selatan. Daganganku sudah dua kali dirampas.",
+		"Babi Hutan paling ganas di sini. Serangannya keras, bawalah ramuan."],
+		["Dari Perbatasan, jalan raja terus ke selatan menuju Hutan Lebat dan Gunung Batu.",
+		"Kapten Rimba di kem utara tahu banyak soal hutan. Bicaralah dengannya."],
+		["Gua di bawah gunung itu... para pedagang tidak ada yang berani lewat sana lagi.",
+		"Serigala Alfa memimpin kawanan di sini. Bulunya gelap, lebih besar dari serigala biasa."],
+		["Jalan dagang aman lagi! Daganganku laris, terima kasih, Pelindung Kerajaan.",
+		"Kalau mampir ke kota, kabarkan pada semua orang tentang desa kita."]]},
 }
 
 
@@ -223,3 +234,19 @@ static func kapten_line(wave: int, kills: int, n: int, briefed := true) -> Strin
 	return ["Goblin Level %d sudah kamu kalahkan! %d binatang baru muncul di hutan. %s" % [wave, 100, tugas],
 		progress + " " + jalan,
 		"Tersisa %d Goblin lagi. Terus semangat, Ksatria." % (3 - wave)][n % 3]
+
+
+
+## Obrolan singkat antar-warga yang berpapasan (roadmap no. 50): [kalimat pertama, jawaban].
+const CHAT_LINES := [
+	["Selamat pagi! Sudah sarapan?", "Sudah, sup buatan Bu Sari enak sekali."],
+	["Kamu dengar? Ada monster lagi di perbatasan.", "Iya, untung ada ksatria baru itu."],
+	["Panen tahun ini bagus, ya?", "Asal babi hutan tidak datang lagi."],
+	["Mau ke pasar?", "Iya, Mbak Dewi dapat kain baru dari kota."],
+	["Cuacanya cerah sekali.", "Semoga tidak hujan sampai sore."],
+	["Anak-anak main di dekat sungai lagi.", "Nanti kuingatkan mereka supaya hati-hati."],
+]
+
+
+static func chat_pair(n: int) -> Array:
+	return CHAT_LINES[n % CHAT_LINES.size()]

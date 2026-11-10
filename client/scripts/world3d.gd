@@ -14,6 +14,7 @@ const ProfileScreen = preload("res://scripts/profile.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const Warga = preload("res://scripts/warga.gd")
+const WargaDialog = preload("res://scripts/warga_dialog.gd")
 const Breakables = preload("res://scripts/breakables.gd")
 const ActionButton = preload("res://scripts/action_button.gd")
 const Chest = preload("res://scripts/chest.gd")
@@ -146,6 +147,12 @@ var _guard_t := 0.0      # sisa waktu perisai terangkat
 var _tap_t := -10.0      # kapan Perisai terakhir diketuk (detik, jam lokal)
 var _jump_t := 0.0       # sisa waktu lompat (0 = di tanah)
 var _dress_sig := ""     # pakaian + perlengkapan yang terakhir dipakaikan ke model
+var _chat_acc := 0.0     # jeda pemeriksaan obrolan antar-warga
+var _chat_n := 0
+const CHAT_CHECK := 1.0
+const CHAT_DIST := 1.3
+const WARGA_LOD_FAR := 18.0   # warga lebih jauh dari ini (petak) diperbarui jarang
+const WARGA_LOD_STEP := 0.25
 var _shadow_disc: MeshInstance3D
 var _energy := 0.0
 var _boost_t := 0.0
@@ -335,6 +342,21 @@ func _spawn_warga(map_id: String) -> void:
 		_add_shadow(holder, 0.28)
 		if def.has("alat"):
 			_add_tool(str(def.alat), Vector2(def.pos), w.yaw)
+		for j: Dictionary in def.get("jadwal", []):  # alat di tempat kerja jadwal (mis. lapak kain)
+			if j.has("alat"):
+				_add_tool(str(j.alat), Vector2(j.pos), deg_to_rad(float(j.get("hadap", 0.0))))
+		var bubble := Label3D.new()  # gelembung kalimat: obrolan, teriakan, kata-kata saat bekerja
+		bubble.name = "Gelembung"
+		bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		bubble.no_depth_test = true
+		bubble.pixel_size = 0.0045
+		bubble.font_size = 34
+		bubble.outline_size = 10
+		bubble.modulate = Color("fff3b0")
+		bubble.position = Vector3(0, 2.05, 0)  # di atas nama + peran
+		bubble.visible = false
+		holder.add_child(bubble)
+		w.bubble = bubble
 		var label := Label3D.new()
 		label.text = str(def.name) + ("\n" + str(def.peran) if def.has("peran") else "")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -349,6 +371,12 @@ func _spawn_warga(map_id: String) -> void:
 		_npc_root.add_child(holder)
 		w.node = holder
 		w.model = model
+		var job: Dictionary = w.job_at(Atmosphere.hour())
+		if not job.is_empty() and not (w.door.x >= 0 and Atmosphere.is_night()):
+			w.job = job  # masuk peta saat jam kerja: pekerja sudah di tempat kerjanya
+			w.at_job = true
+			w.pos = job.pos
+			w.yaw = deg_to_rad(float(job.get("hadap", 0.0)))
 		if w.door.x >= 0 and Atmosphere.outdoors(map_id) and Atmosphere.is_night():
 			w.inside = true  # masuk peta saat malam: penduduk sudah di rumah
 			w.pos = w.spot() if w.terlihat else w.front()
@@ -361,7 +389,7 @@ func _spawn_warga(map_id: String) -> void:
 ## Nama warga di atas kepala; saat tidur ditambah "Zzz".
 func _update_warga_label(w: Warga) -> void:
 	for c in w.node.get_children():
-		if c is Label3D:
+		if c is Label3D and c.has_meta("teks"):
 			var base := str(c.get_meta("teks", c.text))
 			(c as Label3D).text = base + ("  Zzz" if w.sleeping else "")
 
@@ -385,6 +413,19 @@ func _add_tool(kind: String, at: Vector2, yaw: float) -> void:
 		fire.omni_range = 1.4
 		fire.position = Vector3(0, 0.5, 0)
 		root.add_child(fire)
+	elif kind == "lapak":  # lapak kain pedagang (no. 51): meja beratap kain
+		var p := at + fwd * 0.6
+		root.position = Vector3(p.x, 0, p.y)
+		root.rotation.y = yaw
+		Models.box(root, Vector3(0.9, 0.08, 0.42), Vector3(0, 0.42, 0), Color("8a5a34"))
+		for x: float in [-0.4, 0.4]:
+			Models.box(root, Vector3(0.06, 0.42, 0.06), Vector3(x, 0.21, -0.17), Color("6b4426"))
+			Models.box(root, Vector3(0.06, 0.42, 0.06), Vector3(x, 0.21, 0.17), Color("6b4426"))
+			Models.box(root, Vector3(0.05, 0.6, 0.05), Vector3(x, 0.72, -0.17), Color("6b4426"))
+		Models.box(root, Vector3(1.0, 0.04, 0.5), Vector3(0, 1.02, -0.05), Color("d24a4a"))  # atap kain
+		for k in 4:  # gulungan kain warna-warni
+			var cols := [Color("4a7ad2"), Color("e8c040"), Color("5ab060"), Color("c060c0")]
+			Models.box(root, Vector3(0.16, 0.1, 0.32), Vector3(-0.3 + k * 0.2, 0.51, 0), cols[k])
 	elif kind == "batu":
 		root.position = Vector3(at.x, 0, at.y)
 		Models.cyl(root, 0.26, 0.32, 0.22, Vector3(0, 0.11, 0), Color("8a8478"))
@@ -736,16 +777,55 @@ func _update_npcs(delta: float) -> void:
 ## Warga desa berjalan bebas, saling menghindar, dan menjauh dari pemain.
 func _update_warga(delta: float) -> void:
 	var night := Atmosphere.outdoors(_map_id) and Atmosphere.is_night()
+	var hour := Atmosphere.hour()
+	var monsters: Array[Vector2] = []  # warga takut pada musuh di dekatnya (roadmap no. 53-55)
+	for r in _roamers:
+		if not r.dying:
+			monsters.append(r.pos)
+	_chat_acc += delta
+	if _chat_acc >= CHAT_CHECK:
+		_chat_acc = 0.0
+		_try_chats()
 	for w in _warga:
+		# Optimasi (no. 60): warga jauh dari pemain diperbarui jarang (4x sedetik, bukan tiap bingkai).
+		var dt := delta
+		var far := w.pos.distance_to(_pos) > WARGA_LOD_FAR
+		if far:
+			w.lod_acc += delta
+			if w.lod_acc < WARGA_LOD_STEP:
+				continue
+			dt = w.lod_acc
+		w.lod_acc = 0.0
 		var others: Array[Vector2] = []
 		for o in _warga:
 			if o != w and not o.inside:
 				others.append(o.pos)
 		var was_sleeping: bool = w.sleeping
-		w.step(delta, _pos, others, night)
+		w.step(dt, _pos, others, night, hour, monsters)
 		w.apply()
 		if w.sleeping != was_sleeping and w.node != null:
 			_update_warga_label(w)
+
+
+## Dua warga yang berpapasan berhenti dan mengobrol sebentar (roadmap no. 50).
+func _try_chats() -> void:
+	for i in _warga.size():
+		var a: Warga = _warga[i]
+		if not a.can_chat():
+			continue
+		for j in range(i + 1, _warga.size()):
+			var b: Warga = _warga[j]
+			if not b.can_chat() or a.pos.distance_to(b.pos) > CHAT_DIST:
+				continue
+			var lines: Array = WargaDialog.chat_pair(_chat_n)
+			_chat_n += 1
+			a.start_chat(b.pos, str(lines[0]))
+			b.start_chat(a.pos, str(lines[1]))
+			b.say_t = Warga.CHAT_TIME  # jawaban muncul bersamaan; keduanya terlihat bercakap
+			for m: Node3D in [a.model, b.model]:
+				if m != null and m.has_method("play_action"):
+					m.call("play_action", "bicara")
+			break
 
 
 func _set_moving(v: bool) -> void:
