@@ -153,6 +153,8 @@ const CHAT_CHECK := 1.0
 const CHAT_DIST := 1.3
 const WARGA_LOD_FAR := 18.0   # warga lebih jauh dari ini (petak) diperbarui jarang
 const WARGA_LOD_STEP := 0.25
+const ROAM_LOD_FAR := 16.0    # musuh lebih jauh dari ini (petak) diperbarui jarang
+const ROAM_LOD_STEP := 0.2
 var _shadow_disc: MeshInstance3D
 var _energy := 0.0
 var _boost_t := 0.0
@@ -512,16 +514,19 @@ func _make_roamer(kind: Dictionary, map_id: String, at: Vector2, seed_value: int
 	var holder := Node3D.new()
 	holder.name = "Musuh_%s_%d" % [r.id, _roamers.size()]
 	var model := Models.create(r.id)
+	# Variasi ukuran tiap ekor (roadmap no. 72): 90%-115% dari ukuran jenisnya.
+	var jitter := 0.9 + float(seed_value % 26) / 100.0
+	model.scale = model.scale * jitter
 	holder.add_child(model)
 	_add_shadow(holder, 0.35)
 	var base_id := r.id
-	var size := 1.0
+	var size := jitter
 	if Models.VARIANTS.has(r.id):
 		base_id = str(Models.VARIANTS[r.id].base)
-		size = float(Models.VARIANTS[r.id].size)
+		size *= float(Models.VARIANTS[r.id].size)
 	var top := float(Models.HEIGHTS.get(base_id, 1.0)) * size
 	var name_label := Label3D.new()
-	name_label.text = r.label
+	name_label.text = "%s  Lv %d" % [r.label, r.lv]  # level musuh (no. 84)
 	name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	name_label.no_depth_test = true
 	name_label.pixel_size = 0.005
@@ -558,8 +563,17 @@ func _update_roamers(delta: float) -> void:
 		return
 	_roam_grace = maxf(0.0, _roam_grace - delta)
 	var can_aggro := _roam_grace <= 0.0 and not Session.offline and not _fight.busy() and _hutan_ok()
+	var lvl := int(Session.player.state.get("level", 1))
 	for r: Roamer in _roamers.duplicate():
-		var touched := r.step(delta, _pos, can_aggro)
+		# Optimasi (roadmap no. 88): musuh jauh dari pemain (yang tidak sedang mengejar/bertarung) diperbarui jarang.
+		var dt := delta
+		if not r.chasing and not r.fight and r.pos.distance_to(_pos) > ROAM_LOD_FAR:
+			r.lod_acc += delta
+			if r.lod_acc < ROAM_LOD_STEP:
+				continue
+			dt = r.lod_acc
+		r.lod_acc = 0.0
+		var touched := r.step(dt, _pos, can_aggro, lvl)
 		r.apply(r.pos.distance_to(_pos) < ROAM_NEAR)
 		if touched and not _fight.busy():
 			_fight.engage(r)
