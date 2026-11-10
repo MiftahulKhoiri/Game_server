@@ -32,6 +32,20 @@ func _punya_tekstur(n: Node) -> bool:
 	return false
 
 
+## Semua permukaan mesh pahlawan memakai bahan override toon + cahaya tepi.
+func _bahan_pahlawan_ok(n: Node) -> bool:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			var m := mi.get_surface_override_material(i) as StandardMaterial3D
+			if m == null or m.diffuse_mode != BaseMaterial3D.DIFFUSE_TOON or not m.rim_enabled:
+				return false
+	for c in n.get_children():
+		if not _bahan_pahlawan_ok(c):
+			return false
+	return true
+
+
 func _check(cond: bool, label: String) -> void:
 	print(("  ok   " if cond else "  GAGAL ") + label)
 	if not cond:
@@ -582,7 +596,15 @@ func _run() -> void:
 		tn.free()
 	_check(polos.is_empty(), "model NPC/warga bertekstur (tidak putih polos) %s" % str(polos))
 	# Model berrangka + animasi (idle/walk/attack/hurt/die) dari Blender.
-	for mdl in ["pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
+	# Pahlawan (roadmap no. 1): bahan toon + cahaya tepi + tekstur palet tajam pada semua permukaan.
+	var hero_bad: Array[String] = []
+	for hid in Models.HEROES:
+		var hn: Node3D = Models.create(hid)
+		if not _punya_tekstur(hn) or not _bahan_pahlawan_ok(hn):
+			hero_bad.append(hid)
+		hn.free()
+	_check(hero_bad.is_empty(), "model pahlawan bertekstur dengan bahan toon + cahaya tepi %s" % str(hero_bad))
+	for mdl in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)
 		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
 		var lengkap := true

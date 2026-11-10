@@ -124,6 +124,8 @@ static func _from_glb(id: String, path: String) -> Node3D:
 		].has(id)
 		_fix_materials(inst, stylized_npc)
 		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
+	else:
+		_style_hero(inst)
 	var rig := Rig.new()
 	var holder := Node3D.new()  # badan utuh: digerakkan rig untuk model tanpa rangka
 	holder.name = "body"
@@ -166,6 +168,36 @@ static func _fix_materials(n: Node, stylized := false) -> void:
 				mi.set_surface_override_material(i, sm)
 	for c in n.get_children():
 		_fix_materials(c, stylized)
+
+
+## Bahan pahlawan KayKit (roadmap no. 1): tekstur palet dibaca tajam supaya warna antarsel
+## palet tidak bercampur jadi abu-abu, bayangan toon seperti NPC desa (satu gaya), dan cahaya
+## tepi tipis supaya pahlawan tidak tenggelam di tanah/rumput. Bahan dipasang sebagai override
+## per permukaan, sehingga _tint (varian "prajurit") juga ikut berlaku.
+const HERO_RIM := 0.35
+const HERO_RIM_TINT := 0.4
+
+static func _style_hero(n: Node) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.mesh.surface_get_material(i)
+				if not (m is StandardMaterial3D):
+					continue
+				var sm := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+				if sm.albedo_texture != null:
+					sm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+				sm.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+				sm.specular_mode = BaseMaterial3D.SPECULAR_TOON
+				sm.metallic = 0.0
+				sm.roughness = 0.75
+				sm.rim_enabled = true
+				sm.rim = HERO_RIM
+				sm.rim_tint = HERO_RIM_TINT
+				mi.set_surface_override_material(i, sm)
+	for c in n.get_children():
+		_style_hero(c)
 
 
 static func _aabb_of(n: Node, xf: Transform3D) -> AABB:
