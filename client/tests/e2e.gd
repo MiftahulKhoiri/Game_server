@@ -335,6 +335,20 @@ func _run() -> void:
 	if of.ok:
 		Session.merge_server_player(of.data)
 		_check(int(Session.player.state.outfit) == 2, "pakaian ikut digabung ke data lokal")
+	# Roadmap no. 127: rumah pemain dibeli di server; tanpa rumah tidak boleh menyimpan posisi di dalamnya.
+	var r127_hb: Dictionary = await Api.house_buy()
+	_check(not r127_hb.ok and r127_hb.status == 422, "beli rumah tanpa 500 emas ditolak 422")
+	var r127_me_h: Dictionary = await Api.get_me()
+	if r127_me_h.ok:
+		Session.merge_server_player(r127_me_h.data)
+		var r127_st_h: Dictionary = Session.player.state.duplicate(true)  # sudah dinormalkan (angka bulat)
+		r127_st_h.map = Maps.RUMAH_PEMAIN
+		r127_st_h.x = 4
+		r127_st_h.y = 5
+		r127_st_h.fx = 4.5
+		r127_st_h.fz = 5.5
+		var r127_sv_h: Dictionary = await Api.save(int(r127_me_h.data.version), r127_st_h)
+		_check(not r127_sv_h.ok and r127_sv_h.status == 422, "masuk rumah pemain tanpa memilikinya ditolak server (%d %s)" % [int(r127_sv_h.status), str(r127_sv_h.get("error", ""))])
 	var of0: Dictionary = await Api.set_outfit(0)
 	if of0.ok:
 		Session.merge_server_player(of0.data)
@@ -950,6 +964,23 @@ func _run() -> void:
 			jauh_w = w
 	_check(dekat_w != null and jauh_w != null and jauh_w.steps * 3 <= dekat_w.steps, "optimasi: warga jauh diperbarui jarang (%s vs %s langkah) (no. 60)" % [str(jauh_w.steps if jauh_w else -1), str(dekat_w.steps if dekat_w else -1)])
 	Atmo.hour_override = -1.0
+	# Roadmap no. 111-128: bangunan, pasar, ruangan baru.
+	var b_medan: Node3D = load("res://scripts/world_build.gd").build(Maps.DEFAULT_MAP)
+	var b_jenis: Array = b_medan.get_meta("bangunan", [])
+	var b_kurang: Array = []
+	for b_k in ["pandai_besi", "kuil", "bangsawan", "lumbung", "markas", "penginapan", "rumah_pemain", "kepala_suku", "toko", "rumah_sakit"]:
+		if not b_jenis.has(b_k):
+			b_kurang.append(b_k)
+	_check(b_kurang.is_empty(), "Desa Awal punya pandai besi, kuil, rumah bangsawan, lumbung, markas, penginapan, rumah pemain, istana %s" % str(b_kurang))
+	_check(int(b_medan.get_meta("pasar", 0)) >= 6, "pasar desa: lapak dan barang dagangan (%d)" % int(b_medan.get_meta("pasar", 0)))
+	b_medan.free()
+	for b_map in [Maps.PENGINAPAN, Maps.RUMAH_PEMAIN]:
+		var b_in: Node3D = load("res://scripts/world_build.gd").build(b_map)
+		_check(b_in != null and b_in.get_child_count() > 20, "ruangan %s tergambar dengan perabot" % b_map)
+		b_in.free()
+		var b_ex: Dictionary = Maps.EXITS[b_map][0]
+		_check(Maps.walkable(b_map, b_ex.pos.x, b_ex.pos.y) and Maps.walkable(b_map, 4, 4), "ruangan %s: pintu keluar dan lantai bisa dilewati" % b_map)
+	_check(str(Maps.exit_at(Maps.DEFAULT_MAP, 15, 39).get("to", "")) == Maps.RUMAH_PEMAIN and str(Maps.exit_at(Maps.DEFAULT_MAP, 29, 39).get("to", "")) == Maps.PENGINAPAN, "pintu rumah pemain dan penginapan di Desa Awal")
 	# Roadmap no. 89-110: air hidup, pasir tepi air, ilalang, semak, jamur, angin, kabut pagi.
 	var d_WB = load("res://scripts/world_build.gd")
 	var d_medan_desa: Node3D = d_WB.build(Maps.DEFAULT_MAP)
