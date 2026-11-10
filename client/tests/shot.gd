@@ -116,7 +116,23 @@ func _atribut() -> void:
 	get_tree().quit()
 
 
+## Layar dialog dengan warga SHOT_NPC (mis. "warga:mpu_karta").
+func _dialog() -> void:
+	Session.use_offline_player()
+	Session.talk_npc = OS.get_environment("SHOT_NPC")
+	var scene: Node = load("res://scenes/dialog.tscn").instantiate()
+	get_tree().root.add_child.call_deferred(scene)
+	await get_tree().create_timer(1.6).timeout
+	var img := get_viewport().get_texture().get_image()
+	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.save_png(OS.get_environment("SHOT_OUT"))
+	get_tree().quit()
+
+
 func _ready() -> void:
+	if OS.get_environment("SHOT_SCENE") == "dialog":
+		_dialog()
+		return
 	if OS.get_environment("SHOT_SCENE") == "atribut":
 		_atribut()
 		return

@@ -262,7 +262,7 @@ func _load_map(map_id: String) -> void:
 		_npc_models[id] = model
 		_add_shadow(model, 0.3)
 		var label := Label3D.new()
-		label.text = str(n.name)
+		label.text = str(n.name) + ("\n" + str(n.peran) if n.has("peran") else "")  # identitas (no. 41)
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.no_depth_test = true
 		label.pixel_size = 0.006
@@ -330,9 +330,11 @@ func _spawn_warga(map_id: String) -> void:
 		var w := Warga.new(def, _warga.size() * 7919 + str(def.name).hash())
 		var holder := Node3D.new()
 		holder.name = "Warga_%s_%d" % [def.model, _warga.size()]
-		var model := Models.create(str(def.model))
+		var model := Models.create_warga(def)  # model + variasi baju/kulit/ukuran (roadmap no. 31-32)
 		holder.add_child(model)
 		_add_shadow(holder, 0.28)
+		if def.has("alat"):
+			_add_tool(str(def.alat), Vector2(def.pos), w.yaw)
 		var label := Label3D.new()
 		label.text = str(def.name) + ("\n" + str(def.peran) if def.has("peran") else "")
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -343,6 +345,7 @@ func _spawn_warga(map_id: String) -> void:
 		label.modulate = Color("e8e8d0")
 		label.position = Vector3(0, 1.3 if def.has("peran") else 1.15, 0)
 		holder.add_child(label)
+		label.set_meta("teks", label.text)
 		_npc_root.add_child(holder)
 		w.node = holder
 		w.model = model
@@ -353,6 +356,39 @@ func _spawn_warga(map_id: String) -> void:
 				w.yaw = atan2(w.arah.x, w.arah.y)
 		w.apply()
 		_warga.append(w)
+
+
+## Nama warga di atas kepala; saat tidur ditambah "Zzz".
+func _update_warga_label(w: Warga) -> void:
+	for c in w.node.get_children():
+		if c is Label3D:
+			var base := str(c.get_meta("teks", c.text))
+			(c as Label3D).text = base + ("  Zzz" if w.sleeping else "")
+
+
+## Benda kerja di dekat warga (roadmap no. 35-36): landasan tempa di depan pandai besi, batu tempat duduk.
+func _add_tool(kind: String, at: Vector2, yaw: float) -> void:
+	var root := Node3D.new()
+	root.name = "Alat_" + kind
+	var fwd := Vector2(sin(yaw), cos(yaw))
+	if kind == "landasan":
+		var p := at + fwd * 0.55
+		root.position = Vector3(p.x, 0, p.y)
+		root.rotation.y = yaw
+		Models.box(root, Vector3(0.28, 0.26, 0.28), Vector3(0, 0.13, 0), Color("5a4a3a"))   # balok kayu
+		Models.box(root, Vector3(0.42, 0.1, 0.2), Vector3(0, 0.31, 0), Color("4a4e58"))      # landasan besi
+		Models.box(root, Vector3(0.12, 0.08, 0.12), Vector3(0.24, 0.31, 0), Color("4a4e58")) # tanduk landasan
+		Models.box(root, Vector3(0.1, 0.03, 0.06), Vector3(-0.05, 0.37, 0), Color("ff8a3a"), Vector3.ZERO, true)  # besi membara
+		var fire := OmniLight3D.new()
+		fire.light_color = Color("ff9a4a")
+		fire.light_energy = 0.6
+		fire.omni_range = 1.4
+		fire.position = Vector3(0, 0.5, 0)
+		root.add_child(fire)
+	elif kind == "batu":
+		root.position = Vector3(at.x, 0, at.y)
+		Models.cyl(root, 0.26, 0.32, 0.22, Vector3(0, 0.11, 0), Color("8a8478"))
+	_npc_root.add_child(root)
 
 
 ## Munculkan musuh berkeliaran sesuai peta dan level pemain, jauh dari tempat pemain berdiri.
@@ -705,8 +741,11 @@ func _update_warga(delta: float) -> void:
 		for o in _warga:
 			if o != w and not o.inside:
 				others.append(o.pos)
+		var was_sleeping: bool = w.sleeping
 		w.step(delta, _pos, others, night)
 		w.apply()
+		if w.sleeping != was_sleeping and w.node != null:
+			_update_warga_label(w)
 
 
 func _set_moving(v: bool) -> void:
@@ -1290,8 +1329,8 @@ func _npc_in_range() -> String:
 			best_d = d
 			best = id
 	for w in _warga:  # warga desa: posisi hidup (mereka berjalan), id dialog berawalan "warga:"
-		if w.inside and not w.terlihat:
-			continue
+		if (w.inside and not w.terlihat) or w.sleeping:
+			continue  # di dalam rumah atau sedang tidur: tidak bisa diajak bicara
 		var wd := _pos.distance_to(w.pos)
 		var lim := KEEPER_RANGE if w.toko != "" else TALK_RANGE  # penjaga di balik meja kasir terjangkau lebih jauh
 		if wd <= lim and (best == "" or wd <= best_d):

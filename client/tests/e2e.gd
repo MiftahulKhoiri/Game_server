@@ -497,7 +497,9 @@ func _run() -> void:
 	var dialog3: Control = load("res://scenes/dialog.tscn").instantiate()
 	root.add_child(dialog3)
 	await create_timer(0.8).timeout
-	_check(dialog3._name_label.text == "Bu Sari" and not dialog3._action.visible and dialog3._text.text == WD.line("bu_sari", 0, 0), "bicara dengan Bu Sari: nama dan kalimat tahap 0, tanpa tombol misi")
+	_check(dialog3._name_label.text == "Bu Sari  ·  Juru Masak" and not dialog3._action.visible and dialog3._text.text == WD.line("bu_sari", 0, 0), "bicara dengan Bu Sari: nama, peran, dan kalimat tahap 0, tanpa tombol misi")
+	var spk: Node3D = dialog3._speaker
+	_check(spk != null and spk._actions != null and str(spk._actions.call("current")) == "bicara", "dialog warga: model 3D-nya tampil dan berbicara (bukan lingkaran huruf)")
 	dialog3.queue_free()
 	await process_frame
 	_check(Maps.npc_at(Maps.DEFAULT_MAP, 11, 6) == "petani", "petani berdiri di (11,6)")
@@ -759,11 +761,14 @@ func _run() -> void:
 			for j in range(k + 1, w3._warga.size()):
 				min_gap = minf(min_gap, w.pos.distance_to(w3._warga[j].pos))
 	var movers := 0
-	for m in best_move:
-		if m > 1.5:
+	var walkers := 0  # warga yang memang berjalan (bukan penjaga/pekerja yang diam di tempat)
+	for k in best_move.size():
+		if not w3._warga[k].diam:
+			walkers += 1
+		if best_move[k] > 1.5:
 			movers += 1
 	_check(warga_ok, "warga tidak pernah masuk pagar/air/rumah atau keluar dari jari-jarinya")
-	_check(movers >= w3._warga.size() - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, w3._warga.size()])
+	_check(movers >= walkers - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, walkers])
 	_check(min_gap > 0.35, "warga tidak menumpuk satu sama lain (jarak terdekat %.2f)" % min_gap)
 	# Pemain berdiri di tengah alun-alun: warga tidak menembus pemain.
 	w3._pos = Vector2(12.5, 8.5)
@@ -776,6 +781,45 @@ func _run() -> void:
 	w3._pos = w3._warga[0].pos + Vector2(0.6, 0.0)
 	_check(w3._npc_in_range().begins_with("warga:"), "warga di dekat pemain bisa diajak bicara")
 	_check(model_walked, "model warga memakai animasi jalan saat bergerak")
+	# Roadmap no. 22-38, 41: warga berpekerjaan, pose, identitas.
+	var by_id := {}
+	for w in w3._warga:
+		by_id[w.id] = w
+	var semua_peran := true
+	for w in w3._warga:
+		if w.id != "ayam" and w.peran == "":
+			semua_peran = false
+	_check(semua_peran, "semua warga (kecuali ayam) punya peran/pekerjaan")
+	for wid in ["mpu_karta", "tuan_wira", "prajurit_damar", "laras", "nyai_sekar"]:
+		_check(by_id.has(wid), "warga baru '%s' ada di Desa Awal" % wid)
+	var pandai = by_id.get("mpu_karta")
+	var sekar = by_id.get("nyai_sekar")
+	w3._pos = Vector2(30.0, 40.0)  # jauh dari pandai besi
+	for i in 10:
+		w3._update_npcs(0.05)
+	_check(pandai != null and pandai.model.loop_action == "palu", "pandai besi menempa saat pemain jauh")
+	w3._pos = pandai.pos + Vector2(0.0, 1.2)
+	for i in 10:
+		w3._update_npcs(0.05)
+	_check(pandai.model.loop_action == "", "pandai besi berhenti menempa dan menoleh saat pemain dekat")
+	_check(sekar != null and sekar.model.pose == "duduk" and sekar.model.position.y < 0.0, "penyihir duduk di batu (siang)")
+	_check(w3._npc_root.find_child("Alat_landasan", false, false) != null and w3._npc_root.find_child("Alat_batu", false, false) != null, "landasan tempa dan batu duduk dipasang")
+	var tak_ada: Array[Vector2] = []
+	sekar.step(0.05, Vector2(1, 1), tak_ada, true)
+	sekar.apply()
+	_check(sekar.sleeping and sekar.model.pose == "tidur" and absf(sekar.model.rotation.x) > 1.4, "penyihir tidur berbaring saat malam")
+	w3._pos = sekar.pos + Vector2(0.8, 0.0)
+	_check(w3._npc_in_range() != "warga:nyai_sekar", "warga yang tidur tidak bisa diajak bicara")
+	sekar.step(0.05, Vector2(1, 1), tak_ada, false)
+	sekar.apply()
+	_check(not sekar.sleeping and sekar.model.pose == "duduk", "pagi: penyihir bangun dan duduk lagi")
+	var rina = by_id.get("rina")
+	var dika = by_id.get("dika")
+	var rb := (rina.model.find_child("Rogue_Body", true, false) as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+	var db := (dika.model.find_child("Rogue_Body", true, false) as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+	_check(not rb.albedo_color.is_equal_approx(db.albedo_color), "variasi baju: Rina dan Dika (model sama) berbeda warna")
+	var HA = load("res://scripts/hero_actions.gd")
+	_check(HA.ACTIONS.has("bicara") and HA.ACTIONS.has("palu") and HA.POSES.has("duduk") and HA.POSES.has("tidur"), "gerakan bicara, menempa, duduk, tidur tersedia")
 	w3._pos = Vector2(7.5, 5.5)
 	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")
 	w3._toggle_menu()
@@ -1235,11 +1279,12 @@ func _run() -> void:
 			inside_n += 1
 			_check(ww.terlihat or not ww.node.visible, "%s di dalam rumah tidak terlihat (penjaga di pos jaga terbuka tetap terlihat)" % ww.id)
 		else:
-			if not str(ww.id).begins_with("rekrut"):
+			# perekrut di tenda, dan yang berjaga/tidur di luar (prajurit patroli, pemanah gerbang, penyihir)
+			if not str(ww.id).begins_with("rekrut") and not ["prajurit_damar", "laras", "nyai_sekar"].has(ww.id):
 				out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
-	_check(inside_n == 12 and not guard_out and out_n == 0, "masuk desa saat malam: 7 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
+	_check(inside_n == 14 and not guard_out and out_n == 0, "masuk desa saat malam: 9 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
 	var guard_seen := false
 	for ww in wn._warga:
 		if ww.id == "penjaga":

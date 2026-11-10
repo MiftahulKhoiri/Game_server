@@ -409,6 +409,32 @@ static func _pad_mesh(c: Color) -> Node3D:
 	return mi
 
 
+## Variasi warga (roadmap no. 31-32): warna baju (jubah/badan/kaki) dan kulit/rambut (kepala, lengan).
+## Putih = warna asli. Bekerja pada model KayKit (pahlawan maupun warga).
+static func npc_look(rig: Node3D, baju := Color(1, 1, 1), kulit := Color(1, 1, 1)) -> void:
+	if rig == null:
+		return
+	var list: Array = []
+	_meshes(rig, Transform3D.IDENTITY, list)
+	for pair: Array in list:
+		var mi := pair[0] as MeshInstance3D
+		var nm := str(mi.name)
+		if _ends_with_any(nm, CLOTH_PARTS):
+			_paint(mi, baju)
+		elif nm.ends_with("_Head") or nm.ends_with("_ArmLeft") or nm.ends_with("_ArmRight"):
+			_paint(mi, kulit)
+
+
+## Model warga dari definisi Maps.WARGA: model, ukuran, dan variasi warnanya.
+static func create_warga(def: Dictionary) -> Node3D:
+	var m := create(str(def.model))
+	if def.has("ukuran"):
+		m.scale = m.scale * float(def.ukuran)
+	if def.has("baju") or def.has("kulit"):
+		npc_look(m, def.get("baju", Color(1, 1, 1)), def.get("kulit", Color(1, 1, 1)))
+	return m
+
+
 ## Pakaian dan perlengkapan pemain yang sedang login.
 static func dress_current(rig: Node3D) -> void:
 	var st: Dictionary = Session.player.get("state", {})

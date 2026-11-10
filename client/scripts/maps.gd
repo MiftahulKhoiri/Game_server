@@ -152,8 +152,8 @@ const DESA_AWAL: Array[String] = [
 ## NPC di peta. Kunci = id NPC (sama dengan id pemberi misi di server dan nama gambar
 ## di assets/characters/). NPC menghalangi jalan; bicara dari petak yang bersebelahan.
 const NPCS := {
-	"nenek_penjual": {"map": "desa_awal", "pos": Vector2i(3, 6), "name": "Nenek"},
-	"petani": {"map": "desa_awal", "pos": Vector2i(11, 6), "name": "Petani"},
+	"nenek_penjual": {"map": "desa_awal", "pos": Vector2i(3, 6), "name": "Nenek", "peran": "Penjual Sayur"},
+	"petani": {"map": "desa_awal", "pos": Vector2i(11, 6), "name": "Petani", "peran": "Pemilik Ladang"},
 }
 
 
@@ -167,23 +167,32 @@ const NPCS := {
 ## di pos jaga yang terbuka (hanya atap dan dinding belakang) menghadap jalan utama. Ayam masuk ke
 ## kandang ayam. Warga tanpa `rumah` tetap di luar.
 const WARGA := [
-	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7, "rumah": Vector2i(10, 2)},
-	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75, "rumah": Vector2i(34, 2)},
-	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7, "rumah": Vector2i(13, 20)},
-	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(29, 39)},
-	{"id": "rina", "model": "anak_desa", "name": "Rina", "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
-	{"id": "dika", "model": "anak_desa", "name": "Dika", "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
-	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
-	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
+	{"id": "bu_sari", "model": "warga_ibu", "name": "Bu Sari", "peran": "Juru Masak", "baju": Color("ffb0a0"), "map": "desa_awal", "pos": Vector2(15.5, 9.5), "radius": 5.0, "speed": 0.7, "rumah": Vector2i(10, 2)},
+	{"id": "mbak_dewi", "model": "warga_ibu2", "name": "Mbak Dewi", "peran": "Pedagang Kain", "baju": Color("f0a8e0"), "map": "desa_awal", "pos": Vector2(29.5, 10.5), "radius": 5.0, "speed": 0.75, "rumah": Vector2i(34, 2)},
+	{"id": "pak_joko", "model": "warga_bapak", "name": "Pak Joko", "peran": "Mantan Prajurit", "baju": Color("b8c4a0"), "map": "desa_awal", "pos": Vector2(22.5, 17.5), "radius": 6.0, "speed": 0.7, "rumah": Vector2i(13, 20)},
+	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "peran": "Petani Ladang", "baju": Color("d8c890"), "kulit": Color("e8cfb0"), "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(29, 39)},
+	{"id": "rina", "model": "anak_desa", "name": "Rina", "peran": "Anak Desa", "baju": Color("ffa8c8"), "kulit": Color("fff0e0"), "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
+	{"id": "dika", "model": "anak_desa", "name": "Dika", "peran": "Anak Desa", "baju": Color("a8c8ff"), "kulit": Color("e0c0a0"), "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
+	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "peran": "Kepala Desa", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
+	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "peran": "Penjaga Gerbang", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 13.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(39, 11)},
 	# Penjaga toko: berdiri di belakang meja kasir di dalam ruangannya, siang dan malam (`diam`). Mengajak
 	# bicara penjaga = berbelanja (`toko` = "toko" ramuan, "makan" rumah makan; "peralatan" = toko peralatan, "rawat" = rumah sehat, pulih gratis).
-	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "map": "toko_ramuan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
-	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
-	{"id": "penjaga_alat", "model": "warga_bapak2", "name": "Pak Hasan", "peran": "Penjaga Toko Peralatan", "map": "toko_peralatan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "peralatan"},
+	# Roadmap no. 22-30, 35-38: warga dengan pekerjaan. `kerja` = gerakan berulang di tempat ("palu" menempa,
+	# "duduk"), `malam` = pose saat malam bagi yang tidak punya rumah ("tidur"), `hadap` = arah muka awal
+	# (derajat, 0 = selatan/+z), `alat` = benda di depannya ("landasan" pandai besi, "batu" tempat duduk),
+	# `baju` / `kulit` = warna pakaian dan kulit (variasi NPC, no. 31-32), `ukuran` = pengali tinggi.
+	{"id": "mpu_karta", "model": "warga_bapak2", "name": "Mpu Karta", "peran": "Pandai Besi", "map": "desa_awal", "pos": Vector2(13.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true, "kerja": "palu", "rumah": Vector2i(6, 20), "hadap": 0.0, "alat": "landasan", "baju": Color("8c7c6c"), "kulit": Color("ecd2b8"), "ukuran": 1.08},
+	{"id": "tuan_wira", "model": "warga_bapak", "name": "Tuan Wiranata", "peran": "Bangsawan Kerajaan", "map": "desa_awal", "pos": Vector2(25.5, 15.5), "radius": 3.0, "speed": 0.45, "rumah": Vector2i(31, 20), "baju": Color("b890ff"), "kulit": Color("fff0e0"), "ukuran": 1.04},
+	{"id": "prajurit_damar", "model": "prajurit", "name": "Damar", "peran": "Prajurit Kerajaan", "map": "desa_awal", "pos": Vector2(30.5, 23.5), "radius": 8.0, "speed": 0.9},
+	{"id": "laras", "model": "pemanah", "name": "Laras", "peran": "Pemanah Penjaga", "map": "desa_awal", "pos": Vector2(27.5, 47.5), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 180.0, "baju": Color("c8e0a0")},
+	{"id": "nyai_sekar", "model": "warga_ibu2", "name": "Nyai Sekar", "peran": "Penyihir Desa", "map": "desa_awal", "pos": Vector2(40.5, 17.5), "radius": 0.0, "speed": 0.0, "diam": true, "kerja": "duduk", "malam": "tidur", "hadap": 270.0, "alat": "batu", "baju": Color("a070e0")},
+	{"id": "penjaga_toko", "model": "warga_bapak", "name": "Pak Darman", "peran": "Penjaga Toko Ramuan", "baju": Color("c0e0b0"), "kulit": Color("e8d0b8"), "map": "toko_ramuan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "toko"},
+	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "baju": Color("ffd890"), "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
+	{"id": "penjaga_alat", "model": "warga_bapak2", "name": "Pak Hasan", "peran": "Penjaga Toko Peralatan", "baju": Color("a8b8d0"), "kulit": Color("dcb898"), "map": "toko_peralatan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "peralatan"},
 	{"id": "kapten_kem", "model": "pendekar_kapak", "name": "Kapten Rimba", "peran": "Penjaga Kem Hutan", "map": "perbatasan", "pos": Vector2(23.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true},
 	# Perekrut di basecamp pahlawan (barat gerbang): tenda merah = pahlawan berkelas, tenda hijau = prajurit biasa.
 	{"id": "rekrut_pahlawan", "model": "ksatria", "name": "Komandan Raka", "peran": "Perekrut Pahlawan (tenda merah)", "map": "desa_awal", "pos": Vector2(14.3, 43.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_pahlawan"},
@@ -191,7 +200,7 @@ const WARGA := [
 	# Pelatih di Aula Pelatihan: kiri melatih pahlawan pembantu berkelas, kanan melatih prajurit biasa.
 	{"id": "latih_pahlawan", "model": "pendekar_kapak", "name": "Guru Bima", "peran": "Pelatih Pahlawan", "map": "aula_pelatihan", "pos": Vector2(4.0, 2.6), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "latih_pahlawan"},
 	{"id": "latih_prajurit", "model": "pendekar_tombak", "name": "Sersan Anton", "peran": "Pelatih Prajurit", "map": "aula_pelatihan", "pos": Vector2(7.0, 2.6), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "latih_prajurit"},
-	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
+	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "baju": Color("e8f4ff"), "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
 
 ## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).

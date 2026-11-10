@@ -32,6 +32,10 @@ var inside := false           # sedang di dalam rumah (malam): tidak terlihat da
 var nama := ""
 var toko := ""                # penjaga toko: jenis toko yang dijaga ("toko", "makan", "rawat"); kosong = warga biasa
 var diam := false             # penjaga toko: tetap berdiri di tempat (hanya menoleh ke pemain)
+var peran := ""               # pekerjaan/identitas (roadmap no. 41), tampil di bawah nama
+var kerja := ""               # gerakan berulang di tempat ("palu") atau pose siang ("duduk")
+var malam := ""               # pose malam bagi warga tanpa rumah ("tidur")
+var sleeping := false         # sedang tidur (pose malam "tidur"): tidak menoleh dan tidak bisa diajak bicara
 var node: Node3D            # wadah di dunia (posisi); model di dalamnya yang berputar
 var model: Node3D
 
@@ -41,6 +45,8 @@ var _wait := 0.0
 var _route: Array[Vector2] = []
 var _route_done := false
 var _rng := RandomNumberGenerator.new()
+var _home_yaw := 0.0
+var _noticed := false        # pemain dekat: pekerja berhenti bekerja dan menoleh
 
 
 func _init(def: Dictionary, seed_value: int) -> void:
@@ -55,12 +61,16 @@ func _init(def: Dictionary, seed_value: int) -> void:
 	nama = str(def.name)
 	toko = str(def.get("toko", ""))
 	diam = bool(def.get("diam", false))
+	peran = str(def.get("peran", ""))
+	kerja = str(def.get("kerja", ""))
+	malam = str(def.get("malam", ""))
 	radius = float(def.radius)
 	speed = float(def.speed)
 	pos = home
 	_rng.seed = seed_value
 	_wait = _rng.randf_range(0.0, 2.5)  # tidak semua mulai berjalan serentak
-	yaw = _rng.randf_range(-PI, PI)
+	yaw = deg_to_rad(float(def.hadap)) if def.has("hadap") else _rng.randf_range(-PI, PI)
+	_home_yaw = yaw
 
 
 ## Memilih tujuan baru yang bisa dicapai lurus dari posisi sekarang. false bila tak ada.
@@ -160,6 +170,9 @@ func leave_home() -> void:
 	_route = []
 	_route_done = false
 	pos = front()
+	if diam:  # pekerja di tempat (pandai besi): langsung kembali ke tempat kerjanya
+		pos = home
+		yaw = _home_yaw
 	_has_target = false
 	_wait = _rng.randf_range(0.5, 4.0)
 
@@ -176,10 +189,21 @@ func step(delta: float, player: Vector2, others: Array[Vector2], night := false)
 			leave_home()
 		if inside:
 			return
-	if diam:  # penjaga toko: berdiri di tempat, menoleh bila pemain mendekat
-		if pos.distance_to(player) < NOTICE:
+	sleeping = night and malam == "tidur"
+	if sleeping:
+		yaw = _home_yaw
+		return
+	if diam:  # penjaga toko / pekerja: di tempat, menoleh bila pemain mendekat, lalu kembali bekerja
+		var near := pos.distance_to(player) < NOTICE
+		var want := _home_yaw
+		if near and kerja != "duduk":
 			var tp := player - pos
-			yaw = lerp_angle(yaw, atan2(tp.x, tp.y), minf(1.0, delta * TURN_RATE))
+			want = atan2(tp.x, tp.y)
+		elif near:
+			want = yaw
+		if near or kerja != "":
+			yaw = lerp_angle(yaw, want, minf(1.0, delta * TURN_RATE))
+		_noticed = near
 		return
 	var want_yaw := yaw
 	var face_player := false
@@ -237,3 +261,13 @@ func apply() -> void:
 		model.rotation.y = yaw
 		if "moving" in model:
 			model.moving = walking
+		if model.has_method("set_pose"):
+			model.call("set_pose", current_pose())
+			model.set("loop_action", "" if _noticed or kerja == "duduk" else kerja)
+
+
+## Pose model saat ini: tidur malam, duduk, atau berdiri.
+func current_pose() -> String:
+	if sleeping:
+		return "tidur"
+	return "duduk" if kerja == "duduk" else ""
