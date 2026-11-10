@@ -497,7 +497,15 @@ func _run() -> void:
 	var dialog3: Control = load("res://scenes/dialog.tscn").instantiate()
 	root.add_child(dialog3)
 	await create_timer(0.8).timeout
-	_check(dialog3._name_label.text == "Bu Sari  ·  Juru Masak" and not dialog3._action.visible and dialog3._text.text == WD.line("bu_sari", 0, 0), "bicara dengan Bu Sari: nama, peran, dan kalimat tahap 0, tanpa tombol misi")
+	_check(dialog3._name_label.text == "Bu Sari  ·  Juru Masak  ·  Kenalan" and not dialog3._action.visible and dialog3._text.text.ends_with(WD.line("bu_sari", 0, 0)), "bicara dengan Bu Sari: nama, peran, keakraban, dan kalimat tahap 0, tanpa tombol misi")
+	# Roadmap no. 58-59: server mengingat pembicaraan; pertemuan pertama = berkenalan.
+	_check(Session.rep_talks("bu_sari") == 1 and Session.rep_points("bu_sari") == 1 and dialog3._text.text.begins_with("Senang berkenalan"), "Bu Sari mengingat pertemuan pertama (bicara 1x, keakraban 1, sapaan berkenalan)")
+	var tk2: Dictionary = await Api.warga_talk("bu_sari")
+	_check(tk2.ok and int(tk2.data.state.reputation.bu_sari.t) == 2 and int(tk2.data.state.reputation.bu_sari.p) == 1, "bicara lagi segera: diingat (2x), keakraban tidak naik (jeda)")
+	var tkbad: Dictionary = await Api.warga_talk("naga")
+	_check(not tkbad.ok and tkbad.status == 422, "warga asing ditolak 422")
+	if tk2.ok:
+		Session.merge_server_player(tk2.data)
 	var spk: Node3D = dialog3._speaker
 	_check(spk != null and spk._actions != null and str(spk._actions.call("current")) == "bicara", "dialog warga: model 3D-nya tampil dan berbicara (bukan lingkaran huruf)")
 	dialog3.queue_free()
@@ -738,6 +746,7 @@ func _run() -> void:
 			wcount += 1
 			_check(Maps.warga_free(Maps.DEFAULT_MAP, d.pos), "titik asal warga %s berada di petak bebas" % d.name)
 	_check(wcount >= 8 and w3._warga.size() == wcount, "%d warga desa muncul di dunia 3D" % w3._warga.size())
+	Atmo.hour_override = 10.0  # siang yang pasti: hasil uji warga tidak bergantung lamanya uji berjalan
 	w3._pos = Vector2(24.0, 28.0)  # jauh dari semua warga
 	var start_pos: Array[Vector2] = []
 	var best_move: Array[float] = []
@@ -747,6 +756,7 @@ func _run() -> void:
 	var warga_ok := true
 	var model_walked := false
 	var min_gap := 99.0
+	var gap_pair := ""
 	for i in 1800:  # 90 detik
 		w3._update_npcs(0.05)
 		for k in w3._warga.size():
@@ -756,10 +766,13 @@ func _run() -> void:
 			if w.walking and "moving" in w.model and w.model.moving:
 				model_walked = true
 			best_move[k] = maxf(best_move[k], w.pos.distance_to(start_pos[k]))
-			if w.pos.distance_to(w.home) > w.radius + 0.5:
+			if w.jadwal.is_empty() and w.pos.distance_to(w.home) > w.radius + 0.5:  # yang berjadwal boleh pergi bekerja
 				warga_ok = false
 			for j in range(k + 1, w3._warga.size()):
-				min_gap = minf(min_gap, w.pos.distance_to(w3._warga[j].pos))
+				var gap: float = w.pos.distance_to(w3._warga[j].pos)
+				if gap < min_gap:
+					min_gap = gap
+					gap_pair = "%s-%s" % [w.id, w3._warga[j].id]
 	var movers := 0
 	var walkers := 0  # warga yang memang berjalan (bukan penjaga/pekerja yang diam di tempat)
 	for k in best_move.size():
@@ -769,7 +782,7 @@ func _run() -> void:
 			movers += 1
 	_check(warga_ok, "warga tidak pernah masuk pagar/air/rumah atau keluar dari jari-jarinya")
 	_check(movers >= walkers - 2, "hampir semua warga benar-benar berjalan jauh (%d dari %d)" % [movers, walkers])
-	_check(min_gap > 0.35, "warga tidak menumpuk satu sama lain (jarak terdekat %.2f)" % min_gap)
+	_check(min_gap > 0.35, "warga tidak menumpuk satu sama lain (jarak terdekat %.2f, %s)" % [min_gap, gap_pair])
 	# Pemain berdiri di tengah alun-alun: warga tidak menembus pemain.
 	w3._pos = Vector2(12.5, 8.5)
 	var near_player := 99.0
@@ -820,6 +833,77 @@ func _run() -> void:
 	_check(not rb.albedo_color.is_equal_approx(db.albedo_color), "variasi baju: Rina dan Dika (model sama) berbeda warna")
 	var HA = load("res://scripts/hero_actions.gd")
 	_check(HA.ACTIONS.has("bicara") and HA.ACTIONS.has("palu") and HA.POSES.has("duduk") and HA.POSES.has("tidur"), "gerakan bicara, menempa, duduk, tidur tersedia")
+	# Roadmap no. 45-60: jadwal, pergi bekerja, obrolan, takut monster, optimasi.
+	var WargaC = load("res://scripts/warga.gd")
+	var defs := {}
+	for d: Dictionary in Maps.WARGA:
+		defs[str(d.id)] = d
+	var kosong: Array[Vector2] = []
+	var jauh := Vector2(1, 1)
+	var budi = WargaC.new(defs["pak_budi"], 7)
+	for i in 1600:
+		budi.step(0.05, jauh, kosong, false, 9.0)
+	_check(budi.at_job and budi.pos.distance_to(Vector2(12.5, 28.5)) < 0.1 and budi.current_kerja() == "cangkul", "jadwal: Pak Budi pergi ke ladang dan mencangkul jam 9 (no. 45, 52)")
+	var kata_ok := false
+	for i in 300:
+		budi.step(0.05, jauh, kosong, false, 9.0)
+		kata_ok = kata_ok or budi.say != ""
+	_check(kata_ok, "pekerja sesekali berkata-kata di gelembung")
+	for i in 1600:
+		budi.step(0.05, jauh, kosong, false, 16.0)
+	_check(budi.job.is_empty() and budi.pos.distance_to(budi.home) <= budi.radius + 0.5, "jadwal selesai: Pak Budi kembali ke sekitar rumahnya")
+	var dewi = WargaC.new(defs["mbak_dewi"], 3)
+	var sari = WargaC.new(defs["bu_sari"], 5)
+	for i in 1600:
+		dewi.step(0.05, jauh, kosong, false, 11.0)
+		sari.step(0.05, jauh, kosong, false, 11.0)
+	_check(dewi.at_job and sari.at_job and dewi.pos.distance_to(sari.pos) < 1.5 and dewi.current_kerja() == "bicara", "berdagang: Bu Sari berbelanja di lapak Mbak Dewi jam 11 (no. 51)")
+	var karta = WargaC.new(defs["mpu_karta"], 11)
+	karta.inside = true
+	karta.pos = karta.spot()
+	karta.step(0.05, jauh, kosong, false, 7.0)
+	var mulai: Vector2 = karta.pos
+	var jalan_kerja := false
+	for i in 2400:
+		karta.step(0.05, jauh, kosong, false, 7.0)
+		jalan_kerja = jalan_kerja or karta.walking
+	_check(mulai.distance_to(karta.home) > 5.0 and jalan_kerja and karta.pos.distance_to(karta.home) < 0.05 and not karta._going_work, "pagi: Mpu Karta berjalan dari rumah ke landasannya (no. 47)")
+	var ujang = WargaC.new(defs["pak_ujang"], 13)
+	var monster: Vector2 = ujang.pos + Vector2(1.2, 0.0)
+	var mons: Array[Vector2] = [monster]
+	var awal: float = ujang.pos.distance_to(monster)
+	for i in 30:
+		ujang.step(0.05, ujang.pos + Vector2(0, 3), kosong, false, 12.0, mons)
+	_check(ujang.scared > 0.0 and ujang.pos.distance_to(monster) > awal + 0.5, "Pak Ujang takut dan lari menjauhi binatang buas (no. 53-54)")
+	_check(ujang.calling_help and ujang.say.begins_with("Tolong"), "pemain dekat: Pak Ujang berteriak minta tolong (no. 55)")
+	var tak_monster: Array[Vector2] = []
+	for i in 2000:
+		ujang.step(0.05, Vector2(40, 20), kosong, false, 12.0, tak_monster)
+	_check(ujang.scared <= 0.0 and not ujang.calling_help and ujang.pos.distance_to(ujang.home) <= ujang.radius + 0.5, "bahaya lewat: Pak Ujang tenang dan kembali ke daerahnya")
+	var cw_a = by_id.get("pak_joko")
+	var cw_b = by_id.get("tuan_wira")
+	cw_a.chat_cd = 0.0
+	cw_b.chat_cd = 0.0
+	cw_a.job = {}
+	cw_b.job = {}
+	cw_b.pos = cw_a.pos + Vector2(0.8, 0.0)
+	w3._try_chats()
+	_check(cw_a.chat_t > 0.0 and cw_b.chat_t > 0.0 and cw_a.say != "" and cw_b.say != "", "dua warga yang berpapasan mengobrol (no. 50)")
+	w3._pos = Vector2(2.0, 2.0)
+	var dekat_w = null
+	var jauh_w = null
+	for w in w3._warga:
+		w.steps = 0
+	for i in 40:
+		w3._update_npcs(0.05)
+	for w in w3._warga:
+		var dd: float = w.pos.distance_to(w3._pos)
+		if dd < 15.0 and dekat_w == null:
+			dekat_w = w
+		if dd > 25.0 and jauh_w == null:
+			jauh_w = w
+	_check(dekat_w != null and jauh_w != null and jauh_w.steps * 3 <= dekat_w.steps, "optimasi: warga jauh diperbarui jarang (%s vs %s langkah) (no. 60)" % [str(jauh_w.steps if jauh_w else -1), str(dekat_w.steps if dekat_w else -1)])
+	Atmo.hour_override = -1.0
 	w3._pos = Vector2(7.5, 5.5)
 	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")
 	w3._toggle_menu()
@@ -1260,7 +1344,7 @@ func _run() -> void:
 	_check(ayam_masuk == 4, "malam: keempat ayam masuk ke kandang ayam (%d)" % ayam_masuk)
 	Atmo.hour_override = 12.0
 	wb.step(0.05, Vector2(-80, -80), no_others, false)
-	_check(not wb.inside and wb.pos.distance_to(Vector2(10.5, 3.5)) < 0.1, "pagi: warga keluar dari pintu rumahnya")
+	_check(not wb.inside and wb.pos.distance_to(Vector2(10.5, 3.5)) < 0.7, "pagi: warga keluar dari pintu rumahnya (bergeser sedikit supaya tidak bertumpuk)")
 	Atmo.hour_override = 22.0
 	Session.offline = true
 	Session.player.state.map = Maps.DEFAULT_MAP
