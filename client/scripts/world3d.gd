@@ -732,6 +732,7 @@ func _update_world_life(delta: float) -> void:
 		_atmo_acc = 0.0
 		Atmosphere.apply(_env.environment, _sun, _atmo_base, _map_id)
 		Atmosphere.set_rain(_rain, _map_id)
+		WorldBuild.set_wind(Atmosphere.wind_strength())  # pohon dan rumput bergoyang lebih kencang saat hujan
 		_update_lamps()
 		_update_clock()
 	if _rain != null:

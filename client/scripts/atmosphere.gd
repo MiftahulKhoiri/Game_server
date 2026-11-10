@@ -104,6 +104,16 @@ static func capture(env: Environment, sun: DirectionalLight3D) -> Dictionary:
 	}
 
 
+## Kabut pagi (roadmap no. 106): paling tebal sekitar jam 6.30, hilang menjelang jam 9 dan sebelum jam 4.
+static func dawn_fog() -> float:
+	return clampf(1.0 - absf(hour() - 6.5) / 2.3, 0.0, 1.0)
+
+
+## Kekuatan angin (no. 107): biasa 1, makin kencang saat hujan.
+static func wind_strength() -> float:
+	return 1.0 + 1.5 * rain
+
+
 ## Terapkan waktu dan cuaca sekarang ke lingkungan dan matahari. `base` dari capture().
 static func apply(env: Environment, sun: DirectionalLight3D, base: Dictionary, map_id: String) -> void:
 	if base.is_empty():
@@ -133,7 +143,7 @@ static func apply(env: Environment, sun: DirectionalLight3D, base: Dictionary, m
 	env.ambient_light_color = NIGHT_AMBIENT.lerp(base.ambient_color, d)
 	env.ambient_light_energy = lerpf(NIGHT_AMBIENT_ENERGY, float(base.ambient_energy), d)
 	env.fog_light_color = hor
-	env.fog_density = float(base.fog_density) * (1.0 + 0.8 * (1.0 - d) + 1.6 * r)
+	env.fog_density = float(base.fog_density) * (1.0 + 0.8 * (1.0 - d) + 1.6 * r + 2.2 * dawn_fog())
 	env.adjustment_saturation = float(base.saturation) * (1.0 - 0.25 * r)
 
 	var sun_day: float = float(base.sun_energy) * (1.0 - 0.55 * r)

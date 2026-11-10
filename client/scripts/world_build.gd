@@ -58,13 +58,15 @@ shader_type spatial;
 uniform sampler2D palet : source_color, filter_nearest;
 uniform float goyang = 0.05;
 uniform float tinggi = 1.2;
+uniform float angin = 1.0;  // kekuatan angin (roadmap no. 107): naik saat hujan
 void vertex() {
 	float w = clamp(VERTEX.y / tinggi, 0.0, 1.0);
 	w *= w;
 	vec3 p = MODEL_MATRIX[3].xyz;
-	float t = TIME * 1.3 + p.x * 0.8 + p.z * 0.6;
-	VERTEX.x += sin(t) * goyang * w;
-	VERTEX.z += cos(t * 0.9) * goyang * 0.6 * w;
+	float hembus = angin * (0.75 + 0.35 * sin(TIME * 0.35 + p.x * 0.05));  // embusan datang dan pergi
+	float t = TIME * (1.0 + 0.3 * angin) + p.x * 0.8 + p.z * 0.6;
+	VERTEX.x += (sin(t) + 0.4 * (angin - 1.0)) * goyang * hembus * w;
+	VERTEX.z += cos(t * 0.9) * goyang * 0.6 * hembus * w;
 }
 void fragment() {
 	ALBEDO = texture(palet, UV).rgb;
@@ -75,12 +77,14 @@ const GRASS_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
 uniform float goyang = 0.07;
+uniform float angin = 1.0;
 void vertex() {
 	float w = clamp(VERTEX.y / 0.35, 0.0, 1.0);
 	vec3 p = MODEL_MATRIX[3].xyz;
-	float t = TIME * 2.0 + p.x * 1.7 + p.z * 1.3;
-	VERTEX.x += sin(t) * goyang * w;
-	VERTEX.z += cos(t * 1.1) * goyang * 0.5 * w;
+	float hembus = angin * (0.75 + 0.35 * sin(TIME * 0.35 + p.x * 0.05));
+	float t = TIME * (1.6 + 0.6 * angin) + p.x * 1.7 + p.z * 1.3;
+	VERTEX.x += (sin(t) + 0.5 * (angin - 1.0)) * goyang * hembus * w;
+	VERTEX.z += cos(t * 1.1) * goyang * 0.5 * hembus * w;
 }
 void fragment() {
 	ALBEDO = pow(COLOR.rgb, vec3(2.2));  // warna ditulis sRGB
@@ -88,6 +92,31 @@ void fragment() {
 }
 """
 
+## Air hidup (roadmap no. 93-94): riak bergerak, kilau, dan sedikit naik-turun. Warna dalam/dangkal
+## bergantian mengikuti pola gelombang; di malam hari ikut gelap karena tetap diterangi lampu biasa.
+const WATER_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform vec4 dalam : source_color = vec4(0.13, 0.52, 0.80, 1.0);
+uniform vec4 dangkal : source_color = vec4(0.30, 0.72, 0.92, 1.0);
+varying vec3 wpos;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	VERTEX.y += sin(TIME * 1.4 + wpos.x * 1.3 + wpos.z * 0.9) * 0.025;
+}
+void fragment() {
+	float a = sin(wpos.x * 2.3 + TIME * 1.1) * cos(wpos.z * 1.9 - TIME * 0.8);
+	float b = sin((wpos.x + wpos.z) * 3.7 - TIME * 1.6);
+	float riak = 0.5 + 0.25 * a + 0.25 * b;
+	ALBEDO = mix(dalam.rgb, dangkal.rgb, riak);
+	float kilau = smoothstep(0.82, 1.0, riak);
+	ALBEDO += vec3(kilau * 0.35);
+	ROUGHNESS = 0.12;
+	SPECULAR = 0.7;
+}
+"""
+
+static var _water_mat: ShaderMaterial
 static var _mats: Dictionary = {}
 static var _dekor_cache: Dictionary = {}
 static var _tree_mat: ShaderMaterial
@@ -158,6 +187,26 @@ static func _sway_material() -> Material:
 	return _tree_mat
 
 
+static func _water_material() -> Material:
+	if _water_mat == null:
+		var sh := Shader.new()
+		sh.code = WATER_SHADER
+		_water_mat = ShaderMaterial.new()
+		_water_mat.shader = sh
+	return _water_mat
+
+
+## Kekuatan angin untuk pohon, rumput, dan ilalang (1 = biasa, ~2,5 = badai hujan). Roadmap no. 107.
+static func set_wind(v: float) -> void:
+	for m: ShaderMaterial in [_tree_mat, _grass_mat]:
+		if m != null:
+			m.set_shader_parameter("angin", v)
+
+
+static func wind() -> float:
+	return float(_grass_mat.get_shader_parameter("angin")) if _grass_mat != null else 1.0
+
+
 static func _grass_material() -> Material:
 	if _grass_mat == null:
 		var sh := Shader.new()
@@ -196,6 +245,49 @@ static func _tuft_mesh() -> ArrayMesh:
 		st.add_vertex(Vector3(tx, hgt, tz))
 	_tuft_mesh_cache = st.commit()
 	return _tuft_mesh_cache
+
+
+## Ilalang tepi air (roadmap no. 100): helai tinggi kecokelatan, bergoyang seperti rumput.
+static var _reed_mesh_cache: ArrayMesh
+
+static func _reed_mesh() -> ArrayMesh:
+	if _reed_mesh_cache != null:
+		return _reed_mesh_cache
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in 6:
+		var a := float(i) / 6.0 * TAU + 0.4
+		var r := 0.03 + 0.03 * fmod(float(i) * 0.53, 1.0)
+		var hgt := 0.55 + 0.25 * fmod(float(i) * 0.71, 1.0)
+		var bx := cos(a) * r
+		var bz := sin(a) * r
+		var wx := -sin(a) * 0.022
+		var wz := cos(a) * 0.022
+		st.set_color(Color("4f6b2a"))
+		st.add_vertex(Vector3(bx - wx, 0.0, bz - wz))
+		st.set_color(Color("4f6b2a"))
+		st.add_vertex(Vector3(bx + wx, 0.0, bz + wz))
+		st.set_color(Color("c9b36a"))
+		st.add_vertex(Vector3(bx * 2.0, hgt, bz * 2.0))
+	_reed_mesh_cache = st.commit()
+	return _reed_mesh_cache
+
+
+## Petak (x, z) bersebelahan (8 arah) dengan air?
+static func _dekat_air(rows: Array[String], x: int, z: int) -> bool:
+	for dz in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			if (dx != 0 or dz != 0) and _tile(rows, x + dx, z + dz) == "~":
+				return true
+	return false
+
+
+## Petak (x, z) bersebelahan (4 arah) dengan pohon?
+static func _dekat_pohon(rows: Array[String], x: int, z: int) -> bool:
+	for d: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		if _tile(rows, x + d.x, z + d.y) == "#":
+			return true
+	return false
 
 
 ## Tambah satu instance model alam `id` ke kumpulan `dict` (id -> daftar transform).
@@ -321,6 +413,9 @@ static func _cyl(r_top: float, r_bottom: float, h: float, segs := 10) -> Cylinde
 	return m
 
 
+const SAND := Color("e2cf98")  # pasir tepi air
+
+
 ## Warna dasar tanah per jenis petak.
 static func ground_color(tile: String) -> Color:
 	match tile:
@@ -389,6 +484,12 @@ static func build(map_id: String) -> Node3D:
 	var static_by: Dictionary = {}   # batu, gunung, tunggul: id model -> daftar transform
 	var tufts: Array[Transform3D] = []
 	var kecil := {"J": [], "C": [], "A": [], "U": [], "Q": [], "Y": []}  # bangunan kecil (lihat _add_kecil)
+	var reed_x: Array[Transform3D] = []   # ilalang tepi air
+	var bush_x: Array[Transform3D] = []   # semak
+	var bush_c: Array[Color] = []
+	var stem_x: Array[Transform3D] = []   # jamur: batang
+	var cap_x: Array[Transform3D] = []    # jamur: tudung
+	var n_pasir := 0
 
 	for z in rows.size():
 		for x in rows[z].length():
@@ -397,13 +498,37 @@ static func build(map_id: String) -> Node3D:
 			var j := _jitter(x, z)
 			if t != "~" and t != "B":
 				var gc := ground_color(t)
+				var tepi := (t == "." or t == "f") and not mountain and _dekat_air(rows, x, z)
+				if tepi:  # tepi pasir di pinggir sungai/danau (roadmap no. 96)
+					gc = SAND.lerp(gc, 0.25 * _jitter(x, z, 90))
+					n_pasir += 1
 				ground_x.append(_xf(c))
 				ground_c.append(gc.lightened(0.025 * (j - 0.5) * 2.0) if t == "." or t == "f" else gc)
+				if tepi and t == "." and _jitter(x, z, 91) < 0.45:  # ilalang di tepi air
+					var oi := Vector3(_jitter(x, z, 92) - 0.5, 0.0, _jitter(x, z, 93) - 0.5) * 0.6
+					reed_x.append(_xf(c + oi, Vector3.ONE * (0.8 + 0.5 * _jitter(x, z, 94)), _jitter(x, z, 95) * TAU))
+				elif t == "." and not mountain and _dekat_pohon(rows, x, z) and not _dekat_bangunan(rows, x, z) \
+						and Vector2i(x, z) != Maps.SPAWN and Maps.npc_at(map_id, x, z) == "":
+					var rb := _jitter(x, z, 96)
+					var ob := Vector3(_jitter(x, z, 97) - 0.5, 0.0, _jitter(x, z, 98) - 0.5) * 0.5
+					if rb < 0.22:  # semak di tepi hutan (no. 102)
+						var sb := 0.32 + 0.16 * _jitter(x, z, 99)
+						var gcol := Color("2e6b26").lerp(Color("4f9a35"), _jitter(x, z, 100))
+						bush_x.append(_xf(c + ob + Vector3(0, sb * 0.55, 0), Vector3(1.2, 0.85, 1.0) * sb))
+						bush_c.append(gcol)
+						bush_x.append(_xf(c + ob + Vector3(sb * 0.5, sb * 0.45, sb * 0.2), Vector3.ONE * sb * 0.75))
+						bush_c.append(gcol.lightened(0.12))
+					elif rb > 0.93 and (map_id == Maps.HUTAN or map_id == Maps.PERBATASAN):  # jamur hutan (no. 100)
+						for k in 3:
+							var om := ob + Vector3(_jitter(x, z, 101 + k) - 0.5, 0.0, _jitter(x, z, 104 + k) - 0.5) * 0.3
+							var ms := 0.7 + 0.6 * _jitter(x, z, 107 + k)
+							stem_x.append(_xf(c + om + Vector3(0, 0.05 * ms, 0), Vector3.ONE * ms))
+							cap_x.append(_xf(c + om + Vector3(0, 0.1 * ms, 0), Vector3(1.0, 0.6, 1.0) * ms))
 			match t:
 				"~":
-					water_x.append(_xf(c + Vector3(0, -0.14, 0)))
+					water_x.append(_xf(c + Vector3(0, -0.035, 0)))  # di atas alas luas (-0,06), di bawah petak tanah (0)
 				"B":
-					water_x.append(_xf(c + Vector3(0, -0.14, 0)))
+					water_x.append(_xf(c + Vector3(0, -0.035, 0)))  # di atas alas luas (-0,06), di bawah petak tanah (0)
 					# Air di utara dan selatan petak jembatan = jalannya memanjang ke arah x (parit ladang); selain itu ke arah z.
 					var sepanjang_x := _tile(rows, x, z - 1) == "~" and _tile(rows, x, z + 1) == "~"
 					plank_x.append(_xf(c, Vector3.ONE, PI * 0.5 if sepanjang_x else 0.0))
@@ -493,7 +618,12 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, quad, mat(Color.WHITE, true), ground_x, ground_c, false)
 	var water := PlaneMesh.new()
 	water.size = Vector2(1.0, 1.0)
-	_multi(root, water, mat(Color("2fa3ea"), false, 0.18), water_x, [], false)
+	_multi(root, water, _water_material(), water_x, [], false)
+	_multi(root, _reed_mesh(), _grass_material(), reed_x, [], false)
+	_multi(root, _sphere(0.5, 8), mat(Color.WHITE, true), bush_x, bush_c)
+	_multi(root, _cyl(0.025, 0.035, 0.1, 6), mat(Color("efe6d2")), stem_x, [], false)
+	_multi(root, _sphere(0.07, 7), mat(Color("c8352c")), cap_x, [], false)
+	root.set_meta("hiasan", {"pasir": n_pasir, "ilalang": reed_x.size(), "semak": bush_x.size() / 2, "jamur": stem_x.size()})
 	_multi(root, _cyl(0.12, 0.14, 0.9, 6), mat(Color("5b3b1e")), trunk_x)
 	_multi(root, _sphere(0.5, 9), mat(Color.WHITE, true), leaf_x, leaf_c)
 	_multi(root, _sphere(0.6, 7), mat(Color.WHITE, true, 1.0), rock_x, rock_c)
