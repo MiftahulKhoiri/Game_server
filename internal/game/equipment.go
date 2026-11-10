@@ -9,10 +9,14 @@ import (
 type Equipment struct {
 	Weapon string `json:"weapon"`
 	Armor  string `json:"armor"`
+	// Helmet: slot helm (roadmap no. 16); kosong pada data lama.
+	Helmet string `json:"helmet,omitempty"`
 }
 
 // Has memberi tahu apakah barang ini sedang dipakai.
-func (e Equipment) Has(id string) bool { return id != "" && (e.Weapon == id || e.Armor == id) }
+func (e Equipment) Has(id string) bool {
+	return id != "" && (e.Weapon == id || e.Armor == id || e.Helmet == id)
+}
 
 // Kesalahan perlengkapan dan pemakaian barang.
 var (
@@ -41,10 +45,11 @@ func (s State) Attack() int {
 	return atk
 }
 
-// Defense adalah pertahanan total: dari level ditambah bonus pelindung.
+// Defense adalah pertahanan total: dari level ditambah bonus pelindung dan helm.
 func (s State) Defense() int {
 	def, _ := ItemByID(s.Equipment.Armor)
-	return DefenseForLevel(s.Level) + def.Defense
+	helm, _ := ItemByID(s.Equipment.Helmet)
+	return DefenseForLevel(s.Level) + def.Defense + helm.Defense
 }
 
 // Equip memakai barang dari tas (barang tetap ada di tas). Perlengkapan lama di slot yang sama diganti.
@@ -64,6 +69,8 @@ func (s *State) Equip(id string) error {
 		s.Equipment.Weapon = id
 	case SlotArmor:
 		s.Equipment.Armor = id
+	case SlotHelmet:
+		s.Equipment.Helmet = id
 	default:
 		return ErrNotEquippable
 	}
@@ -78,6 +85,8 @@ func (s *State) Unequip(slot string) error {
 		target = &s.Equipment.Weapon
 	case SlotArmor:
 		target = &s.Equipment.Armor
+	case SlotHelmet:
+		target = &s.Equipment.Helmet
 	default:
 		return ErrBadSlot
 	}

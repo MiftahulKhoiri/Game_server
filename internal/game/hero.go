@@ -46,6 +46,21 @@ func (s State) HeroDef() HeroDef {
 	return h
 }
 
+// NumOutfits adalah jumlah variasi pakaian yang bisa dipilih (warnanya diatur klien, models.gd OUTFITS).
+const NumOutfits = 4
+
+// ErrUnknownOutfit berarti nomor pakaian di luar 0..NumOutfits-1.
+var ErrUnknownOutfit = errors.New("pakaian tidak dikenal")
+
+// SetOutfit mengganti variasi pakaian pahlawan (gratis, hanya tampilan).
+func (s *State) SetOutfit(n int) error {
+	if n < 0 || n >= NumOutfits {
+		return ErrUnknownOutfit
+	}
+	s.Outfit = n
+	return nil
+}
+
 // SetHero mengganti pahlawan yang dipakai.
 func (s *State) SetHero(id string) error {
 	h, ok := HeroByID(id)

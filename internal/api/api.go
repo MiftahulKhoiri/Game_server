@@ -83,6 +83,7 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/rest", s.auth(s.restAction()))
 	mux.Handle("GET /v1/heroes", s.auth(http.HandlerFunc(s.getHeroes)))
 	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
+	mux.Handle("POST /v1/players/me/outfit", s.auth(http.HandlerFunc(s.setOutfit)))
 	mux.Handle("POST /v1/allies/buy", s.auth(http.HandlerFunc(s.buyAlly)))
 	mux.Handle("POST /v1/allies/heal", s.auth(http.HandlerFunc(s.healAlly)))
 	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
@@ -569,7 +570,7 @@ func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*g
 func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
-		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrNoPower,
+		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrUnknownOutfit, game.ErrNoPower,
 		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax, game.ErrSoldiersCount,
 		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy, game.ErrNoKapten, game.ErrInventoryFull,
 	} {
@@ -642,6 +643,19 @@ func (s *Server) setHero(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.applyToState(w, r, func(st *game.State) error { return st.SetHero(req.Hero) })
+}
+
+type outfitRequest struct {
+	Outfit int `json:"outfit"`
+}
+
+// setOutfit mengganti variasi pakaian pahlawan (roadmap no. 14). Mengembalikan Player.
+func (s *Server) setOutfit(w http.ResponseWriter, r *http.Request) {
+	var req outfitRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.SetOutfit(req.Outfit) })
 }
 
 // buyAlly membeli pahlawan sebagai pendamping (tidak bisa saat bertarung).

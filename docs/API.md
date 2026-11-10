@@ -208,6 +208,10 @@ Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
 Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
 dikenal, `409` bila sedang bertarung. Nama skill di `log` pertarungan mengikuti pahlawan.
 
+### `POST /v1/players/me/outfit`  (login, v0.50.0)
+Body: `{"outfit": 2}`. Variasi warna pakaian pahlawan `0..3` (`0` = warna asli), hanya tampilan.
+Disimpan di `state.outfit`. `200` berisi pemain terbaru, `422` bila di luar rentang.
+
 ## Pahlawan pendamping (v0.38.0)
 
 Pemain boleh membeli pahlawan (harga = `price` di `GET /v1/heroes`: ksatria 250, pemanah 300, pendekar_tombak 300,
@@ -267,7 +271,8 @@ Toko lain: `404`. Klien membuka toko lewat penjaga di bangunannya (bukan dari Me
 `shop` = toko yang menjual barang itu; `heal` = HP yang dipulihkan saat dimakan (`kind` `food`).
 `buy_price` 0 = tidak dijual toko; `sell_price` 0 = toko tidak membeli.
 `kind`: `consumable`, `material`, `treasure`, `equipment`, `food`. Perlengkapan juga membawa
-`slot` (`weapon`/`armor`), `attack`, `defense` (bonus). Penjualan perlengkapan yang sedang
+`slot` (`weapon`/`armor`/`helmet`), `attack`, `defense` (bonus). Slot `helmet` (v0.50.0):
+`helm_kulit` (+1), `helm_besi` (+3) di toko peralatan; `state.equipment.helmet` kosong bila tak dipakai. Penjualan perlengkapan yang sedang
 dipakai (salinan terakhir) ditolak `422`.
 
 ### `POST /v1/shop/buy` dan `POST /v1/shop/sell`  (login)
@@ -289,7 +294,7 @@ bertarung, `404` bila barang tidak dikenal, `422` bila melanggar aturan.
 |----------|------|------|
 | `POST /v1/inventory/use` | `{"item":"ramuan"}` | Minum ramuan (+15 HP), makan makanan (`roti` +10, `sup_ayam` +25, `daging_bakar` +50 HP), atau minum `ramuan_kekuatan` (isi energi 60 + serangan x1,3). `422` bila HP penuh / tidak punya |
 | `POST /v1/inventory/equip` | `{"item":"pedang_besi"}` | Pasang dari tas; yang lama kembali ke tas. `422` bila bukan perlengkapan / tidak dimiliki |
-| `POST /v1/inventory/unequip` | `{"slot":"weapon"}` | Lepas ke tas. `422` bila slot kosong / tas penuh |
+| `POST /v1/inventory/unequip` | `{"slot":"weapon"}` (`armor`, `helmet`) | Lepas ke tas. `422` bila slot kosong / tas penuh |
 | `POST /v1/rest` | - | Istirahat gratis, HP dan energi penuh; hanya di `desa_awal` (`422` di tempat lain atau bila HP dan energi sudah penuh) |
 
 Bonus perlengkapan ditambahkan ke serang/tahan dari level, dan dipakai dalam pertarungan.

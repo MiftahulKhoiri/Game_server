@@ -140,3 +140,46 @@ func TestEquipmentCatalogConsistent(t *testing.T) {
 		}
 	}
 }
+
+// Roadmap no. 16: slot helm menambah pertahanan dan bisa dilepas.
+func TestHelmetSlot(t *testing.T) {
+	st := NewState()
+	baseDef := st.Defense()
+	st.AddItem("helm_besi", 1)
+	st.AddItem("zirah_besi", 1)
+	if err := st.Equip("helm_besi"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Equip("zirah_besi"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Equipment.Helmet != "helm_besi" || st.Defense() != baseDef+3+4 {
+		t.Fatalf("helm + zirah: %+v def=%d", st.Equipment, st.Defense())
+	}
+	if !st.Equipment.Has("helm_besi") {
+		t.Error("helm yang dipakai harus terhitung Has")
+	}
+	if err := st.Unequip(SlotHelmet); err != nil || st.Defense() != baseDef+4 {
+		t.Errorf("lepas helm: %v def=%d", err, st.Defense())
+	}
+	if err := st.Validate(); err != nil {
+		t.Error(err)
+	}
+}
+
+// Roadmap no. 14: variasi pakaian 0..NumOutfits-1.
+func TestOutfit(t *testing.T) {
+	st := NewState()
+	if err := st.SetOutfit(NumOutfits - 1); err != nil || st.Outfit != NumOutfits-1 {
+		t.Fatalf("pakaian sah ditolak: %v", err)
+	}
+	for _, bad := range []int{-1, NumOutfits} {
+		if err := st.SetOutfit(bad); !errors.Is(err, ErrUnknownOutfit) {
+			t.Errorf("pakaian %d harus ditolak: %v", bad, err)
+		}
+	}
+	st.Outfit = NumOutfits
+	if err := st.Validate(); err == nil {
+		t.Error("Validate harus menolak pakaian di luar rentang")
+	}
+}
