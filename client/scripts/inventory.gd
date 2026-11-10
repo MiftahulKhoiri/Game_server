@@ -11,6 +11,7 @@ const KIND_COLORS := {
 	"equipment": Color("5a7fb0"),
 	"food": Color("c98a3c"),
 }
+const RARITY_COLOR := {"langka": Color("7fc8ff"), "epik": Color("d79bff")}
 const SLOTS := [["weapon", "Senjata"], ["armor", "Pelindung"], ["helmet", "Helm"]]
 
 var _catalog: Dictionary = {}  # id -> definisi dari server
@@ -81,8 +82,13 @@ func _add_item_row(id: String, qty: int) -> void:
 		detail = "\nTahan +%d" % int(def.defense)
 	elif int(def.get("heal", 0)) > 0:
 		detail = "\nHP +%d" % int(def.heal)
+	var rarity := str(def.get("rarity", "biasa"))
+	if rarity != "biasa":
+		detail += "\n" + rarity.capitalize()
 	var label := _make_label("%s  x%d%s" % [_name_of(id), qty, detail], 26)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if RARITY_COLOR.has(rarity):  # kelangkaan barang (roadmap no. 144)
+		label.add_theme_color_override("font_color", RARITY_COLOR[rarity])
 	row.add_child(label)
 	var kind := str(def.get("kind", ""))
 	if id == "ramuan":

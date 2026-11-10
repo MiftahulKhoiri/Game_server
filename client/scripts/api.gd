@@ -59,6 +59,23 @@ func set_outfit(outfit: int) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/outfit", {"outfit": outfit}, true)
 
 
+## Resep tempa, pohon kemampuan, dan daftar pencapaian (roadmap no. 139, 145, 150).
+func progress_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/progress", null, true)
+
+
+func craft(recipe: String, qty := 1) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/craft", {"recipe": recipe, "qty": qty}, true)
+
+
+func learn_talent(talent: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/talent", {"talent": talent}, true)
+
+
+func claim_achievement(id: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/achievements/claim", {"achievement": id}, true)
+
+
 ## Beli rumah di Desa Awal (500 emas).
 func house_buy() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/house/buy", null, true)

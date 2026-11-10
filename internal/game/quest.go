@@ -279,6 +279,7 @@ func (s *State) ClaimQuest(id string) (QuestDef, error) {
 	s.Quests[i].Status = QuestClaimed
 	s.Gold += def.RewardGold
 	s.addRep(def.Giver, RepQuestBonus) // pemberi misi makin akrab (roadmap no. 59)
+	s.checkAchievements()
 	return def, nil
 }
 

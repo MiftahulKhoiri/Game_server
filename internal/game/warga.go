@@ -74,6 +74,7 @@ func (s *State) TalkTo(id string, now int64) error {
 		r.Last = now
 	}
 	s.Reputation[id] = r
+	s.checkAchievements()
 	return nil
 }
 

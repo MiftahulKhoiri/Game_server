@@ -46,6 +46,13 @@ type State struct {
 	Inventory []Item  `json:"inventory"`
 	// Hero adalah id pahlawan yang dipakai (lihat hero.go); kosong = pahlawan bawaan.
 	Hero string `json:"hero,omitempty"`
+	// Talent: peringkat pohon kemampuan; Done: pencapaian terbuka; Wins: total kemenangan; Crafted: total
+	// barang ditempa (roadmap no. 139, 145, 150). Semua hanya diubah server (progress.go).
+	Talent  map[string]int `json:"talent,omitempty"`
+	Done    []string       `json:"achievements,omitempty"`
+	Taken   []string       `json:"achievements_taken,omitempty"` // hadiahnya sudah diambil
+	Wins    int            `json:"wins,omitempty"`
+	Crafted int            `json:"crafted,omitempty"`
 	// House: sudah membeli rumah di Desa Awal (roadmap no. 127), hanya diubah server (house.go).
 	House bool `json:"house,omitempty"`
 	// Reputation: ingatan dan keakraban tiap warga (roadmap no. 58-59), hanya diubah server (warga.go).
@@ -197,6 +204,9 @@ func (s State) Validate() error {
 	}
 	if !s.Hutan.valid() {
 		return errors.New("kemajuan hutan tidak sah")
+	}
+	if !s.validTalents() || !s.validAchievements() {
+		return errors.New("data kemampuan/pencapaian tidak sah")
 	}
 	if !s.validReputation() {
 		return errors.New("data keakraban warga tidak sah")

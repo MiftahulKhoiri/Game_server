@@ -213,6 +213,17 @@ Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
 Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
 dikenal, `409` bila sedang bertarung. Nama skill di `log` pertarungan mengikuti pahlawan.
 
+### Kemajuan (v0.56.0): tempa, pohon kemampuan, pencapaian
+- `GET /v1/progress` → `{"recipes":[{id, needs:[{id,qty}]}], "talents":[{id,name,max,per,needs,need_rank}], "achievements":[{id,name,gold}]}`.
+- Bahan alam: setiap benda yang dihancurkan (`POST /v1/world/break`) memberi 1 bahan: pohon `kayu`, batu `bongkah_batu`, rumput `serat`.
+- `POST /v1/craft` `{"recipe":"pedang_besi","qty":1}` (hanya di desa/ruangannya) → Player. `422` bahan kurang / resep asing / di luar desa.
+- `POST /v1/talent` `{"talent":"tajam"}` → Player. Poin = level − 1 − peringkat terpakai. `state.talent` = {id: peringkat}.
+  Efek: tajam +2 serang, kulit_tebal +2 tahan, vitalitas +10 HP maks, mata_elang +4% kritis (butuh tajam 3),
+  hemat_tenaga −3 biaya jurus (butuh vitalitas 2), benteng +5 HP maks dan +1 tahan (butuh kulit_tebal 3).
+- Pencapaian terbuka otomatis (`state.achievements`), hadiah emas diambil lewat `POST /v1/achievements/claim`
+  `{"achievement":"level_5"}` (`state.achievements_taken`). `state.wins` = total kemenangan, `state.crafted` = total tempa.
+- Katalog barang (`GET /v1/shop`) membawa `rarity`: `biasa`, `langka`, `epik`.
+
 ### `POST /v1/house/buy`  (login, v0.55.0)
 Membeli rumah di Desa Awal (pintu 15,39) seharga 500 emas; pemain harus berada di `desa_awal`. `state.house` jadi
 `true`. `422` bila emas kurang, sudah punya, atau tidak di desa. Peta `rumah_pemain` hanya boleh disimpan sebagai

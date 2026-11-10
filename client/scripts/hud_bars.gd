@@ -47,6 +47,8 @@ var gold := 0
 var diamonds := 0
 var energy := 100
 var max_energy := 100
+var stamina := 1.0      # 0..1 (roadmap no. 135): bar hijau tipis di bawah energi
+var tired := false
 
 var _hp_show := 1.0    # persentase nyawa yang digambar (menyusul target dengan halus)
 var _hp_chip := 1.0    # bar putih yang menyusul lebih lambat saat nyawa berkurang
@@ -88,6 +90,14 @@ func set_energy(new_energy: int, new_max: int) -> void:
 		_en_show = energy_fraction()
 	set_process(true)
 	queue_redraw()
+
+
+func set_stamina(v: float, is_tired: bool) -> void:
+	if absf(v - stamina) > 0.002 or is_tired != tired:
+		stamina = v
+		tired = is_tired
+		set_process(true)
+		queue_redraw()
 
 
 func energy_fraction() -> float:
@@ -215,6 +225,11 @@ func _draw() -> void:
 		_rr(Rect2(BAR_X + 4.0, EN_Y + 2.0, maxf(0.0, ew - 8.0), EN_H * 0.34), Color(1, 1, 1, 0.35), 5.0)
 	_rr(er, Color(0, 0, 0, 0), 9.0, Color("fff2b8", 0.85), 1.5)
 	_text("%d/%d" % [energy, max_energy], er.get_center() + Vector2(0, -1.0), 14, Color.WHITE)
+	# --- stamina: bar tipis hijau di bawah energi (merah saat kehabisan napas) ---
+	var sr := Rect2(BAR_X, EN_Y + EN_H + 4.0, BAR_W, 6.0)
+	_rr(sr.grow(1.5), Color(0, 0, 0, 0.55), 4.0)
+	if stamina > 0.003:
+		_rr(Rect2(sr.position.x, sr.position.y, maxf(6.0, BAR_W * stamina), 6.0), Color("e05a4a") if tired else Color("6ee07a"), 3.0)
 	# --- berlian dan jumlahnya (di atas koin emas) ---
 	_diamond(Vector2(27.0, DIA_Y))
 	var dtxt := str(diamonds)

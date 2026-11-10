@@ -86,6 +86,10 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/players/me/outfit", s.auth(http.HandlerFunc(s.setOutfit)))
 	mux.Handle("POST /v1/warga/talk", s.auth(http.HandlerFunc(s.wargaTalk)))
 	mux.Handle("POST /v1/house/buy", s.auth(http.HandlerFunc(s.buyHouse)))
+	mux.Handle("GET /v1/progress", s.auth(http.HandlerFunc(s.progressInfo)))
+	mux.Handle("POST /v1/craft", s.auth(http.HandlerFunc(s.craft)))
+	mux.Handle("POST /v1/talent", s.auth(http.HandlerFunc(s.learnTalent)))
+	mux.Handle("POST /v1/achievements/claim", s.auth(http.HandlerFunc(s.claimAchievement)))
 	mux.Handle("POST /v1/allies/buy", s.auth(http.HandlerFunc(s.buyAlly)))
 	mux.Handle("POST /v1/allies/heal", s.auth(http.HandlerFunc(s.healAlly)))
 	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
@@ -574,7 +578,9 @@ func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*g
 func isRuleError(err error) bool {
 	for _, e := range []error{
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
-		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrUnknownOutfit, game.ErrUnknownWarga, game.ErrHouseOwned, game.ErrHouseLocked, game.ErrHouseFar, game.ErrNoPower,
+		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrUnknownOutfit, game.ErrUnknownWarga, game.ErrHouseOwned, game.ErrHouseLocked, game.ErrHouseFar,
+		game.ErrUnknownRecipe, game.ErrCraftFar, game.ErrUnknownTalent, game.ErrTalentMax, game.ErrTalentLocked, game.ErrNoTalentPoints, game.ErrBadQty,
+		game.ErrUnknownAchievement, game.ErrAchievementLocked, game.ErrAchievementTaken, game.ErrNoPower,
 		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax, game.ErrSoldiersCount,
 		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy, game.ErrNoKapten, game.ErrInventoryFull,
 	} {
@@ -674,6 +680,56 @@ func (s *Server) wargaTalk(w http.ResponseWriter, r *http.Request) {
 	}
 	now := s.clock().Unix()
 	s.applyToState(w, r, func(st *game.State) error { return st.TalkTo(req.Warga, now) })
+}
+
+// progressInfo: resep tempa, pohon kemampuan, dan daftar pencapaian (roadmap no. 139, 145, 150).
+func (s *Server) progressInfo(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"recipes": game.Recipes, "talents": game.Talents, "achievements": game.Achievements,
+	})
+}
+
+type craftRequest struct {
+	Recipe string `json:"recipe"`
+	Qty    int    `json:"qty"`
+}
+
+// craft menempa barang dari bahan (hanya di desa). Mengembalikan Player.
+func (s *Server) craft(w http.ResponseWriter, r *http.Request) {
+	var req craftRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	if req.Qty == 0 {
+		req.Qty = 1
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.Craft(req.Recipe, req.Qty) })
+}
+
+type talentRequest struct {
+	Talent string `json:"talent"`
+}
+
+// learnTalent menaikkan satu peringkat kemampuan dengan poin kemampuan. Mengembalikan Player.
+func (s *Server) learnTalent(w http.ResponseWriter, r *http.Request) {
+	var req talentRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.LearnTalent(req.Talent) })
+}
+
+type achievementRequest struct {
+	Achievement string `json:"achievement"`
+}
+
+// claimAchievement mengambil hadiah emas pencapaian yang sudah terbuka. Mengembalikan Player.
+func (s *Server) claimAchievement(w http.ResponseWriter, r *http.Request) {
+	var req achievementRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.ClaimAchievement(req.Achievement) })
 }
 
 // buyHouse membeli rumah di Desa Awal (roadmap no. 127). Mengembalikan Player.

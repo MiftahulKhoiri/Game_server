@@ -58,13 +58,14 @@ func TestBreakItems(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if st.itemQty(c.want) < 1 || len(loot.Items) != 1 || loot.Items[0].ID != c.want {
+		// Selain hadiah undian, tiap benda memberi satu bahan alam (v0.56.0).
+		if st.itemQty(c.want) < 1 || len(loot.Items) != 2 || loot.Items[0].ID != c.want || loot.Items[1].ID != materialOf(c.kind) {
 			t.Errorf("%s undian %d: dapat %+v, mau %s", c.kind, c.roll, loot.Items, c.want)
 		}
 	}
 	st := standAt(5, 5)
-	if loot, _ := st.BreakObjects(t0, []BreakTarget{{Kind: KindRumput, X: 5, Z: 5}}, always(99)); loot.Gold != 0 || len(loot.Items) != 0 || loot.Broken != 1 {
-		t.Errorf("undian 99 harus kosong: %+v", loot)
+	if loot, _ := st.BreakObjects(t0, []BreakTarget{{Kind: KindRumput, X: 5, Z: 5}}, always(99)); loot.Gold != 0 || len(loot.Items) != 1 || loot.Items[0].ID != SeratID || loot.Broken != 1 {
+		t.Errorf("undian 99: hanya bahan (serat): %+v", loot)
 	}
 }
 
