@@ -22,6 +22,7 @@ var _status: Label
 var _tabs: Array[Button] = []
 var _selected := 0
 var _busy := false
+var _outfit_label: Label
 
 
 func _init() -> void:
@@ -84,7 +85,7 @@ func _ready() -> void:
 		_tabs.append(b)
 
 	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(0, 420)
+	holder.custom_minimum_size = Vector2(0, 300)
 	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	holder.stretch = true
 	box.add_child(holder)
@@ -109,6 +110,20 @@ func _ready() -> void:
 
 	_use_btn = _button("Pakai pahlawan ini", _on_use)
 	box.add_child(_use_btn)
+	# Variasi pakaian (roadmap no. 14): gratis, langsung disimpan di server.
+	var orow := HBoxContainer.new()
+	orow.add_theme_constant_override("separation", 10)
+	box.add_child(orow)
+	var prev := _button("<", _on_outfit.bind(-1))
+	prev.custom_minimum_size = Vector2(110, 76)
+	orow.add_child(prev)
+	_outfit_label = _label("", 28)
+	_outfit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_outfit_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	orow.add_child(_outfit_label)
+	var nxt := _button(">", _on_outfit.bind(1))
+	nxt.custom_minimum_size = Vector2(110, 76)
+	orow.add_child(nxt)
 	box.add_child(_button("Tutup", func() -> void: closed.emit()))
 
 
@@ -161,6 +176,31 @@ func _on_use() -> void:
 	hero_changed.emit()
 
 
+func _outfit() -> int:
+	return int(Session.player.state.get("outfit", 0))
+
+
+func _on_outfit(step: int) -> void:
+	if _busy:
+		return
+	var n := posmod(_outfit() + step, Models.OUTFIT_NAMES.size())
+	_busy = true
+	if Session.offline:
+		Session.player.state.outfit = n
+	else:
+		var res: Dictionary = await Api.set_outfit(n)
+		if not res.ok:
+			_busy = false
+			_status.text = str(res.error)
+			_refresh()
+			return
+		Session.merge_server_player(res.data)
+	_busy = false
+	_status.text = "Pakaian: %s" % Models.OUTFIT_NAMES[n]
+	_refresh()
+	hero_changed.emit()
+
+
 func _refresh() -> void:
 	var st: Dictionary = Session.player.state
 	var cur := Heroes.current()
@@ -177,14 +217,17 @@ func _refresh() -> void:
 	var is_current: bool = str(hero.id) == str(cur.id)
 	_use_btn.disabled = is_current or _busy
 	_use_btn.text = "Sedang dipakai" if is_current else "Pakai pahlawan ini"
+	_outfit_label.text = "Pakaian: %s" % Models.OUTFIT_NAMES[clampi(_outfit(), 0, Models.OUTFIT_NAMES.size() - 1)]
 
 
 func _show_model(id: String) -> void:
 	if _preview_rig != null and _preview_rig.name == id:
+		Models.dress_current(_preview_rig)
 		return
 	if _preview_rig != null:
 		_preview_rig.queue_free()
 	_preview_rig = Models.create(id)
+	Models.dress_current(_preview_rig)
 	_preview_rig.position = Vector3(0, 0, 0)
 	_preview_holder.add_child(_preview_rig)
 

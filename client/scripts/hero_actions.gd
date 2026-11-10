@@ -65,6 +65,17 @@ const ACTIONS := {
 		"upperarm.l:x": [[0, 0], [0.15, -0.3], [0.3, 0.7], [0.65, 0.7], [0.9, 0], [1, 0]],
 		"spine:x": [[0, 0], [0.15, 0.2], [0.3, -0.1], [0.65, -0.1], [1, 0]],
 	}},
+	# Mengambil barang (roadmap no. 13): jongkok, tangan kanan meraih ke bawah, lalu berdiri.
+	"ambil": {"dur": 0.8, "k": {
+		"upperleg.r:x": [[0, 0], [0.3, -0.9], [0.6, -0.9], [1, 0]],
+		"upperleg.l:x": [[0, 0], [0.3, -0.5], [0.6, -0.5], [1, 0]],
+		"lowerleg.r:x": [[0, 0], [0.3, 1.3], [0.6, 1.3], [1, 0]],
+		"lowerleg.l:x": [[0, 0], [0.3, 1.1], [0.6, 1.1], [1, 0]],
+		"hips:x": [[0, 0], [0.3, 0.15], [0.6, 0.15], [1, 0]],
+		"spine:x": [[0, 0], [0.3, 0.55], [0.6, 0.55], [1, 0]],
+		"upperarm.r:x": [[0, 0], [0.3, 0.6], [0.45, 0.75], [0.6, 0.4], [1, 0]],
+		"lowerarm.r:x": [[0, 0], [0.3, -0.3], [0.6, -0.3], [1, 0]],
+	}},
 	# Angkat perisai di depan wajah dan tahan.
 	"tangkis": {"dur": 1.6, "k": {
 		"upperarm.l:x": [[0, 0], [0.08, 1.2], [0.92, 1.2], [1, 0]],
@@ -78,6 +89,10 @@ const AXIS := {"x": 0, "y": 1, "z": 2}
 var _name := ""
 var _t := 0.0
 var _dur := 1.0
+## Condong lari (roadmap no. 7), 0..1: badan condong ke depan dan lengan mengayun lebih tinggi.
+## Berlaku di atas klip jalan selama tidak ada gerakan lain.
+var lean := 0.0
+var _lean_t := 0.0
 
 
 func _ready() -> void:
@@ -98,7 +113,7 @@ func play(action: String) -> bool:
 ## Hentikan gerakan sekarang (tubuh kembali ke klip idle/jalan).
 func stop() -> void:
 	_name = ""
-	active = false
+	active = lean > 0.01
 
 
 func current() -> String:
@@ -106,7 +121,9 @@ func current() -> String:
 
 
 func _process(delta: float) -> void:
+	_lean_t += delta
 	if _name == "":
+		active = lean > 0.01
 		return
 	_t += delta
 	if _t >= _dur:
@@ -131,10 +148,11 @@ static func sample(keys: Array, u: float) -> float:
 
 
 func _process_modification() -> void:
-	if _name == "":
-		return
 	var sk := get_skeleton()
 	if sk == null:
+		return
+	if _name == "":
+		_apply_lean(sk)
 		return
 	var u := clampf(_t / _dur, 0.0, 1.0)
 	var keys: Dictionary = (ACTIONS[_name] as Dictionary).k
@@ -157,3 +175,15 @@ func _process_modification() -> void:
 		if i < 0:
 			continue
 		sk.set_bone_pose_rotation(i, sk.get_bone_pose_rotation(i) * Quaternion.from_euler(deltas[bone]))
+
+
+## Lari: tulang belakang condong ke depan, lengan mengayun lebih lebar mengikuti irama langkah.
+func _apply_lean(sk: Skeleton3D) -> void:
+	if lean <= 0.01:
+		return
+	var swing := sin(_lean_t * 11.0) * 0.45 * lean
+	for pair: Array in [["spine", Vector3(0.28 * lean, 0, 0)], ["upperarm.r", Vector3(swing, 0, 0)],
+			["upperarm.l", Vector3(-swing, 0, 0)], ["lowerarm.r", Vector3(-0.5 * lean, 0, 0)], ["lowerarm.l", Vector3(-0.5 * lean, 0, 0)]]:
+		var i := sk.find_bone(str(pair[0]))
+		if i >= 0:
+			sk.set_bone_pose_rotation(i, sk.get_bone_pose_rotation(i) * Quaternion.from_euler(pair[1]))

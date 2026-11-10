@@ -11,6 +11,12 @@ var pivots: Dictionary = {}
 var moving := false
 var anim_player: AnimationPlayer = null
 var base_y := 0.0
+## Kecepatan gerak sebenarnya (petak/detik), diisi pemanggil. Klip jalan diputar sebanding
+## kecepatan supaya kaki tidak meluncur (roadmap no. 6); di atas RUN_SPEED pahlawan berlari (no. 7).
+var move_speed := 0.0
+const WALK_REF := 1.5    # kecepatan (petak/detik) saat klip jalan diputar 1x
+const RUN_SPEED := 2.4   # mulai dari sini dianggap berlari
+const MAX_CLIP_SPEED := 2.3
 
 const HeroActions = preload("res://scripts/hero_actions.gd")
 
@@ -55,18 +61,29 @@ func play_attack() -> void:
 ## Gerakan tubuh pahlawan berangka KayKit (tinju, tebas, tusuk, tendang, tendang2, lompat, tangkis).
 ## Model lain (tanpa tulang itu) memakai klip serang biasa. Mengembalikan true bila gerakannya berjalan.
 func play_action(action: String) -> bool:
-	if not _actions_checked:
-		_actions_checked = true
-		for n in find_children("*", "Skeleton3D", true, false):
-			var sk := n as Skeleton3D
-			if sk != null and sk.find_bone("upperarm.r") >= 0:
-				_actions = HeroActions.new()
-				sk.add_child(_actions)
-				break
+	_ensure_actions()
 	if _actions == null:
 		play_attack()
 		return false
 	return _actions.call("play", action)
+
+
+## Pengubah tulang pahlawan (hero_actions.gd), dibuat sekali bila rangkanya punya tulang KayKit.
+func _ensure_actions() -> void:
+	if _actions_checked:
+		return
+	_actions_checked = true
+	for n in find_children("*", "Skeleton3D", true, false):
+		var sk := n as Skeleton3D
+		if sk != null and sk.find_bone("upperarm.r") >= 0:
+			_actions = HeroActions.new()
+			sk.add_child(_actions)
+			break
+
+
+## Sedang berlari (dipakai uji dan efek).
+func is_running() -> bool:
+	return moving and move_speed >= RUN_SPEED
 
 
 func stop_action() -> void:
@@ -176,6 +193,16 @@ func _drive_animation_player() -> void:
 		want = "walk"
 	if _anim_names.has(want) and anim_player.current_animation != _anim_names[want]:
 		anim_player.play(_anim_names[want])
+	# Jalan/lari: kecepatan klip mengikuti kecepatan gerak; selain itu kecepatan normal.
+	if want == "walk" and move_speed > 0.0:
+		anim_player.speed_scale = clampf(move_speed / WALK_REF, 0.6, MAX_CLIP_SPEED)
+	else:
+		anim_player.speed_scale = 1.0
+	var run_k := clampf((move_speed - RUN_SPEED) / (WALK_REF), 0.0, 1.0) if want == "walk" else 0.0
+	if run_k > 0.0 or _actions != null:
+		_ensure_actions()
+		if _actions != null:
+			_actions.set("lean", run_k)
 
 
 ## Model berangka yang tidak punya klip serang/terkena (hewan Quaternius hanya idle dan jalan):

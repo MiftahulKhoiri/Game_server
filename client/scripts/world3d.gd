@@ -79,6 +79,10 @@ var _map_id := Maps.DEFAULT_MAP
 var _pos := Vector2(5.5, 5.5)  # (x, z) di dunia
 var _yaw := 0.0  # arah hadap pemain
 var _cam_yaw := 0.0
+var _cam_target := Vector3.ZERO   # titik pandang kamera yang dihaluskan
+var _cam_ready := false
+const CAM_FOLLOW := 9.0           # makin besar makin rapat mengikuti
+const CAM_SNAP := 3.0             # petak: lebih jauh dari ini kamera langsung pindah
 var _cam_pitch := 0.62
 var _tile := Vector2i(-1, -1)
 var _step_acc := 0.0
@@ -141,6 +145,7 @@ var _kick_t := 0.0
 var _guard_t := 0.0      # sisa waktu perisai terangkat
 var _tap_t := -10.0      # kapan Perisai terakhir diketuk (detik, jam lokal)
 var _jump_t := 0.0       # sisa waktu lompat (0 = di tanah)
+var _dress_sig := ""     # pakaian + perlengkapan yang terakhir dipakaikan ke model
 var _shadow_disc: MeshInstance3D
 var _energy := 0.0
 var _boost_t := 0.0
@@ -618,6 +623,8 @@ func _process(delta: float) -> void:
 		_pos = Movement.move(_map_id, _pos, _dash_vel * step)
 	var moved := (_pos - before).length()
 	_set_moving(walking and moved > 0.0001)
+	if "move_speed" in _player and delta > 0.0:
+		_player.move_speed = moved / delta  # klip jalan/lari mengikuti kecepatan (roadmap no. 6-7)
 	if rig != null:
 		_apply_transform()
 	if moved > 0.0001:
@@ -718,6 +725,14 @@ func _apply_transform() -> void:
 	var dist := CAM_DIST * (0.95 if inside else 1.0)
 	if inside:
 		target.z -= 1.5  # pandangan condong ke dalam ruangan: meja kasir dan penjaga ikut terlihat
+	# Kamera mengikuti dengan halus (roadmap no. 19); lompatan jauh (pindah peta, dipulangkan) langsung.
+	var dt := get_process_delta_time()
+	if _cam_ready and _cam_target.distance_to(target) < CAM_SNAP and dt > 0.0:
+		_cam_target = _cam_target.lerp(target, minf(1.0, dt * CAM_FOLLOW))
+	else:
+		_cam_target = target
+		_cam_ready = true
+	target = _cam_target
 	var offset := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch)) * dist
 	_camera.position = target + offset
 	if _shake > 0.0:
@@ -1146,6 +1161,7 @@ func _open_chest(cid: String) -> void:
 			HeroFx.burst(self, node.position + Vector3(0, 0.5, 0), Color("ffd24a"), 26, 3.4)
 			HeroFx.ring(self, node.position, Color("ffd24a"), 2.0, 0.6)
 		_shake = 0.2
+		_rig_action("ambil")  # roadmap no. 13: pahlawan jongkok mengambil isi peti
 		_show_loot(res.data.loot, true)
 		_reopen_later(cid, 1800.0)
 	else:
@@ -1586,8 +1602,17 @@ func _open_from_menu(scene: String) -> void:
 	_open_screen(scene)
 
 
+## Ringkasan pakaian + perlengkapan; model pahlawan dipakaikan ulang bila berubah.
+func _dress_signature() -> String:
+	var st: Dictionary = Session.player.state
+	return "%s|%s" % [st.get("outfit", 0), str(st.get("equipment", {}))]
+
+
 func _refresh_hud() -> void:
 	_refresh_hutan()
+	if _player != null and _dress_signature() != _dress_sig:
+		_dress_sig = _dress_signature()
+		Models.dress_current(_player)
 	var st: Dictionary = Session.player.state
 	if _bars != null:
 		_bars.set_identity(str(Session.player.name), int(st.gold), Session.item_count("berlian"))
@@ -1690,6 +1715,8 @@ func _toggle_menu() -> void:
 func _make_player() -> void:
 	var old := _player
 	_player = Models.create(str(Heroes.current().id))
+	Models.dress_current(_player)  # pakaian + perlengkapan terlihat (roadmap no. 14-18)
+	_dress_sig = _dress_signature()
 	add_child(_player)
 	_shadow_disc = _add_shadow(_player, 0.3)
 	if _aura_guard == null:

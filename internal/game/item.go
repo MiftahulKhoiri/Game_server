@@ -26,6 +26,7 @@ const (
 const (
 	SlotWeapon = "weapon" // menambah serangan
 	SlotArmor  = "armor"  // menambah pertahanan
+	SlotHelmet = "helmet" // menambah pertahanan (roadmap no. 16)
 )
 
 // MaxBuyQty membatasi jumlah satu kali transaksi.
@@ -43,7 +44,7 @@ type ItemDef struct {
 	// Khusus perlengkapan (Kind == KindEquipment):
 	Slot    string `json:"slot,omitempty"`
 	Attack  int    `json:"attack,omitempty"`  // bonus serangan (SlotWeapon)
-	Defense int    `json:"defense,omitempty"` // bonus pertahanan (SlotArmor)
+	Defense int    `json:"defense,omitempty"` // bonus pertahanan (SlotArmor / SlotHelmet)
 }
 
 // Daftar barang. Barang baru: tambahkan satu baris di sini lalu (opsional)
@@ -65,6 +66,8 @@ var items = []ItemDef{
 	{ID: "pedang_rune", Name: "Pedang Rune", Kind: KindEquipment, Slot: SlotWeapon, Attack: 10}, // hadiah misi, tidak dijual
 	{ID: "baju_kulit", Name: "Baju Kulit", Kind: KindEquipment, BuyPrice: 80, SellPrice: 25, Shop: ShopGear, Slot: SlotArmor, Defense: 2},
 	{ID: "zirah_besi", Name: "Zirah Besi", Kind: KindEquipment, BuyPrice: 240, SellPrice: 80, Shop: ShopGear, Slot: SlotArmor, Defense: 4},
+	{ID: "helm_kulit", Name: "Helm Kulit", Kind: KindEquipment, BuyPrice: 60, SellPrice: 20, Shop: ShopGear, Slot: SlotHelmet, Defense: 1},
+	{ID: "helm_besi", Name: "Helm Besi", Kind: KindEquipment, BuyPrice: 180, SellPrice: 60, Shop: ShopGear, Slot: SlotHelmet, Defense: 3},
 }
 
 // DiamondGold: nilai satu Berlian, barang paling berharga. Dijual seharga ini, atau ditukar (barter) dengan barang apa
