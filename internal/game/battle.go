@@ -55,6 +55,7 @@ var CooldownMs = map[string]int64{
 	ActionSkill2: 14000,
 	ActionPotion: 2500,
 	ActionFlee:   3000,
+	ActionDodge:  2500,
 }
 
 // Kesalahan aturan pertarungan.
@@ -82,6 +83,12 @@ type Battle struct {
 	GuardPress  int64            `json:"guard_press,omitempty"`
 	GuardUntil  int64            `json:"guard_until,omitempty"`
 	ShieldUntil int64            `json:"shield_until,omitempty"`
+
+	// Roadmap no. 154-163: gaya senjata, kombo, dan menghindar.
+	AttackMs   int64 `json:"attack_ms,omitempty"`   // isi ulang serangan biasa pemain ini (gaya senjata)
+	ComboN     int   `json:"combo_n,omitempty"`     // serangan biasa berturut-turut
+	ComboUntil int64 `json:"combo_until,omitempty"` // batas waktu serangan berikutnya agar kombo berlanjut
+	DodgePress int64 `json:"dodge_press,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -101,12 +108,14 @@ type BattleView struct {
 	CooldownMax     map[string]int64 `json:"cooldown_max"`      // cooldown penuh per aksi (ms)
 	GuardMs         int64            `json:"guard_ms"`          // sisa jendela bertahan
 	ShieldMs        int64            `json:"shield_ms"`         // sisa Perisai Cahaya
+	Combo           int              `json:"combo"`             // serangan biasa berturut-turut saat ini
+	ComboMs         int64            `json:"combo_ms"`          // sisa waktu agar kombo berlanjut
 }
 
 // Event adalah satu kejadian untuk dianimasikan klien.
 type Event struct {
 	Who  string `json:"who"`            // "player", "enemy", atau "ally" (pendamping)
-	Kind string `json:"kind"`           // attack, crit, skill1, skill2, guard, potion, hit, perfect, shield
+	Kind string `json:"kind"`           // attack, crit, combo, skill1, skill2, guard, dodge, potion, hit, perfect, shield, miss
 	Dmg  int    `json:"dmg,omitempty"`  // kerusakan yang diterima target
 	Heal int    `json:"heal,omitempty"` // HP yang dipulihkan
 	Hero string `json:"hero,omitempty"` // id pahlawan pendamping (Who == "ally")
@@ -135,13 +144,19 @@ type Result struct {
 // StartBattle memulai pertarungan melawan musuh acak yang cocok untuk level pemain.
 // now adalah jam server (ms).
 func StartBattle(p *Player, rng Rand, now int64) Battle {
-	return newBattle(PickEnemy(p.State.Level, p.State.Map, rng), now)
+	return styled(p, newBattle(PickEnemy(p.State.Level, p.State.Map, rng), now))
+}
+
+// styled mencatat isi ulang serangan biasa sesuai gaya senjata pahlawan (untuk View).
+func styled(p *Player, b Battle) Battle {
+	b.AttackMs = p.State.cooldown(ActionAttack)
+	return b
 }
 
 // StartBattleWith seperti StartBattle, tetapi memakai musuh `want` (id) bila boleh muncul di
 // peta pemain pada levelnya. Dipakai saat pemain menyentuh musuh yang berkeliaran di peta.
 func StartBattleWith(p *Player, want string, rng Rand, now int64) Battle {
-	return newBattle(PickEnemyFor(p.State.Level, p.State.Map, want, rng), now)
+	return styled(p, newBattle(PickEnemyFor(p.State.Level, p.State.Map, want, rng), now))
 }
 
 // ErrNoBoss berarti tidak ada bos di petak tempat pemain berdiri.
@@ -155,9 +170,9 @@ func StartBossBattle(p *Player, now int64) (Battle, error) {
 		if err != nil {
 			return Battle{}, err
 		}
-		return newBattle(he, now), nil
+		return styled(p, newBattle(he, now)), nil
 	}
-	return newBattle(e, now), nil
+	return styled(p, newBattle(e, now)), nil
 }
 
 func newBattle(e Enemy, now int64) Battle {
@@ -204,13 +219,20 @@ func (b *Battle) View(now int64) BattleView {
 		AllyNextMs: left(b.NextAllyMs), AllyIntervalMs: AllyIntervalMs,
 		Cooldowns: map[string]int64{}, CooldownMax: map[string]int64{},
 		GuardMs: left(b.GuardUntil), ShieldMs: left(b.ShieldUntil),
+		Combo: b.ComboN, ComboMs: left(b.ComboUntil),
 	}
 	if e, ok := EnemyByID(b.EnemyID); ok {
 		v.EnemyIntervalMs = enemyInterval(e)
 	}
 	for a, cd := range CooldownMs {
+		if a == ActionAttack && b.AttackMs > 0 {
+			cd = b.AttackMs
+		}
 		v.CooldownMax[a] = cd
 		v.Cooldowns[a] = left(b.Ready[a])
+	}
+	if v.Combo > 0 && v.ComboMs == 0 {
+		v.Combo = 0
 	}
 	return v
 }
@@ -237,6 +259,8 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		return Result{}, ErrBadAction
 	}
 	st := &p.State
+	b.AttackMs = st.cooldown(ActionAttack)
+	style := st.Style()
 	res := Result{Status: StatusOngoing}
 	logf := func(format string, args ...any) { res.Log = append(res.Log, fmt.Sprintf(format, args...)) }
 
@@ -251,18 +275,26 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		if b.Ready == nil {
 			b.Ready = map[string]int64{}
 		}
-		b.Ready[action] = now + CooldownMs[action]
+		b.Ready[action] = now + st.cooldown(action)
 	}
 	strike := func(power int, kind string) bool {
-		dmg, crit := rollDamage(power, e.Defense, rng, st.CritPercent())
+		dmg, crit := rollDamage(power, style.styleDefense(e.Defense), rng, st.CritPercent()+style.CritBonus)
+		if kind == "combo" {
+			dmg = dmg * ComboPct / 100
+		}
 		b.EnemyHP -= dmg
-		if crit && kind == "attack" {
-			kind = "crit"
+		if crit && (kind == "attack" || kind == "combo") {
+			if kind == "combo" {
+				logf("Kombo kritis!")
+			}
+			kind = map[string]string{"attack": "crit", "combo": "combo"}[kind]
 		}
 		res.Events = append(res.Events, Event{Who: "player", Kind: kind, Dmg: dmg})
 		switch {
 		case kind == "skill1":
 			logf("%s! %s kehilangan %d HP.", st.HeroDef().Skill1, b.EnemyName, dmg)
+		case kind == "combo":
+			logf("Pukulan Kombo! %s kehilangan %d HP.", b.EnemyName, dmg)
 		case crit:
 			logf("Serangan kritis! %s kehilangan %d HP.", b.EnemyName, dmg)
 		default:
@@ -278,11 +310,27 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 
 	switch action {
 	case ActionAttack:
+		// Kombo: lanjut bila serangan ini datang sebelum batas waktu kombo.
+		if b.ComboN > 0 && now <= b.ComboUntil {
+			b.ComboN++
+		} else {
+			b.ComboN = 1
+		}
 		cd()
+		b.ComboUntil = b.Ready[ActionAttack] + ComboWindowMs
+		kind := "attack"
+		if b.ComboN >= ComboHits {
+			kind, b.ComboN = "combo", 0
+		}
 		st.gainEnergy(EnergyPerAttack)
-		if strike(st.Attack(), "attack") {
+		if strike(st.Attack()*style.DamagePct/100, kind) {
 			return res, nil
 		}
+	case ActionDodge:
+		cd()
+		b.DodgePress = now
+		res.Events = append(res.Events, Event{Who: "player", Kind: "dodge"})
+		logf("Kamu melompat menghindar.")
 	case ActionSkill1:
 		if !st.spendEnergy(st.skillCost(Skill1Energy)) {
 			return Result{}, ErrNoEnergy
@@ -389,7 +437,10 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			b.EnemyHP += healed
 		}
 		guarded := t >= b.GuardPress-LagGraceMs && t <= b.GuardUntil && b.GuardUntil > 0
+		dodged := b.DodgePress > 0 && t >= b.DodgePress-LagGraceMs && t <= b.DodgePress+DodgeMs
 		switch {
+		case dodged:
+			dmg, kind = 0, "miss"
 		case guarded && t-b.GuardPress <= PerfectMs:
 			dmg, kind = 0, "perfect"
 			next += PerfectDelayMs
@@ -403,7 +454,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		// Setiap serangan musuh ketiga diarahkan ke pendamping sehat pertama.
 		// Ini deterministik, tidak mengubah urutan RNG atau perilaku akun tanpa pendamping.
 		targetAlly := ""
-		if kind != "perfect" && (b.Round-1)%3 == 0 {
+		if kind != "perfect" && kind != "miss" && (b.Round-1)%3 == 0 {
 			for _, id := range st.Party {
 				if hp, _, ok := st.AllyHealth(id); ok && hp > 0 {
 					targetAlly = id
@@ -430,6 +481,9 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		st.HP -= dmg
+		if dmg > 0 && kind != "guard" && kind != "shield" {
+			b.ComboN = 0 // terkena serangan telak memutus kombo
+		}
 		ev := Event{Who: "enemy", Kind: kind, Dmg: dmg}
 		if sp != "" {
 			ev.Skill, ev.Heal = e.SpecialName, healed
@@ -438,6 +492,8 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		switch {
 		case kind == "perfect":
 			res.Log = append(res.Log, fmt.Sprintf("Tangkisan sempurna! Serangan %s tidak berefek.", b.EnemyName))
+		case kind == "miss":
+			res.Log = append(res.Log, fmt.Sprintf("Kamu menghindar! Serangan %s meleset.", b.EnemyName))
 		case sp != "" && healed > 0:
 			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s: -%d HP, ia pulih %d HP.", b.EnemyName, e.SpecialName, dmg, healed))
 		case sp != "":

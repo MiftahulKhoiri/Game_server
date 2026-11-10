@@ -148,7 +148,7 @@ func battle_start(boss := false, enemy := "") -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/start", body, true)
 
 
-## action: "attack" | "defend" | "skill1" | "skill2" | "potion" | "flee"
+## action: "attack" | "defend" | "skill1" | "skill2" | "potion" | "flee" | "dodge"
 func battle_action(action: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/battle/action", {"action": action}, true)
 

@@ -22,8 +22,8 @@ func TestHeroDefaults(t *testing.T) {
 		}
 		seen[h.ID] = true
 	}
-	if len(Heroes) != 4 {
-		t.Errorf("harus ada 4 pahlawan, dapat %d", len(Heroes))
+	if len(Heroes) != 5 {
+		t.Errorf("harus ada 5 pahlawan, dapat %d", len(Heroes))
 	}
 }
 

@@ -368,7 +368,8 @@ func _build_ui() -> void:
 		var hb := _button(str(Heroes.LIST[i].short), _select_hero.bind(i), 0, 72)
 		hb.toggle_mode = true
 		hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		hb.add_theme_font_size_override("font_size", 24)
+		hb.add_theme_font_size_override("font_size", 24 if Heroes.LIST.size() <= 4 else 20)
+		hb.clip_text = true
 		row.add_child(hb)
 		_hero_tabs.append(hb)
 	var holder := SubViewportContainer.new()

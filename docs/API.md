@@ -148,12 +148,27 @@ Body: `{"action": "attack"}`. Aksi dan cooldown:
 
 | Aksi | Efek | Cooldown |
 |------|------|----------|
-| `attack` | serangan biasa (10% kritis) | 0,9 d |
+| `attack` | serangan biasa (10% kritis); serangan ke-3 berturut-turut = **Pukulan Kombo** x1,5 | menurut gaya senjata (pedang 0,9 d) |
 | `defend` | jendela bertahan 1,2 d: serangan musuh yang tiba di dalamnya dikurangi separuh; bila tiba ≤ 0,45 d setelah ditekan = **tangkisan sempurna** (0 kerusakan, serangan musuh berikutnya tertunda 0,6 d) | 1,8 d |
 | `skill1` | Tebasan Kuat: kerusakan 2,2x serangan | 5 d |
 | `skill2` | Perisai Cahaya: pulihkan 25% HP maks dan hanya menerima 30% kerusakan selama 3 d | 14 d |
 | `potion` | pulihkan 15 HP (memakai 1 ramuan) | 2,5 d |
 | `flee` | peluang 60% kabur | 3 d |
+| `dodge` | menghindar (v0.57.0): serangan musuh yang tiba ≤ 0,5 d setelah ditekan meleset (`kind: "miss"`) | 2,5 d |
+
+**Gaya senjata (v0.57.0)** menurut pahlawan aktif, dihitung server:
+
+| Gaya | Pahlawan | Isi ulang `attack` | Kerusakan | Lainnya |
+|------|----------|--------------------|-----------|---------|
+| `pedang` | Ksatria | 0,9 d | 100% | — |
+| `kapak` | Pendekar Kapak | 1,2 d | 128% | — |
+| `busur` | Pemanah | 0,95 d | 100% | +8% kritis |
+| `tombak` | Pendekar Tombak | 0,75 d | 92% | — |
+| `sihir` | Penyihir | 1,05 d | 95% | abaikan 50% pertahanan musuh |
+
+**Kombo:** tiap `attack` yang dikirim paling lambat 1,5 d setelah isi ulang serangan sebelumnya selesai
+menambah hitungan; serangan ke-3 menjadi `kind: "combo"` (x1,5) lalu hitungan mulai lagi. Terkena serangan
+musuh secara telak (bukan ditahan/perisai) memutus kombo.
 
 Serangan musuh: tiap 2 d (bos 1,6 d). Server memberi kelonggaran jaringan 250 ms: aksi
 dianggap terjadi sedikit lebih awal.
@@ -174,7 +189,7 @@ Respons:
              "enemy_next_ms": 1350, "enemy_interval_ms": 2000,
              "cooldowns": {"attack": 900, "defend": 0, "skill1": 0, "skill2": 0, "potion": 0, "flee": 0},
              "cooldown_max": {"attack": 900, "defend": 1800, "skill1": 5000, "skill2": 14000, "potion": 2500, "flee": 3000},
-             "guard_ms": 0, "shield_ms": 0},
+             "guard_ms": 0, "shield_ms": 0, "combo": 1, "combo_ms": 2400},
   "log": ["Kamu menyerang Ayam Liar: -6 HP.", "Ayam Liar menyerang: -2 HP."],
   "events": [{"who": "player", "kind": "attack", "dmg": 6}, {"who": "enemy", "kind": "hit", "dmg": 2}],
   "rewards": null,
@@ -184,7 +199,9 @@ Respons:
 
 Semua waktu di `battle` adalah **sisa milidetik relatif sekarang** (jam klien tidak perlu sama
 dengan jam server). `events` untuk animasi: `who` `player`/`enemy`; `kind` `attack`, `crit`,
-`skill1`, `skill2`, `guard`, `potion` (pemain) atau `hit`, `guard`, `shield`, `perfect` (musuh).
+`combo`, `skill1`, `skill2`, `guard`, `dodge`, `potion` (pemain) atau `hit`, `guard`, `shield`, `perfect`,
+`miss` (musuh; v0.57.0). `cooldown_max.attack` mengikuti gaya senjata. `combo` = serangan berturut-turut saat
+ini, `combo_ms` = sisa waktu agar kombo berlanjut.
 
 Kemampuan khusus musuh (v0.53.0): serangan musuh ke-4 (bos: ke-3) memakai kemampuannya bila punya. Kejadiannya
 tetap `{"who":"enemy","kind":"hit"|"guard"|"shield",...}` ditambah `"skill":"Terkaman"` dan, untuk Kulit Batu /
@@ -201,13 +218,13 @@ Daftar musuh dan rumusnya ada di [GAME_DESIGN](GAME_DESIGN.md).
 
 ## Pahlawan (v0.19.0)
 
-Pemain memilih pahlawan (penampilan model 3D + nama skill; statistik sama untuk semua).
+Pemain memilih pahlawan (penampilan model 3D, nama skill, dan gaya senjata; statistik dasar sama untuk semua).
 `state.hero` berisi id pilihan (`ksatria` bawaan; akun lama tanpa isian dianggap `ksatria`).
 Klien **tidak** bisa mengubahnya lewat `PUT /v1/players/me/save` (hanya posisi yang diterima).
 
 ### `GET /v1/heroes`  (login)
-`200 {"heroes": [{"id", "name", "weapon", "skill1", "skill2", "price"}], "default": "ksatria"}`.
-Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
+`200 {"heroes": [{"id", "name", "weapon", "skill1", "skill2", "price", "style"}], "default": "ksatria"}`.
+Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`, `penyihir` (v0.57.0).
 
 ### `POST /v1/players/me/hero`  (login)
 Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
