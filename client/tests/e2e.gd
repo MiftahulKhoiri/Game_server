@@ -327,6 +327,17 @@ func _run() -> void:
 	if hme.ok:
 		Session.merge_server_player(hme.data)
 	_check(hme.ok and Session.player.state.hero == "ksatria", "pahlawan dikembalikan ke Ksatria")
+	# Roadmap no. 14: variasi pakaian.
+	var of: Dictionary = await Api.set_outfit(2)
+	_check(of.ok and int(of.data.state.get("outfit", 0)) == 2, "server menyimpan pakaian pilihan (outfit 2)")
+	var ofbad: Dictionary = await Api.set_outfit(9)
+	_check(not ofbad.ok and ofbad.status == 422, "pakaian di luar rentang ditolak 422")
+	if of.ok:
+		Session.merge_server_player(of.data)
+		_check(int(Session.player.state.outfit) == 2, "pakaian ikut digabung ke data lokal")
+	var of0: Dictionary = await Api.set_outfit(0)
+	if of0.ok:
+		Session.merge_server_player(of0.data)
 
 	print("== toko")
 	var shop_list: Dictionary = await Api.shop_get()
@@ -604,6 +615,40 @@ func _run() -> void:
 			hero_bad.append(hid)
 		hn.free()
 	_check(hero_bad.is_empty(), "model pahlawan bertekstur dengan bahan toon + cahaya tepi %s" % str(hero_bad))
+	# Roadmap no. 14-18: pakaian dan perlengkapan terlihat di model.
+	var dk: Node3D = Models.create("ksatria")
+	Models.dress(dk, 1, {"weapon": "pedang_rune", "armor": "zirah_besi", "helmet": "helm_besi"})
+	var helm_bawaan := dk.find_child("Knight_Helmet", true, false) as Node3D
+	var helm_baru := dk.find_child("helm", true, false)
+	var bahu := dk.find_children("bahu", "", true, false)
+	var pedang := dk.find_child("1H_Sword", true, false) as MeshInstance3D
+	var jubah := dk.find_child("Knight_Cape", true, false) as MeshInstance3D
+	var pm := pedang.get_surface_override_material(0) as StandardMaterial3D if pedang != null else null
+	var jm := jubah.get_surface_override_material(0) as StandardMaterial3D if jubah != null else null
+	_check(helm_bawaan != null and not helm_bawaan.visible and helm_baru != null, "helm dipakai: helm bawaan disembunyikan, helm baru terpasang")
+	_check(bahu.size() == 2, "zirah besi memasang 2 bantalan bahu (%d)" % bahu.size())
+	_check(pm != null and pm.emission_enabled, "pedang rune berpendar")
+	_check(jm != null and jm.albedo_color.r > jm.albedo_color.b, "pakaian Merah Kerajaan mewarnai jubah")
+	Models.dress(dk, 0, {"weapon": "", "armor": "", "helmet": ""})
+	_check(helm_bawaan.visible and dk.find_child("helm", true, false) == null and not pm.emission_enabled
+		and dk.find_children("bahu", "", true, false).is_empty(), "lepas semua: kembali ke tampilan asli")
+	_check(jm.albedo_color.is_equal_approx(jm.get_meta("base_col")), "pakaian Asli memakai warna tekstur asli")
+	dk.free()
+	# Roadmap no. 6-7, 13: klip jalan mengikuti kecepatan, lari condong, aksi ambil.
+	var rk: Node3D = Models.create("pemanah")
+	rk.moving = true
+	rk.move_speed = 1.0
+	rk._process(0.016)
+	var pelan: float = rk.anim_player.speed_scale
+	rk.move_speed = 3.3
+	rk._process(0.016)
+	_check(pelan < 1.0 and rk.anim_player.speed_scale > 2.0 and rk.is_running(), "klip jalan mengikuti kecepatan (%.2f -> %.2f), lari terdeteksi" % [pelan, rk.anim_player.speed_scale])
+	_check(rk._actions != null and float(rk._actions.get("lean")) > 0.5, "lari: badan condong ke depan")
+	rk.moving = false
+	rk._process(0.016)
+	_check(is_equal_approx(rk.anim_player.speed_scale, 1.0) and float(rk._actions.get("lean")) == 0.0, "diam: klip kembali kecepatan normal tanpa condong")
+	_check(rk.play_action("ambil"), "aksi ambil barang tersedia")
+	rk.free()
 	for mdl in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
 		var rm: Node3D = Models.create(mdl)
 		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
