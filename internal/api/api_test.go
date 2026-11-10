@@ -359,7 +359,7 @@ func TestBattleActionErrors(t *testing.T) {
 		t.Errorf("aksi asing harus 422, dapat %d", code)
 	}
 	// Semua aksi real-time dikenali dan hasilnya memuat tampilan cooldown + kejadian.
-	for _, a := range []string{"defend", "skill1", "skill2"} {
+	for _, a := range []string{"defend", "dodge", "skill1", "skill2"} {
 		code, br, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": a})
 		if code != http.StatusOK {
 			t.Fatalf("%s: %d %s", a, code, d)
@@ -732,7 +732,7 @@ func TestHeroSelection(t *testing.T) {
 		Default string         `json:"default"`
 	}
 	_ = json.Unmarshal(data, &list)
-	if resp.StatusCode != http.StatusOK || len(list.Heroes) != 4 || list.Default != "ksatria" {
+	if resp.StatusCode != http.StatusOK || len(list.Heroes) != 5 || list.Default != "ksatria" {
 		t.Fatalf("daftar pahlawan: %d %s", resp.StatusCode, data)
 	}
 

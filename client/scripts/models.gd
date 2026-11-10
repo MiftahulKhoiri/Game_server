@@ -17,7 +17,10 @@ const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "r
 const DEFAULT_HEIGHT := 1.0
 
 ## Pahlawan yang bisa dipilih pemain (semua dari KayKit, berangka + animasi sendiri). Urutan = urutan di layar profil.
-const HEROES := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak"]
+const HEROES := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "penyihir"]
+## Pahlawan yang memakai berkas GLB lain (roadmap no. 158): Penyihir = model Mage KayKit (sama dengan
+## berkas Nenek Penjual), diberi tongkat sihir buatan sendiri, jadi tidak perlu berkas/APK baru.
+const HERO_GLB := {"penyihir": "nenek_penjual"}
 
 
 static func is_hero(id: String) -> bool:
@@ -26,7 +29,7 @@ static func is_hero(id: String) -> bool:
 
 ## Skala akhir model terhadap petak (disetel supaya tinggi mendekati 1 petak).
 const SCALES := {
-	"ksatria": 0.42, "pendekar_kapak": 0.44, "pemanah": 0.42, "pendekar_tombak": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
+	"ksatria": 0.42, "pendekar_kapak": 0.44, "pemanah": 0.42, "pendekar_tombak": 0.42, "penyihir": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
 	"goblin": 0.58, "goblin_penjaga": 0.68, "raja_goblin": 0.95, "ogre_batu": 1.1,
 	"golem_kerikil": 1.0, "golem_lava": 1.1,
 	"tikus_sawah": 0.8, "babi_hutan": 0.95, "serigala_hutan": 0.95,
@@ -110,7 +113,7 @@ static func create(id: String) -> Node3D:
 		_tint(base, v.tint)
 		base.name = id
 		return base
-	var path := MODEL_DIR + id + ".glb"
+	var path := MODEL_DIR + str(HERO_GLB.get(id, id)) + ".glb"
 	var node: Node3D = null
 	var from_glb := false
 	if ResourceLoader.exists(path):
@@ -127,7 +130,7 @@ static func create(id: String) -> Node3D:
 
 
 static func has_glb(id: String) -> bool:
-	return ResourceLoader.exists(MODEL_DIR + id + ".glb")
+	return ResourceLoader.exists(MODEL_DIR + str(HERO_GLB.get(id, id)) + ".glb")
 
 
 # --- GLB pengganti ---
@@ -313,6 +316,8 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 	_meshes(sk, Transform3D.IDENTITY, list)
 	var head_box := AABB()
 	var chest_y := 0.0
+	var has_weapon := false
+	var is_mage := false
 	for pair: Array in list:
 		var mi := pair[0] as MeshInstance3D
 		var nm := str(mi.name)
@@ -328,6 +333,10 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 		_paint(mi, c, glow)
 		if _ends_with_any(nm, HEADGEAR_PARTS):
 			mi.visible = helmet.is_empty()  # helm yang dipakai menggantikan topi/helm bawaan
+		if _ends_with_any(nm, WEAPON_PARTS):
+			has_weapon = true
+		if nm.begins_with("Mage_"):
+			is_mage = true
 		if nm.ends_with("_Head"):
 			head_box = (pair[1] as Transform3D) * mi.get_aabb()
 		if nm.ends_with("_Body"):
@@ -338,6 +347,49 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 	if armor.get("pads", false) and chest_y > 0.0:
 		for side: String in ["l", "r"]:
 			_attach(sk, "upperarm." + side, _pad_mesh(armor.tint as Color))
+	if is_mage and not has_weapon:
+		var w_tint: Color = weapon.get("tint", Color(1, 1, 1))
+		_attach(sk, "handslot.r", _staff_mesh(weapon.get("glow", Color("b77dff")) as Color, w_tint))
+
+
+## Tongkat sihir Penyihir (roadmap no. 158): batang kayu, cincin logam, dan bola kristal berpendar.
+## Dipasang di tulang handslot.r (sumbu Y tulang = arah genggaman, seperti senjata KayKit).
+static func _staff_mesh(glow: Color, tint: Color) -> Node3D:
+	var root := Node3D.new()
+	root.name = "tongkat"
+	var rod := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.045
+	cm.bottom_radius = 0.06
+	cm.height = 2.3
+	cm.radial_segments = 8
+	rod.mesh = cm
+	rod.material_override = _mat(Color("7a5232") * tint)
+	rod.position = Vector3(0, 0.55, 0)
+	root.add_child(rod)
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.07
+	tm.outer_radius = 0.13
+	ring.mesh = tm
+	ring.material_override = _mat(Color("d9b45a"), true)
+	ring.position = Vector3(0, 1.62, 0)
+	root.add_child(ring)
+	var orb := MeshInstance3D.new()
+	orb.name = "bola"
+	var sm := SphereMesh.new()
+	sm.radius = 0.17
+	sm.height = 0.34
+	orb.mesh = sm
+	var om := _mat(glow)
+	om.rim_enabled = false
+	om.emission_enabled = true
+	om.emission = glow
+	om.emission_energy_multiplier = 0.7
+	orb.material_override = om
+	orb.position = Vector3(0, 1.82, 0)
+	root.add_child(orb)
+	return root
 
 
 ## Tempelkan `part` (posisi dalam ruang rangka) ke tulang `bone` supaya ikut bergerak.

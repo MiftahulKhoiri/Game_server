@@ -63,6 +63,37 @@ const KICKS := [
 	{"nama": "Tendangan dobel", "anim": "tendang2", "reach": 1.7, "cos": 0.0, "dmg": 1.7, "solid": 2, "grass": 4, "cd": 0.95, "hits": [0.14, 0.62], "dash": 0.3},
 ]
 const KICK_WINDOW := 1.0
+## Kombo per gaya senjata (roadmap no. 155-158). "pedang" memakai COMBO di atas. `proj` = jenis peluru
+## (panah/sihir) yang terbang ke sasaran; `wave` = gelombang kejut di tanah; `swoosh` = warna jejak senjata.
+const STYLE_COMBOS := {
+	"kapak": [
+		{"nama": "Ayunan kapak", "anim": "tebas", "reach": 2.0, "cos": -0.4, "dmg": 2.0, "solid": 2, "grass": 5, "cd": 0.85, "len": 1.7, "roll": 0.8, "dash": 0.15, "hits": [0.3], "swoosh": Color("ffd0a0")},
+		{"nama": "Ayunan balik", "anim": "tebas", "reach": 2.0, "cos": -0.4, "dmg": 2.0, "solid": 2, "grass": 5, "cd": 0.85, "len": 1.7, "roll": -0.8, "dash": 0.15, "hits": [0.68], "swoosh": Color("ffd0a0")},
+		{"nama": "Hantaman kapak", "anim": "hantam", "reach": 2.3, "cos": -1.0, "dmg": 3.6, "solid": 3, "grass": 8, "cd": 1.0, "len": 1.2, "roll": 1.5, "dash": 0.25, "hits": [0.45], "wave": true, "swoosh": Color("ffb070")},
+	],
+	"tombak": [
+		{"nama": "Tusuk cepat", "anim": "tusuk", "reach": 2.9, "cos": 0.6, "dmg": 1.3, "solid": 1, "grass": 2, "cd": 0.42, "len": 2.6, "roll": 0.0, "dash": 0.3, "hits": [0.27], "swoosh": Color("e0f0ff")},
+		{"nama": "Tusuk dobel", "anim": "tusuk", "reach": 2.9, "cos": 0.6, "dmg": 1.3, "solid": 1, "grass": 2, "cd": 0.42, "len": 2.6, "roll": 0.0, "dash": 0.3, "hits": [0.27], "swoosh": Color("e0f0ff")},
+		{"nama": "Sapuan tombak", "anim": "tebas", "reach": 3.0, "cos": -0.5, "dmg": 2.4, "solid": 2, "grass": 7, "cd": 0.8, "len": 2.6, "roll": 0.6, "dash": 0.2, "hits": [0.3, 0.68], "swoosh": Color("c8e4ff")},
+	],
+	"busur": [
+		{"nama": "Tembak", "anim": "bidik", "reach": 6.0, "cos": 0.75, "dmg": 1.3, "solid": 1, "grass": 0, "cd": 0.5, "dash": 0.0, "hits": [0.22], "proj": "panah"},
+		{"nama": "Tembak", "anim": "bidik", "reach": 6.0, "cos": 0.75, "dmg": 1.3, "solid": 1, "grass": 0, "cd": 0.5, "dash": 0.0, "hits": [0.22], "proj": "panah"},
+		{"nama": "Tembak dobel", "anim": "bidik", "reach": 6.0, "cos": 0.75, "dmg": 1.5, "solid": 1, "grass": 0, "cd": 0.7, "dash": -0.15, "hits": [0.2, 0.42], "proj": "panah"},
+	],
+	"sihir": [
+		{"nama": "Bola sihir", "anim": "rapal", "reach": 5.0, "cos": 0.7, "dmg": 1.4, "solid": 1, "grass": 2, "cd": 0.6, "dash": 0.0, "hits": [0.33], "proj": "sihir"},
+		{"nama": "Bola sihir", "anim": "rapal", "reach": 5.0, "cos": 0.7, "dmg": 1.4, "solid": 1, "grass": 2, "cd": 0.6, "dash": 0.0, "hits": [0.33], "proj": "sihir"},
+		{"nama": "Ledakan sihir", "anim": "rapal", "reach": 5.0, "cos": 0.7, "dmg": 3.2, "solid": 2, "grass": 6, "cd": 0.8, "dash": 0.0, "hits": [0.36], "proj": "sihir_besar", "wave": true},
+	],
+}
+## Jurus 1 (tombol Kaki) untuk gaya jarak jauh: satu tembakan besar, bukan tendangan.
+const STYLE_SKILL := {
+	"busur": {"nama": "Panah Tembus", "anim": "bidik", "reach": 7.0, "cos": 0.7, "dmg": 3.0, "solid": 2, "grass": 0, "cd": 0.6, "hits": [0.25], "dash": -0.2, "proj": "panah_besar"},
+	"sihir": {"nama": "Bola Api", "anim": "rapal", "reach": 6.0, "cos": 0.7, "dmg": 3.0, "solid": 2, "grass": 5, "cd": 0.7, "hits": [0.36], "dash": 0.0, "proj": "api", "wave": true},
+}
+## Warna peluru per jenis.
+const PROJ_COLOR := {"panah": Color("f2e6c8"), "panah_besar": Color("ffe27a"), "sihir": Color("b77dff"), "sihir_besar": Color("d6a8ff"), "api": Color("ff8a2a")}
 const DOUBLE_TAP := 0.4        # dua ketukan Perisai secepat ini = menghindar
 const GUARD_TIME := 1.6        # sekali ketuk Perisai: perisai terangkat selama ini (tetap di tempat)
 const JUMP_TIME := 0.75
@@ -1051,6 +1082,22 @@ func _add_energy(v: float) -> void:
 
 ## Putar menghadap benda terdekat di depan, supaya pukulan tidak harus pas membidik.
 func _aim_assist(reach: float) -> void:
+	# Musuh lebih dulu (roadmap no. 168): putar badan ke musuh terdekat yang ada di depan/samping.
+	var best: Roamer = null
+	var best_d := reach * 1.2 + 0.4
+	for r in _roamers:
+		if r.dying:
+			continue
+		var off := r.pos - _pos
+		var d := off.length()
+		if d < best_d and (d < 0.05 or off.normalized().dot(_facing()) > -0.2):
+			best = r
+			best_d = d
+	if best != null:
+		var to := best.pos - _pos
+		if to.length() > 0.05:
+			_yaw = atan2(to.x, to.y)
+		return
 	if _breakables == null:
 		return
 	var near := _breakables.targets(_pos, _facing(), reach * 1.3, -0.2, 1, 0)
@@ -1094,22 +1141,67 @@ func _do_tangan() -> void:
 	if _locked or float(_cd.tangan) > 0.0:
 		return
 	_lower_guard()
-	_combo = _combo + 1 if (_combo_t > 0.0 and _combo < COMBO.size()) else 1
+	var combo := combo_list()
+	_combo = _combo + 1 if (_combo_t > 0.0 and _combo < combo.size()) else 1
 	_combo_t = COMBO_WINDOW
-	var sp: Dictionary = COMBO[_combo - 1]
+	var sp: Dictionary = combo[_combo - 1]
 	_cd.tangan = float(sp.cd)
 	_cd_len.tangan = float(sp.cd)
 	_aim_assist(float(sp.reach))
 	_rig_action(str(sp.anim))
 	_dash(_facing(), float(sp.dash), 0.1)
-	_set_status(str(sp.nama) + ("!" if _combo == COMBO.size() else ""))
+	_set_status(str(sp.nama) + ("!" if _combo == combo.size() else ""))
 	var hits: Array = sp.hits
 	for h in hits.size():
 		await get_tree().create_timer(float(hits[h]) - (float(hits[h - 1]) if h > 0 else 0.0)).timeout
 		if not is_inside_tree() or _locked:
 			return
-		HeroFx.swoosh(self, Vector3(_pos.x, 0.65, _pos.y), _yaw, float(sp.len), Color("fff2c0"), float(sp.roll))
+		_strike_fx(sp)
 		_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass))
+
+
+## Kombo serangan biasa untuk gaya senjata pahlawan yang dipakai.
+func combo_list() -> Array:
+	return STYLE_COMBOS.get(style(), COMBO)
+
+
+func style() -> String:
+	return str(Heroes.current().get("style", "pedang"))
+
+
+## Efek satu pukulan/tembakan: jejak senjata, peluru yang terbang ke sasaran, atau gelombang kejut.
+func _strike_fx(sp: Dictionary) -> void:
+	if sp.has("proj"):
+		var kind := str(sp.proj)
+		var from := Vector3(_pos.x, 0.75, _pos.y) + Vector3(_facing().x, 0, _facing().y) * 0.4
+		var to2 := _shot_target(float(sp.reach), float(sp.cos))
+		var top := 0.6
+		for r in _roamers:
+			if not r.dying and r.pos.distance_to(to2) < 0.05:
+				top = r.top * 0.55
+		HeroFx.bolt(self, from, Vector3(to2.x, top, to2.y), PROJ_COLOR.get(kind, Color.WHITE), kind)
+	elif sp.has("len"):
+		HeroFx.swoosh(self, Vector3(_pos.x, 0.65, _pos.y), _yaw, float(sp.len), sp.get("swoosh", Color("fff2c0")) as Color, float(sp.roll))
+	if bool(sp.get("wave", false)):
+		var at := Vector3(_pos.x, 0.05, _pos.y) + Vector3(_facing().x, 0, _facing().y) * (1.2 if sp.has("len") else 0.0)
+		HeroFx.ring(self, at, sp.get("swoosh", PROJ_COLOR.get(str(sp.get("proj", "")), Color("ffd0a0"))) as Color, 2.0, 0.4)
+		_shake = maxf(_shake, 0.18)
+
+
+## Titik sasaran tembakan: musuh terdekat di depan dalam jangkauan, atau ujung jangkauan.
+func _shot_target(reach: float, cos_min: float) -> Vector2:
+	var f := _facing()
+	var best := _pos + f * reach
+	var best_d := reach + 0.4
+	for r in _roamers:
+		if r.dying:
+			continue
+		var off := r.pos - _pos
+		var d := off.length()
+		if d < best_d and (d < 0.05 or off.normalized().dot(f) >= cos_min):
+			best = r.pos
+			best_d = d
+	return best
 
 
 ## 1x tendang, 2x (dalam jeda singkat) tendangan dobel: dua kali menendang.
@@ -1117,6 +1209,9 @@ func _do_kaki(_held := 0.0) -> void:
 	if _locked or float(_cd.kaki) > 0.0:
 		return
 	_lower_guard()
+	if STYLE_SKILL.has(style()):
+		_do_shot_skill(STYLE_SKILL[style()])
+		return
 	_kick = _kick + 1 if (_kick_t > 0.0 and _kick < KICKS.size()) else 1
 	_kick_t = KICK_WINDOW
 	var sp: Dictionary = KICKS[_kick - 1]
@@ -1136,6 +1231,21 @@ func _do_kaki(_held := 0.0) -> void:
 		HeroFx.swoosh(self, Vector3(_pos.x, 0.3, _pos.y), _yaw, 1.0, Color("bfe8ff"))
 		HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("7fd1ff"), 1.0, 0.25)
 		_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass), "skill1")
+
+
+## Jurus 1 gaya jarak jauh (Panah Tembus / Bola Api): satu tembakan besar.
+func _do_shot_skill(sp: Dictionary) -> void:
+	_cd.kaki = float(sp.cd)
+	_cd_len.kaki = float(sp.cd)
+	_aim_assist(float(sp.reach))
+	_rig_action(str(sp.anim))
+	_dash(_facing(), float(sp.dash), 0.1)
+	_set_status(str(sp.nama) + "!")
+	await get_tree().create_timer(float((sp.hits as Array)[0])).timeout
+	if not is_inside_tree() or _locked:
+		return
+	_strike_fx(sp)
+	_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass), "skill1")
 
 
 ## Ketuk Perisai sekali: perisai terangkat dan pahlawan tetap di tempat. Ketuk dua kali cepat: menghindar.
@@ -1197,6 +1307,10 @@ func _do_dodge() -> void:
 		var right := Vector2(cos(_cam_yaw), -sin(_cam_yaw))
 		dir = fwd * input.y + right * input.x
 	_dash(dir, 2.1, 0.22)
+	# Dalam pertarungan, menghindar dikirim ke server (roadmap no. 162): serangan musuh yang tiba
+	# sesaat setelahnya meleset.
+	if _fight != null and _fight.active:
+		_fight.player_action("dodge")
 	HeroFx.burst(self, Vector3(_pos.x, 0.1, _pos.y), Color("d9c8a0"), 6, 1.4)
 	var body := _body()
 	if body != null:

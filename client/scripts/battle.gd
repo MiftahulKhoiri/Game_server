@@ -217,7 +217,7 @@ func _play_event(e: Dictionary) -> void:
 		return
 	if str(e.get("who", "")) == "player":
 		match kind:
-			"attack", "crit", "skill1":
+			"attack", "crit", "skill1", "combo":
 				_play(_hero_rig, "play_attack")
 				_lunge(_hero_rig, HERO_X, 0.55)
 				# Efek kena muncul saat pukulan mendarat: kilatan, percikan, getar.
@@ -232,20 +232,32 @@ func _play_event(e: Dictionary) -> void:
 					hit_color = Color("ffd23c")
 					burst = 22
 					power = 0.09
+				elif kind == "combo":
+					hit_color = Color("ff6ad5")
+					burst = 24
+					power = 0.08
 				_after(LUNGE_MS, func() -> void:
 					_play(_enemy_rig, "play_hurt")
 					_flash_rig(_enemy_rig, hit_color)
 					_burst(_enemy_pos(), hit_color, burst, 3.5)
+					if Session.fx_blood:  # roadmap no. 165 (bos: goblin = darah)
+						_burst(_enemy_pos(), Color("b0121c"), 6 if kind == "attack" else 12, 2.4)
 					_shake(power))
 				if kind == "skill1":
 					_pop("%s! -%d" % [_skill_name("skill1"), dmg], Color("ff9a3c"), false, 44)
 				elif kind == "crit":
 					_pop("KRITIS -%d" % dmg, Color("ffd23c"), false, 44)
+				elif kind == "combo":
+					_pop("KOMBO -%d" % dmg, Color("ff6ad5"), false, 46)
 				else:
 					_pop("-%d" % dmg, Color("ffffff"), false, 38)
 			"guard":
 				_burst(_hero_pos(), Color("6ec6ff"), 8, 2.0)
 				_pop("Bertahan", Color("6ec6ff"), true, 36)
+			"dodge":
+				_lunge(_hero_rig, HERO_X, -0.45)
+				_burst(_hero_pos() + Vector3(0, -0.8, 0), Color("d9c8a0"), 8, 1.6)
+				_pop("Menghindar", Color("f2e6c8"), true, 36)
 			"skill2":
 				_burst(_hero_pos(), Color("7be06b"), 18, 2.5)
 				_pop("+%d HP" % heal, Color("7be06b"), true, 40)
@@ -260,6 +272,8 @@ func _play_event(e: Dictionary) -> void:
 			if int(e.get("heal", 0)) > 0:
 				_pop("+%d HP" % int(e.heal), Color("7be06b"), false, 36)
 		match kind:
+			"miss":
+				_pop("MELESET!", Color("f2e6c8"), true, 48)
 			"perfect":
 				_after(LUNGE_MS, func() -> void:
 					_burst(_hero_pos(), Color("6ef0ff"), 24, 4.0)
@@ -484,6 +498,10 @@ func _update_buttons(now: int) -> void:
 	var potion_left := _cooldown_left("potion")
 	potion_button.text = "Ramuan (%d)" % potions if potion_left <= READY_SLACK_MS else "Ramuan %.1f d" % (potion_left / 1000.0)
 	potion_button.disabled = potions <= 0 or int(Session.player.state.hp) >= int(Session.player.state.max_hp) or potion_left > READY_SLACK_MS
+	var dodge_button := _buttons["dodge"] as Button
+	var dodge_left := _cooldown_left("dodge")
+	dodge_button.text = "Hindar" if dodge_left <= READY_SLACK_MS else "Hindar %.1f d" % (dodge_left / 1000.0)
+	dodge_button.disabled = dodge_left > READY_SLACK_MS
 	var flee_button := _buttons["flee"] as Button
 	var flee_left := _cooldown_left("flee")
 	flee_button.text = "Kabur" if flee_left <= READY_SLACK_MS else "Kabur %.1f d" % (flee_left / 1000.0)
@@ -563,7 +581,7 @@ func _build_ui() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	_controls.add_child(row)
-	for entry: Array in [["potion", "Ramuan"], ["flee", "Kabur"]]:
+	for entry: Array in [["potion", "Ramuan"], ["dodge", "Hindar"], ["flee", "Kabur"]]:
 		var small := _make_button(str(entry[1]), 28, 84)
 		small.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		small.pressed.connect(_on_action.bind(str(entry[0])))

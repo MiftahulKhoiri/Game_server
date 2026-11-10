@@ -1051,7 +1051,7 @@ func _run() -> void:
 	w3._toggle_menu()
 	w3._menu.profile_requested.emit()
 	_check(w3._profile.is_open and not w3._menu.is_open, "Profil terbuka dari menu")
-	_check(w3._profile._tabs.size() == 4 and w3._profile._preview_rig != null, "Profil memuat 4 pahlawan dengan pratinjau 3D")
+	_check(w3._profile._tabs.size() == 5 and w3._profile._preview_rig != null, "Profil memuat 5 pahlawan dengan pratinjau 3D")
 	w3._profile._select(2)
 	_check(w3._profile._preview_rig.name == "pemanah", "pratinjau 3D mengikuti pilihan")
 	w3._profile._on_use()
@@ -1098,6 +1098,8 @@ func _run() -> void:
 	for c: Dictionary in Maps.CHESTS:
 		_check(Maps.walkable(str(c.map), c.pos.x, c.pos.y), "peti %s berada di petak yang bisa dilewati" % c.id)
 		_check(Movement.tile_blocked(str(c.map), c.pos.x, c.pos.y), "peti %s menghalangi jalan" % c.id)
+	var wt_hero := str(Session.player.state.get("hero", "ksatria"))
+	Session.player.state.hero = "ksatria"  # tes tombol aksi di bawah memakai kombo pedang
 	var wt: Node = load("res://scenes/world3d.tscn").instantiate()
 	Session.offline = true
 	get_root().add_child(wt)
@@ -1291,8 +1293,54 @@ func _run() -> void:
 	for k in 20:
 		await process_frame
 	_check((wt._pos - p0).length() > 0.5 and not wt._guard, "ketuk Perisai dua kali cepat = menghindar (perisai turun)")
+
+	print("== v0.57: gaya senjata, kombo, peluru, darah, penyihir (roadmap no. 154-170)")
+	var SHeroes = load("res://scripts/heroes.gd")
+	var SHeroActions = load("res://scripts/hero_actions.gd")
+	var SModels = load("res://scripts/models.gd")
+	var SHeroFx = load("res://scripts/hero_fx.gd")
+	_check(wt.combo_list() == wt.COMBO, "Ksatria (pedang) memakai kombo lama")
+	var sty_ok := true
+	for sty_h: Dictionary in SHeroes.LIST:
+		Session.player.state.hero = sty_h.id
+		var sty_list: Array = wt.combo_list()
+		if sty_list.size() != 3:
+			sty_ok = false
+		for sty_sp: Dictionary in sty_list:
+			if not SHeroActions.ACTIONS.has(str(sty_sp.anim)):
+				sty_ok = false
+	_check(sty_ok and SHeroes.LIST.size() == 5, "5 pahlawan, tiap gaya punya 3 jurus kombo dengan gerakan yang dikenal")
+	_check(SHeroes.get_hero("penyihir").style == "sihir" and SHeroes.get_hero("pemanah").style == "busur", "Penyihir = sihir, Pemanah = busur")
+	Session.player.state.hero = "pemanah"
+	_check(float(wt.combo_list()[0].reach) >= 5.0 and str(wt.combo_list()[0].get("proj", "")) == "panah", "busur menembak panah jarak jauh")
+	var sty_n0: int = wt.get_child_count()
+	wt._yaw = 0.0
+	wt._strike_fx(wt.combo_list()[0])
+	var sty_bolt := false
+	for sty_c in wt.get_children().slice(sty_n0):
+		if sty_c is Node3D and (sty_c as Node3D).get_child_count() >= 2 and not (sty_c is CPUParticles3D):
+			sty_bolt = true
+	_check(sty_bolt, "tembakan memunculkan panah yang terbang")
+	wt._cd.kaki = 0.0
+	wt._kick = 0
+	wt._do_kaki()
+	_check(wt._kick == 0 and wt._cd.kaki > 0.0, "jurus 1 Pemanah = tembakan (bukan tendangan)")
+	Session.player.state.hero = "penyihir"
+	var mage: Node3D = SModels.create("penyihir")
+	get_root().add_child(mage)
+	SModels.dress(mage, 0, {})
+	_check(mage.find_children("tongkat", "", true, false).size() == 1, "Penyihir memegang tongkat sihir (model Mage tanpa berkas baru)")
+	SModels.dress(mage, 0, {"weapon": "pedang_rune"})
+	_check(mage.find_children("tongkat", "", true, false).size() == 1, "ganti senjata tidak menumpuk tongkat")
+	mage.queue_free()
+	var bl0: int = wt.get_child_count()
+	SHeroFx.blood(wt, Vector3(0, 1, 0), 6)
+	SHeroFx.magic_circle(wt, Vector3(0, 0, 0), Color("b77dff"))
+	_check(wt.get_child_count() >= bl0 + 3, "percikan darah dan lingkaran mantra muncul")
+	Session.player.state.hero = "ksatria"
 	wt.queue_free()
 	await process_frame
+	Session.player.state.hero = wt_hero
 	Session.offline = false
 
 	print("== musuh berkeliaran dan bar nyawa")
@@ -1645,7 +1693,7 @@ func _run() -> void:
 	_check(atr._equip_list.get_child_count() >= 3, "tab Perlengkapan menampilkan statistik dan slot (%d baris)" % atr._equip_list.get_child_count())
 	atr._show_page(1)
 	await process_frame
-	_check(atr._page_ally.visible and not atr._page_equip.visible and atr._hero_tabs.size() == 4 and atr._ally_btn.text != "", "tab Pendamping menampilkan 4 pahlawan dan tombol beli/pasang (%s)" % atr._ally_btn.text)
+	_check(atr._page_ally.visible and not atr._page_equip.visible and atr._hero_tabs.size() == 5 and atr._ally_btn.text != "", "tab Pendamping menampilkan 5 pahlawan dan tombol beli/pasang (%s)" % atr._ally_btn.text)
 	# Pasang prajurit: pengatur jumlah (v0.49.1)
 	Session.player.state["soldiers"] = 3
 	Session.player.state["soldiers_rest"] = 1

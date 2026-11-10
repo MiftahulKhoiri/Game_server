@@ -16,6 +16,7 @@ var _sens_value: Label
 var _toggle_keep: CheckButton
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
+var _toggle_blood: CheckButton
 var _vol_npc_value: Label
 var _vol_music_value: Label
 
@@ -54,6 +55,8 @@ func _ready() -> void:
 	add_child(_sens_value)
 	_toggle_keep = _toggle("Layar tetap menyala", _on_keep)
 	add_child(_toggle_keep)
+	_toggle_blood = _toggle("Percikan darah saat memukul", _on_blood)
+	add_child(_toggle_blood)
 
 	add_child(_section("Suara"))
 	_toggle_npc = _toggle("Suara orang (NPC)", _on_npc)
@@ -84,6 +87,11 @@ func _on_sens(v: float) -> void:
 func _on_keep(on: bool) -> void:
 	Session.keep_on = on
 	Session.apply_display()
+	_simpan()
+
+
+func _on_blood(on: bool) -> void:
+	Session.fx_blood = on
 	_simpan()
 
 
@@ -123,6 +131,7 @@ func _refresh() -> void:
 	_quality_hint.text = QUALITY_HINTS[clampi(Session.quality, 0, 2)]
 	_sens_value.text = "%.1fx" % Session.cam_sens
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
+	_toggle_blood.set_pressed_no_signal(Session.fx_blood)
 	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
 	_toggle_music.set_pressed_no_signal(Session.snd_music)
 	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)

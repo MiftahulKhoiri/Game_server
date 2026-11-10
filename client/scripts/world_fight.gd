@@ -12,6 +12,12 @@ const Maps = preload("res://scripts/maps.gd")
 const Roamer = preload("res://scripts/roamer.gd")
 const HeroFx = preload("res://scripts/hero_fx.gd")
 const HudBars = preload("res://scripts/hud_bars.gd")
+const Models = preload("res://scripts/models.gd")
+const Heroes = preload("res://scripts/heroes.gd")
+## Musuh berbadan batu/kerangka: memercik serpihan, bukan darah (roadmap no. 165).
+const STONE_IDS := ["golem_kerikil", "golem_lava", "ogre_batu", "kelelawar_gua", "goblin_penjaga"]
+## Warna lingkaran mantra jurus 2 per gaya senjata (roadmap no. 166).
+const MAGIC_COLOR := {"pedang": Color("ffe27a"), "kapak": Color("ff7a4a"), "busur": Color("9fe6c0"), "tombak": Color("8fd0ff"), "sihir": Color("b77dff")}
 
 const READY_SLACK_MS := 150     # toleransi tombol ditekan sedikit sebelum cooldown habis
 const POLL_MS := 4000           # tanya server paling lambat tiap sekian ms
@@ -22,7 +28,7 @@ const SAFE_STEPS_AFTER := 4     # langkah aman setelah pertarungan
 const RESPAWN_S := 45.0         # musuh pengganti muncul sekian detik setelah satu tumbang
 const BOSS_IDS := ["raja_goblin"]
 const POTION_ID := "ramuan"
-const ACTION_BUTTONS := {"attack": "tangan", "skill1": "kaki", "defend": "hindar"}
+const ACTION_BUTTONS := {"attack": "tangan", "skill1": "kaki", "defend": "hindar", "dodge": "hindar"}
 
 ## Bar nyawa musuh yang selalu menghadap kamera: bidang kecil dengan shader (isi mengikuti `ratio`).
 const BAR_SHADER := """
@@ -395,7 +401,7 @@ func _play_event(e: Dictionary) -> void:
 		return
 	if str(e.get("who", "")) == "player":
 		match kind:
-			"attack", "crit", "skill1":
+			"attack", "crit", "skill1", "combo":
 				if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
 					roamer.model.call("play_hurt")
 				var col := Color("ffe9a0")
@@ -406,12 +412,24 @@ func _play_event(e: Dictionary) -> void:
 				elif kind == "crit":
 					col = Color("ffd23c")
 					burst = 16
+				elif kind == "combo":
+					col = Color("ff6ad5")
+					burst = 22
 				HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.55, 0), col, burst, 3.2)
+				_blood(enemy_at + Vector3(0, enemy_top * 0.55, 0), 6 if kind == "attack" else 12)
 				world._shake = 0.12 if kind == "attack" else 0.25
 				_float_text(enemy_at + Vector3(0, enemy_top + 0.7, 0), ("-%d" % dmg) + ("!" if kind != "attack" else ""), col, 64 if kind != "attack" else 52)
+				if kind == "combo":
+					_float_text(enemy_at + Vector3(0, enemy_top + 1.25, 0), "KOMBO!", col, 58)
+				elif kind == "crit":
+					_float_text(enemy_at + Vector3(0, enemy_top + 1.25, 0), "KRITIS!", col, 50)
 			"skill2", "potion":
 				HeroFx.burst(world, me_at + Vector3(0, 0.9, 0), Color("7dff8a"), 14, 2.0)
+				if kind == "skill2":
+					HeroFx.magic_circle(world, me_at, MAGIC_COLOR.get(str(Heroes.current().get("style", "pedang")), Color("ffe27a")), 1.1)
 				_float_text(me_at + Vector3(0, 1.9, 0), "+%d" % heal, Color("7dff8a"), 56)
+			"dodge":
+				HeroFx.ring(world, me_at + Vector3(0, 0.1, 0), Color("d9c8a0"), 1.0, 0.25)
 			"guard":
 				HeroFx.ring(world, me_at + Vector3(0, 0.1, 0), Color("8fe08f"), 1.2, 0.3)
 	else:
@@ -436,6 +454,8 @@ func _play_event(e: Dictionary) -> void:
 		elif kind == "perfect":
 			HeroFx.ring(world, me_at + Vector3(0, 0.9, 0), Color("7fd1ff"), 1.6, 0.4)
 			_float_text(me_at + Vector3(0, 2.0, 0), "TANGKIS!", Color("7fd1ff"), 60)
+		elif kind == "miss":
+			_float_text(me_at + Vector3(0, 2.0, 0), "MELESET!", Color("f2e6c8"), 58)
 		else:
 			_float_text(me_at + Vector3(0, 2.0, 0), "Tertahan", Color("bfe8ff"), 48)
 	_update_bar()
@@ -453,6 +473,7 @@ func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> voi
 			roamer.model.call("play_hurt")
 		var col := Color("9fd8ff")
 		HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.5, 0), col, 7, 2.6)
+		_blood(enemy_at + Vector3(0, enemy_top * 0.5, 0), 4)
 		_float_text(enemy_at + Vector3(0.35, enemy_top + 0.4, 0), "-%d" % int(e.get("dmg", 0)), col, 44)
 	else:
 		if comp != null and comp.has_method("hit"):
@@ -463,6 +484,16 @@ func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> voi
 		_float_text(at + Vector3(0, 1.9, 0), "-%d" % int(e.get("dmg", 0)), col, 48)
 		if kind == "down":
 			_float_text(at + Vector3(0, 2.5, 0), "TUMBANG", col, 42)
+
+
+## Percikan saat musuh terkena (bisa dimatikan di Pengaturan): darah, atau serpihan untuk batu/kerangka.
+func _blood(at: Vector3, amount: int) -> void:
+	if not Session.fx_blood or roamer == null:
+		return
+	var base := roamer.id
+	if Models.VARIANTS.has(base):
+		base = str(Models.VARIANTS[base].base)
+	HeroFx.blood(world, at, amount, STONE_IDS.has(base))
 
 
 ## Angka/tulisan melayang yang naik lalu hilang (selalu menghadap kamera).

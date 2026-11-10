@@ -56,7 +56,7 @@ func TestPartyFullLimit(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if len(st.Allies) != 4 || len(st.Party) != MaxParty {
+	if len(st.Allies) != len(Heroes) || len(st.Party) != MaxParty {
 		t.Fatalf("allies=%v party=%v", st.Allies, st.Party)
 	}
 	if err := st.SetParty(st.Allies); !errors.Is(err, ErrPartyFull) {

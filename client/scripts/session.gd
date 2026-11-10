@@ -46,6 +46,8 @@ var quality := 1
 var cam_sens := 1.0
 ## Layar tetap menyala selama game dibuka (disimpan di HP).
 var keep_on := false
+## Percikan darah saat memukul makhluk hidup (roadmap no. 165); bisa dimatikan di Pengaturan.
+var fx_blood := true
 ## Pengaturan suara (disimpan di HP): suara bicara NPC dan musik, masing-masing nyala/mati + volume 0..1.
 var snd_npc := true
 var snd_music := true
@@ -67,6 +69,7 @@ func load_config() -> void:
 	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)
 	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
 	keep_on = bool(cfg.get_value("game", "keep_on", false))
+	fx_blood = bool(cfg.get_value("game", "fx_blood", true))
 	apply_display()
 	snd_npc = bool(cfg.get_value("sound", "npc", true))
 	snd_music = bool(cfg.get_value("sound", "music", true))
@@ -97,6 +100,7 @@ func save_config() -> void:
 	cfg.set_value("game", "quality", quality)
 	cfg.set_value("game", "cam_sens", cam_sens)
 	cfg.set_value("game", "keep_on", keep_on)
+	cfg.set_value("game", "fx_blood", fx_blood)
 	cfg.set_value("sound", "npc", snd_npc)
 	cfg.set_value("sound", "music", snd_music)
 	cfg.set_value("sound", "vol_npc", vol_npc)

@@ -79,7 +79,8 @@ func _ready() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		b.custom_minimum_size = Vector2(0, 76)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 26)
+		b.add_theme_font_size_override("font_size", 26 if Heroes.LIST.size() <= 4 else 21)
+		b.clip_text = true
 		b.pressed.connect(_select.bind(i))
 		row.add_child(b)
 		_tabs.append(b)
@@ -212,7 +213,7 @@ func _refresh() -> void:
 	var hero: Dictionary = Heroes.LIST[_selected]
 	_name.text = str(hero.name)
 	_story.text = str(hero.story)
-	_detail.text = "Senjata: %s\nSkill 1: %s\nSkill 2: %s" % [hero.weapon, hero.skill1, hero.skill2]
+	_detail.text = "Senjata: %s (%s)\nSkill 1: %s\nSkill 2: %s" % [hero.weapon, Heroes.STYLE_INFO.get(str(hero.get("style", "")), ""), hero.skill1, hero.skill2]
 	_show_model(str(hero.id))
 	var is_current: bool = str(hero.id) == str(cur.id)
 	_use_btn.disabled = is_current or _busy

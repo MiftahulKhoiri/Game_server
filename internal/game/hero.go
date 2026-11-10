@@ -2,8 +2,8 @@ package game
 
 import "errors"
 
-// Pahlawan yang bisa dipilih pemain. Sifatnya penampilan + nama skill: statistik dan
-// keseimbangan sama untuk semua pahlawan. Model 3D-nya ada di klien (id = nama berkas GLB).
+// Pahlawan yang bisa dipilih pemain. Statistik dasar sama untuk semua pahlawan; yang berbeda
+// nama skill dan gaya senjata (combat_style.go: kecepatan, kerusakan, kritis, tembus pertahanan). Model 3D-nya ada di klien (id = nama berkas GLB).
 const DefaultHero = "ksatria"
 
 // ErrUnknownHero berarti id pahlawan tidak dikenal.
@@ -17,14 +17,16 @@ type HeroDef struct {
 	Skill1 string `json:"skill1"`
 	Skill2 string `json:"skill2"`
 	Price  int    `json:"price"` // harga membeli pahlawan ini sebagai pendamping
+	Style  string `json:"style"` // gaya senjata (combat_style.go): pedang, kapak, busur, tombak, sihir
 }
 
 // Heroes adalah daftar pahlawan; urutannya dipakai di layar profil.
 var Heroes = []HeroDef{
-	{ID: "ksatria", Name: "Ksatria", Weapon: "Pedang dan perisai", Skill1: "Tebasan Kuat", Skill2: "Perisai Cahaya", Price: 250},
-	{ID: "pendekar_kapak", Name: "Pendekar Kapak", Weapon: "Kapak besar", Skill1: "Belahan Kapak", Skill2: "Teriakan Perang", Price: 350},
-	{ID: "pemanah", Name: "Pemanah", Weapon: "Busur silang", Skill1: "Panah Tembus", Skill2: "Kabut Pelindung", Price: 300},
-	{ID: "pendekar_tombak", Name: "Pendekar Tombak", Weapon: "Tombak", Skill1: "Tusukan Kilat", Skill2: "Putaran Tombak", Price: 300},
+	{ID: "ksatria", Name: "Ksatria", Weapon: "Pedang dan perisai", Skill1: "Tebasan Kuat", Skill2: "Perisai Cahaya", Price: 250, Style: StylePedang},
+	{ID: "pendekar_kapak", Name: "Pendekar Kapak", Weapon: "Kapak besar", Skill1: "Belahan Kapak", Skill2: "Teriakan Perang", Price: 350, Style: StyleKapak},
+	{ID: "pemanah", Name: "Pemanah", Weapon: "Busur silang", Skill1: "Panah Tembus", Skill2: "Kabut Pelindung", Price: 300, Style: StyleBusur},
+	{ID: "pendekar_tombak", Name: "Pendekar Tombak", Weapon: "Tombak", Skill1: "Tusukan Kilat", Skill2: "Putaran Tombak", Price: 300, Style: StyleTombak},
+	{ID: "penyihir", Name: "Penyihir", Weapon: "Tongkat sihir", Skill1: "Bola Api", Skill2: "Perisai Mantra", Price: 400, Style: StyleSihir},
 }
 
 // HeroByID mencari pahlawan; "" berarti pahlawan bawaan (akun lama).
