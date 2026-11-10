@@ -173,10 +173,12 @@ func BuyAt(st *State, shop, id string, qty int) error {
 	if st.Gold < cost {
 		return ErrNoGold
 	}
-	if !st.AddItem(id, qty) {
-		return ErrInventoryFull
+	if !st.canAdd(id, qty) {
+		return ErrInventoryFull // juga bila tumpukan akan melewati batas (emas tidak boleh terbuang)
 	}
+	st.AddItem(id, qty)
 	st.Gold -= cost
+	st.record(LedgerBuy, fmt.Sprintf("Membeli %s x%d", def.Name, qty), -cost)
 	st.addRep(shopKeepers[def.Shop], 1) // berbelanja menambah keakraban dengan penjaganya
 	return nil
 }
@@ -206,8 +208,11 @@ func SellAt(st *State, shop, id string, qty int) error {
 	if st.Equipment.Has(id) && owned-qty < 1 {
 		return ErrEquipped // salinan terakhir yang sedang dipakai tidak boleh dijual
 	}
+	if !st.addGold(def.SellPrice * qty) {
+		return ErrGoldMax
+	}
 	st.RemoveItem(id, qty)
-	st.Gold += def.SellPrice * qty
+	st.record(LedgerSell, fmt.Sprintf("Menjual %s x%d", def.Name, qty), def.SellPrice*qty)
 	return nil
 }
 
@@ -238,9 +243,11 @@ func BarterAt(st *State, shop, id string, qty int) error {
 	if st.itemQty(DiamondID) < need {
 		return ErrNoDiamond
 	}
-	if !st.AddItem(id, qty) {
+	if !st.canAdd(id, qty) {
 		return ErrInventoryFull
 	}
+	st.AddItem(id, qty)
 	st.RemoveItem(DiamondID, need)
+	st.record(LedgerBarter, fmt.Sprintf("Menukar %d berlian dengan %s x%d", need, def.Name, qty), 0)
 	return nil
 }

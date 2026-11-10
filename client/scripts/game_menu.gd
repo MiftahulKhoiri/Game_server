@@ -8,6 +8,7 @@ signal resumed
 signal profile_requested
 signal inventory_requested
 signal atribut_requested
+signal trade_requested
 signal go_home
 signal logout
 signal quit_game
@@ -36,6 +37,7 @@ var _sens_value: Label
 var _btn_logout: Button
 var _btn_tas: Button
 var _btn_atribut: Button
+var _btn_dagang: Button
 var _confirm_key := ""
 var _confirm_btn: Button
 var _confirm_text := ""
@@ -81,6 +83,8 @@ func _ready() -> void:
 	_main.add_child(_btn_tas)
 	_btn_atribut = _button("Atribut", func() -> void: atribut_requested.emit())
 	_main.add_child(_btn_atribut)
+	_btn_dagang = _button("Dagang dengan pemain", func() -> void: trade_requested.emit())
+	_main.add_child(_btn_dagang)
 	_main.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
 	_main.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
 	_main.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
@@ -161,6 +165,7 @@ func open() -> void:
 	_btn_logout.disabled = Session.offline
 	_btn_tas.disabled = Session.offline  # tas butuh server
 	_btn_atribut.disabled = Session.offline
+	_btn_dagang.disabled = Session.offline
 	visible = true
 	is_open = true
 

@@ -1338,6 +1338,57 @@ func _run() -> void:
 	SHeroFx.magic_circle(wt, Vector3(0, 0, 0), Color("b77dff"))
 	_check(wt.get_child_count() >= bl0 + 3, "percikan darah dan lingkaran mantra muncul")
 	Session.player.state.hero = "ksatria"
+
+	print("== v0.58: bank, peti simpan, dagang antarpemain (roadmap no. 171-185)")
+	var ek_saleh: Dictionary = {}
+	for ek_w: Dictionary in Maps.WARGA:
+		if ek_w.id == "pak_saleh":
+			ek_saleh = ek_w
+	_check(not ek_saleh.is_empty() and ek_saleh.toko == "bank" and Maps.walkable("desa_awal", int(ek_saleh.pos.x), int(ek_saleh.pos.y)), "Pak Saleh menjaga bank desa di petak yang bisa dilewati")
+	var ek_norm: Dictionary = Session._normalize_state({"bank": 250, "storage": [{"id": "roti", "qty": 3}], "ledger": [{"at": 1700000000, "kind": "bank", "note": "Menabung 250 emas", "gold": -250}]})
+	_check(ek_norm.bank == 250 and (ek_norm.storage as Array).size() == 1 and (ek_norm.ledger as Array).size() == 1, "state klien membaca bank, peti simpan, dan riwayat")
+	var ek_saved: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state.gold = 120
+	Session.player.state.bank = 250
+	Session.player.state.storage = [{"id": "roti", "qty": 3}]
+	Session.player.state.ledger = ek_norm.ledger
+	var ek: CanvasLayer = wt._ekonomi
+	ek.open(ek.MODE_BANK)
+	await process_frame
+	_check(ek.visible and ek._title.text == "Bank Desa" and ek._info.text.find("250") >= 0, "layar Bank: emas dibawa dan tabungan")
+	var ek_btns := 0
+	var ek_hist := false
+	for ek_c in ek._list.get_children():
+		if ek_c is HBoxContainer:
+			ek_btns += (ek_c as HBoxContainer).get_child_count()
+		if ek_c is Label and (ek_c as Label).text.find("Menabung 250 emas") >= 0:
+			ek_hist = true
+	_check(ek_btns == 8 and ek_hist, "Bank: tombol Simpan/Ambil (10/100/1000/Semua) dan riwayat transaksi")
+	ek.open(ek.MODE_PETI)
+	await process_frame
+	_check(ek._title.text == "Peti Simpan" and ek._info.text.find("1/30") >= 0, "layar Peti Simpan: isi peti")
+	ek.trades = [{"id": 1, "from": "Ani", "to": str(Session.player.name), "item": "permata_merah", "qty": 2, "price": 120, "status": "pending"},
+		{"id": 2, "from": str(Session.player.name), "to": "Budi", "item": "roti", "qty": 1, "price": 5, "status": "pending"}]
+	ek.open(ek.MODE_DAGANG)
+	await process_frame
+	var ek_beli := false
+	var ek_batal := false
+	for ek_c in ek._list.get_children():
+		if ek_c is HBoxContainer:
+			for ek_b in ek_c.get_children():
+				if ek_b is Button and (ek_b as Button).text == "Beli":
+					ek_beli = true
+				if ek_b is Button and (ek_b as Button).text == "Batalkan":
+					ek_batal = true
+	_check(ek._title.text == "Dagang" and ek._to != null and ek._item != null and ek_beli and ek_batal, "layar Dagang: formulir tawaran, Beli/Tolak untuk masuk, Batalkan untuk milik sendiri")
+	ek.closed.emit()
+	_check(not ek.visible and not wt._locked, "layar ekonomi tertutup dan gerak berlanjut")
+	_check(wt._menu._btn_dagang != null, "menu punya tombol Dagang dengan pemain")
+	wt._map_id = Maps.RUMAH_PEMAIN
+	wt._pos = wt.STORE_AT + Vector2(0, 1.0)
+	_check(wt._store_near(), "dekat lemari di rumah: Peti simpan")
+	wt._map_id = Maps.DEFAULT_MAP
+	Session.player.state = ek_saved
 	wt.queue_free()
 	await process_frame
 	Session.player.state.hero = wt_hero
@@ -1542,7 +1593,7 @@ func _run() -> void:
 				out_n += 1
 			if ww.id == "penjaga":
 				guard_out = true
-	_check(inside_n == 14 and not guard_out and out_n == 0, "masuk desa saat malam: 9 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
+	_check(inside_n == 15 and not guard_out and out_n == 0, "masuk desa saat malam: 10 warga di rumah, penjaga di pos jaga, 4 ayam di kandang (%d di dalam)" % inside_n)
 	var guard_seen := false
 	for ww in wn._warga:
 		if ww.id == "penjaga":

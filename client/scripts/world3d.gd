@@ -12,6 +12,7 @@ const GameMenu = preload("res://scripts/game_menu.gd")
 const Companions = preload("res://scripts/companions.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
 const TempaScreen = preload("res://scripts/tempa.gd")
+const EkonomiScreen = preload("res://scripts/ekonomi.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const Warga = preload("res://scripts/warga.gd")
@@ -159,6 +160,7 @@ var _buttons: Array[Button] = []
 var _menu: CanvasLayer
 var _profile: CanvasLayer
 var _tempa: CanvasLayer                     # layar tempa di pandai besi (roadmap no. 145)
+var _ekonomi: CanvasLayer                   # bank, peti simpan, dagang (roadmap no. 176-182)
 var stamina := 100.0                        # stamina lari dan lompat (roadmap no. 135), hanya di klien
 var _tired := false                         # stamina habis: tidak bisa berlari sampai pulih sebagian
 
@@ -193,6 +195,7 @@ const STAMINA_RECOVER := 35.0 # setelah habis, berlari lagi setelah pulih sampai
 const TIRED_SPEED := 0.6
 const DOOR_NEAR := 2.2
 const BED_AT := Vector2(1.5, 1.5)  # ranjang di rumah pemain (Maps.RUMAH_ROWS, petak R)
+const STORE_AT := Vector2(7.0, 1.5)  # lemari = peti simpan di rumah pemain (petak LL, roadmap no. 180)
 var _doors: Array = []          # pintu interaktif peta ini (lihat _make_doors)
 const CHAT_DIST := 1.3
 const WARGA_LOD_FAR := 18.0   # warga lebih jauh dari ini (petak) diperbarui jarang
@@ -1626,6 +1629,12 @@ func _update_talk_button() -> void:
 		_talk_button.disabled = Session.offline
 		_place_talk_button(Vector3(BED_AT.x, 1.4, BED_AT.y))
 		return
+	if _store_near():
+		_talk_button.text = "Peti simpan"
+		_talk_button.visible = true
+		_talk_button.disabled = Session.offline
+		_place_talk_button(Vector3(STORE_AT.x, 1.6, STORE_AT.y))
+		return
 	if _house_for_sale_near():
 		_talk_button.text = "Beli rumah (%d emas)" % Maps.HARGA_RUMAH
 		_talk_button.visible = true
@@ -1679,6 +1688,9 @@ func _talk() -> void:
 		return
 	if _house_for_sale_near():
 		await _buy_house()
+		return
+	if _store_near():
+		await open_ekonomi(EkonomiScreen.MODE_PETI)
 		return
 	if _bed_near():
 		_set_status("Kamu berbaring di ranjangmu...")
@@ -1766,6 +1778,23 @@ func _bed_near() -> bool:
 	return _map_id == Maps.RUMAH_PEMAIN and _pos.distance_to(BED_AT) < 1.6
 
 
+## Dekat lemari (peti simpan) di rumah sendiri?
+func _store_near() -> bool:
+	return _map_id == Maps.RUMAH_PEMAIN and _pos.distance_to(STORE_AT) < 1.6
+
+
+## Buka layar ekonomi: posisi disimpan dulu (server memeriksa pemain ada di desa / di rumahnya).
+func open_ekonomi(mode: String, keeper := "") -> void:
+	if Session.offline or _ekonomi == null:
+		return
+	_locked = true
+	_set_moving(false)
+	await _flush_save()
+	if keeper != "":
+		_ekonomi.keeper = keeper
+	_ekonomi.open(mode)
+
+
 ## Pemain berdiri di depan rumah yang dijual (belum punya rumah)?
 func _house_for_sale_near() -> bool:
 	if _map_id != Maps.DEFAULT_MAP or bool(Session.player.state.get("house", false)):
@@ -1808,6 +1837,9 @@ func _visit_keeper(w: Warga) -> void:
 		_set_moving(false)
 		_tempa.keeper = w.nama
 		_tempa.open()
+		return
+	if w.toko == "bank":  # bank desa (no. 181): menabung / mengambil emas, riwayat transaksi
+		await open_ekonomi(EkonomiScreen.MODE_BANK, w.nama)
 		return
 	if w.toko == "inap":  # penginapan (no. 115): menginap semalam, pulih penuh
 		_set_status("%s: Kamarmu sudah siap. Selamat beristirahat!" % w.nama)
@@ -1990,6 +2022,15 @@ func _build_ui() -> void:
 		_tempa.close()
 		_locked = false
 		_refresh_hud())
+	_ekonomi = EkonomiScreen.new()
+	add_child(_ekonomi)
+	_ekonomi.closed.connect(func() -> void:
+		_ekonomi.close()
+		_locked = false
+		_refresh_hud())
+	_menu.trade_requested.connect(func() -> void:
+		_menu.close()
+		open_ekonomi(EkonomiScreen.MODE_DAGANG))
 	if not Session.achievement_unlocked.is_connected(_on_achievement):
 		Session.achievement_unlocked.connect(_on_achievement)
 	_profile.hero_changed.connect(_make_player)

@@ -28,6 +28,7 @@ func (s *State) BuyHouse() error {
 	}
 	s.Gold -= HousePrice
 	s.House = true
+	s.record(LedgerHouse, "Membeli rumah di Desa Awal", -HousePrice)
 	s.checkAchievements()
 	return nil
 }

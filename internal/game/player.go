@@ -53,6 +53,11 @@ type State struct {
 	Taken   []string       `json:"achievements_taken,omitempty"` // hadiahnya sudah diambil
 	Wins    int            `json:"wins,omitempty"`
 	Crafted int            `json:"crafted,omitempty"`
+	// Bank: emas tabungan; Storage: peti simpan di rumah; Ledger: riwayat transaksi terakhir
+	// (roadmap no. 180-182). Hanya diubah server (economy.go).
+	Bank    int           `json:"bank,omitempty"`
+	Storage []Item        `json:"storage,omitempty"`
+	Ledger  []LedgerEntry `json:"ledger,omitempty"`
 	// House: sudah membeli rumah di Desa Awal (roadmap no. 127), hanya diubah server (house.go).
 	House bool `json:"house,omitempty"`
 	// Reputation: ingatan dan keakraban tiap warga (roadmap no. 58-59), hanya diubah server (warga.go).
@@ -187,6 +192,9 @@ func (s State) Validate() error {
 		return errors.New("sisa ramuan kekuatan tidak sah")
 	case len(s.Inventory) > MaxInventory:
 		return fmt.Errorf("inventori maksimal %d tumpukan", MaxInventory)
+	}
+	if err := s.ValidEconomy(); err != nil {
+		return err
 	}
 	if _, ok := HeroByID(s.Hero); !ok {
 		return ErrUnknownHero

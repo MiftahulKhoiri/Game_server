@@ -81,6 +81,29 @@ func house_buy() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/house/buy", null, true)
 
 
+# --- ekonomi (roadmap no. 171-185): bank, peti simpan, perdagangan antarpemain ---
+
+func bank(deposit: bool, amount: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/bank/deposit" if deposit else "/v1/bank/withdraw", {"amount": amount}, true)
+
+
+func storage(put: bool, item: String, qty: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/storage/put" if put else "/v1/storage/take", {"item": item, "qty": qty}, true)
+
+
+func trades_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/trades", null, true)
+
+
+func trade_offer(to: String, item: String, qty: int, price: int) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/trades", {"to": to, "item": item, "qty": qty, "price": price}, true)
+
+
+## accept = true: beli tawaran masuk; false: batalkan (tawaran sendiri) / tolak (tawaran masuk).
+func trade_finish(id: int, accept: bool) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/trades/accept" if accept else "/v1/trades/cancel", {"id": id}, true)
+
+
 ## Catat pembicaraan dengan warga (ingatan + keakraban di server).
 func warga_talk(warga: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/warga/talk", {"warga": warga}, true)

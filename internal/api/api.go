@@ -102,6 +102,14 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
 	mux.Handle("POST /v1/hutan/brief", s.auth(http.HandlerFunc(s.hutanBrief)))
 	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
+	mux.Handle("POST /v1/bank/deposit", s.auth(s.bankAction(true)))
+	mux.Handle("POST /v1/bank/withdraw", s.auth(s.bankAction(false)))
+	mux.Handle("POST /v1/storage/put", s.auth(s.storageAction(true)))
+	mux.Handle("POST /v1/storage/take", s.auth(s.storageAction(false)))
+	mux.Handle("GET /v1/trades", s.auth(http.HandlerFunc(s.listTrades)))
+	mux.Handle("POST /v1/trades", s.auth(http.HandlerFunc(s.createTrade)))
+	mux.Handle("POST /v1/trades/accept", s.auth(s.finishTrade(true)))
+	mux.Handle("POST /v1/trades/cancel", s.auth(s.finishTrade(false)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
 	mux.Handle("POST /v1/shop/barter", s.auth(http.HandlerFunc(s.shopTrade(game.BarterAt))))
@@ -583,6 +591,8 @@ func isRuleError(err error) bool {
 		game.ErrUnknownAchievement, game.ErrAchievementLocked, game.ErrAchievementTaken, game.ErrNoPower,
 		game.ErrAllyOwned, game.ErrAllyNotOwn, game.ErrAllyUnavailable, game.ErrAllyFullHP, game.ErrPartyFull, game.ErrPartyRepeat, game.ErrNoGold, game.ErrSoldiersMax, game.ErrSoldiersCount,
 		game.ErrTrainBusy, game.ErrTrainMax, game.ErrTrainNoCard, game.ErrTrainNone, game.ErrTrainNotReady, game.ErrTrainKind, game.ErrTrainNoSquad, game.ErrTrainLocation, game.ErrNoEnergy, game.ErrNoKapten, game.ErrInventoryFull,
+		game.ErrBankFar, game.ErrBankEmpty, game.ErrBankFull, game.ErrGoldMax, game.ErrBadAmount, game.ErrStorageFar, game.ErrStorageFull,
+		game.ErrNotStored, game.ErrBadPrice, game.ErrNotTradable, game.ErrEquipped, store.ErrInvalidState,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -868,7 +878,7 @@ func (s *Server) shopTrade(trade func(*game.State, string, string, int) error) h
 			writeError(w, http.StatusNotFound, err.Error())
 		case errors.Is(err, game.ErrWrongShop), errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
 			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull),
-			errors.Is(err, game.ErrEquipped), errors.Is(err, game.ErrNoDiamond):
+			errors.Is(err, game.ErrEquipped), errors.Is(err, game.ErrNoDiamond), errors.Is(err, game.ErrGoldMax), errors.Is(err, store.ErrInvalidState):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		case err != nil:
 			s.fail(w, r, err)
