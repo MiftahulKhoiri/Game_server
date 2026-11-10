@@ -67,7 +67,6 @@ func _ready() -> void:
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_info)
 
-	box.add_child(_label("Pilih pahlawan", 30))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	box.add_child(row)

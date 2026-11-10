@@ -196,6 +196,9 @@ func _ready() -> void:
 		scene._jurnal.quests = [{"id": "q1", "title": "Selamatkan Nenek", "status": "active", "progress": 2, "target_count": 5, "giver": "nenek_penjual", "reward_text": "30 emas, 2 Ramuan", "description": "Kalahkan Ayam Liar yang merusak kebun Nenek."},
 			{"id": "q2", "title": "Selamatkan Petani", "status": "available", "giver": "petani", "reward_gold": 40, "description": "Bantu Petani mengusir rubah."}]
 		scene._jurnal.open(int(OS.get_environment("SHOT_JURNAL")))
+	if OS.get_environment("SHOT_NARASI") != "":  # layar narasi cerita langkah SHOT_NARASI (-1 = prolog)
+		scene._story._queue.append(scene._story.NARASI[int(OS.get_environment("SHOT_NARASI"))])
+		scene._story._show_next()
 	if OS.get_environment("SHOT_MENU") != "":
 		scene._toggle_menu()
 		if OS.get_environment("SHOT_MENU") == "pengaturan":
