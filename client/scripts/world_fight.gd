@@ -561,6 +561,9 @@ func _finish(status: String, data: Dictionary) -> void:
 			_clear_bar()
 		"lost":
 			world._show_toast("Kamu kalah...")
+			var me: Variant = world._player
+			if me != null and is_instance_valid(me) and me.has_method("play_die"):
+				me.call("play_die")  # roadmap no. 12: pahlawan roboh sebelum dibawa pulang
 			world._set_status("Kamu dibawa pulang ke desa")
 			if r != null:
 				r.fight = false
