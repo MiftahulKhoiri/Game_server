@@ -16,6 +16,9 @@ const (
 	MapRumahSehat = "rumah_sehat"
 	MapTokoAlat   = "toko_peralatan"
 	MapAula       = "aula_pelatihan" // Aula Pelatihan (v0.43.0): latih pahlawan pembantu dan prajurit
+	// v0.55.0 (roadmap no. 115, 123, 127): penginapan dan rumah milik pemain (hanya bisa dimasuki pemiliknya).
+	MapPenginapan  = "penginapan"
+	MapRumahPemain = "rumah_pemain"
 )
 
 // MapInfo adalah ukuran sebuah peta dalam petak.
@@ -24,22 +27,25 @@ type MapInfo struct {
 }
 
 var worldMaps = map[string]MapInfo{
-	MapDesaAwal:   {Width: 85, Height: 50},
-	MapPerbatasan: {Width: 45, Height: 50},
-	MapHutanLebat: {Width: 170, Height: 50},
-	MapGuaGoblin:  {Width: 25, Height: 30},
-	MapGunungBatu: {Width: 45, Height: 50},
-	MapGuaBatu:    {Width: 15, Height: 20},
-	MapTokoRamuan: {Width: 9, Height: 8},
-	MapRumahMakan: {Width: 9, Height: 8},
-	MapRumahSehat: {Width: 9, Height: 8},
-	MapTokoAlat:   {Width: 9, Height: 8},
-	MapAula:       {Width: 11, Height: 8},
+	MapDesaAwal:    {Width: 85, Height: 50},
+	MapPerbatasan:  {Width: 45, Height: 50},
+	MapHutanLebat:  {Width: 170, Height: 50},
+	MapGuaGoblin:   {Width: 25, Height: 30},
+	MapGunungBatu:  {Width: 45, Height: 50},
+	MapGuaBatu:     {Width: 15, Height: 20},
+	MapTokoRamuan:  {Width: 9, Height: 8},
+	MapRumahMakan:  {Width: 9, Height: 8},
+	MapRumahSehat:  {Width: 9, Height: 8},
+	MapTokoAlat:    {Width: 9, Height: 8},
+	MapAula:        {Width: 11, Height: 8},
+	MapPenginapan:  {Width: 9, Height: 8},
+	MapRumahPemain: {Width: 9, Height: 8},
 }
 
 // InVillage: peta tempat pemain aman dan boleh beristirahat gratis (desa dan ruangan di dalamnya).
 func InVillage(mapID string) bool {
-	return mapID == MapDesaAwal || mapID == MapTokoRamuan || mapID == MapRumahMakan || mapID == MapRumahSehat || mapID == MapTokoAlat || mapID == MapAula
+	return mapID == MapDesaAwal || mapID == MapTokoRamuan || mapID == MapRumahMakan || mapID == MapRumahSehat || mapID == MapTokoAlat || mapID == MapAula ||
+		mapID == MapPenginapan || mapID == MapRumahPemain
 }
 
 // BossSpot adalah petak tempat bos menunggu. Menginjaknya (di klien) lalu

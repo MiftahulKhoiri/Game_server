@@ -976,3 +976,15 @@ func TestHealCompanionRejectsFullHealthWithoutConsumingPotion(t *testing.T) {
 		t.Fatalf("ramuan tidak boleh terpakai: %+v", p.State.Inventory)
 	}
 }
+
+// Roadmap no. 127: tanpa rumah, posisi di dalam rumah pemain ditolak.
+func TestSaveRejectsPlayerHouseWithoutOwnership(t *testing.T) {
+	ts := newTestServer(t)
+	cr := register(t, ts, "TanpaRumah")
+	st := cr.Player.State
+	st.Map, st.X, st.Y, st.FX, st.FZ = game.MapRumahPemain, 4, 5, 4.5, 5.5
+	resp, data := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: cr.Player.Version, State: st})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("harus 422, dapat %d: %s", resp.StatusCode, data)
+	}
+}
