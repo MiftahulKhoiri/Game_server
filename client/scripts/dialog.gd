@@ -3,6 +3,8 @@ extends Control
 ## (docs/API.md); layar ini hanya menampilkan dan mengirim "terima" / "ambil hadiah".
 
 const WARGA_DIALOG = preload("res://scripts/warga_dialog.gd")
+const Maps = preload("res://scripts/maps.gd")
+const Models = preload("res://scripts/models.gd")
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ART_DIR := "res://assets/characters/"
 const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur", "petani": "Petani"}
@@ -81,6 +83,8 @@ var _action: Button
 var _portrait: Control
 var _tex: Texture2D
 var _busy := false
+var _speaker_talks := true
+var _speaker: Node3D            # model 3D lawan bicara yang sedang berbicara (roadmap no. 34, 39)
 
 
 func _ready() -> void:
@@ -123,6 +127,9 @@ func _brief_kapten() -> void:
 
 func _render_warga() -> void:
 	_name_label.text = WARGA_DIALOG.display_name(_warga_id)
+	var peran := str(_warga_def().get("peran", ""))
+	if peran != "":
+		_name_label.text += "  ·  " + peran  # identitas dan pekerjaan (roadmap no. 41)
 	_action.visible = false
 	var n := int(Session.talk_counts.get(_npc, 1)) - 1
 	_text.text = WARGA_DIALOG.line(_warga_id, _stage, n)
@@ -252,10 +259,14 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 16)
 	margin.add_child(box)
 
-	_portrait = Control.new()
-	_portrait.custom_minimum_size = Vector2(0, 520)
-	_portrait.draw.connect(_draw_portrait)
-	box.add_child(_portrait)
+	var def := _warga_def()
+	if _tex == null and not def.is_empty():
+		box.add_child(_build_speaker(def))  # warga tanpa gambar: model 3D-nya berbicara
+	else:
+		_portrait = Control.new()
+		_portrait.custom_minimum_size = Vector2(0, 520)
+		_portrait.draw.connect(_draw_portrait)
+		box.add_child(_portrait)
 
 	_name_label = Label.new()
 	_name_label.add_theme_font_size_override("font_size", 40)
@@ -275,6 +286,58 @@ func _build_ui() -> void:
 	var back := _make_button("Kembali")
 	back.pressed.connect(_on_back)
 	box.add_child(back)
+
+
+## Definisi warga (Maps.WARGA) dari lawan bicara, atau {} bila bukan warga.
+func _warga_def() -> Dictionary:
+	if _warga_id == "":
+		return {}
+	for d: Dictionary in Maps.WARGA:
+		if str(d.id) == _warga_id:
+			return d
+	return {}
+
+
+## Panggung kecil berisi model 3D warga yang terus berbicara (gerak tangan dan mengangguk).
+func _build_speaker(def: Dictionary) -> Control:
+	var holder := SubViewportContainer.new()
+	holder.custom_minimum_size = Vector2(0, 520)
+	holder.stretch = true
+	var vp := SubViewport.new()
+	vp.own_world_3d = true
+	vp.msaa_3d = Viewport.MSAA_2X
+	holder.add_child(vp)
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color("24342b")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("c8d6cc")
+	env.ambient_light_energy = 0.65
+	var we := WorldEnvironment.new()
+	we.environment = env
+	vp.add_child(we)
+	var sun := DirectionalLight3D.new()
+	sun.rotation = Vector3(deg_to_rad(-35), deg_to_rad(-25), 0)
+	vp.add_child(sun)
+	_speaker = Models.create_warga(def)
+	_speaker.rotation.y = deg_to_rad(12)
+	vp.add_child(_speaker)
+	var cam := Camera3D.new()
+	cam.fov = 30.0
+	vp.add_child(cam)
+	var h := 1.0 * float(def.get("ukuran", 1.0))
+	cam.look_at_from_position(Vector3(0, h * 0.75, h * 2.1), Vector3(0, h * 0.55, 0))
+	cam.current = true
+	return holder
+
+
+func _process(_delta: float) -> void:
+	# Lawan bicara terus berbicara selama layar terbuka (hanya model berangka KayKit).
+	if _speaker == null or not _speaker_talks:
+		return
+	var act: Variant = _speaker.get("_actions")
+	if act == null or str(act.call("current")) == "":
+		_speaker_talks = bool(_speaker.call("play_action", "bicara"))
 
 
 func _draw_portrait() -> void:
