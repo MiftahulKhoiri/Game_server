@@ -950,6 +950,32 @@ func _run() -> void:
 			jauh_w = w
 	_check(dekat_w != null and jauh_w != null and jauh_w.steps * 3 <= dekat_w.steps, "optimasi: warga jauh diperbarui jarang (%s vs %s langkah) (no. 60)" % [str(jauh_w.steps if jauh_w else -1), str(dekat_w.steps if dekat_w else -1)])
 	Atmo.hour_override = -1.0
+	# Roadmap no. 89-110: air hidup, pasir tepi air, ilalang, semak, jamur, angin, kabut pagi.
+	var d_WB = load("res://scripts/world_build.gd")
+	var d_medan_desa: Node3D = d_WB.build(Maps.DEFAULT_MAP)
+	var d_hias: Dictionary = d_medan_desa.get_meta("hiasan", {})
+	_check(int(d_hias.get("pasir", 0)) > 10 and int(d_hias.get("ilalang", 0)) > 5 and int(d_hias.get("semak", 0)) > 5, "Desa Awal: tepi pasir, ilalang, dan semak (%s)" % str(d_hias))
+	var d_air_ok := false
+	for d_mmi in d_medan_desa.find_children("*", "MultiMeshInstance3D", true, false):
+		var d_mmx := d_mmi as MultiMeshInstance3D
+		if d_mmx.material_override is ShaderMaterial and str((d_mmx.material_override as ShaderMaterial).shader.code).contains("riak"):
+			d_air_ok = d_mmx.multimesh.get_instance_transform(0).origin.y > -0.06
+	_check(d_air_ok, "air memakai shader riak dan berada di atas alas (tidak tertutup)")
+	d_medan_desa.free()
+	var d_medan_hutan: Node3D = d_WB.build(Maps.HUTAN)
+	_check(int(d_medan_hutan.get_meta("hiasan", {}).get("jamur", 0)) > 0, "Hutan Lebat punya jamur")
+	d_medan_hutan.free()
+	d_WB.set_wind(2.5)
+	_check(is_equal_approx(d_WB.wind(), 2.5), "angin bisa dikencangkan (pohon dan rumput)")
+	d_WB.set_wind(1.0)
+	Atmo.rain = 1.0
+	_check(Atmo.wind_strength() > 2.0, "hujan membuat angin kencang")
+	Atmo.rain = 0.0
+	Atmo.hour_override = 6.5
+	var d_kabut_pagi: float = Atmo.dawn_fog()
+	Atmo.hour_override = 12.0
+	_check(d_kabut_pagi > 0.9 and Atmo.dawn_fog() == 0.0, "kabut tebal pagi hari, hilang siang hari")
+	Atmo.hour_override = -1.0
 	w3._pos = Vector2(7.5, 5.5)
 	_check(w3._menu != null and not w3._menu.is_open, "menu dalam game ada dan tertutup")
 	w3._toggle_menu()
