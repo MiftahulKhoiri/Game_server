@@ -51,6 +51,8 @@ var _rpass_edit: LineEdit
 var _rpass2_edit: LineEdit
 var _btn_register: Button
 var _register_status: Label
+var _reg_hint: Label        # pemeriksaan isian saat mengetik (roadmap no. 203)
+var home_footer: Label
 
 # Pengaturan
 var _url_edit: LineEdit
@@ -227,6 +229,13 @@ func _build_home() -> void:
 	_home_status.add_theme_color_override("font_outline_color", Color("1a0d05"))
 	_home_status.add_theme_constant_override("outline_size", 6)
 	p.add_child(_home_status)
+	# Kaki beranda (roadmap no. 201): versi aplikasi dan petunjuk singkat.
+	p.add_child(_filler())
+	var foot := _make_label("Versi %s  ·  Raspberry Pi 5 sebagai server" % str(ProjectSettings.get_setting("application/config/version", "")), 20)
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	foot.modulate = Color(1, 1, 1, 0.55)
+	home_footer = foot
+	p.add_child(foot)
 
 
 ## Gambar judul di bagian atas (selebar layar), memudar halus ke latar gelap di bawahnya.
@@ -378,6 +387,11 @@ func _build_register() -> void:
 	_rpass2_edit.max_length = 128
 	p.add_child(_rpass2_edit)
 	p.add_child(_make_show_pass([_rpass_edit, _rpass2_edit]))
+	_reg_hint = _make_label("", 22)
+	_reg_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.add_child(_reg_hint)
+	for e: LineEdit in [_name_edit, _email_edit, _rpass_edit, _rpass2_edit]:
+		e.text_changed.connect(func(_t: String) -> void: update_reg_hints())
 	_btn_register = _make_button("Daftar dan mulai")
 	_btn_register.pressed.connect(_do_register)
 	p.add_child(_btn_register)
@@ -682,6 +696,24 @@ func _on_update_progress(received: int, total: int) -> void:
 
 
 # --- Daftar / Masuk ----------------------------------------------------------------------
+
+## Periksa isian daftar sambil mengetik: setiap syarat diberi tanda centang/silang. true bila semua sah.
+func update_reg_hints() -> bool:
+	var nm := _name_edit.text.strip_edges()
+	var em := _email_edit.text.strip_edges()
+	var name_ok := RegEx.create_from_string("^[A-Za-z0-9_]{3,20}$").search(nm) != null
+	var email_ok := RegEx.create_from_string("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").search(em) != null
+	var pass_ok := _rpass_edit.text.length() >= MIN_PASSWORD
+	var same_ok := pass_ok and _rpass_edit.text == _rpass2_edit.text
+	var lines: Array[String] = []
+	for pair: Array in [[name_ok, "Nama 3-20 huruf/angka/_"], [email_ok, "Email sah"], [pass_ok, "Kata sandi minimal %d karakter" % MIN_PASSWORD], [same_ok, "Kedua kata sandi sama"]]:
+		lines.append(("✓ " if pair[0] else "✗ ") + str(pair[1]))
+	var all_ok := name_ok and email_ok and pass_ok and same_ok
+	if _reg_hint != null:
+		_reg_hint.text = "   ".join(lines)
+		_reg_hint.add_theme_color_override("font_color", GREEN if all_ok else Color("ffcf8a"))
+	return all_ok
+
 
 func _do_register() -> void:
 	var player_name := _name_edit.text.strip_edges()

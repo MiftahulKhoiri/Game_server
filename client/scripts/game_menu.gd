@@ -9,6 +9,7 @@ signal profile_requested
 signal inventory_requested
 signal atribut_requested
 signal trade_requested
+signal journal_requested(tab: int)
 signal go_home
 signal logout
 signal quit_game
@@ -38,6 +39,8 @@ var _btn_logout: Button
 var _btn_tas: Button
 var _btn_atribut: Button
 var _btn_dagang: Button
+var _btn_jurnal: Button
+var _btn_kabar: Button
 var _confirm_key := ""
 var _confirm_btn: Button
 var _confirm_text := ""
@@ -81,6 +84,10 @@ func _ready() -> void:
 	_main.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
 	_btn_tas = _button("Ransel", func() -> void: inventory_requested.emit())
 	_main.add_child(_btn_tas)
+	_btn_jurnal = _button("Misi dan Peta", func() -> void: journal_requested.emit(0))
+	_main.add_child(_btn_jurnal)
+	_btn_kabar = _button("Kabar", func() -> void: journal_requested.emit(2))
+	_main.add_child(_btn_kabar)
 	_btn_atribut = _button("Atribut", func() -> void: atribut_requested.emit())
 	_main.add_child(_btn_atribut)
 	_btn_dagang = _button("Dagang dengan pemain", func() -> void: trade_requested.emit())
@@ -137,6 +144,7 @@ func _ready() -> void:
 	_toggle_keep = _toggle("Layar tetap menyala", _on_toggle_keep)
 	_settings.add_child(_toggle_keep)
 
+	_settings.add_child(load("res://scripts/kontrol_settings.gd").new())
 	_settings.add_child(_section("Suara"))
 	_toggle_npc = _toggle("Suara orang (NPC)", _on_toggle_npc)
 	_settings.add_child(_toggle_npc)
@@ -166,6 +174,8 @@ func open() -> void:
 	_btn_tas.disabled = Session.offline  # tas butuh server
 	_btn_atribut.disabled = Session.offline
 	_btn_dagang.disabled = Session.offline
+	var unread := Session.unread_notices()
+	_btn_kabar.text = "Kabar (%d baru)" % unread if unread > 0 else "Kabar"
 	visible = true
 	is_open = true
 

@@ -14,6 +14,7 @@ const ProfileScreen = preload("res://scripts/profile.gd")
 const TempaScreen = preload("res://scripts/tempa.gd")
 const EkonomiScreen = preload("res://scripts/ekonomi.gd")
 const WorldLife = preload("res://scripts/world_life.gd")
+const JurnalScreen = preload("res://scripts/jurnal.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const Warga = preload("res://scripts/warga.gd")
@@ -163,6 +164,17 @@ var _profile: CanvasLayer
 var _tempa: CanvasLayer                     # layar tempa di pandai besi (roadmap no. 145)
 var _ekonomi: CanvasLayer                   # bank, peti simpan, dagang (roadmap no. 176-182)
 var _life: Node                             # serbuan, Hari Pasar, wilayah, rahasia, hujan, ladang (roadmap no. 186-200)
+## Tata letak HUD untuk berbagai ukuran layar (roadmap no. 217-218): [Control, posisi dasar 720x1280, jenis].
+## Jenis: "tl" kiri atas, "tr" kanan atas, "tc" tengah atas, "br" kelompok kanan bawah (tombol aksi),
+## "bl" kelompok kiri bawah (joystick, ramuan/kabur). Kelompok bawah ikut ukuran kontrol dan mode tangan kiri.
+var _hud_items: Array = []
+var _toast_tw: Tween
+var _toast_queue: Array = []
+var _jurnal: CanvasLayer                     # Misi, Peta, Kabar (roadmap no. 212-213, 216)
+var _trade_acc := 50.0
+static var _trade_seen: Dictionary = {}
+const BASE_W := 720.0
+const BASE_H := 1280.0
 var stamina := 100.0                        # stamina lari dan lompat (roadmap no. 135), hanya di klien
 var _tired := false                         # stamina habis: tidak bisa berlari sampai pulih sebagian
 
@@ -278,6 +290,14 @@ func _ready() -> void:
 	_companions = Companions.new()
 	add_child(_companions)
 	_companions.setup(self)
+	for b: Control in [_fight._btn_potion, _fight._btn_flee]:
+		register_hud(b, "bl")
+	if "_heal_button" in _companions and _companions._heal_button != null:
+		register_hud(_companions._heal_button, "bl")
+	get_viewport().size_changed.connect(_layout_hud)
+	if not Session.ui_changed.is_connected(_layout_hud):
+		Session.ui_changed.connect(_layout_hud)
+	_layout_hud()
 	_refresh_hud()
 	_update_clock()
 	_apply_transform()
@@ -751,7 +771,7 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 	var visited: Array = Session.player.state.get("visited", [])
 	if Maps.ZONA.has(map_id) and not visited.has(map_id) and not Session.offline:
 		visited.append(map_id)  # server mencatat sendiri saat posisi disimpan (roadmap no. 198)
-		_show_toast("Wilayah baru: %s" % Maps.NAMES.get(map_id, map_id))
+		notify("Wilayah baru ditemukan: %s" % Maps.NAMES.get(map_id, map_id), "info", "Wilayah baru: %s" % Maps.NAMES.get(map_id, map_id))
 	else:
 		_show_toast(str(Maps.NAMES.get(map_id, map_id)))
 	_set_status("Memasuki %s" % Maps.NAMES.get(map_id, map_id))
@@ -820,6 +840,26 @@ func _update_world_life(delta: float) -> void:
 	_update_roamers(delta)
 	if _life != null:
 		_life.tick(delta)
+	_poll_trades(delta)
+
+
+## Tawaran dagang masuk (roadmap no. 176, 216): diperiksa tiap 60 detik, pemberitahuan sekali per tawaran.
+func _poll_trades(delta: float) -> void:
+	if Session.offline:
+		return
+	_trade_acc += delta
+	if _trade_acc < 60.0:
+		return
+	_trade_acc = 0.0
+	var res: Dictionary = await Api.trades_get()
+	if not res.ok or not is_inside_tree():
+		return
+	var me := str(Session.player.get("name", "")).to_lower()
+	for t: Dictionary in res.data.get("trades", []):
+		var id := int(t.get("id", 0))
+		if str(t.get("status", "")) == "pending" and str(t.get("to", "")).to_lower() == me and not _trade_seen.has(id):
+			_trade_seen[id] = true
+			notify("Tawaran dagang dari %s: %s x%d seharga %d emas (Menu > Dagang)." % [t.get("from", "?"), str(t.get("item", "")), int(t.get("qty", 1)), int(t.get("price", 0))], "dagang", "Tawaran dagang masuk!")
 
 
 ## Jam di atas layar: ikon matahari (siang) atau bulan (malam); di Gua Batu ikon gua.
@@ -1053,7 +1093,7 @@ func _tick_stamina(delta: float, running: bool) -> void:
 
 ## Pencapaian baru (no. 150): pemberitahuan; hadiahnya diambil di Atribut > Pencapaian.
 func _on_achievement(id: String) -> void:
-	_show_toast("Pencapaian baru!")
+	notify("Pencapaian baru terbuka. Ambil hadiahnya di Atribut > Pencapaian.", "hadiah", "Pencapaian baru!")
 	_set_status("Pencapaian terbuka: ambil hadiahnya di menu Atribut > Pencapaian")
 	HeroFx.ring(self, Vector3(_pos.x, 0.1, _pos.y), Color("ffd24a"), 2.2, 0.6)
 
@@ -2084,9 +2124,85 @@ func _build_ui() -> void:
 	_menu.trade_requested.connect(func() -> void:
 		_menu.close()
 		open_ekonomi(EkonomiScreen.MODE_DAGANG))
+	_jurnal = JurnalScreen.new()
+	add_child(_jurnal)
+	_jurnal.closed.connect(func() -> void:
+		_jurnal.close()
+		_locked = false)
+	_menu.journal_requested.connect(func(t: int) -> void:
+		_menu.close()
+		_locked = true
+		_set_moving(false)
+		if not Session.offline:
+			await _flush_save()  # peta memakai posisi terbaru
+		_jurnal.open(t))
 	if not Session.achievement_unlocked.is_connected(_on_achievement):
 		Session.achievement_unlocked.connect(_on_achievement)
 	_profile.hero_changed.connect(_make_player)
+	for pair: Array in [[_bars, "tl"], [_status, "tl"], [_hutan_hud, "tc"], [_radar, "tr"], [menu_btn, "tr"], [_joy, "bl"]]:
+		register_hud(pair[0], pair[1])
+	for b: Control in _act_buttons:
+		register_hud(b, "br")
+
+
+## Daftarkan elemen HUD supaya ikut tata letak layar (lihat _hud_items).
+func register_hud(c: Control, kind: String) -> void:
+	if c == null:
+		return
+	_hud_items.append([c, c.position, kind])
+
+
+## Jarak aman di atas (poni/kamera depan HP), dalam satuan layar permainan.
+func _safe_top() -> float:
+	if not OS.has_feature("mobile"):
+		return 0.0
+	var safe := DisplayServer.get_display_safe_area()
+	var win := DisplayServer.window_get_size()
+	if win.y <= 0:
+		return 0.0
+	return float(safe.position.y) * get_viewport().get_visible_rect().size.y / float(win.y)
+
+
+## Tata letak HUD (roadmap no. 217-218): layar lebih tinggi/lebar dari 720x1280 tidak lagi diberi pita
+## hitam; elemen kanan menempel ke kanan, kontrol bawah menempel ke bawah dan ikut ukuran kontrol, dan
+## mode tangan kiri menukar sisi joystick dan tombol aksi.
+func _layout_hud() -> void:
+	var vs := get_viewport().get_visible_rect().size
+	var dx := vs.x - BASE_W
+	var dy := vs.y - BASE_H
+	var top := _safe_top()
+	var s := Session.ui_scale()
+	for it: Array in _hud_items:
+		var c := it[0] as Control
+		if c == null or not is_instance_valid(c):
+			continue
+		var p: Vector2 = it[1]
+		match str(it[2]):
+			"tl":
+				c.position = p + Vector2(0, top)
+			"tr":
+				c.position = p + Vector2(dx, top)
+			"tc":
+				c.position = p + Vector2(dx * 0.5, top)
+			_:
+				var right := str(it[2]) == "br"
+				var corner := Vector2(BASE_W if right else 0.0, BASE_H)
+				var center := p + c.size * 0.5
+				center = corner + (center - corner) * s
+				center += Vector2(dx if right else 0.0, dy)
+				if Session.left_hand:
+					center.x = vs.x - center.x
+				c.pivot_offset = c.size * 0.5
+				c.scale = Vector2.ONE * s
+				c.position = center - c.size * 0.5
+	if _clock != null:
+		_clock.center_x = 440.0 + dx * 0.5
+		_clock.position.y = 14.0 + top
+		_clock.position.x = _clock.center_x - _clock.size.x / 2.0
+	if _toast != null:
+		_toast.size.x = vs.x
+	if _life != null and _life.has_method("layout"):
+		_life.layout(dx, top)
 
 
 func _add_button(layer: CanvasLayer, text: String, slot: int, callback: Callable) -> Button:
@@ -2208,12 +2324,28 @@ func _set_status(text: String) -> void:
 		_status.text = text
 
 
+## Tulisan besar di tengah layar. Beberapa tulisan berturut-turut tampil bergantian (roadmap no. 216),
+## tidak saling menimpa.
 func _show_toast(text: String) -> void:
+	if _toast_tw != null and _toast_tw.is_valid() and _toast_tw.is_running():
+		if _toast_queue.size() < 4 and not _toast_queue.has(text) and _toast.text != text:
+			_toast_queue.append(text)
+		return
 	_toast.text = text
 	_toast.modulate.a = 1.0
-	var tw := create_tween()
-	tw.tween_interval(1.2)
-	tw.tween_property(_toast, "modulate:a", 0.0, 0.8)
+	_toast_tw = create_tween()
+	_toast_tw.tween_interval(1.2)
+	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.8)
+	_toast_tw.tween_callback(func() -> void:
+		if not _toast_queue.is_empty():
+			_show_toast(str(_toast_queue.pop_front())))
+
+
+## Pemberitahuan: tulisan besar + tersimpan di Menu > Jurnal > Kabar.
+func notify(text: String, kind := "info", toast := "") -> void:
+	Session.notify(text, kind)
+	if toast != "":
+		_show_toast(toast)
 
 
 # --- menu dalam game ---
