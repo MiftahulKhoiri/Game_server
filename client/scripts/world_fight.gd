@@ -419,8 +419,14 @@ func _play_event(e: Dictionary) -> void:
 			roamer.model.call("play_attack")
 		if roamer != null:
 			roamer.warn = false
+		var skill := str(e.get("skill", ""))
+		if skill != "":  # kemampuan khusus musuh (roadmap no. 85-86)
+			_float_text(enemy_at + Vector3(0, enemy_top + 1.0, 0), skill + "!", Color("ff9a3c"), 58)
+			HeroFx.ring(world, enemy_at + Vector3(0, 0.1, 0), Color("ff7a2a"), 1.6, 0.4)
+			if int(e.get("heal", 0)) > 0:
+				_float_text(enemy_at + Vector3(0, enemy_top + 0.5, 0), "+%d" % int(e.get("heal", 0)), Color("7dff8a"), 48)
 		if dmg > 0:
-			world._shake = 0.3
+			world._shake = 0.45 if skill != "" else 0.3
 			_flash.color.a = 0.32
 			HeroFx.burst(world, me_at + Vector3(0, 0.9, 0), Color("ff5c5c"), 12, 2.6)
 			_float_text(me_at + Vector3(0, 2.0, 0), "-%d" % dmg, Color("ff6b5c"), 60)

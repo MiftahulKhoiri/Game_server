@@ -255,6 +255,10 @@ func _play_event(e: Dictionary) -> void:
 	else:
 		_play(_enemy_rig, "play_attack")
 		_lunge(_enemy_rig, ENEMY_X, -0.55)
+		if str(e.get("skill", "")) != "":  # kemampuan khusus musuh (roadmap no. 85-86)
+			_pop("%s!" % str(e.skill), Color("ff9a3c"), false, 46)
+			if int(e.get("heal", 0)) > 0:
+				_pop("+%d HP" % int(e.heal), Color("7be06b"), false, 36)
 		match kind:
 			"perfect":
 				_after(LUNGE_MS, func() -> void:
