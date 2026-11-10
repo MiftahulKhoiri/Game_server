@@ -1,0 +1,12 @@
+# Jadwal cadangan lengkap: tiap Minggu 03:00 waktu Pi; bila Pi mati saat itu, dijalankan saat menyala.
+# Pasang: make install-backup-timer     Cek: systemctl --user list-timers gameserver-backup
+[Unit]
+Description=Jadwal mingguan cadangan lengkap Game_server
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

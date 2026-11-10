@@ -30,3 +30,4 @@ client/export/
 # Rahasia
 .env
 *.pem
+coverage.out

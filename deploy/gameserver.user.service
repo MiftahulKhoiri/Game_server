@@ -7,7 +7,7 @@
 # Kendali:
 #   systemctl --user status gameserver
 #   systemctl --user restart gameserver     (atau: make restart setelah build ulang)
-#   journalctl --user -u gameserver -f      (log)
+#   journalctl _SYSTEMD_USER_UNIT=gameserver.service -f      (log)
 [Unit]
 Description=Game_server (server game RPG)
 After=network-online.target

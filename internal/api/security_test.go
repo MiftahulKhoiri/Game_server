@@ -210,4 +210,9 @@ func TestRequestLogHasPlayerAndLevel(t *testing.T) {
 	if !strings.Contains(out, "player="+cr.Player.ID) || !strings.Contains(out, "level=WARN") || !strings.Contains(out, "ip=127.0.0.1") {
 		t.Fatalf("catatan permintaan: %s", out)
 	}
+	buf.Reset()
+	do(t, "GET", ts.URL+"/v1/battle", cr.Token, nil) // belum bertarung: 404 biasa
+	if out := buf.String(); !strings.Contains(out, "status=404") || strings.Contains(out, "level=WARN") {
+		t.Fatalf("404 tanpa pertarungan harus INFO: %s", out)
+	}
 }

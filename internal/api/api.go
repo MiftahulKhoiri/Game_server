@@ -974,7 +974,8 @@ func (s *Server) clientGate(next http.Handler) http.Handler {
 const slowRequest = time.Second
 
 // logRequests mencatat setiap permintaan: metode, jalur, status, lama, IP, dan pemain (bila masuk).
-// 5xx dicatat sebagai ERROR, 4xx dan permintaan lambat sebagai WARN, sisanya INFO.
+// 5xx dicatat sebagai ERROR, 4xx dan permintaan lambat sebagai WARN, sisanya INFO. "GET /v1/battle"
+// 404 (tidak ada pertarungan yang perlu dilanjutkan) adalah alur biasa saat klien dibuka: INFO (no. 271).
 func (s *Server) logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -986,6 +987,7 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		switch {
 		case sw.status >= 500:
 			level = slog.LevelError
+		case sw.status == http.StatusNotFound && r.Method == http.MethodGet && r.URL.Path == "/v1/battle":
 		case sw.status >= 400 || dur > slowRequest:
 			level = slog.LevelWarn
 		}

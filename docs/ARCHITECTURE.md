@@ -83,10 +83,11 @@ Pi 5 (`go test -bench . ./internal/store/`): cek token ±0,07 ms, simpan state �
 **Cadangan.** Server membuat `data/backup/game-YYYYMMDD-HHMMSS.db` (VACUUM INTO, salinan konsisten walau
 server berjalan) setiap 24 jam dan menyimpan 7 terbaru. Manual: `make backup`. Pemulihan:
 `make restore FILE=data/backup/game-....db` (memeriksa cadangan, menyimpan database lama sebagai
-`game.db.sebelum-pulih-WAKTU`, lalu menyalakan server lagi).
+`game.db.sebelum-pulih-WAKTU`, lalu menyalakan server lagi). Sejak v0.63.0 ada juga cadangan lengkap
+mingguan kode + database (`make backup-all`, `gameserver-backup.timer`) — lihat [BACKUP.md](BACKUP.md).
 
-**Log.** Setiap permintaan: metode, jalur, status, lama, IP, id pemain. 5xx = ERROR, 4xx dan permintaan
-> 1 detik = WARN. Lihat: `journalctl --user -u gameserver -f`.
+**Log.** Setiap permintaan: metode, jalur, status, lama, IP, id pemain. 5xx = ERROR, 4xx (kecuali `GET /v1/battle` 404 = belum bertarung) dan permintaan
+> 1 detik = WARN. Lihat: `journalctl _SYSTEMD_USER_UNIT=gameserver.service -f`.
 
 **Koneksi klien.** GET diulang sekali bila jaringan putus; layar dunia menampilkan "Koneksi terputus",
 menanyai server tiap 5 detik, lalu mengambil ulang data dan mengirim posisi yang tertunda saat tersambung.
