@@ -29,6 +29,7 @@ const HudBars = preload("res://scripts/hud_bars.gd")
 const HutanHud = preload("res://scripts/hutan_hud.gd")
 const RadarMusuh = preload("res://scripts/radar_musuh.gd")
 const Perf = preload("res://scripts/perf.gd")
+const NameLabels = preload("res://scripts/name_labels.gd")
 
 const SPEED := 3.3  # petak per detik
 const SAVE_DELAY := 1.5
@@ -144,6 +145,11 @@ var _npc_models: Dictionary = {}  # id NPC -> model 3D
 var _npc_time := 0.0
 var _warga: Array[Warga] = []        # warga desa yang berjalan bebas
 var _roamers: Array[Roamer] = []     # musuh yang berkeliaran di peta
+var _names := NameLabels.new()         # tata letak nama di atas kepala (tidak menumpuk)
+var _names_acc := 0.0
+var _lights: Array = []                # lampu titik di peta ini (dibatasi yang terdekat saja)
+var _lights_acc := 0.0
+var _name_label_of: Dictionary = {}     # id NPC / "warga:id" -> Label3D namanya
 var _roam_cfg: Dictionary = {}       # pengaturan musuh peta ini (Maps.ROAMERS), untuk memunculkan pengganti
 var _roam_kinds: Array = []
 var _fight: WorldFight               # pertarungan langsung di dunia
@@ -337,6 +343,8 @@ func _load_map(map_id: String) -> void:
 	_spawn_chests(map_id)
 	_hutan_boss = null
 	_hutan_sig = -1
+	_names.clear()
+	_name_label_of = {}
 	_npc_root = Node3D.new()
 	_npc_root.name = "NPC"
 	add_child(_npc_root)
@@ -361,6 +369,8 @@ func _load_map(map_id: String) -> void:
 		label.outline_size = 10
 		label.position = model.position + Vector3(0, 1.25, 0)
 		_npc_root.add_child(label)
+		_names.add(label, label.text, str(n.name))
+		_name_label_of[id] = label
 	_spawn_warga(map_id)
 	_env.environment = WorldBuild.environment_for(map_id)
 	_sun.light_energy = WorldBuild.light_energy_for(map_id)
@@ -369,7 +379,9 @@ func _load_map(map_id: String) -> void:
 	_atmo_base = Atmosphere.capture(_env.environment, _sun)
 	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
 	Atmosphere.set_rain(_rain, map_id)
+	_lights = _terrain.find_children("*", "OmniLight3D", true, false) + _npc_root.find_children("*", "OmniLight3D", true, false)
 	_update_lamps()
+	_cull_lights()
 	_sync_world()
 	if _life != null:
 		_life.on_map(map_id)
@@ -462,6 +474,8 @@ func _spawn_warga(map_id: String) -> void:
 		label.position = Vector3(0, 1.3 if def.has("peran") else 1.15, 0)
 		holder.add_child(label)
 		label.set_meta("teks", label.text)
+		_names.add(label, label.text, str(def.name))
+		_name_label_of[Warga.TALK_PREFIX + str(w.id)] = label
 		_npc_root.add_child(holder)
 		w.node = holder
 		w.model = model
@@ -485,6 +499,7 @@ func _update_warga_label(w: Warga) -> void:
 	for c in w.node.get_children():
 		if c is Label3D and c.has_meta("teks"):
 			var base := str(c.get_meta("teks", c.text))
+			c.set_meta("zzz", w.sleeping)
 			(c as Label3D).text = base + ("  Zzz" if w.sleeping else "")
 
 
@@ -788,6 +803,14 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 
 func _process(delta: float) -> void:
 	_update_world_life(delta)
+	_names_acc += delta
+	if _names_acc >= 0.1:
+		_names_acc = 0.0
+		_layout_names()
+	_lights_acc += delta
+	if _lights_acc >= 0.5:
+		_lights_acc = 0.0
+		_cull_lights()
 	if _hutan_hud != null and _hutan_hud.visible:
 		_hutan_hud.update_view(Session.hutan_kills(), Session.hutan_wave(), _pos, _cam_yaw, Session.hutan_started())
 	_update_radar()
@@ -1791,17 +1814,70 @@ func _update_talk_button() -> void:
 		_place_talk_button(_npc_anchor(npc))
 
 
+## Hanya beberapa lampu titik terdekat yang menyala (Perf.LIGHTS): di perender HP (GL Compatibility)
+## setiap lampu menambah lintasan gambar untuk benda yang diteranginya — malam di desa (±23 lampu)
+## dulu turun ke ±13 FPS di Samsung A50.
+func _cull_lights() -> void:
+	var cand: Array = []
+	for l in _lights:
+		if not is_instance_valid(l):
+			continue
+		var on := bool(l.get_meta("malam_on", true))
+		var d := Vector2(l.global_position.x, l.global_position.z).distance_to(_pos) if l.is_inside_tree() else 0.0
+		cand.append([d, l, on])
+	cand.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	var left: int = int(Perf.pick(Perf.LIGHTS))
+	for c: Array in cand:
+		var l: OmniLight3D = c[1]
+		var allowed: bool = c[2] and left > 0
+		if allowed:
+			left -= 1
+		l.set_meta("jauh", not allowed)
+		l.visible = allowed
+
+
+## Nama di atas kepala tidak saling menumpuk dan tidak tertutup tombol konteks.
+func _layout_names() -> void:
+	var obstacle := Rect2()
+	var owner: Label3D = null
+	if _talk_button != null and _talk_button.visible:
+		obstacle = Rect2(_talk_button.position, _talk_button.size)
+		if _talk_button.text == "Bicara":
+			owner = _name_label_of.get(_npc_in_range(), null)
+	var hud: Array = []
+	for it: Array in _hud_items:
+		var c := it[0] as Control
+		if str(it[2]).begins_with("t") and is_instance_valid(c) and c.is_visible_in_tree():
+			var r := c.get_global_rect()
+			if c is Label:  # kotak label bisa jauh lebih lebar dari tulisannya
+				var lb := c as Label
+				if lb.text.strip_edges() == "":
+					continue
+				var tw := lb.get_theme_font("font").get_multiline_string_size(lb.text, HORIZONTAL_ALIGNMENT_LEFT, -1, lb.get_theme_font_size("font_size")).x
+				r.size.x = minf(r.size.x, tw + 8.0)
+			hud.append(r)
+	if _clock != null and _clock.is_visible_in_tree():
+		hud.append(_clock.get_global_rect())
+	_names.layout(_camera, obstacle, owner, hud)
+	if _camera != null:
+		var bubbles: Array = []
+		for w in _warga:
+			if w.bubble != null:
+				bubbles.append(w.bubble)
+		NameLabels.fade_bubbles(_camera, bubbles, hud)
+
+
 ## Titik 3D di atas nama NPC/warga (tempat tombol Bicara melayang).
 func _npc_anchor(npc_id: String) -> Vector3:
 	if npc_id.begins_with(Warga.TALK_PREFIX):
 		var wid := npc_id.substr(Warga.TALK_PREFIX.length())
 		for w in _warga:
 			if w.id == wid:
-				return Vector3(w.pos.x, 1.4, w.pos.y)
+				return Vector3(w.pos.x, 1.75, w.pos.y)  # di atas nama + peran, tidak menutupinya
 	var n: Dictionary = Maps.NPCS.get(npc_id, {})
 	if n.is_empty():
 		return Vector3(_pos.x, 1.9, _pos.y)
-	return Vector3(float(n.pos.x) + 0.5, 1.5, float(n.pos.y) + 0.5)
+	return Vector3(float(n.pos.x) + 0.5, 1.75, float(n.pos.y) + 0.5)
 
 
 ## Menaruh tombol konteks di layar tepat di atas titik 3D; di luar layar/di belakang kamera

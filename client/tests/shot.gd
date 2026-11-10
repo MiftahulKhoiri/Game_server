@@ -165,6 +165,8 @@ func _ready() -> void:
 	if OS.get_environment("SHOT_SCENE") == "battle":
 		_battle()
 		return
+	if OS.get_environment("SHOT_QUALITY") != "":
+		Session.quality = int(OS.get_environment("SHOT_QUALITY"))
 	var map_id := OS.get_environment("SHOT_MAP")
 	var x := float(OS.get_environment("SHOT_X")) if OS.get_environment("SHOT_X") != "" else 5.5
 	var z := float(OS.get_environment("SHOT_Z")) if OS.get_environment("SHOT_Z") != "" else 7.5
@@ -184,6 +186,8 @@ func _ready() -> void:
 	var scene: Node = load("res://scenes/world3d.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(0.3).timeout
+	if OS.get_environment("SHOT_PERF") != "":
+		scene._names.debug = true
 	if OS.get_environment("SHOT_YAW") != "":
 		scene._cam_yaw = deg_to_rad(float(OS.get_environment("SHOT_YAW")))
 	if OS.get_environment("SHOT_PITCH") != "":
@@ -201,4 +205,127 @@ func _ready() -> void:
 	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	print("tangkapan layar: ", OS.get_environment("SHOT_OUT"))
+	if OS.get_environment("SHOT_PERF") != "":
+		_perf_report(scene)
+		await _perf_split(scene)
 	get_tree().quit()
+
+
+## Berapa panggilan gambar yang hilang bila satu golongan benda disembunyikan.
+func _perf_split(scene: Node) -> void:
+	var groups := {
+		"MultiMesh (rumput, pohon, pagar, batu)": "MultiMeshInstance3D",
+		"MeshInstance (bangunan, bentuk)": "MeshInstance3D",
+		"Label3D (nama, papan)": "Label3D",
+		"Partikel": "CPUParticles3D",
+		"UI 2D (HUD, tombol)": "CanvasLayer",
+	}
+	var base := await _draws()
+	print("PERF pisah: total %d" % base)
+	var ui := {}
+	for cl in scene.find_children("*", "CanvasLayer", true, false):
+		if not cl.visible:
+			continue
+		for c in cl.find_children("*", "CanvasItem", true, false):
+			if (c as CanvasItem).is_visible_in_tree():
+				var k := "%s/%s" % [cl.name, c.get_class()]
+				ui[k] = int(ui.get(k, 0)) + 1
+	var uk := ui.keys()
+	uk.sort_custom(func(a, b): return ui[a] > ui[b])
+	for k in uk.slice(0, 15):
+		print("PERF ui %4d  %s" % [ui[k], k])
+	for cl in scene.find_children("*", "CanvasLayer", true, false):
+		if not cl.visible:
+			continue
+		for c in cl.get_children():
+			if c is CanvasItem and (c as CanvasItem).visible:
+				(c as CanvasItem).visible = false
+				var d := await _draws()
+				(c as CanvasItem).visible = true
+				var sc: Script = c.get_script()
+				print("PERF ui-item %4d  %s %s %s" % [base - d, c.name, c.get_class(), sc.resource_path.get_file() if sc != null else ""])
+	for g in groups:
+		var hidden: Array = []
+		for n in scene.find_children("*", groups[g], true, false):
+			if n.visible:
+				n.visible = false
+				hidden.append(n)
+		var d := await _draws()
+		print("PERF pisah: %-40s %4d" % [g, base - d])
+		for n in hidden:
+			n.visible = true
+	var sun := scene.get("_sun") as DirectionalLight3D
+	if sun != null and sun.shadow_enabled:
+		sun.shadow_enabled = false
+		print("PERF pisah: %-40s %4d" % ["bayangan matahari", base - await _draws()])
+		sun.shadow_enabled = true
+
+
+func _draws() -> int:
+	for i in 3:
+		await get_tree().process_frame
+	return int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+
+
+## SHOT_PERF=1: angka performa + rincian benda yang digambar (untuk mencari penyebab panggilan gambar).
+func _perf_report(scene: Node) -> void:
+	const Perf = preload("res://scripts/perf.gd")
+	print("PERF ", Perf.text(Perf.snapshot()))
+	var nl = scene.get("_names")
+	if nl != null:
+		for k in nl.reasons:
+			print("PERF nama tersembunyi: %s — %s" % [k, nl.reasons[k]])
+	var counts := {}
+	var shadow := 0
+	var lights := 0
+	for n in scene.find_children("*", "VisualInstance3D", true, false):
+		var vi := n as VisualInstance3D
+		if not vi.is_visible_in_tree():
+			continue
+		var key := vi.get_class()
+		if vi is MeshInstance3D and (vi as MeshInstance3D).mesh != null:
+			key += "(%d permukaan)" % (vi as MeshInstance3D).mesh.get_surface_count()
+		counts[key] = int(counts.get(key, 0)) + 1
+		if vi is GeometryInstance3D and (vi as GeometryInstance3D).cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			shadow += 1
+		if vi is OmniLight3D:
+			lights += 1
+	var by_mesh := {}
+	var cam := get_viewport().get_camera_3d()
+	for n in scene.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if not mi.is_visible_in_tree() or mi.mesh == null:
+			continue
+		if cam != null and cam.global_position.distance_to(mi.global_position) > cam.far:
+			continue
+		var nm := mi.mesh.resource_name if mi.mesh.resource_name != "" else mi.mesh.get_class()
+		var top: Node = mi
+		while top.get_parent() != null and top.get_parent() != scene and top.get_parent().get_parent() != scene:
+			top = top.get_parent()
+		var root_kid: Node = mi
+		while root_kid.get_parent() != scene and root_kid.get_parent() != null:
+			root_kid = root_kid.get_parent()
+		var tn := str(root_kid.name) + "/" + str(top.name)
+		if tn.begins_with("@"):
+			tn = "(tanpa nama)"
+		var k2 := "%s @ %s" % [nm, tn.left(24)]
+		by_mesh[k2] = int(by_mesh.get(k2, 0)) + 1
+	var medan := scene.get("_terrain") as Node
+	if medan != null:
+		var kinds := {}
+		for c in medan.get_children():
+			var sc: Script = c.get_script()
+			var k := "%s %s anak=%d" % [c.get_class(), sc.resource_path.get_file() if sc != null else "-", c.get_child_count()]
+			kinds[k] = int(kinds.get(k, 0)) + 1
+		for k in kinds:
+			if int(kinds[k]) > 2:
+				print("PERF medan %4d  %s" % [kinds[k], k])
+	var mk := by_mesh.keys()
+	mk.sort_custom(func(a, b): return by_mesh[a] > by_mesh[b])
+	for k in mk.slice(0, 25):
+		print("PERF mesh %4d  %s" % [by_mesh[k], k])
+	var keys := counts.keys()
+	keys.sort_custom(func(a, b): return counts[a] > counts[b])
+	for k in keys.slice(0, 14):
+		print("PERF   %4d  %s" % [counts[k], k])
+	print("PERF bayangan: %d benda melempar bayangan, lampu titik menyala: %d" % [shadow, lights])

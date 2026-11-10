@@ -12,6 +12,7 @@ const TREE_H := 2.0
 ## Model alam bergaya low-poly dari KayKit (CC0, Kay Lousberg) di assets/models/alam/.
 ## Bila berkasnya tidak ada, dipakai bentuk dasar seperti semula.
 const Interior = preload("res://scripts/interior.gd")
+const MeshMerge = preload("res://scripts/mesh_merge.gd")
 const Plang = preload("res://scripts/plang.gd")
 const ALAM_DIR := "res://assets/models/alam/"
 
@@ -456,7 +457,9 @@ static func ground_color(tile: String) -> Color:
 
 static func build(map_id: String) -> Node3D:
 	if Maps.is_interior(map_id):
-		return Interior.build(map_id)  # ruangan dalam bangunan (toko, rumah makan, rumah sehat)
+		var room := Interior.build(map_id)  # ruangan dalam bangunan (toko, rumah makan, rumah sehat)
+		MeshMerge.merge(room)
+		return room
 	var root := Node3D.new()
 	root.name = "Medan"
 	var rows := Maps.rows(map_id)
@@ -686,6 +689,7 @@ static func build(map_id: String) -> Node3D:
 		_add_kunci_gerbang(root)
 	if cave:
 		_add_torches(root, rows)
+	MeshMerge.merge(root, _jarak())  # ratusan bentuk kecil statis -> beberapa mesh (panggilan gambar turun)
 	return root
 
 
@@ -1361,7 +1365,8 @@ static func set_night(root: Node3D, n: float) -> void:
 		var light := e.node as OmniLight3D
 		if is_instance_valid(light):
 			light.light_energy = n * float(e.energy)
-			light.visible = n > 0.02
+			light.set_meta("malam_on", n > 0.02)
+			light.visible = n > 0.02 and not bool(light.get_meta("jauh", false))  # jauh: dibatasi world3d
 
 
 ## Lampu rumah: lentera di kiri-kanan pintu, dua jendela hangat, dan pendar di tanah depan pintu.
