@@ -94,6 +94,8 @@ type Battle struct {
 	// SoldierHP: HP tiap prajurit yang ikut bertarung (v0.66.0); diisi saat pendamping pertama kali bergerak.
 	// Prajurit yang gugur dibuang dari daftar dan dari State.Soldiers.
 	SoldierHP []int `json:"soldier_hp,omitempty"`
+	// Phase: fase bos bertahap (Malzareth: 1 sihir hitam, 2 panggilan monster, 3 kutukan terakhir); 0 = belum.
+	Phase int `json:"phase,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -116,6 +118,7 @@ type BattleView struct {
 	Combo           int              `json:"combo"`                // serangan biasa berturut-turut saat ini
 	ComboMs         int64            `json:"combo_ms"`             // sisa waktu agar kombo berlanjut
 	SoldierHP       []int            `json:"soldier_hp,omitempty"` // HP tiap prajurit yang masih bertarung
+	Phase           int              `json:"phase,omitempty"`      // fase bos bertahap (Malzareth 1..3)
 }
 
 // Event adalah satu kejadian untuk dianimasikan klien.
@@ -179,6 +182,9 @@ func StartBossBattle(p *Player, now int64) (Battle, error) {
 		}
 		return styled(p, newBattle(he, now)), nil
 	}
+	if err := p.State.storyBossAllowed(e.ID); err != nil {
+		return Battle{}, err
+	}
 	return styled(p, newBattle(e, now)), nil
 }
 
@@ -227,7 +233,7 @@ func (b *Battle) View(now int64) BattleView {
 		Cooldowns: map[string]int64{}, CooldownMax: map[string]int64{},
 		GuardMs: left(b.GuardUntil), ShieldMs: left(b.ShieldUntil),
 		Combo: b.ComboN, ComboMs: left(b.ComboUntil),
-		SoldierHP: b.SoldierHP,
+		SoldierHP: b.SoldierHP, Phase: b.Phase,
 	}
 	if e, ok := EnemyByID(b.EnemyID); ok {
 		v.EnemyIntervalMs = enemyInterval(e)
@@ -437,8 +443,14 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		next := t + iv
 		// Kemampuan khusus (tanpa memakai angka acak tambahan, jadi urutan acak tetap sama).
 		sp := special(e, b.Round)
+		spName := e.SpecialName
+		if e.ID == MalzarethID {
+			sp, spName = b.malzarethPhase(e, res)
+		}
 		healed := 0
 		switch sp {
+		case SpecialKutukan:
+			dmg = dmg * 2
 		case SpecialTerkam:
 			dmg = dmg * 16 / 10
 		case SpecialGempa:
@@ -515,7 +527,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		}
 		ev := Event{Who: "enemy", Kind: kind, Dmg: dmg}
 		if sp != "" {
-			ev.Skill, ev.Heal = e.SpecialName, healed
+			ev.Skill, ev.Heal = spName, healed
 		}
 		res.Events = append(res.Events, ev)
 		switch {
@@ -524,9 +536,9 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		case kind == "miss":
 			res.Log = append(res.Log, fmt.Sprintf("Kamu menghindar! Serangan %s meleset.", b.EnemyName))
 		case sp != "" && healed > 0:
-			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s: -%d HP, ia pulih %d HP.", b.EnemyName, e.SpecialName, dmg, healed))
+			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s: -%d HP, ia pulih %d HP.", b.EnemyName, spName, dmg, healed))
 		case sp != "":
-			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s! -%d HP.", b.EnemyName, e.SpecialName, dmg))
+			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s! -%d HP.", b.EnemyName, spName, dmg))
 		default:
 			res.Log = append(res.Log, fmt.Sprintf("%s menyerang: -%d HP.", b.EnemyName, dmg))
 		}
@@ -651,6 +663,8 @@ func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	}
 	res.Log = append(res.Log, st.RecordKill(e.ID)...)
 	res.Log = append(res.Log, st.recordHutan(e)...)
+	res.Log = append(res.Log, st.storyKill(e.ID)...)
+	res.Log = append(res.Log, st.advanceStory()...)
 }
 
 // lose: pemain pingsan, kehilangan separuh emas, dibawa pulang ke desa dengan separuh HP.

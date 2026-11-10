@@ -480,18 +480,38 @@ func TestQuestEndToEnd(t *testing.T) {
 		t.Errorf("tanpa token harus 401, dapat %d", resp.StatusCode)
 	}
 	qs := list()
-	if len(qs) == 0 || qs[0].ID != "selamatkan_nenek" || qs[0].Status != game.QuestAvailable {
-		t.Fatalf("daftar misi awal salah: %+v", qs)
+	if len(qs) == 0 || qs[0].ID != "kebun_babi" || qs[0].Status != game.QuestLocked {
+		t.Fatalf("misi sampingan harus terkunci sebelum prolog cerita: %+v", qs)
 	}
-
-	if len(qs) < 2 || qs[1].ID != "selamatkan_petani" || qs[1].Status != game.QuestLocked {
-		t.Fatalf("misi petani harus terkunci: %+v", qs)
-	}
-	if code, _ := call("/v1/quests/accept", map[string]string{"quest": "selamatkan_petani"}); code != http.StatusUnprocessableEntity {
+	q := map[string]string{"quest": "kebun_babi"}
+	if code, _ := call("/v1/quests/accept", q); code != http.StatusUnprocessableEntity {
 		t.Errorf("menerima misi terkunci harus 422, dapat %d", code)
 	}
 
-	q := map[string]string{"quest": "selamatkan_nenek"}
+	// Cerita utama: bicara dengan Kepala Desa harus dari dekatnya (posisi tersimpan diperiksa server).
+	if code, _ := call("/v1/story/talk", map[string]string{"npc": "kepala_suku"}); code != http.StatusUnprocessableEntity {
+		t.Errorf("bicara dari jauh harus 422, dapat %d", code)
+	}
+	if _, err := st.Update(context.Background(), cr.Player.ID, func(sess *store.Session) error {
+		sess.Player.State.Map, sess.Player.State.X, sess.Player.State.Y = game.MapDesaAwal, 40, 8
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	resp, data := do(t, "POST", ts.URL+"/v1/story/talk", cr.Token, map[string]string{"npc": "kepala_suku"})
+	var talked game.Player
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &talked) != nil || talked.State.Story != 1 {
+		t.Fatalf("bicara dengan Kepala Desa: %d %s", resp.StatusCode, data)
+	}
+	resp, data = do(t, "GET", ts.URL+"/v1/story", cr.Token, nil)
+	var sv struct {
+		Story game.StoryView   `json:"story"`
+		Steps []game.StoryStep `json:"steps"`
+	}
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(data, &sv) != nil || sv.Story.Step != 1 || sv.Story.Cur == nil || len(sv.Steps) != game.StoryEnd {
+		t.Fatalf("GET /v1/story: %d %s", resp.StatusCode, data)
+	}
+
 	if code, _ := call("/v1/quests/claim", q); code != http.StatusUnprocessableEntity {
 		t.Errorf("klaim sebelum terima harus 422, dapat %d", code)
 	}
@@ -508,32 +528,10 @@ func TestQuestEndToEnd(t *testing.T) {
 		t.Errorf("klaim saat belum selesai harus 422, dapat %d", code)
 	}
 
-	// Satu kemenangan atas musuh target menaikkan kemajuan (musuh level 1 hanya tikus/belalang).
-	if code, _, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil); code != http.StatusCreated {
-		t.Fatalf("mulai: %d %s", code, d)
-	}
-	var last battleResponse
-	for j := 0; j < 60; j++ {
-		code, resp, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/action", map[string]string{"action": "attack"})
-		if code != http.StatusOK {
-			t.Fatalf("aksi: %d %s", code, d)
-		}
-		last = resp
-		if last.Status != game.StatusOngoing {
-			break
-		}
-	}
-	if last.Status != game.StatusWon || list()[0].Progress != 1 {
-		t.Fatalf("menang harus menaikkan kemajuan: status=%s %+v", last.Status, list()[0])
-	}
-	if !strings.Contains(strings.Join(last.Log, "|"), "Selamatkan Nenek") {
-		t.Errorf("log pertarungan harus menyebut misi: %v", last.Log)
-	}
-
 	// Selesaikan misi langsung lewat store (pertarungan ke-5 tergantung level musuh), lalu klaim.
 	if _, err := st.Update(context.Background(), cr.Player.ID, func(sess *store.Session) error {
 		sess.Player.State.Quests[0].Status = game.QuestDone
-		sess.Player.State.Quests[0].Progress = sess.Player.State.Quests[0].Progress + 4
+		sess.Player.State.Quests[0].Progress = 3
 		return nil
 	}); err != nil {
 		t.Fatal(err)

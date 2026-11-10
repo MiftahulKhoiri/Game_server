@@ -271,6 +271,10 @@ func _update_banner() -> void:
 			if Atmosphere.outdoors(map_id) and Atmosphere.is_night():
 				text += "\nMalam: musuh lebih kuat, XP +25%"
 		col = ZONE_COLOR[danger]
+	if world._story != null and not Session.offline:
+		var g: String = world._story.goal()
+		if g != "":
+			text = (text + "\n" if text != "" else "") + "Tujuan: " + g  # cerita utama The Last Dragon
 	banner_text = text
 	_banner.text = text
 	_banner.modulate = col

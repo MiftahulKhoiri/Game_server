@@ -13,6 +13,8 @@ var WargaIDs = []string{
 	"kepala_suku", "penjaga", "ayam", "mpu_karta", "tuan_wira", "prajurit_damar", "laras", "nyai_sekar",
 	"kapten_kem", "pak_ujang", "penjaga_toko", "penjaga_makan", "penjaga_alat", "penjaga_rawat",
 	"rekrut_pahlawan", "rekrut_prajurit", "latih_pahlawan", "latih_prajurit", "penjaga_inap", "pak_saleh",
+	// Tokoh cerita The Last Dragon (story.go).
+	PenjagaHutan, OrcTuaID, "elara",
 }
 
 // Aturan keakraban.

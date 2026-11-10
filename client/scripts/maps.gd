@@ -11,6 +11,7 @@ extends RefCounted
 ##   J  pos jaga   C  kandang ayam   A  tenda   U  api unggun   Q  dummy latihan   Y  tiang panji (basecamp)
 ##   K  singgasana bos (bisa dilewati; menginjaknya memanggil bos)
 ##   M  tanah gunung    G  kerikil (ladang monster, bisa dilewati)    R  batu besar
+##   L  lava (Gunung Berapi, Benteng Orc, Istana Kegelapan; menghalangi)    O  lantai batu istana
 ## Yang bisa dilewati: . = f T B D M G   (sisanya menghalangi)
 ## Pertemuan musuh terjadi di petak ENCOUNTER_TILES (T dan G).
 
@@ -20,6 +21,9 @@ const GUNUNG := "gunung_batu"
 const GUA := "gua_batu"
 const HUTAN := "hutan_lebat"
 const GUA_GOBLIN := "gua_goblin"
+## Bab 4 cerita The Last Dragon (docs/STORY.md): halaman Istana Kegelapan dan ruang takhta Malzareth.
+const ISTANA := "istana_kegelapan"
+const TAKHTA := "ruang_takhta"
 ## Ruangan di dalam bangunan Desa Awal (v0.40.0): pintu bangunan di desa = jalan masuk, pintu di bawah ruangan = keluar.
 const TOKO_RAMUAN := "toko_ramuan"
 const RUMAH_MAKAN := "rumah_makan"
@@ -34,7 +38,9 @@ const HARGA_RUMAH := 500                      # sama dengan HousePrice di intern
 const INTERIORS := ["toko_ramuan", "rumah_makan", "rumah_sehat", "toko_peralatan", "aula_pelatihan", "penginapan", "rumah_pemain"]
 
 ## Nama peta untuk ditampilkan.
-const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Gunung Batu", "gua_batu": "Gua Batu", "hutan_lebat": "Hutan Lebat", "gua_goblin": "Gua Goblin", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan", "penginapan": "Penginapan", "rumah_pemain": "Rumahku"}
+## Sejak cerita The Last Dragon (v0.67.0) Hutan Lebat = Hutan Binatang, Gunung Batu = lereng Gunung Berapi, Gua Batu =
+## Benteng Orc di perut gunung (id peta tetap supaya data lama aman).
+const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "gunung_batu": "Lereng Gunung Berapi", "gua_batu": "Benteng Orc", "hutan_lebat": "Hutan Binatang", "gua_goblin": "Gua Goblin", "istana_kegelapan": "Istana Kegelapan", "ruang_takhta": "Ruang Takhta", "toko_ramuan": "Toko Ramuan", "rumah_makan": "Rumah Makan", "rumah_sehat": "Rumah Sehat", "toko_peralatan": "Toko Peralatan", "aula_pelatihan": "Aula Pelatihan", "penginapan": "Penginapan", "rumah_pemain": "Rumahku"}
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
@@ -82,10 +88,33 @@ const EXITS := {
 		{"pos": Vector2i(22, 0), "to": "gua_goblin", "at": Vector2i(12, 28)},
 		{"pos": Vector2i(22, 49), "to": "gua_batu", "at": Vector2i(7, 1)},
 	],
-	"gua_batu": [{"pos": Vector2i(7, 0), "to": "gunung_batu", "at": Vector2i(22, 48)}],
+	"gua_batu": [
+		{"pos": Vector2i(7, 0), "to": "gunung_batu", "at": Vector2i(22, 48)},
+		# Lorong rahasia di selatan benteng (ditunjukkan Orc Tua): terbuka mulai langkah cerita 9 (STORY_GATES).
+		{"pos": Vector2i(7, 19), "to": "istana_kegelapan", "at": Vector2i(15, 1)},
+	],
+	"istana_kegelapan": [
+		{"pos": Vector2i(14, 0), "to": "gua_batu", "at": Vector2i(7, 18)},
+		{"pos": Vector2i(15, 0), "to": "gua_batu", "at": Vector2i(7, 18)},
+		{"pos": Vector2i(16, 0), "to": "gua_batu", "at": Vector2i(7, 18)},
+		{"pos": Vector2i(14, 25), "to": "ruang_takhta", "at": Vector2i(10, 1)},
+		{"pos": Vector2i(15, 25), "to": "ruang_takhta", "at": Vector2i(10, 1)},
+		{"pos": Vector2i(16, 25), "to": "ruang_takhta", "at": Vector2i(10, 1)},
+	],
+	"ruang_takhta": [
+		{"pos": Vector2i(9, 0), "to": "istana_kegelapan", "at": Vector2i(15, 24)},
+		{"pos": Vector2i(10, 0), "to": "istana_kegelapan", "at": Vector2i(15, 24)},
+		{"pos": Vector2i(11, 0), "to": "istana_kegelapan", "at": Vector2i(15, 24)},
+	],
+}
+## Gerbang cerita (The Last Dragon): petak x0..x1 di baris y baru bisa dilewati mulai langkah cerita `min`
+## (Session.story(), server: State.Story). `pesan` tampil bila masih terkunci.
+const STORY_GATES := {
+	"gua_batu": {"gate": [7, 7, 19], "min": 9, "pesan": "Lorong gelap ini dijaga sihir. Kalahkan Panglima, hancurkan Batu Sihir, lalu bicara dengan Orc Tua."},
+	"istana_kegelapan": {"gate": [14, 16, 25], "min": 10, "pesan": "Aldragor menjaga gerbang ruang takhta. Kalahkan dia dulu."},
 }
 const SPAWN := Vector2i(5, 5)
-const WALKABLE := ".=fTBDMGK"
+const WALKABLE := ".=fTBDMGKO"
 ## Petak bos: menginjaknya memulai pertarungan bos di server (posisi harus sama dengan BossSpot di internal/game/world.go).
 const BOSS_TILE := "K"
 ## Singgasana bos Goblin di Hutan Lebat (sama dengan HutanBossX/Y di internal/game/hutan.go).
@@ -96,9 +125,9 @@ const HUTAN_BOSS := Vector2i(142, 47)
 const TRIALS := {
 	"hutan_lebat": {"boss": Vector2i(142, 47), "prefix": "goblin_hutan_", "boss_name": "Goblin Level %d", "next": "gua_goblin",
 		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
-	"gua_goblin": {"boss": Vector2i(12, 8), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "next": "gunung_batu",
+	"gua_goblin": {"boss": Vector2i(12, 8), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "boss_names": ["Kepala Goblin Lv 1", "Kepala Goblin Lv 2", "Raja Goblin"], "next": "gunung_batu",
 		"gate": [11, 13, 29], "gate_point": Vector2(12.5, 28.5), "home": Vector2(12.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(12.5, 0.0, 29.45), "lock_w": 3.0},
-	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Ogre Gunung Lv %d", "next": "gua_batu",
+	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Orc Batu Lv %d", "boss_names": ["Orc Batu Lv 1", "Orc Batu Lv 2", "Panglima Lereng"], "next": "gua_batu",
 		"gate": [22, 22, 49], "gate_point": Vector2(22.5, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Gua Goblin", "foe": "Musuh", "lock": Vector3(22.5, 0.0, 49.45), "lock_w": 3.0},
 }
 ## Kem Kapten Rimba (api unggun, tenda, panji) tepat di bawah gapura desa di Perbatasan: zona aman per peta, binatang tidak masuk.
@@ -193,7 +222,7 @@ const WARGA := [
 	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "peran": "Petani Ladang", "baju": Color("d8c890"), "kulit": Color("e8cfb0"), "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(15, 30), "jadwal": [{"dari": 6.0, "sampai": 15.0, "pos": Vector2(12.5, 28.5), "kerja": "cangkul", "hadap": 270.0, "kata": ["Hup! Tanahnya keras sekali.", "Semoga panen tahun ini melimpah.", "Rumput liar ini tumbuh terus..."]}]},
 	{"id": "rina", "model": "anak_desa", "name": "Rina", "peran": "Anak Desa", "baju": Color("ffa8c8"), "kulit": Color("fff0e0"), "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "peran": "Anak Desa", "baju": Color("a8c8ff"), "kulit": Color("e0c0a0"), "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
-	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Suku", "peran": "Kepala Desa", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
+	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Desa", "peran": "Ayah Elara", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
 	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "peran": "Penjaga Gerbang", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
@@ -218,6 +247,12 @@ const WARGA := [
 	{"id": "penjaga_makan", "model": "warga_ibu2", "name": "Bu Wati", "peran": "Penjaga Rumah Makan", "baju": Color("ffd890"), "map": "rumah_makan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "makan"},
 	{"id": "penjaga_alat", "model": "warga_bapak2", "name": "Pak Hasan", "peran": "Penjaga Toko Peralatan", "baju": Color("a8b8d0"), "kulit": Color("dcb898"), "map": "toko_peralatan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "peralatan"},
 	{"id": "kapten_kem", "model": "pendekar_kapak", "name": "Kapten Rimba", "peran": "Penjaga Kem Hutan", "map": "perbatasan", "pos": Vector2(23.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true},
+	# Cerita utama The Last Dragon (docs/STORY.md; server: internal/game/story.go). `cerita_min` / `cerita_max` =
+	# warga hanya muncul pada langkah cerita itu (Session.story()).
+	{"id": "penjaga_hutan", "model": "pendekar_tombak", "name": "Bayu", "peran": "Penjaga Hutan (terluka)", "map": "hutan_lebat", "pos": Vector2(26.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true, "kerja": "duduk", "hadap": 200.0, "alat": "batu", "baju": Color("8fbf7a"), "kulit": Color("e6c8a8")},
+	{"id": "orc_tua", "model": "orc_gua", "name": "Orc Tua", "peran": "Penjaga Gunung", "map": "gua_batu", "pos": Vector2(5.5, 12.5), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 90.0},
+	{"id": "elara", "model": "warga_ibu2", "name": "Elara", "peran": "Putri Kepala Desa", "map": "ruang_takhta", "pos": Vector2(10.5, 17.2), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 180.0, "baju": Color("f4e3a1"), "kulit": Color("fbe3cf"), "cerita_min": 10, "cerita_max": 11},
+	{"id": "elara", "model": "warga_ibu2", "name": "Elara", "peran": "Putri Kepala Desa", "map": "desa_awal", "pos": Vector2(42.5, 8.5), "radius": 2.5, "speed": 0.5, "rumah": Vector2i(40, 3), "baju": Color("f4e3a1"), "kulit": Color("fbe3cf"), "cerita_min": 11},
 	# Perekrut di basecamp pahlawan (barat gerbang): tenda merah = pahlawan berkelas, tenda hijau = prajurit biasa.
 	{"id": "rekrut_pahlawan", "model": "ksatria", "name": "Komandan Raka", "peran": "Perekrut Pahlawan (tenda merah)", "map": "desa_awal", "pos": Vector2(14.3, 43.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_pahlawan"},
 	{"id": "rekrut_prajurit", "model": "pendekar_tombak", "name": "Sersan Joni", "peran": "Perekrut Prajurit (tenda hijau)", "map": "desa_awal", "pos": Vector2(14.3, 46.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_prajurit"},
@@ -227,6 +262,9 @@ const WARGA := [
 	{"id": "penjaga_inap", "model": "warga_ibu", "name": "Bu Ratna", "peran": "Pemilik Penginapan", "map": "penginapan", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "inap", "baju": Color("f0c080"), "kulit": Color("f0d8c0")},
 	{"id": "penjaga_rawat", "model": "warga_ibu", "name": "Suster Mira", "peran": "Penjaga Rumah Sehat", "baju": Color("e8f4ff"), "map": "rumah_sehat", "pos": Vector2(4.5, 2.5), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rawat"},
 ]
+
+## Tokoh cerita yang tidak pulang saat malam pada langkah cerita ini (menunggu pemain untuk bicara).
+const STORY_AWAKE := {"kepala_suku": [0, 11], "elara": [11]}
 
 ## Petak yang boleh diinjak warga: jalan, rumput, bunga (bukan ladang, jembatan, pintu).
 const WARGA_TILES := ".=f"
@@ -280,6 +318,7 @@ const RAHASIA := [
 const ZONA := {
 	"desa_awal": ["aman", 1], "perbatasan": ["waspada", 1], "hutan_lebat": ["berbahaya", 3],
 	"gunung_batu": ["berbahaya", 4], "gua_goblin": ["berbahaya", 5], "gua_batu": ["berbahaya", 6],
+	"istana_kegelapan": ["berbahaya", 10], "ruang_takhta": ["berbahaya", 12],
 }
 
 const ROAMERS := {
@@ -300,6 +339,7 @@ const ROAMERS := {
 		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 3},
 		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 4, "waktu": "malam"},
 		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
+		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 3},
 	]},
 	"gua_goblin": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
@@ -311,7 +351,7 @@ const ROAMERS := {
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
 		{"id": "ogre_rawa", "name": "Ogre Rawa", "lv": 4},
-		{"id": "ogre_batu", "name": "Monster Batu", "lv": 5},
+		{"id": "ogre_batu", "name": "Prajurit Orc Batu", "lv": 5},
 	]},
 	"gua_batu": {"n": 7, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "orc_gua", "name": "Orc Gua", "lv": 5},
@@ -319,11 +359,18 @@ const ROAMERS := {
 		{"id": "golem_lava", "name": "Iblis Lava", "lv": 6},
 		{"id": "orc_buas", "name": "Orc Buas", "lv": 7},
 	]},
+	# Halaman Istana Kegelapan (Bab 4): sisa pasukan terkutuk penjaga istana.
+	"istana_kegelapan": {"n": 10, "tiles": "O", "min_y": 6, "kinds": [
+		{"id": "kelelawar_istana", "name": "Kelelawar Kegelapan", "lv": 10},
+		{"id": "prajurit_kutukan", "name": "Prajurit Terkutuk", "lv": 10, "patroli": true},
+		{"id": "orc_kegelapan", "name": "Orc Kegelapan", "lv": 11},
+		{"id": "iblis_bayangan", "name": "Iblis Bayangan", "lv": 12},
+	]},
 }
 
 ## Petak yang boleh diinjak musuh berkeliaran: seperti bisa dilewati pemain, tetapi bukan pintu
 ## rumah, pintu antar-peta, singgasana bos, petak NPC, atau peti.
-const ROAM_TILES := ".=fTBMG"
+const ROAM_TILES := ".=fTBMGO"
 
 
 ## Apakah titik (x, z) bebas dilalui musuh berkeliaran (keempat sudut badan jari-jari 0,25 juga).
@@ -502,7 +549,7 @@ const GUNUNG_ROWS: Array[String] = [
 	"RMMMMMGGGGGMMMMMMMMMMMMMMMMMMMRRMMMMMMMMMMMRR",
 	"RRMMMGGGGGGGMMMMMMMMMMMMMMMMGGGRMMMMGMMMMMMRR",
 	"RRMMMMGGGGGMMRRRRRRRRRRRRRRRGGGMMMGGGGGMMMMMR",
-	"RRRMMMMMGMMMRRRRRRRRRRRRRRRRMMMMMGGGGGGGMMMRR",
+	"RRRMMMMMGMMMRRLLLLLLLLLLLLLRMMMMMGGGGGGGMMMRR",
 	"RRRRMMMMMMMRRRRRRRRRRRRRRRRRMMMRMMGGGGGMMMMRR",
 	"RRRRRRRMRRRRRRRRRRRRRRRRRRRRMMMRRMMMGMMMMMRRR",
 	"RRRRRRRRRRRRRRRRRRRRRRRRRRRRMMMRRRMMMMMMMRRRR",
@@ -523,7 +570,7 @@ const GUNUNG_ROWS: Array[String] = [
 	"RRMMMMGGGMMRRRRRRRMMMMMMMMMMMMMMMMMMGGGMMMMMR",
 	"RRMMMMGGGMMRRRRRRMMMMMMMMMMMMMMMMMMGGGGGMMMRR",
 	"RRMMMMGGGMMRRRRRMMMRRRRRRRRRRRRRRRMMGGGMMMMRR",
-	"RRRMMMMGMMRRRRRRMMMRRRRRRRRRRRRRRRMMGGGMMMMMR",
+	"RRRMMMMGMMRRRRRRMMMRLLLLLLLLLLLLLRMMGGGMMMMMR",
 	"RRRRMMMMMRRRRRRGGGRRRRRRRRRRRRRRRRMMGGGMMMMRR",
 	"RRRRRRMRRRRRRRRGGGRRRRRRRRRRRRRRRRRMMGMMMMRRR",
 	"RRRRRRRRRRRRRRMMMRRRRRRRRRRRRRRRRRRRMMMMMRRRR",
@@ -535,7 +582,7 @@ const GUNUNG_ROWS: Array[String] = [
 	"RRRRMMMMMMGMMMMMMMRRRRRRRRRRRRRMMMMGMMMMMMRRR",
 	"RRRMMMMMGGGGGMMMMMMMMMMMMMMMMMMMMGGGGGMMMMMRR",
 	"RRRRMMMGGGGGGGMMMMMMMMMMMMMMMMMMGGGGGGGMMMRRR",
-	"RRRRMMMMGGGGGMMRRMMMRRRRRRRRRRRMMGGGGGMMMMRRR",
+	"RRRRMMMMGGGGGMMRRMMMRLLLLLLLLLRMMGGGGGMMMMRRR",
 	"RRRRMMMMMMGMMMRRRRMGGGRRRRRRRRRRMMMGMMMMMRRRR",
 	"RRRRRMMMMMMMMRRRRRRGGGRRRRRRRRRRRMMMMMMMRRRRR",
 	"RRRRRRRRRMRRRRRRRRRRMMMMRRRRRRRRRRRRMRRRRRRRR",
@@ -549,8 +596,8 @@ const GUA_ROWS: Array[String] = [
 	"RRRRRRRMRRRRRRR",
 	"RMMMMMMMMMMMMMR",
 	"RMGGGMMMMMGGGMR",
-	"RMGGGMRRRMGGGMR",
-	"RMMMMMRRRMMMMMR",
+	"RMGGGMLLLMGGGMR",
+	"RMMMMMLLLMMMMMR",
 	"RRMMMMMMMMMMMRR",
 	"RRMGGGMMMGGGMRR",
 	"RRMGGGMMMGGGMRR",
@@ -562,10 +609,10 @@ const GUA_ROWS: Array[String] = [
 	"RRRRRRMMMRRRRRR",
 	"RRRRRRMKMRRRRRR",
 	"RRRRRRMMMRRRRRR",
-	"RRRRRRRRRRRRRRR",
-	"RRRRRRRRRRRRRRR",
-	"RRRRRRRRRRRRRRR",
-	"RRRRRRRRRRRRRRR",
+	"RRRRRRMMMRRRRRR",
+	"RRRRRRRMRRRRRRR",
+	"RRRRRRRMRRRRRRR",
+	"RRRRRRRMRRRRRRR",
 ]
 
 
@@ -737,6 +784,88 @@ const RUMAH_ROWS: Array[String] = [
 ]
 
 
+## Halaman Istana Kegelapan (31x26): gerbang utara dari lorong Benteng Orc, kolam lava, pilar, Aldragor di
+## singgasana tengah (K, sama dengan BossSpot di internal/game/world.go), gerbang selatan ke ruang takhta.
+const ISTANA_ROWS: Array[String] = [
+	"SSSSSSSSSSSSSSOOOSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSOOOOOSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSOOOOOSSSSSSSSSSSSS",
+	"PPPPPPPPPPPPPOOOOOPPPPPPPPPPPPP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POLLLOOOOOOOOOOOOOOOOOOOOOLLLOP",
+	"POLLLOOSOOOOOOOOOOOOOOOSOOLLLOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POOSOOOOOOOOOOOOOOOOOOOOOOOSOOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POOOOOOSOOOOOOOOOOOOOOOSOOOOOOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POOSOOOOOOOOOOOOOOOOOOOOOOOSOOP",
+	"POOOOOOOOOOOOOOKOOOOOOOOOOOOOOP",
+	"POOSOOOOOOOOOOOOOOOOOOOOOOOSOOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POOOOOOSOOOOOOOOOOOOOOOSOOOOOOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"POOSOOOOOOOOOOOOOOOOOOOOOOOSOOP",
+	"POLLLOOOOOOOOOOOOOOOOOOOOOLLLOP",
+	"POLLLOOOOOOOOOOOOOOOOOOOOOLLLOP",
+	"POOOOOOOOOOOOOOOOOOOOOOOOOOOOOP",
+	"PPPPPPPPPPPPPOOOOOPPPPPPPPPPPPP",
+	"SSSSSSSSSSSSSOOOOOSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSOOOSSSSSSSSSSSSSS",
+]
+## Ruang takhta Malzareth (21x20): pilar berjajar, parit lava di tepi, singgasana Malzareth (K) di (10,13).
+const TAKHTA_ROWS: Array[String] = [
+	"SSSSSSSSSOOOSSSSSSSSS",
+	"SSSSSSSSOOOOOSSSSSSSS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOSOOOOOOOOOOOSOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOSOOOOOOOOOOOSOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOSOOOOOOOOOOOSOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLOOSOOOOOOOOOOOSOOLS",
+	"SLOOOOOOOOKOOOOOOOOLS",
+	"SLOOOOOOOOOOOOOOOOOLS",
+	"SLLLOOOOOOOOOOOOOLLLS",
+	"SSSLOOOOOOOOOOOOOLSSS",
+	"SSSSLOOOOOOOOOOOLSSSS",
+	"SSSSSLOOOOOOOOOLSSSSS",
+	"SSSSSSSSSSSSSSSSSSSSS",
+]
+
+
+## Nama bos ujian Level `level` (1..3) di peta itu, mis. "Raja Goblin" untuk bos ketiga Gua Goblin.
+static func boss_label(map_id: String, level: int) -> String:
+	var t: Dictionary = TRIALS.get(map_id, {})
+	var names: Array = t.get("boss_names", [])
+	if level >= 1 and level <= names.size():
+		return str(names[level - 1])
+	return str(t.get("boss_name", "Bos Lv %d")) % level
+
+
+## Gerbang cerita masih terkunci di (x, y)? `story` = langkah cerita pemain.
+static func story_locked(map_id: String, x: int, y: int, story: int) -> bool:
+	if not STORY_GATES.has(map_id):
+		return false
+	var g: Dictionary = STORY_GATES[map_id]
+	var r: Array = g.gate
+	return story < int(g.min) and y == int(r[2]) and x >= int(r[0]) and x <= int(r[1])
+
+
+## Singgasana bos cerita hanya menyambut pemain pada langkah ceritanya (Aldragor 9, Malzareth 10); di luar itu
+## petak K-nya diam supaya pemain bisa lewat tanpa memanggil server setiap langkah.
+const STORY_BOSS_STEP := {"istana_kegelapan": 9, "ruang_takhta": 10}
+
+
+static func boss_tile_active(map_id: String, story: int) -> bool:
+	return not STORY_BOSS_STEP.has(map_id) or story == int(STORY_BOSS_STEP[map_id])
+
+
 static func is_interior(map_id: String) -> bool:
 	return INTERIORS.has(map_id)
 
@@ -771,6 +900,10 @@ static func rows(map_id: String) -> Array[String]:
 			return GUNUNG_ROWS
 		GUA:
 			return GUA_ROWS
+		ISTANA:
+			return ISTANA_ROWS
+		TAKHTA:
+			return TAKHTA_ROWS
 		TOKO_RAMUAN:
 			return TOKO_ROWS
 		RUMAH_MAKAN:

@@ -141,6 +141,23 @@ void fragment() {
 """
 
 static var _water_mat: ShaderMaterial
+static var _lava_mat: ShaderMaterial
+
+## Lava (petak L; cerita The Last Dragon: Gunung Berapi, Benteng Orc, Istana Kegelapan): aliran merah-jingga
+## yang berdenyut pelan, tanpa cahaya (unshaded) supaya tetap menyala di gua yang gelap.
+const LAVA_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+varying vec3 wp;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	float n = sin(wp.x * 2.3 + TIME * 0.9) * sin(wp.z * 2.1 - TIME * 0.7) + 0.5 * sin((wp.x + wp.z) * 4.0 + TIME * 1.7);
+	float k = clamp(n * 0.45 + 0.5, 0.0, 1.0);
+	ALBEDO = mix(vec3(0.5, 0.06, 0.02), vec3(1.0, 0.62, 0.12), k * k);
+}
+"""
 static var _mats: Dictionary = {}
 static var _dekor_cache: Dictionary = {}
 static var _tree_mat: ShaderMaterial
@@ -209,6 +226,15 @@ static func _sway_material() -> Material:
 		_tree_mat.shader = sh
 		_tree_mat.set_shader_parameter("palet", tex)
 	return _tree_mat
+
+
+static func _lava_material() -> Material:
+	if _lava_mat == null:
+		var sh := Shader.new()
+		sh.code = LAVA_SHADER
+		_lava_mat = ShaderMaterial.new()
+		_lava_mat.shader = sh
+	return _lava_mat
 
 
 static func _water_material() -> Material:
@@ -450,6 +476,8 @@ static func ground_color(tile: String) -> Color:
 		"G": return Color("7d7165")
 		"S": return Color("9a9aa3")
 		"K": return Color("6a2020")
+		"O": return Color("5d5566")  # lantai batu Istana Kegelapan
+		"L": return Color("3a1a10")
 		"H", "D": return Color("b79c6c")
 		"W": return Color("8fa07c")
 	return Color("62b84c")  # rumput (juga di bawah pohon, pagar, bunga)
@@ -465,8 +493,9 @@ static func build(map_id: String) -> Node3D:
 	var rows := Maps.rows(map_id)
 	var w := Maps.width(map_id)
 	var h := Maps.height(map_id)
-	var cave := map_id == Maps.GUA or map_id == Maps.GUA_GOBLIN
-	var mountain := map_id == Maps.GUNUNG or cave
+	var cave := map_id == Maps.GUA or map_id == Maps.GUA_GOBLIN or map_id == Maps.TAKHTA
+	var istana := map_id == Maps.ISTANA or map_id == Maps.TAKHTA
+	var mountain := map_id == Maps.GUNUNG or cave or istana
 
 	# Alas luas di bawah peta, supaya tidak ada ruang kosong di tepi layar.
 	var floor_mesh := PlaneMesh.new()
@@ -480,6 +509,8 @@ static func build(map_id: String) -> Node3D:
 	var ground_x: Array[Transform3D] = []
 	var ground_c: Array[Color] = []
 	var water_x: Array[Transform3D] = []
+	var lava_x: Array[Transform3D] = []
+	var pillar_x: Array[Transform3D] = []   # pilar Istana Kegelapan (petak S di peta istana)
 	var trunk_x: Array[Transform3D] = []
 	var leaf_x: Array[Transform3D] = []
 	var leaf_c: Array[Color] = []
@@ -522,13 +553,15 @@ static func build(map_id: String) -> Node3D:
 			var t: String = rows[z][x]
 			var c := Vector3(x + 0.5, 0.0, z + 0.5)
 			var j := _jitter(x, z)
-			if t != "~" and t != "B":
+			if t != "~" and t != "B" and t != "L":
 				var gc := ground_color(t)
 				var tepi := (t == "." or t == "f") and not mountain and _dekat_air(rows, x, z)
 				if tepi:  # tepi pasir di pinggir sungai/danau (roadmap no. 96)
 					gc = SAND.lerp(gc, 0.25 * _jitter(x, z, 90))
 					n_pasir += 1
 				ground_x.append(_xf(c))
+				if t == "O":  # lantai istana: ubin berselang-seling
+					gc = gc.darkened(0.08) if (x + z) % 2 == 0 else gc.lightened(0.03)
 				ground_c.append(gc.lightened(0.025 * (j - 0.5) * 2.0) if t == "." or t == "f" else gc)
 				if tepi and t == "." and _jitter(x, z, 91) < 0.45:  # ilalang di tepi air
 					var oi := Vector3(_jitter(x, z, 92) - 0.5, 0.0, _jitter(x, z, 93) - 0.5) * 0.6
@@ -553,6 +586,8 @@ static func build(map_id: String) -> Node3D:
 			match t:
 				"~":
 					water_x.append(_xf(c + Vector3(0, -0.035, 0)))  # di atas alas luas (-0,06), di bawah petak tanah (0)
+				"L":
+					lava_x.append(_xf(c + Vector3(0, -0.03, 0)))
 				"B":
 					water_x.append(_xf(c + Vector3(0, -0.035, 0)))  # di atas alas luas (-0,06), di bawah petak tanah (0)
 					# Air di utara dan selatan petak jembatan = jalannya memanjang ke arah x (parit ladang); selain itu ke arah z.
@@ -604,7 +639,10 @@ static func build(map_id: String) -> Node3D:
 						rock_x.append(_xf(c + Vector3(0.18 * (j - 0.5), 0.95 * s2, 0.1), Vector3(0.55, 0.55 * s2, 0.55), j * 3.0))
 						rock_c.append(Color("6b655d"))
 				"S":
-					stone_x.append(_xf(c + Vector3(0, 0.45, 0), Vector3(0.98, 0.9 - 0.25 * j, 0.98)))
+					if istana:
+						pillar_x.append(_xf(c + Vector3(0, 1.1, 0), Vector3(0.98, 2.2, 0.98)))
+					else:
+						stone_x.append(_xf(c + Vector3(0, 0.45, 0), Vector3(0.98, 0.9 - 0.25 * j, 0.98)))
 				"F":
 					_add_pagar_kandang(rows, x, z, c, post_x, rail_x)
 				"T":
@@ -625,7 +663,7 @@ static func build(map_id: String) -> Node3D:
 				"H", "D":
 					house_tiles.append(Vector2i(x, z))
 				"P":
-					if map_id == Maps.HUTAN:
+					if map_id == Maps.HUTAN or istana:
 						_add_stone_wall_tile(x, z, c, wall_x, wall_c, wall_cap_x, wall_top_x)
 					else:
 						_add_palisade_tile(rows, x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
@@ -645,6 +683,8 @@ static func build(map_id: String) -> Node3D:
 	var water := PlaneMesh.new()
 	water.size = Vector2(1.0, 1.0)
 	_multi(root, water, _water_material(), water_x, [], false)
+	_multi(root, water, _lava_material(), lava_x, [], false)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("3d3847")), pillar_x)
 	_multi(root, _reed_mesh(), _grass_material(), reed_x, [], false)
 	_multi(root, _sphere(0.5, 8), mat(Color.WHITE, true), bush_x, bush_c)
 	_multi(root, _cyl(0.025, 0.035, 0.1, 6), mat(Color("efe6d2")), stem_x, [], false)
@@ -687,7 +727,11 @@ static func build(map_id: String) -> Node3D:
 	_add_jerami(root, map_id)
 	if Maps.TRIALS.has(map_id):
 		_add_kunci_gerbang(root, map_id)
-	if cave:
+	if map_id == Maps.ISTANA:
+		_add_torches_at(root, ISTANA_TORCHES, Color("c070ff"))
+	elif map_id == Maps.TAKHTA:
+		_add_torches_at(root, TAKHTA_TORCHES, Color("c070ff"))
+	elif cave:
 		_add_torches(root, rows)
 	MeshMerge.merge(root, _jarak())  # ratusan bentuk kecil statis -> beberapa mesh (panggilan gambar turun)
 	return root
@@ -954,6 +998,7 @@ static func build_arena(map_id: String) -> Node3D:
 	match map_id:
 		Maps.GUNUNG: tile = "M"
 		Maps.GUA, Maps.GUA_GOBLIN: tile = "G"
+		Maps.ISTANA, Maps.TAKHTA: tile = "O"
 	var floor_color := ground_color(tile)
 	if map_id == Maps.PERBATASAN or map_id == Maps.HUTAN:
 		floor_color = floor_color.darkened(0.1)
@@ -1018,6 +1063,20 @@ static func build_arena(map_id: String) -> Node3D:
 				light.omni_range = 7.0
 				light.position = Vector3(0, 1.2, 0.3)
 				torch.add_child(light)
+		Maps.ISTANA, Maps.TAKHTA:  # Istana Kegelapan: pilar gelap, obor ungu, kolam lava di belakang
+			var pil: Array[Transform3D] = []
+			for i in 8:
+				var pp := _arena_pos(i, 8, 5.0, 7.5, 141)
+				pp.z = minf(pp.z, -1.0)
+				pil.append(_xf(pp + Vector3(0, 1.5, 0), Vector3(0.9, 3.0, 0.9)))
+			_multi(root, _box(Vector3(1, 1, 1)), mat(Color("3d3847")), pil)
+			var lv: Array[Transform3D] = []
+			for i in 12:
+				lv.append(_xf(Vector3(-5.5 + i, 0.02, -6.5), Vector3(1.0, 1.0, 2.0)))
+			var lq := PlaneMesh.new()
+			lq.size = Vector2(1.0, 1.0)
+			_multi(root, lq, _lava_material(), lv, [], false)
+			_add_torches_at(root, [Vector3(-2.7, 0, -1.4), Vector3(2.7, 0, -1.4)], Color("c070ff"))
 		Maps.PERBATASAN, Maps.HUTAN:  # hutan lebat
 			for i in 16:
 				var tid: String = TREE_SINGLE[i % TREE_SINGLE.size()]
@@ -1038,7 +1097,7 @@ static func build_arena(map_id: String) -> Node3D:
 			for i in 3:
 				var rid3: String = ROCKS[i % ROCKS.size()]
 				_tambah(static_by, rid3, _xf(_arena_pos(i, 3, 4.0, 6.0, 121), Vector3.ONE * 2.2, _jitter(i, 4, 123) * TAU))
-	if map_id != Maps.GUNUNG and map_id != Maps.GUA and map_id != Maps.GUA_GOBLIN:
+	if map_id != Maps.GUNUNG and map_id != Maps.GUA and map_id != Maps.GUA_GOBLIN and map_id != Maps.ISTANA and map_id != Maps.TAKHTA:
 		for i in 150:
 			var q2 := _arena_pos(i, 150, 0.9, 9.5, 131)
 			if absf(q2.x) < 0.3 and q2.z > -0.3:
@@ -1680,6 +1739,17 @@ static func _panji_basecamp(root: Node3D, c: Vector3, teks: String = "BASECAMP\n
 ## Obor di dinding gua: tiang kecil dengan nyala (cahaya titik hanya beberapa, agar ringan).
 static func _add_torches(root: Node3D, rows: Array[String]) -> void:
 	var spots: Array[Vector3] = [Vector3(6.4, 0, 3.5), Vector3(8.6, 0, 3.5), Vector3(6.4, 0, 9.5), Vector3(8.6, 0, 9.5), Vector3(6.4, 0, 13.5), Vector3(8.6, 0, 13.5)]
+	_add_torches_at(root, spots, Color("ff8a20"))
+
+
+## Obor Istana Kegelapan dan ruang takhta: api ungu sihir Malzareth (titik dunia, satuan petak).
+const ISTANA_TORCHES: Array[Vector3] = [Vector3(13.3, 0, 2.5), Vector3(17.7, 0, 2.5), Vector3(4.5, 0, 9.5), Vector3(26.5, 0, 9.5),
+	Vector3(12.5, 0, 14.5), Vector3(18.5, 0, 14.5), Vector3(4.5, 0, 19.5), Vector3(26.5, 0, 19.5), Vector3(13.3, 0, 23.5), Vector3(17.7, 0, 23.5)]
+const TAKHTA_TORCHES: Array[Vector3] = [Vector3(5.5, 0, 3.5), Vector3(15.5, 0, 3.5), Vector3(5.5, 0, 9.5), Vector3(15.5, 0, 9.5),
+	Vector3(8.4, 0, 13.5), Vector3(12.6, 0, 13.5)]
+
+
+static func _add_torches_at(root: Node3D, spots: Array[Vector3], flame_col: Color) -> void:
 	for i in spots.size():
 		var p := spots[i]
 		var stick := MeshInstance3D.new()
@@ -1690,16 +1760,16 @@ static func _add_torches(root: Node3D, rows: Array[String]) -> void:
 		var flame := MeshInstance3D.new()
 		flame.mesh = _sphere(0.1, 6)
 		var fm := StandardMaterial3D.new()
-		fm.albedo_color = Color("ffb040")
+		fm.albedo_color = flame_col.lightened(0.3)
 		fm.emission_enabled = true
-		fm.emission = Color("ff8a20")
+		fm.emission = flame_col
 		fm.emission_energy_multiplier = 2.0
 		flame.material_override = fm
 		flame.position = p + Vector3(0, 0.78, 0)
 		root.add_child(flame)
 		if i % 2 == 0:
 			var light := OmniLight3D.new()
-			light.light_color = Color("ffa050")
+			light.light_color = flame_col.lightened(0.2)
 			light.light_energy = 1.4
 			light.omni_range = 5.0
 			light.position = p + Vector3(0.0, 1.0, 0.0)
@@ -1731,13 +1801,27 @@ static func environment_for(map_id: String) -> Environment:
 			ambient = 0.35
 			fog_c = Color("0b0908")
 			fog_d = 0.04
-		Maps.GUNUNG:
-			top = Color("5f86b8")
-			horizon = Color("c9d4e0")
-			ground = Color("9a9488")
-			ambient = 0.22
-			fog_c = Color("c9d4e0")
-			fog_d = 0.012
+		Maps.GUNUNG:  # lereng Gunung Berapi (cerita The Last Dragon): langit berasap jingga
+			top = Color("5a3a3a")
+			horizon = Color("d9956a")
+			ground = Color("8a7060")
+			ambient = 0.24
+			fog_c = Color("c98a66")
+			fog_d = 0.014
+		Maps.ISTANA:  # halaman Istana Kegelapan: langit ungu kelam
+			top = Color("140c22")
+			horizon = Color("4a2c5e")
+			ground = Color("1a1424")
+			ambient = 0.34
+			fog_c = Color("3a2450")
+			fog_d = 0.009
+		Maps.TAKHTA:
+			top = Color("0e0a14")
+			horizon = Color("0e0a14")
+			ground = Color("0e0a14")
+			ambient = 0.36
+			fog_c = Color("150c1e")
+			fog_d = 0.03
 		Maps.PERBATASAN, Maps.HUTAN:
 			top = Color("4a8fd0")
 			horizon = Color("d2e6f0")
@@ -1774,8 +1858,14 @@ static func environment_for(map_id: String) -> Environment:
 static func light_energy_for(map_id: String) -> float:
 	if Maps.is_interior(map_id):
 		return 0.3
+	if map_id == Maps.ISTANA or map_id == Maps.TAKHTA:
+		return 0.3
 	return 0.3 if map_id == Maps.GUA else 0.42
 
 
 static func light_color_for(map_id: String) -> Color:
+	if map_id == Maps.ISTANA or map_id == Maps.TAKHTA:
+		return Color("c8b4ff")
+	if map_id == Maps.GUNUNG:
+		return Color("ffd2a8")
 	return Color("ffa86a") if map_id == Maps.GUA else Color("fff0d2")

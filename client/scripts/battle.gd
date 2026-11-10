@@ -67,6 +67,12 @@ var _enemy_iv := 2000
 var _ready_at: Dictionary = {}
 var _cd_max: Dictionary = {}
 var _guard_until := 0
+## Seruan bos cerita The Last Dragon di awal pertarungan (docs/STORY.md).
+const BOSS_TAUNTS := {
+	"raja_goblin": "Panglima Orc Batu: \"Batu Sihir milik tuanku tak akan kau sentuh, manusia!\"",
+	"aldragor": "Aldragor meraung! Matanya gelap oleh sihir Malzareth. Kalahkan dia tanpa membunuhnya!",
+	"malzareth": "Malzareth: \"Semua makhluk tunduk kepadaku! Goblin, Orc, binatang, bahkan naga terakhir! Kau tidak akan mengubah apa pun!\"",
+}
 var _shield_until := 0
 var _last_sync := 0
 var _next_ask := 0
@@ -81,6 +87,8 @@ func _ready() -> void:
 	_build_ui()
 	_read_view(Session.battle, Time.get_ticks_msec())
 	_add_lines(["%s muncul!" % str(Session.battle.get("enemy_name", "Musuh"))])
+	if BOSS_TAUNTS.has(_enemy_id):
+		_add_lines([str(BOSS_TAUNTS[_enemy_id])])
 	_refresh()
 	_ask("")  # selaraskan jam dengan server sebelum musuh menyerang
 

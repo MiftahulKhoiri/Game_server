@@ -78,6 +78,7 @@ func _run() -> void:
 	Patcher = root.get_node("Patcher")
 	Session = root.get_node("Session")
 	Sound = root.get_node("Sound")
+	Session.story_popups = false  # layar narasi cerita diuji tersendiri (bagian "cerita: narasi")
 	# Jam dunia bersama (v0.59.0) mengikuti jam server; supaya uji tidak bergantung kapan dijalankan,
 	# dunia dimulai pagi (jam 8, seperti sebelum v0.59.0) pada hari biasa tanpa serbuan/pasar, dan cuaca
 	# cerah kecuali diuji.
@@ -468,20 +469,48 @@ func _run() -> void:
 	updater.queue_free()
 	await process_frame
 
-	print("== misi")
+	print("== misi dan cerita utama The Last Dragon")
+	var WD = load("res://scripts/warga_dialog.gd")
+	var StoryMod = load("res://scripts/story.gd")
 	var q0: Dictionary = await Api.quests_get()
-	_check(q0.ok and q0.data.quests.size() > 0 and q0.data.quests[0].status == "available", "misi awal tersedia")
-	var early: Dictionary = await Api.quest_claim("selamatkan_nenek")
-	_check(not early.ok and early.status == 422, "klaim sebelum terima ditolak 422")
+	_check(q0.ok and q0.data.quests.size() > 0 and q0.data.quests[0].id == "kebun_babi" and q0.data.quests[0].status == "locked", "misi sampingan terkunci sebelum prolog cerita")
+	var early: Dictionary = await Api.quest_accept("kebun_babi")
+	_check(not early.ok and early.status == 422, "terima misi terkunci ditolak 422")
+	_check(Session.story() == 0 and StoryMod.goal().contains("Kepala Desa"), "pemain baru: tujuan pertama menemui Kepala Desa")
+	var far_story: Dictionary = await Api.story_talk("kepala_suku")
+	_check(not far_story.ok and far_story.status == 422, "bicara cerita dari jauh ditolak 422")
+	var me_story: Dictionary = (await Api.get_me()).data
+	Session.set_player(me_story)
+	var at_chief: Dictionary = Session.player.state.duplicate(true)
+	at_chief.x = 40
+	at_chief.y = 9
+	at_chief.fx = 40.5
+	at_chief.fz = 9.5
+	var sv_chief: Dictionary = await Api.save(Session.player.version, at_chief)
+	_check(sv_chief.ok, "simpan posisi di dekat Kepala Desa")
+	if sv_chief.ok:
+		Session.set_player(sv_chief.data)
+	Session.talk_npc = "warga:kepala_suku"
+	Session.talk_counts["warga:kepala_suku"] = 1
+	var dialog_chief: Control = load("res://scenes/dialog.tscn").instantiate()
+	root.add_child(dialog_chief)
+	await create_timer(1.0).timeout
+	_check(Session.story() == 1 and dialog_chief._text.text.contains("Elara telah dibawa pergi"), "bicara dengan Kepala Desa: prolog selesai, kalimat kuncinya tampil (%d)" % Session.story())
+	_check(dialog_chief._name_label.text.begins_with("Kepala Desa  ·  Ayah Elara"), "Kepala Desa ayah Elara")
+	_check(Session.item_count("roti") >= 2, "bekal perjalanan (roti) masuk ransel")
+	dialog_chief.queue_free()
+	await process_frame
+	var again: Dictionary = await Api.story_talk("kepala_suku")
+	_check(not again.ok and again.status == 422, "langkah cerita tidak bisa diulang")
 	Session.talk_npc = "nenek_penjual"
 	var dialog: Control = load("res://scenes/dialog.tscn").instantiate()
 	root.add_child(dialog)
 	await create_timer(0.8).timeout
-	_check(dialog._action.visible and dialog._action.text == "Terima misi", "dialog menawarkan misi")
+	_check(dialog._action.visible and dialog._action.text == "Terima misi", "dialog Nenek menawarkan misi sampingan")
 	dialog._on_action("accept")
 	while dialog._busy:
 		await process_frame
-	_check(not dialog._action.visible and dialog._text.text.contains("0/5"), "misi diterima, kemajuan 0/5")
+	_check(not dialog._action.visible and dialog._text.text.contains("0/3"), "misi diterima, kemajuan 0/3")
 	var q1: Dictionary = await Api.quests_get()
 	_check(q1.data.quests[0].status == "active", "server mencatat misi aktif")
 	_check(Session.player.version == int((await Api.get_me()).data.version), "versi lokal sinkron setelah terima misi")
@@ -489,36 +518,38 @@ func _run() -> void:
 	await process_frame
 	_check(Maps.npc_at(Maps.DEFAULT_MAP, 3, 6) == "nenek_penjual", "nenek berdiri di (3,6)")
 	_check(Maps.npc_near(Maps.DEFAULT_MAP, 4, 6) == "nenek_penjual" and Maps.npc_near(Maps.DEFAULT_MAP, 5, 5) == "", "pemain hanya dekat nenek bila bersebelahan")
-	_check(q1.data.quests[1].status == "locked", "misi petani terkunci sebelum misi nenek selesai")
-	Session.talk_npc = "petani"
-	var dialog2: Control = load("res://scenes/dialog.tscn").instantiate()
-	root.add_child(dialog2)
-	await create_timer(0.8).timeout
-	_check(not dialog2._action.visible and dialog2._text.text.contains("Nenek"), "petani minta bantu nenek dulu")
-	dialog2.queue_free()
-	await process_frame
-	# Dialog warga desa: mengikuti tahap cerita utama.
-	var WD = load("res://scripts/warga_dialog.gd")
-	_check(WD.stage_from_quests([]) == 0, "tanpa misi tuntas: tahap cerita 0")
-	var qs := [{"id": "selamatkan_nenek", "status": "claimed"}, {"id": "selamatkan_petani", "status": "done"}, {"id": "usir_ogre", "status": "active"}, {"id": "hentikan_raja_goblin", "status": "locked"}]
-	_check(WD.stage_from_quests(qs) == 2, "dua misi utama tuntas (klaim atau siap klaim): tahap 2")
-	qs[2].status = "claimed"
-	qs[3].status = "claimed"
-	_check(WD.stage_from_quests(qs) == 4, "semua misi utama tuntas: tahap 4")
-	qs[1].status = "active"
-	_check(WD.stage_from_quests(qs) == 1, "tahap berhenti di misi utama pertama yang belum tuntas")
+	var ramuan_q: Dictionary = {}
+	for qq: Dictionary in q1.data.quests:
+		if qq.id == "ramuan_nenek":
+			ramuan_q = qq
+	_check(ramuan_q.get("status", "") == "locked", "misi taring goblin terkunci sampai cerita sampai di hutan")
+	# Dialog warga: mengikuti bab cerita utama.
+	_check(WD.stage_of_story(0) == 0 and WD.stage_of_story(3) == 1 and WD.stage_of_story(4) == 2 and WD.stage_of_story(8) == 3 and WD.stage_of_story(10) == 4 and WD.stage_of_story(12) == 5, "bab cerita untuk kalimat warga")
+	_check(WD.story_step_for("kepala_suku", 0) == 0 and WD.story_step_for("kepala_suku", 11) == 11 and WD.story_step_for("kepala_suku", 5) == -1 and WD.story_step_for("penjaga_hutan", 2) == 2, "tokoh cerita menutup langkahnya")
+	_check(Maps.story_locked(Maps.GUA, 7, 19, 8) and not Maps.story_locked(Maps.GUA, 7, 19, 9) and not Maps.story_locked(Maps.GUA, 7, 0, 0), "lorong ke Istana Kegelapan terkunci sampai Orc Tua bicara")
+	_check(Maps.story_locked(Maps.ISTANA, 15, 25, 9) and not Maps.story_locked(Maps.ISTANA, 15, 25, 10), "ruang takhta terkunci sampai Aldragor kalah")
+	_check(Maps.exit_at(Maps.ISTANA, 15, 25).get("to", "") == Maps.TAKHTA and Maps.exit_at(Maps.TAKHTA, 10, 0).get("to", "") == Maps.ISTANA, "Istana Kegelapan tersambung ke ruang takhta")
+	_check(Maps.tile_at(Maps.ISTANA, 15, 14) == "K" and Maps.tile_at(Maps.TAKHTA, 10, 13) == "K", "singgasana Aldragor dan Malzareth (sama dengan BossSpot server)")
+	_check(Maps.boss_tile_active(Maps.ISTANA, 9) and not Maps.boss_tile_active(Maps.ISTANA, 10) and Maps.boss_tile_active(Maps.GUA, 0), "singgasana bos cerita hanya aktif pada langkahnya")
+	_check(Maps.width(Maps.ISTANA) == 31 and Maps.height(Maps.ISTANA) == 26 and Maps.width(Maps.TAKHTA) == 21 and Maps.height(Maps.TAKHTA) == 20, "ukuran peta Bab 4 sama dengan server")
+	_check(Maps.boss_label(Maps.GUA_GOBLIN, 3) == "Raja Goblin" and Maps.boss_label(Maps.GUA_GOBLIN, 1) == "Kepala Goblin Lv 1" and Maps.boss_label(Maps.HUTAN, 2) == "Goblin Level 2", "nama bos ujian (Raja Goblin)")
+	_check(StoryMod.GOALS.size() == StoryMod.END and StoryMod.GOALS_LONG.size() == StoryMod.END and StoryMod.CHAPTERS.size() == StoryMod.END, "tiap langkah cerita punya tujuan dan bab")
+	var narasi_ok: bool = StoryMod.NARASI.has(-1)
+	for i in StoryMod.END:
+		narasi_ok = narasi_ok and StoryMod.NARASI.has(i)
+	_check(narasi_ok, "tiap langkah cerita punya narasi")
 	var all_lines := true
 	var diff_lines := true
 	for wid: String in WD.WARGA:
 		var stages: Array = WD.WARGA[wid].stages
-		all_lines = all_lines and stages.size() == 5
+		all_lines = all_lines and stages.size() == 6
 		for lines: Array in stages:
 			all_lines = all_lines and lines.size() >= 1
 			for l in lines:
 				all_lines = all_lines and str(l).length() > 5
 		if wid != "ayam":
-			diff_lines = diff_lines and WD.line(wid, 0, 0) != WD.line(wid, 4, 0)
-	_check(all_lines, "setiap warga punya kalimat untuk kelima tahap cerita")
+			diff_lines = diff_lines and (WD.line(wid, 0, 0) != WD.line(wid, 5, 0))
+	_check(all_lines, "setiap warga punya kalimat untuk keenam bab cerita")
 	_check(diff_lines, "kalimat warga berubah mengikuti tahap cerita")
 	_check(WD.line("bu_sari", 1, 0) != WD.line("bu_sari", 1, 1), "kalimat warga bergantian tiap kali diajak bicara")
 	var dialog_ok := true
@@ -530,7 +561,7 @@ func _run() -> void:
 	var dialog3: Control = load("res://scenes/dialog.tscn").instantiate()
 	root.add_child(dialog3)
 	await create_timer(0.8).timeout
-	_check(dialog3._name_label.text == "Bu Sari  ·  Juru Masak  ·  Kenalan" and not dialog3._action.visible and dialog3._text.text.ends_with(WD.line("bu_sari", 0, 0)), "bicara dengan Bu Sari: nama, peran, keakraban, dan kalimat tahap 0, tanpa tombol misi")
+	_check(dialog3._name_label.text == "Bu Sari  ·  Juru Masak  ·  Kenalan" and not dialog3._action.visible and dialog3._text.text.ends_with(WD.line("bu_sari", 0, 0)), "bicara dengan Bu Sari: nama, peran, keakraban, dan kalimat bab prolog, tanpa tombol misi")
 	# Roadmap no. 58-59: server mengingat pembicaraan; pertemuan pertama = berkenalan.
 	_check(Session.rep_talks("bu_sari") == 1 and Session.rep_points("bu_sari") == 1 and dialog3._text.text.begins_with("Senang berkenalan"), "Bu Sari mengingat pertemuan pertama (bicara 1x, keakraban 1, sapaan berkenalan)")
 	var tk2: Dictionary = await Api.warga_talk("bu_sari")
@@ -826,7 +857,7 @@ func _run() -> void:
 	# Warga desa: berjalan bebas, hanya di petak jalan/rumput/bunga, dan tidak menabrak pemain.
 	var wcount := 0
 	for d: Dictionary in Maps.WARGA:
-		if d.map == Maps.DEFAULT_MAP:
+		if d.map == Maps.DEFAULT_MAP and Session.story() >= int(d.get("cerita_min", 0)) and Session.story() <= int(d.get("cerita_max", 99)):
 			wcount += 1
 			_check(Maps.warga_free(Maps.DEFAULT_MAP, d.pos), "titik asal warga %s berada di petak bebas" % d.name)
 	_check(wcount >= 8 and w3._warga.size() == wcount, "%d warga desa muncul di dunia 3D" % w3._warga.size())
@@ -1826,7 +1857,7 @@ func _run() -> void:
 			var pintu_ch := Maps.tile_at(Maps.DEFAULT_MAP, dr.x, dr.y)
 			var ar: Vector2i = def.get("arah", Vector2i(0, 1))
 			_check(["D", "J", "C"].has(pintu_ch) and Maps.warga_free(Maps.DEFAULT_MAP, Vector2(dr.x + 0.5 + ar.x, dr.y + 0.5 + ar.y)), "%s: pintu (rumah D / pos jaga J / kandang C) dan petak di depannya bisa dilewati" % def.id)
-	_check(chief, "ada Kepala Suku yang tinggal di rumahnya")
+	_check(chief, "ada Kepala Desa yang tinggal di rumahnya")
 	_check(not Atmo.is_night() or Atmo.hour_override < 0.0, "jam uji belum dipaksa")
 	Atmo.hour_override = 12.0
 	_check(not Atmo.is_night() and Atmo.night() < 0.1, "siang bolong: bukan malam, lampu padam")
@@ -2322,7 +2353,7 @@ func _run() -> void:
 		_check(Maps.walkable(ex_v46.to, ex_v46.at.x, ex_v46.at.y), "tujuan pintu hutan %s dapat dipijak" % str(ex_v46.pos))
 	for kid_v46: String in ["kancil_hutan", "rubah_hutan", "ular_belang", "babi_bertaring", "serigala_hitam", "beruang_hutan", "goblin_hutan_1", "goblin_hutan_2", "goblin_hutan_3"]:
 		_check(load("res://scripts/models.gd").VARIANTS.has(kid_v46), "model musuh %s terdaftar" % kid_v46)
-	_check(Maps.ROAMERS[Maps.HUTAN].kinds.size() == 6 and int(Maps.ROAMERS[Maps.HUTAN].n) >= 10, "hutan punya enam jenis binatang berkeliaran")
+	_check(Maps.ROAMERS[Maps.HUTAN].kinds.size() == 7 and int(Maps.ROAMERS[Maps.HUTAN].n) >= 10, "hutan punya tujuh jenis binatang berkeliaran (termasuk Kelelawar Terkutuk)")
 	var ps_v46: Dictionary = Session._normalize_state({"hutan": {"wave": 9, "kills": 500}})
 	_check(ps_v46.hutan.wave == 3 and ps_v46.hutan.kills == 100, "kemajuan hutan dibatasi 3 / 100")
 	var saved_h_v46: Variant = Session.player.state.get("hutan", {})
@@ -2561,6 +2592,98 @@ func _run() -> void:
 	await process_frame
 	Session.offline = false
 	Session.player.state = saved_w_v49
+
+	print("== v0.67: cerita The Last Dragon (peta Bab 4, model, Batu Sihir, narasi)")
+	var Mdl67 = load("res://scripts/models.gd")
+	for mid67: String in ["aldragor", "kelelawar_hutan", "malzareth", "raja_goblin", "kelelawar_istana", "prajurit_kutukan", "orc_kegelapan", "iblis_bayangan", "orc_gua", "iblis_biru"]:
+		var m67: Node3D = Mdl67.create(mid67)
+		_check(m67 != null and m67.name == mid67, "model %s dibuat" % mid67)
+		if m67 != null:
+			m67.free()
+	var drg67: Node3D = Mdl67.create("aldragor")
+	_check(drg67.get("anim_player") != null and drg67._anim_names.has("attack") and drg67._anim_names.has("die") and drg67._anim_names.has("idle"), "Aldragor berangka dengan klip terbang/serang/mati")
+	drg67.free()
+	for m67b: String in [Maps.ISTANA, Maps.TAKHTA]:
+		var start67: Vector2i = Vector2i(15, 1) if m67b == Maps.ISTANA else Vector2i(10, 1)
+		var total67 := 0
+		for y67 in Maps.height(m67b):
+			for x67 in Maps.width(m67b):
+				if Maps.walkable(m67b, x67, y67):
+					total67 += 1
+		var seen67 := {start67: true}
+		var q67: Array[Vector2i] = [start67]
+		while not q67.is_empty():
+			var c67: Vector2i = q67.pop_front()
+			for d67 in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+				var n67: Vector2i = c67 + d67
+				if not seen67.has(n67) and Maps.walkable(m67b, n67.x, n67.y):
+					seen67[n67] = true
+					q67.append(n67)
+		_check(seen67.size() == total67, "%s: semua lantai tersambung dari pintu masuk (%d dari %d)" % [m67b, seen67.size(), total67])
+	_check(Maps.walkable(Maps.GUA, 7, 18) and Maps.exit_at(Maps.GUA, 7, 19).get("to", "") == Maps.ISTANA, "lorong selatan Benteng Orc menuju Istana Kegelapan")
+	_check(Maps.tile_at(Maps.GUNUNG, 20, 11) == "L" and not Maps.walkable(Maps.GUNUNG, 20, 11), "Gunung Berapi punya aliran lava yang tidak bisa dilewati")
+	_check(Maps.NAMES[Maps.HUTAN] == "Hutan Binatang" and Maps.NAMES[Maps.GUNUNG] == "Lereng Gunung Berapi" and Maps.NAMES[Maps.GUA] == "Benteng Orc", "nama wilayah mengikuti cerita")
+	var saved67: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state.map = Maps.ISTANA
+	Session.player.state.x = 15
+	Session.player.state.y = 2
+	Session.player.state.fx = 15.5
+	Session.player.state.fz = 2.5
+	Session.player.state["story"] = 9
+	Session.offline = true
+	var wi67: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wi67)
+	await process_frame
+	await process_frame
+	_check(wi67._map_id == Maps.ISTANA and wi67._terrain != null and wi67._roamers.size() > 0, "Istana Kegelapan dimuat dengan penjaga berkeliaran (%d)" % wi67._roamers.size())
+	var lava67: bool = wi67._terrain.find_children("*", "MultiMeshInstance3D", true, false).any(func(n: Node) -> bool: return (n as MultiMeshInstance3D).material_override is ShaderMaterial and str(((n as MultiMeshInstance3D).material_override as ShaderMaterial).shader.code).contains("0.62, 0.12"))
+	_check(lava67, "kolam lava digambar di Istana Kegelapan")
+	wi67.queue_free()
+	await process_frame
+	Session.player.state.map = Maps.TAKHTA
+	Session.player.state.x = 10
+	Session.player.state.y = 2
+	Session.player.state.fx = 10.5
+	Session.player.state.fz = 2.5
+	Session.player.state["story"] = 10
+	var wt67: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wt67)
+	await process_frame
+	await process_frame
+	var elara67 := false
+	for w67 in wt67._warga:
+		elara67 = elara67 or w67.id == "elara"
+	_check(wt67._map_id == Maps.TAKHTA and elara67, "Elara ditahan di ruang takhta pada langkah Malzareth")
+	wt67.queue_free()
+	await process_frame
+	Session.offline = false
+	Session.player.state.map = Maps.GUA
+	Session.player.state.x = 9
+	Session.player.state.y = 13
+	Session.player.state.fx = 9.5
+	Session.player.state.fz = 13.3
+	Session.player.state["story"] = 7
+	var wg67: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wg67)
+	await process_frame
+	await process_frame
+	_check(wg67._story._stone != null and wg67._story.stone_near(), "Batu Sihir berdenyut di Benteng Orc dan bisa dihancurkan dari dekat")
+	wg67._update_talk_button()
+	_check(wg67._talk_button.visible and wg67._talk_button.text == "Hancurkan", "tombol Hancurkan muncul di dekat Batu Sihir")
+	_check(wg67._life.banner_text.contains("Tujuan: Hancurkan Batu Sihir"), "papan kanan atas menampilkan tujuan cerita")
+	# Narasi bab: langkah yang baru selesai sejak terakhir dilihat tampil berurutan.
+	Session.story_popups = true
+	wg67._story._set_seen(5)
+	wg67._story.check()
+	_check(wg67._story.showing and wg67._story.shown_title == "Bab 3: Gunung Berapi" and wg67._locked, "narasi bab tampil dan menahan gerak")
+	wg67._story._on_next()
+	_check(wg67._story.showing, "narasi berikutnya menyusul")
+	wg67._story._on_next()
+	_check(not wg67._story.showing and not wg67._locked, "narasi ditutup, pemain bebas lagi")
+	Session.story_popups = false
+	wg67.queue_free()
+	await process_frame
+	Session.player.state = saved67
 
 	print("== token salah")
 	Api.token = "salah"

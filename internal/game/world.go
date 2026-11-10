@@ -40,6 +40,9 @@ var worldMaps = map[string]MapInfo{
 	MapAula:        {Width: 11, Height: 8},
 	MapPenginapan:  {Width: 9, Height: 8},
 	MapRumahPemain: {Width: 9, Height: 8},
+	// Bab 4 cerita The Last Dragon (docs/STORY.md): halaman Istana Kegelapan dan ruang takhta Malzareth.
+	MapIstana: {Width: 31, Height: 26},
+	MapTakhta: {Width: 21, Height: 20},
 }
 
 // InVillage: peta tempat pemain aman dan boleh beristirahat gratis (desa dan ruangan di dalamnya).
@@ -57,7 +60,9 @@ type BossSpot struct {
 }
 
 var bossSpots = []BossSpot{
-	{Map: MapGuaBatu, X: 7, Y: 14, EnemyID: "raja_goblin"},
+	{Map: MapGuaBatu, X: 7, Y: 14, EnemyID: PanglimaID},  // Panglima Orc Batu di Benteng Orc
+	{Map: MapIstana, X: 15, Y: 14, EnemyID: AldragorID},  // naga terakhir yang dikendalikan
+	{Map: MapTakhta, X: 10, Y: 13, EnemyID: MalzarethID}, // penyihir kegelapan
 }
 
 // BossAt mengembalikan bos di petak itu, bila ada.

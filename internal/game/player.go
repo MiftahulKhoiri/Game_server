@@ -94,6 +94,8 @@ type State struct {
 	Equipment Equipment `json:"equipment"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
 	Quests []QuestProgress `json:"quests,omitempty"`
+	// Story: langkah cerita utama "The Last Dragon" yang sedang dijalani (0..StoryEnd), hanya diubah server (story.go).
+	Story int `json:"story,omitempty"`
 	// Broken: benda dunia yang dihancurkan ("peta|jenis|x|z" -> detik Unix), tumbuh lagi setelah BreakRespawnSec.
 	Broken map[string]int64 `json:"broken,omitempty"`
 	// Chests: peti harta yang sudah dibuka (id -> detik Unix), terisi lagi setelah ChestRespawnSec.
@@ -223,6 +225,9 @@ func (s State) Validate() error {
 	}
 	if !s.validTrials() {
 		return errors.New("kemajuan hutan/wilayah tidak sah")
+	}
+	if !validStory(s.Story) {
+		return errors.New("kemajuan cerita tidak sah")
 	}
 	if !s.validTalents() || !s.validAchievements() {
 		return errors.New("data kemampuan/pencapaian tidak sah")

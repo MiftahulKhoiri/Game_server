@@ -13,14 +13,16 @@ const MODEL_DIR := "res://assets/models/"
 ## Tinggi akhir (satuan petak) untuk model GLB buatan AI/unduhan selain ksatria. Ukuran asli
 ## GLB tidak dipercaya: model diukur lalu diskalakan ke tinggi ini, kaki di tanah, di tengah.
 const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "warga_ibu": 0.88, "warga_ibu2": 0.86, "warga_bapak": 0.98, "warga_bapak2": 0.96, "anak_desa": 0.62, "babi_hutan": 0.75, "tikus_sawah": 0.5,
-	"serigala_hutan": 0.8, "kelelawar_gua": 0.95, "ular_sawah": 0.6, "belalang_raksasa": 0.55}
+	"serigala_hutan": 0.8, "kelelawar_gua": 0.95, "ular_sawah": 0.6, "belalang_raksasa": 0.55,
+	"aldragor": 3.0, "kelelawar_hutan": 0.7, "iblis_biru": 1.65}
 const DEFAULT_HEIGHT := 1.0
 
 ## Pahlawan yang bisa dipilih pemain (semua dari KayKit, berangka + animasi sendiri). Urutan = urutan di layar profil.
 const HEROES := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "penyihir"]
 ## Pahlawan yang memakai berkas GLB lain (roadmap no. 158): Penyihir = model Mage KayKit (sama dengan
 ## berkas Nenek Penjual), diberi tongkat sihir buatan sendiri, jadi tidak perlu berkas/APK baru.
-const HERO_GLB := {"penyihir": "nenek_penjual"}
+const HERO_GLB := {"penyihir": "nenek_penjual", "iblis_biru": "raja_goblin"}
+## (iblis_biru: model Iblis Biru untuk layar judul; id musuh raja_goblin kini Panglima Orc Batu, lihat VARIANTS.)
 
 
 static func is_hero(id: String) -> bool:
@@ -69,6 +71,14 @@ const VARIANTS := {
 	"ogre_gunung_3": {"base": "ogre_batu", "size": 1.8, "tint": Color("e89a80")},
 	# Ogre Rawa (roadmap no. 63): Monster Batu yang lebih kecil dan hijau lumut.
 	"ogre_rawa": {"base": "ogre_batu", "size": 0.88, "tint": Color("a8d090")},
+	# Cerita The Last Dragon (v0.67.0). Panglima Orc Batu (id lama raja_goblin) memakai model Monster Batu yang besar
+	# dan kelabu; Malzareth = model Mage yang gelap dan lebih tinggi; penjaga Istana Kegelapan berwarna ungu kutukan.
+	"raja_goblin": {"base": "ogre_batu", "size": 2.1, "tint": Color("a8a4a0")},
+	"malzareth": {"base": "nenek_penjual", "size": 1.35, "tint": Color("6f4a8f")},
+	"kelelawar_istana": {"base": "kelelawar_hutan", "size": 1.3, "tint": Color("b48cff")},
+	"prajurit_kutukan": {"base": "goblin_penjaga", "size": 1.25, "tint": Color("a58ad6")},
+	"orc_kegelapan": {"base": "goblin", "size": 2.0, "tint": Color("8a6aa8")},
+	"iblis_bayangan": {"base": "golem_lava", "size": 1.15, "tint": Color("9070c8")},
 	# Prajurit biasa (pasukan dari tenda hijau): pendekar tombak yang lebih kecil dan kehijauan.
 	"prajurit": {"base": "pendekar_tombak", "size": 0.88, "tint": Color("b6d8a4")},
 }
@@ -81,6 +91,9 @@ const ANIMAL_COLORS := {
 	"belalang_raksasa": {"Grey": Color("8a8f99"), "White": Color("f0ece4"), "Pink": Color("f2a6b4")},  # kucing
 	"ular_sawah": {"Material.001": Color("e07a2c"), "Material.002": Color("f4ede0")},        # rubah: oranye, dada putih
 	"serigala_hutan": {"Wolf": Color("8a8478")},                                             # serigala abu-cokelat
+	# Monster Quaternius (Animated Monsters, CC0): Aldragor merah tua bersayap ungu gelap (dikutuk), kelelawar kelabu ungu.
+	"aldragor": {"Main": Color("8e2f3a"), "Wings": Color("5a2448"), "Belly": Color("e2b45c"), "Claws": Color("f2ead6"), "Eyes": Color("ffd23a")},
+	"kelelawar_hutan": {"Main": Color("5b4a63"), "Belly": Color("9a8090"), "Black": Color("1c1a20"), "Eyes": Color("ff4a3a"), "Nose": Color("d48a9a")},
 }
 
 

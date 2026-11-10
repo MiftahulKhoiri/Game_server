@@ -2,7 +2,7 @@
 
 > Dokumen cerita resmi untuk Game_server. Menjadi acuan narasi, karakter, wilayah, misi utama, dialog, dan urutan kejadian.
 >
-> **Status:** naskah cerita disusun; integrasi ke quest, dialog, pemicu wilayah, dan boss dilakukan bertahap.
+> **Status:** diterapkan di game sejak v0.67.0 (server `internal/game/story.go`, klien `client/scripts/story.gd`); rincian langkah, hadiah, peta, dan bos ada di [GAME_DESIGN.md](GAME_DESIGN.md#penerapan-di-game-v0670).
 
 ## Identitas cerita
 

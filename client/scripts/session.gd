@@ -37,6 +37,8 @@ var shop_keeper := ""
 var talk_counts: Dictionary = {}
 ## Sisa langkah aman di ladang setelah pertarungan (tidak ada pertemuan baru).
 var safe_steps := 0
+## Layar narasi cerita The Last Dragon (story.gd) boleh tampil; uji e2e mematikannya kecuali saat menguji narasi.
+var story_popups := true
 ## true = tidak terhubung ke server (mis. menguji peta langsung dari editor); tidak disimpan.
 var offline := false
 ## Nama akun terakhir yang masuk di HP ini (untuk tombol "Lanjutkan sebagai ..."). Kata sandi tidak pernah disimpan.
@@ -232,7 +234,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -312,6 +314,11 @@ func hutan_kills() -> int:
 
 ## Sudah boleh melawan musuh di Hutan Lebat: sudah bicara dengan Kapten Rimba (sama dengan Started() di server;
 ## pemain yang sudah punya kemajuan dianggap sudah diarahkan).
+## Langkah cerita utama The Last Dragon yang sedang dijalani (0..12; 12 = tamat). Lihat story.gd.
+func story() -> int:
+	return int(player.get("state", {}).get("story", 0))
+
+
 func hutan_started() -> bool:
 	var h: Dictionary = player.get("state", {}).get("hutan", {})
 	return bool(h.get("briefed", false)) or int(h.get("wave", 0)) > 0 or int(h.get("kills", 0)) > 0
@@ -439,6 +446,8 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 			"kills": int((s.get("raid", {}) as Dictionary).get("kills", 0)) if s.get("raid", {}) is Dictionary else 0,
 			"claimed": bool((s.get("raid", {}) as Dictionary).get("claimed", false)) if s.get("raid", {}) is Dictionary else false},
 		"defended": int(s.get("defended", 0)),
+		# Cerita utama The Last Dragon: langkah yang sedang dijalani (server: state.story, story.go).
+		"story": clampi(int(s.get("story", 0)), 0, 12),
 	}
 
 

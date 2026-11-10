@@ -213,6 +213,8 @@ var Achievements = []AchievementDef{
 	{ID: "penjelajah", Name: "Penjelajah: mengunjungi semua wilayah", Gold: 100},
 	{ID: "pembela_desa", Name: "Pembela Desa: menghalau Serbuan Goblin", Gold: 80},
 	{ID: "pencari_rahasia", Name: "Pencari Rahasia: menemukan semua tempat rahasia", Gold: 150},
+	// Cerita utama The Last Dragon (story.go).
+	{ID: "legenda", Name: "Legenda Eldoria: mematahkan kutukan Malzareth", Gold: 500},
 }
 
 // AchievementByID mencari pencapaian.
@@ -251,7 +253,7 @@ func (s *State) checkAchievements() []string {
 		"misi_1": claimed >= 1, "misi_5": claimed >= 5,
 		"tempa_1": s.Crafted >= 1, "rumah": s.House, "sahabat": friend, "kemampuan_1": learned >= 1,
 		"penjelajah": len(s.Visited) >= len(ExploreMaps), "pembela_desa": s.Defended >= 1,
-		"pencari_rahasia": len(s.Secrets) >= len(Secrets),
+		"pencari_rahasia": len(s.Secrets) >= len(Secrets), "legenda": s.Story >= StoryEnd,
 	}
 	var out []string
 	for _, a := range Achievements {

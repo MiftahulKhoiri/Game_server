@@ -8,66 +8,43 @@ const Models = preload("res://scripts/models.gd")
 const WORLD_SCENE := "res://scenes/world3d.tscn"
 const ART_DIR := "res://assets/characters/"
 const NPC_NAMES := {"nenek_penjual": "Nenek Penjual Sayur", "petani": "Petani"}
-## Kalimat per misi (kunci = id misi di server): tawaran, terkunci, ucapan terima kasih, sesudah selesai.
+## Kalimat per misi sampingan (kunci = id misi di server): tawaran, terkunci, ucapan terima kasih, sesudah selesai.
+## Misi utama lama diganti cerita utama The Last Dragon (story.gd, warga_dialog.gd STORY_TALK) sejak v0.67.0.
 const QUEST_TEXTS := {
-	"selamatkan_nenek": {
-		"offer": "Selamat datang, Nak. Desa ini sedang tidak aman...",
-		"thanks": "Terima kasih sudah menyelamatkanku, Nak! Ambil hadiah kecil ini:",
-		"done": "Berkat kamu desa ini lebih aman. Semoga kerajaan selalu melindungimu.",
-	},
-	"selamatkan_petani": {
-		"offer": "Hei, Ksatria! Ladangku sudah diinjak-injak goblin-goblin hijau itu...",
-		"locked": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi.",
-		"thanks": "Kamu menyelamatkan ladangku! Terimalah ini sebagai tanda terima kasih:",
-		"done": "Ladangku aman lagi. Kerajaan beruntung memilikimu, Ksatria.",
-	},
-	"hentikan_raja_goblin": {
-		"offer": "Ksatria! Seekor orc tertangkap dan ia mengaku disuruh seseorang di bawah gunung...",
-		"locked": "Aku punya kabar penting, tapi selesaikan urusan Nenek dan Monster Batu dulu.",
-		"thanks": "Raja Iblis sudah tumbang! Kerajaan aman berkatmu. Terimalah ini:",
-		"done": "Desa ini dan seluruh kerajaan berutang padamu, Pelindung Kerajaan.",
-	},
-	"usir_ogre": {
-		"offer": "Ksatria... ada kabar buruk dari para pedagang. Sumber semua kekacauan ini ada di gunung.",
-		"locked": "Nenek sedang mengkhawatirkan banyak hal. Bantu Petani dulu, ya, Nak.",
-		"thanks": "Kamu mengalahkan Monster Batu! Kerajaan berutang budi padamu. Ini untukmu:",
-		"done": "Gunung itu sunyi sekarang. Terima kasih, Pelindung Kerajaan.",
-	},
-	# Misi sampingan (v0.20.0)
 	"kebun_babi": {
-		"offer": "Nak, kebun sayurku diobrak-abrik babi hutan semalam. Sayurnya hampir habis...",
-		"locked": "Tolong urus keadaanku dulu, baru kita bicara soal kebun.",
+		"offer": "Nak, kebun sayurku diobrak-abrik babi hutan semalam. Sejak kutukan itu mereka jadi buas sekali...",
+		"locked": "Kepala Desa sedang mencarimu, Nak. Temui dia dulu, nanti kita bicara soal kebun.",
 		"thanks": "Kebunku selamat, terima kasih! Pakailah baju ini, dulu milik suamiku:",
 		"done": "Sayurnya tumbuh lagi. Kamu selalu diterima di dapurku, Nak.",
 	},
 	"ramuan_nenek": {
-		"offer": "Banyak pengungsi terluka di desa. Aku bisa meracik obat, tapi butuh taring goblin dari Gunung Batu.",
-		"locked": "Tolong urus keadaanku dulu, baru kita bicara soal obat.",
+		"offer": "Banyak warga terluka saat desa diserang. Aku bisa meracik obat, tapi butuh taring goblin.",
+		"locked": "Nanti, Nak, setelah kamu sampai ke hutan. Aku butuh sesuatu dari para Goblin.",
 		"thanks": "Taring-taring ini cukup untuk satu panci obat! Ini bagianmu:",
-		"done": "Para pengungsi sudah pulih berkat obatmu, Nak.",
+		"done": "Para korban serangan sudah pulih berkat obatmu, Nak.",
 	},
 	"serigala_perbatasan": {
-		"offer": "Serigala-serigala turun dari gunung seperti ada yang mengusir mereka. Pedagang tak berani lewat.",
-		"locked": "Aku masih gemetar... Tolong bantu Nenek lebih dulu, baru kita bicara lagi.",
+		"offer": "Serigala-serigala yang dikutuk menghadang pedagang di jalan raja. Pedagang tak berani lewat.",
+		"locked": "Kepala Desa menunggumu. Temui dia dulu, Ksatria.",
 		"thanks": "Jalan raja aman lagi, pedagang mulai berdatangan. Ini upahmu:",
 		"done": "Pedagang kembali lewat tiap pagi. Terima kasih, Ksatria.",
 	},
 	"sisa_pasukan": {
-		"offer": "Raja Iblis memang tumbang, tapi pasukan orc-nya belum semua padam. Mereka masih berkeliaran.",
-		"locked": "Aku punya kabar penting, tapi selesaikan dulu urusan Raja Iblis.",
-		"thanks": "Gunung dan gua kini benar-benar sunyi. Kerajaan memberimu zirah ini:",
-		"done": "Tak ada lagi orc yang mengusik desa. Kamu pahlawan kami.",
+		"offer": "Panglima Orc Batu sudah tumbang, tapi orc-orc yang masih terkutuk berkeliaran di bentengnya.",
+		"locked": "Aku punya permintaan soal benteng di gunung, tapi nanti, setelah panglimanya tumbang.",
+		"thanks": "Benteng itu kini sunyi. Kerajaan memberimu zirah ini:",
+		"done": "Tak ada lagi orc terkutuk yang mengusik jalan gunung. Kamu pahlawan kami.",
 	},
 	"permata_nenek": {
-		"offer": "Permata merah itu rupanya sumber kekuatan pasukan iblis. Jangan biarkan jatuh ke tangan salah.",
-		"locked": "Ada sesuatu yang ingin kubicarakan soal permata merah, tapi nanti, setelah Raja Iblis tumbang.",
-		"thanks": "Permata-permata ini kusimpan aman di kuil kerajaan. Terimalah pedang ini:",
-		"done": "Kuil menjaga permata itu sekarang. Kerajaan tenang berkatmu, Nak.",
+		"offer": "Permata merah itu menyimpan sisa sihir Malzareth. Biar kusucikan di kuil desa.",
+		"locked": "Ada yang ingin kubicarakan soal permata merah, tapi nanti, setelah kamu sampai di benteng gunung.",
+		"thanks": "Permata-permata ini kusucikan di kuil desa. Terimalah pedang ini:",
+		"done": "Kuil menjaga permata itu sekarang. Desa tenang berkatmu, Nak.",
 	},
 }
 const GREETINGS := {
-	"nenek_penjual": "Selamat datang, Nak. Desa ini sedang tidak aman...",
-	"petani": "Hei, Ksatria! Ladangku sudah diinjak-injak goblin-goblin hijau itu...",
+	"nenek_penjual": "Selamat datang, Nak. Kasihan Elara... semoga kamu bisa membawanya pulang.",
+	"petani": "Hei, Ksatria! Ladangku diinjak-injak monster semalam. Semoga kutukan ini cepat berakhir.",
 }
 
 var _npc := ""
@@ -75,6 +52,8 @@ var _warga_id := ""  # id warga desa bila lawan bicara bukan NPC misi
 var _stage := 0      # tahap cerita utama (untuk kalimat warga)
 var _kapten_first := false   # pertemuan pertama dengan Kapten Rimba: radar baru diberikan
 var _kapten_error := ""      # pesan server bila arahan Kapten gagal (mis. ransel penuh)
+var _story_text := ""        # kalimat kunci tokoh cerita saat langkah cerita selesai (The Last Dragon)
+var _story_error := ""       # pesan server bila langkah cerita gagal (mis. terlalu jauh, ransel penuh)
 var _quest: Dictionary = {}  # misi milik NPC ini (tampilan dari server), {} bila tidak ada
 var _others: Array[Dictionary] = []  # misi lain NPC ini yang sedang dikerjakan
 var _name_label: Label
@@ -101,6 +80,8 @@ func _ready() -> void:
 		await _load_stage()
 		if _warga_id == "kapten_kem" and not Session.offline:
 			await _brief_kapten()
+		if not Session.offline:
+			await _story_talk()
 		_render_warga()
 		return
 	await _load_quest()
@@ -138,10 +119,24 @@ func _tier_suffix() -> String:
 	return "" if Session.offline else "  ·  " + Session.rep_tier(_who())
 
 
-## Tahap cerita untuk kalimat warga: banyak misi utama yang sudah tuntas.
+## Tahap cerita untuk kalimat warga: bab cerita utama yang sedang berjalan.
 func _load_stage() -> void:
-	var res: Dictionary = await Api.quests_get()
-	_stage = WARGA_DIALOG.stage_from_quests(res.data.get("quests", [])) if res.ok else 0
+	_stage = WARGA_DIALOG.stage_of_story(Session.story())
+
+
+## Tokoh cerita (Kepala Desa, Penjaga Hutan, Orc Tua): bila langkah cerita sekarang selesai dengan bicara padanya,
+## server memeriksa posisi lalu memajukan cerita dan memberi hadiahnya (internal/game/story.go).
+func _story_talk() -> void:
+	var langkah := WARGA_DIALOG.story_step_for(_warga_id, Session.story())
+	if langkah < 0:
+		return
+	var res: Dictionary = await Api.story_talk(_warga_id)
+	if res.ok:
+		Session.merge_server_player(res.data)
+		_story_text = str(WARGA_DIALOG.STORY_TALK[_warga_id][langkah])
+		_stage = WARGA_DIALOG.stage_of_story(Session.story())
+	else:
+		_story_error = str(res.error)
 
 
 ## Kapten Rimba: pertemuan pertama memberi Radar Musuh dan membuka pertarungan di hutan (aturan di server).
@@ -165,7 +160,11 @@ func _render_warga() -> void:
 	_action.visible = false
 	var n := int(Session.talk_counts.get(_npc, 1)) - 1
 	_text.text = WARGA_DIALOG.line(_warga_id, _stage, n)
-	if _kapten_first:
+	if _story_text != "":
+		_text.text = _story_text
+	elif _story_error != "":
+		_text.text = "Ada yang ingin kusampaikan, tetapi: %s." % _story_error
+	elif _kapten_first:
 		_text.text = WARGA_DIALOG.kapten_line(Session.hutan_wave(), Session.hutan_kills(), n, false)
 	elif _kapten_error != "":
 		_text.text = "Kapten Rimba ingin memberimu Radar Musuh, tapi: %s. Beresi dulu, lalu bicara lagi denganku." % _kapten_error
