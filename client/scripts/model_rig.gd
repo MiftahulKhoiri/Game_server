@@ -17,6 +17,12 @@ var move_speed := 0.0
 const WALK_REF := 1.5    # kecepatan (petak/detik) saat klip jalan diputar 1x
 const RUN_SPEED := 2.4   # mulai dari sini dianggap berlari
 const MAX_CLIP_SPEED := 2.3
+## Gerakan berulang di tempat (mis. "palu", roadmap no. 35) selama tidak berjalan; "" = tidak ada.
+var loop_action := ""
+## Pose diam: "" (berdiri), "duduk" (no. 36), atau "tidur" (no. 38). Pakai set_pose().
+var pose := ""
+const SIT_DROP := 0.12    # turun (petak) saat duduk (di atas batu)
+const SLEEP_LIFT := 0.12  # naik (petak) saat berbaring
 
 const HeroActions = preload("res://scripts/hero_actions.gd")
 
@@ -79,6 +85,20 @@ func _ensure_actions() -> void:
 			_actions = HeroActions.new()
 			sk.add_child(_actions)
 			break
+
+
+## Ganti pose diam. Tulang diatur hero_actions.gd; tinggi dan rebahan badan diatur di sini.
+func set_pose(p: String) -> void:
+	if p == pose:
+		return
+	pose = p
+	_ensure_actions()
+	if _actions != null:
+		_actions.set("pose", p)
+		if p != "":
+			_actions.call("stop")
+	position.y = base_y - SIT_DROP if p == "duduk" else (base_y + SLEEP_LIFT if p == "tidur" else base_y)
+	rotation.x = -PI / 2.0 if p == "tidur" else 0.0
 
 
 ## Sedang berlari (dipakai uji dan efek).
@@ -184,6 +204,10 @@ func _process(delta: float) -> void:
 
 func _drive_animation_player() -> void:
 	_overlay_without_clips()
+	if loop_action != "" and not moving and pose == "":
+		_ensure_actions()
+		if _actions != null and str(_actions.call("current")) == "":
+			_actions.call("play", loop_action)
 	var want := "idle"
 	if _hurt > 0.0 and _anim_names.has("hurt"):
 		want = "hurt"

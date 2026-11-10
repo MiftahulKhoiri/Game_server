@@ -76,6 +76,23 @@ const ACTIONS := {
 		"upperarm.r:x": [[0, 0], [0.3, 0.6], [0.45, 0.75], [0.6, 0.4], [1, 0]],
 		"lowerarm.r:x": [[0, 0], [0.3, -0.3], [0.6, -0.3], [1, 0]],
 	}},
+	# Berbicara (roadmap no. 34): tangan bergantian menunjuk dan membuka, kepala mengangguk.
+	"bicara": {"dur": 1.6, "k": {
+		"upperarm.r:x": [[0, 0], [0.15, 0.55], [0.35, 0.3], [0.5, 0.6], [0.7, 0.2], [1, 0]],
+		"lowerarm.r:x": [[0, 0], [0.15, -0.6], [0.5, -0.7], [1, 0]],
+		"upperarm.l:x": [[0, 0], [0.4, 0], [0.55, 0.45], [0.75, 0.3], [1, 0]],
+		"lowerarm.l:x": [[0, 0], [0.55, -0.5], [1, 0]],
+		"head:x": [[0, 0], [0.2, 0.15], [0.35, 0], [0.6, 0.12], [0.75, 0], [1, 0]],
+		"spine:y": [[0, 0], [0.3, 0.12], [0.6, -0.1], [1, 0]],
+	}},
+	# Menempa (roadmap no. 35): angkat palu tinggi, pukul ke landasan.
+	"palu": {"dur": 0.9, "k": {
+		"upperarm.r:x": [[0, 0.3], [0.45, 1.7], [0.6, 0.25], [0.75, 0.35], [1, 0.3]],
+		"lowerarm.r:x": [[0, -0.4], [0.45, -0.9], [0.6, -0.2], [1, -0.4]],
+		"spine:x": [[0, 0.2], [0.45, -0.05], [0.6, 0.35], [1, 0.2]],
+		"upperarm.l:x": [[0, 0.5], [1, 0.5]],
+		"lowerarm.l:x": [[0, -0.6], [1, -0.6]],
+	}},
 	# Angkat perisai di depan wajah dan tahan.
 	"tangkis": {"dur": 1.6, "k": {
 		"upperarm.l:x": [[0, 0], [0.08, 1.2], [0.92, 1.2], [1, 0]],
@@ -86,6 +103,16 @@ const ACTIONS := {
 
 const AXIS := {"x": 0, "y": 1, "z": 2}
 
+## Pose diam (roadmap no. 36): putaran tulang tetap selama pose aktif. Tinggi badan diatur model_rig.
+const POSES := {
+	"duduk": {"upperleg.r": Vector3(-1.45, 0, 0), "upperleg.l": Vector3(-1.45, 0, 0),
+		"lowerleg.r": Vector3(1.45, 0, 0), "lowerleg.l": Vector3(1.45, 0, 0),
+		"upperarm.r": Vector3(0.35, 0, 0), "upperarm.l": Vector3(0.35, 0, 0),
+		"lowerarm.r": Vector3(-0.5, 0, 0), "lowerarm.l": Vector3(-0.5, 0, 0)},
+	# Tidur (no. 38): badan direbahkan oleh model_rig; lengan di sisi badan, kepala sedikit miring.
+	"tidur": {"upperarm.r": Vector3(0, 0, 0.9), "upperarm.l": Vector3(0, 0, -0.9), "head": Vector3(0, 0.35, 0)},
+}
+
 var _name := ""
 var _t := 0.0
 var _dur := 1.0
@@ -93,6 +120,8 @@ var _dur := 1.0
 ## Berlaku di atas klip jalan selama tidak ada gerakan lain.
 var lean := 0.0
 var _lean_t := 0.0
+## Pose diam yang sedang dipakai (kunci POSES) atau "".
+var pose := ""
 
 
 func _ready() -> void:
@@ -113,7 +142,7 @@ func play(action: String) -> bool:
 ## Hentikan gerakan sekarang (tubuh kembali ke klip idle/jalan).
 func stop() -> void:
 	_name = ""
-	active = lean > 0.01
+	active = lean > 0.01 or pose != ""
 
 
 func current() -> String:
@@ -123,7 +152,7 @@ func current() -> String:
 func _process(delta: float) -> void:
 	_lean_t += delta
 	if _name == "":
-		active = lean > 0.01
+		active = lean > 0.01 or pose != ""
 		return
 	_t += delta
 	if _t >= _dur:
@@ -152,6 +181,7 @@ func _process_modification() -> void:
 	if sk == null:
 		return
 	if _name == "":
+		_apply_pose(sk)
 		_apply_lean(sk)
 		return
 	var u := clampf(_t / _dur, 0.0, 1.0)
@@ -187,3 +217,13 @@ func _apply_lean(sk: Skeleton3D) -> void:
 		var i := sk.find_bone(str(pair[0]))
 		if i >= 0:
 			sk.set_bone_pose_rotation(i, sk.get_bone_pose_rotation(i) * Quaternion.from_euler(pair[1]))
+
+
+func _apply_pose(sk: Skeleton3D) -> void:
+	if pose == "" or not POSES.has(pose):
+		return
+	var rot: Dictionary = POSES[pose]
+	for bone: String in rot:
+		var i := sk.find_bone(bone)
+		if i >= 0:
+			sk.set_bone_pose_rotation(i, sk.get_bone_pose_rotation(i) * Quaternion.from_euler(rot[bone]))
