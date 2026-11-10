@@ -59,6 +59,11 @@ func set_outfit(outfit: int) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/outfit", {"outfit": outfit}, true)
 
 
+## Catat pembicaraan dengan warga (ingatan + keakraban di server).
+func warga_talk(warga: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/warga/talk", {"warga": warga}, true)
+
+
 ## Beli pahlawan sebagai pendamping.
 func buy_ally(hero: String) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/allies/buy", {"hero": hero}, true)

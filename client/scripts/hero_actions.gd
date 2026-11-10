@@ -93,6 +93,14 @@ const ACTIONS := {
 		"upperarm.l:x": [[0, 0.5], [1, 0.5]],
 		"lowerarm.l:x": [[0, -0.6], [1, -0.6]],
 	}},
+	# Mencangkul (roadmap no. 52): kedua tangan mengangkat cangkul lalu mengayun ke tanah.
+	"cangkul": {"dur": 1.2, "k": {
+		"upperarm.r:x": [[0, 0.4], [0.4, 1.6], [0.55, 0.3], [0.8, 0.4], [1, 0.4]],
+		"upperarm.l:x": [[0, 0.4], [0.4, 1.5], [0.55, 0.3], [0.8, 0.4], [1, 0.4]],
+		"lowerarm.r:x": [[0, -0.3], [0.4, -0.6], [0.55, -0.1], [1, -0.3]],
+		"lowerarm.l:x": [[0, -0.3], [0.4, -0.6], [0.55, -0.1], [1, -0.3]],
+		"spine:x": [[0, 0.25], [0.4, -0.1], [0.55, 0.5], [0.8, 0.35], [1, 0.25]],
+	}},
 	# Angkat perisai di depan wajah dan tahan.
 	"tangkis": {"dur": 1.6, "k": {
 		"upperarm.l:x": [[0, 0], [0.08, 1.2], [0.92, 1.2], [1, 0]],

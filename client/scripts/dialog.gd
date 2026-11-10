@@ -96,6 +96,7 @@ func _ready() -> void:
 		_tex = load(path) as Texture2D
 	_build_ui()
 	_text.text = "..."
+	await _remember()
 	if _warga_id != "":
 		await _load_stage()
 		if _warga_id == "kapten_kem" and not Session.offline:
@@ -104,6 +105,37 @@ func _ready() -> void:
 		return
 	await _load_quest()
 	_render()
+
+
+## Server mencatat pembicaraan ini: warga mengingat pemain dan makin akrab (roadmap no. 58-59).
+func _remember() -> void:
+	if Session.offline:
+		return
+	var res: Dictionary = await Api.warga_talk(_who())
+	if res.ok:
+		Session.merge_server_player(res.data)
+
+
+## Id warga/NPC lawan bicara (sama dengan WargaIDs di server).
+func _who() -> String:
+	return _warga_id if _warga_id != "" else _npc
+
+
+## Sapaan menurut ingatan warga: pertemuan pertama berkenalan, sahabat disapa hangat.
+func _greeting() -> String:
+	var me := str(Session.player.get("name", ""))
+	if Session.offline:
+		return ""
+	if Session.rep_talks(_who()) <= 1:
+		return "Senang berkenalan, %s! " % me
+	if Session.rep_tier(_who()) == "Sahabat":
+		return "Ah, sahabatku %s! " % me
+	return ""
+
+
+## Tingkat keakraban di samping nama (Kenalan / Teman / Sahabat).
+func _tier_suffix() -> String:
+	return "" if Session.offline else "  ·  " + Session.rep_tier(_who())
 
 
 ## Tahap cerita untuk kalimat warga: banyak misi utama yang sudah tuntas.
@@ -137,6 +169,9 @@ func _render_warga() -> void:
 		_text.text = WARGA_DIALOG.kapten_line(Session.hutan_wave(), Session.hutan_kills(), n, false)
 	elif _kapten_error != "":
 		_text.text = "Kapten Rimba ingin memberimu Radar Musuh, tapi: %s. Beresi dulu, lalu bicara lagi denganku." % _kapten_error
+	elif _warga_id != "ayam":
+		_text.text = _greeting() + _text.text  # warga mengingat pemain (roadmap no. 58)
+	_name_label.text += _tier_suffix()
 	Sound.npc_say(_text.text, hash(_warga_id))
 
 
@@ -174,7 +209,7 @@ func _text_for(key: String, fallback := "") -> String:
 
 
 func _render() -> void:
-	_name_label.text = str(NPC_NAMES.get(_npc, "Penduduk"))
+	_name_label.text = str(NPC_NAMES.get(_npc, "Penduduk")) + _tier_suffix()
 	_action.visible = false
 	if _quest.is_empty():
 		_text.text = str(GREETINGS.get(_npc, "Halo."))
