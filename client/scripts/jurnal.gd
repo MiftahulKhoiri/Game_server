@@ -8,6 +8,7 @@ extends CanvasLayer
 signal closed
 
 const Maps = preload("res://scripts/maps.gd")
+const StoryMod = preload("res://scripts/story.gd")
 const TABS := ["Misi", "Peta", "Kabar"]
 const STATUS_TEXT := {"locked": "Terkunci", "available": "Bisa diterima", "active": "Sedang dikerjakan", "done": "Selesai — ambil hadiah", "claimed": "Tuntas"}
 const STATUS_COLOR := {"locked": Color("8a8a8a"), "available": Color("9fd8ff"), "active": Color("ffd27a"), "done": Color("9fe6a0"), "claimed": Color("b9b9b0")}
@@ -18,7 +19,7 @@ const TILE_COLOR := {
 	".": Color("5fae4a"), "f": Color("6dbb55"), "=": Color("d9b97c"), "~": Color("3d7fc4"), "#": Color("2f5e2a"),
 	"P": Color("6b4a2a"), "H": Color("a0523d"), "D": Color("e0a050"), "F": Color("8a6a3a"), "T": Color("86603a"),
 	"R": Color("6f6a62"), "M": Color("a59a8a"), "G": Color("8d8170"), "S": Color("9a9aa3"), "B": Color("b08850"),
-	"N": Color("e0a050"), "W": Color("6fa0c0"),
+	"N": Color("e0a050"), "W": Color("6fa0c0"), "O": Color("4b4553"), "L": Color("e0602a"), "K": Color("8a2a2a"),
 }
 
 var is_open := false
@@ -119,9 +120,33 @@ func _show_tab(i: int) -> void:
 
 # --- Misi (no. 212) ---
 
+## Kartu cerita utama The Last Dragon di atas daftar misi: bab dan tujuan yang sedang berjalan (story.gd).
+func _build_story_card() -> void:
+	if Session.offline:
+		return
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("2e2438")
+	sb.border_color = Color("e8c070")
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(14)
+	sb.set_content_margin_all(14)
+	card.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	card.add_child(v)
+	var langkah := StoryMod.step()
+	var head := _label("Cerita Utama: The Last Dragon", 26)
+	head.add_theme_color_override("font_color", Color("e8c070"))
+	v.add_child(head)
+	v.add_child(_label(StoryMod.chapter(langkah) + ("  (%d/%d)" % [mini(langkah + 1, StoryMod.END), StoryMod.END] if not StoryMod.done() else "  (tamat)"), 24))
+	v.add_child(_label(StoryMod.goal_long(), 22))
+	_body.add_child(card)
+
 func _build_quests() -> void:
+	_build_story_card()
 	if quests.is_empty():
-		_body.add_child(_label("Belum ada misi. Bicaralah dengan warga desa (Nenek, Petani) dan Kapten Rimba.", 24))
+		_body.add_child(_label("Belum ada misi sampingan. Bicaralah dengan Nenek dan Petani di desa.", 24))
 		return
 	var order := ["done", "active", "available", "locked", "claimed"]
 	var sorted := quests.duplicate()

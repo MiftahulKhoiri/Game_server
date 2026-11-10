@@ -6,10 +6,18 @@ import (
 	"testing"
 )
 
-const nenekQuest = "selamatkan_nenek"
+// Misi dasar untuk uji: Kebun yang Dirusak (3 babi hutan), terbuka setelah langkah cerita pertama.
+const nenekQuest = "kebun_babi"
+
+// storyState: pemain baru yang sudah bicara dengan Kepala Desa (misi sampingan pertama terbuka).
+func storyState() State {
+	st := NewState()
+	st.Story = 1
+	return st
+}
 
 func TestQuestFlow(t *testing.T) {
-	st := NewState()
+	st := storyState()
 	if v := st.QuestViews(); len(v) == 0 || v[0].Status != QuestAvailable {
 		t.Fatalf("misi harus tersedia: %+v", v)
 	}
@@ -31,7 +39,7 @@ func TestQuestFlow(t *testing.T) {
 	}
 	def, _ := QuestByID(nenekQuest)
 	for i := 1; i < def.Count; i++ {
-		log := st.RecordKill("tikus_sawah")
+		log := st.RecordKill("babi_hutan")
 		if len(log) != 1 || !strings.Contains(log[0], "/") {
 			t.Fatalf("kemajuan %d: %v", i, log)
 		}
@@ -39,13 +47,13 @@ func TestQuestFlow(t *testing.T) {
 	if _, err := st.ClaimQuest(nenekQuest); !errors.Is(err, ErrQuestNotReady) {
 		t.Errorf("klaim saat belum selesai: %v", err)
 	}
-	if log := st.RecordKill("belalang_raksasa"); len(log) != 1 || !strings.Contains(log[0], "selesai") {
+	if log := st.RecordKill("babi_hutan"); len(log) != 1 || !strings.Contains(log[0], "selesai") {
 		t.Fatalf("harus selesai: %v", log)
 	}
 	if v := st.QuestViews()[0]; v.Status != QuestDone || v.Progress != def.Count {
 		t.Errorf("tampilan: %+v", v)
 	}
-	if log := st.RecordKill("tikus_sawah"); len(log) != 0 {
+	if log := st.RecordKill("babi_hutan"); len(log) != 0 {
 		t.Errorf("misi selesai tidak menghitung lagi: %v", log)
 	}
 
@@ -69,10 +77,11 @@ func TestQuestFlow(t *testing.T) {
 
 func TestWinCountsTowardQuest(t *testing.T) {
 	p := newPlayer()
+	p.State.Story = 1
 	if err := p.State.AcceptQuest(nenekQuest); err != nil {
 		t.Fatal(err)
 	}
-	b := battleVs("tikus_sawah", 1)
+	b := battleVs("babi_hutan", 1)
 	res, err := act(b, p, ActionAttack, seq(20, 99, 99, 99))
 	if err != nil || res.Status != StatusWon {
 		t.Fatalf("harus menang: %v %+v", err, res)
@@ -80,13 +89,14 @@ func TestWinCountsTowardQuest(t *testing.T) {
 	if p.State.Quests[0].Progress != 1 {
 		t.Errorf("kemenangan harus dihitung: %+v", p.State.Quests)
 	}
-	if !strings.Contains(strings.Join(res.Log, "|"), "Selamatkan Nenek") {
+	if !strings.Contains(strings.Join(res.Log, "|"), "Kebun yang Dirusak") {
 		t.Errorf("log harus menyebut misi: %v", res.Log)
 	}
 }
 
 func TestFleeAndLossDoNotCount(t *testing.T) {
 	p := newPlayer()
+	p.State.Story = 1
 	_ = p.State.AcceptQuest(nenekQuest)
 	p.State.HP = 1
 	b := battleVs("babi_hutan", 34)
@@ -140,154 +150,47 @@ func TestQuestCatalogConsistent(t *testing.T) {
 	}
 }
 
-const petaniQuest = "selamatkan_petani"
-
-func claimNenek(t *testing.T, st *State) {
-	t.Helper()
-	if err := st.AcceptQuest(nenekQuest); err != nil {
-		t.Fatal(err)
-	}
-	def, _ := QuestByID(nenekQuest)
-	for i := 0; i < def.Count; i++ {
-		st.RecordKill("tikus_sawah")
-	}
-	if _, err := st.ClaimQuest(nenekQuest); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestSecondQuestIsLockedUntilFirstClaimed(t *testing.T) {
-	st := NewState()
-	if v := st.QuestViews()[1]; v.ID != petaniQuest || v.Status != QuestLocked {
-		t.Fatalf("misi petani harus terkunci: %+v", v)
-	}
-	if err := st.AcceptQuest(petaniQuest); !errors.Is(err, ErrQuestLocked) {
-		t.Errorf("terima saat terkunci: %v", err)
-	}
-	// Selesai tapi hadiah belum diambil: masih terkunci.
-	_ = st.AcceptQuest(nenekQuest)
-	for i := 0; i < 5; i++ {
-		st.RecordKill("belalang_raksasa")
-	}
-	if err := st.AcceptQuest(petaniQuest); !errors.Is(err, ErrQuestLocked) {
-		t.Errorf("hadiah belum diambil, harus terkunci: %v", err)
-	}
-	if _, err := st.ClaimQuest(nenekQuest); err != nil {
-		t.Fatal(err)
-	}
-	if v := st.QuestViews()[1]; v.Status != QuestAvailable {
-		t.Errorf("harus tersedia: %+v", v)
-	}
-	if err := st.AcceptQuest(petaniQuest); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestPetaniQuestRewardsItem(t *testing.T) {
-	st := NewState()
-	claimNenek(t, &st)
-	_ = st.AcceptQuest(petaniQuest)
-	if log := st.RecordKill("tikus_sawah"); len(log) != 0 {
-		t.Errorf("hanya goblin yang dihitung: %v", log)
-	}
-	for i := 0; i < 3; i++ {
-		st.RecordKill("goblin")
-	}
-	gold := st.Gold
-	def, err := st.ClaimQuest(petaniQuest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if st.Gold != gold+25 || qtyOf(st, "permata_merah") != 1 {
-		t.Errorf("emas %d (dari %d), permata %d", st.Gold, gold, qtyOf(st, "permata_merah"))
-	}
-	if got := def.RewardText(); got != "25 emas, Permata Merah x1" {
-		t.Errorf("teks hadiah: %q", got)
-	}
-}
-
 func TestClaimWithFullInventoryChangesNothing(t *testing.T) {
-	st := NewState()
-	claimNenek(t, &st)
-	_ = st.AcceptQuest(petaniQuest)
+	st := storyState()
+	_ = st.AcceptQuest(nenekQuest)
 	for i := 0; i < 3; i++ {
-		st.RecordKill("goblin")
+		st.RecordKill("babi_hutan")
 	}
 	st.Inventory = nil
 	for i := 0; i < MaxInventory; i++ {
 		st.Inventory = append(st.Inventory, Item{ID: "x" + string(rune('a'+i%26)) + string(rune('a'+i/26)), Qty: 1})
 	}
 	gold := st.Gold
-	if _, err := st.ClaimQuest(petaniQuest); !errors.Is(err, ErrInventoryFull) {
+	if _, err := st.ClaimQuest(nenekQuest); !errors.Is(err, ErrInventoryFull) {
 		t.Fatalf("mau ErrInventoryFull, dapat %v", err)
 	}
-	i := st.questIndex(petaniQuest)
+	i := st.questIndex(nenekQuest)
 	if st.Gold != gold || st.Quests[i].Status != QuestDone || len(st.Inventory) != MaxInventory {
 		t.Errorf("tidak boleh ada yang berubah: gold=%d status=%s inv=%d", st.Gold, st.Quests[i].Status, len(st.Inventory))
 	}
 }
 
-func TestOgreQuestChain(t *testing.T) {
+func TestOldMainQuestsAreGone(t *testing.T) {
+	for _, id := range []string{"selamatkan_nenek", "selamatkan_petani", "usir_ogre", "hentikan_raja_goblin"} {
+		if _, ok := QuestByID(id); ok {
+			t.Errorf("misi utama lama %s harus diganti cerita The Last Dragon", id)
+		}
+	}
+	// Data lama yang masih menyimpan misi itu tetap sah dan tidak berpengaruh.
 	st := NewState()
-	claimNenek(t, &st)
-	if v := st.QuestViews()[2]; v.ID != "usir_ogre" || v.Status != QuestLocked {
-		t.Fatalf("misi ogre harus terkunci sebelum petani selesai: %+v", v)
-	}
-	_ = st.AcceptQuest(petaniQuest)
-	for i := 0; i < 3; i++ {
-		st.RecordKill("goblin")
-	}
-	if _, err := st.ClaimQuest(petaniQuest); err != nil {
+	st.Quests = []QuestProgress{{ID: "selamatkan_nenek", Status: QuestClaimed}, {ID: "usir_ogre", Status: QuestActive}}
+	if err := st.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.AcceptQuest("usir_ogre"); err != nil {
-		t.Fatal(err)
-	}
-	if log := st.RecordKill("goblin"); len(log) != 0 {
-		t.Errorf("hanya ogre yang dihitung: %v", log)
-	}
-	st.RecordKill("ogre_batu")
-	gold := st.Gold
-	def, err := st.ClaimQuest("usir_ogre")
-	if err != nil || st.Gold != gold+150 || qtyOf(st, "koin_kuno") != 2 {
-		t.Errorf("hadiah salah: err=%v gold=%d->%d koin=%d (%s)", err, gold, st.Gold, qtyOf(st, "koin_kuno"), def.RewardText())
+	if log := st.RecordKill("ogre_batu"); len(log) != 0 {
+		t.Errorf("misi lama tidak boleh maju: %v", log)
 	}
 }
 
-func TestRajaGoblinQuestEndsChain(t *testing.T) {
-	st := NewState()
-	claimNenek(t, &st)
-	_ = st.AcceptQuest(petaniQuest)
-	for i := 0; i < 3; i++ {
-		st.RecordKill("goblin")
-	}
-	_, _ = st.ClaimQuest(petaniQuest)
-	_ = st.AcceptQuest("usir_ogre")
-	st.RecordKill("ogre_batu")
-	_, _ = st.ClaimQuest("usir_ogre")
-	if v := st.QuestViews()[3]; v.ID != "hentikan_raja_goblin" || v.Status != QuestAvailable {
-		t.Fatalf("misi terakhir harus tersedia: %+v", v)
-	}
-	if err := st.AcceptQuest("hentikan_raja_goblin"); err != nil {
-		t.Fatal(err)
-	}
-	st.RecordKill("goblin_penjaga")
-	st.RecordKill("raja_goblin")
-	gold, gems := st.Gold, qtyOf(st, "permata_merah")
-	if _, err := st.ClaimQuest("hentikan_raja_goblin"); err != nil || st.Gold != gold+500 || qtyOf(st, "permata_merah") != gems+3 {
-		t.Errorf("hadiah salah: %v gold %d->%d permata %d->%d", err, gold, st.Gold, gems, qtyOf(st, "permata_merah"))
-	}
-}
-
-// questDone menamatkan misi utama sampai prasyarat misi sampingan terpenuhi.
+// finishQuest menamatkan satu misi sampingan (cerita harus sudah cukup jauh).
 func finishQuest(t *testing.T, st *State, id string) {
 	t.Helper()
 	def, _ := QuestByID(id)
-	if def.Requires != "" {
-		if i := st.questIndex(def.Requires); i < 0 || st.Quests[i].Status != QuestClaimed {
-			finishQuest(t, st, def.Requires)
-		}
-	}
 	if err := st.AcceptQuest(id); err != nil {
 		t.Fatalf("terima %s: %v", id, err)
 	}
@@ -307,7 +210,7 @@ func finishQuest(t *testing.T, st *State, id string) {
 
 func TestCollectQuestNeedsItemsAndConsumesThem(t *testing.T) {
 	st := NewState()
-	finishQuest(t, &st, nenekQuest)
+	st.Story = 3
 	if err := st.AcceptQuest("ramuan_nenek"); err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +255,7 @@ func TestCollectQuestNeedsItemsAndConsumesThem(t *testing.T) {
 	}
 }
 
-func TestSideQuestsFollowPrerequisites(t *testing.T) {
+func TestSideQuestsFollowStory(t *testing.T) {
 	st := NewState()
 	locked := func(id string) bool {
 		for _, v := range st.QuestViews() {
@@ -365,22 +268,26 @@ func TestSideQuestsFollowPrerequisites(t *testing.T) {
 	}
 	for _, id := range []string{"kebun_babi", "ramuan_nenek", "serigala_perbatasan", "sisa_pasukan", "permata_nenek"} {
 		if !locked(id) {
-			t.Errorf("%s harus terkunci di awal", id)
+			t.Errorf("%s harus terkunci sebelum bicara dengan Kepala Desa", id)
 		}
 	}
-	finishQuest(t, &st, nenekQuest)
-	if locked("kebun_babi") || locked("ramuan_nenek") || !locked("serigala_perbatasan") {
-		t.Error("setelah Nenek: kebun_babi dan ramuan_nenek terbuka, serigala_perbatasan belum")
+	if err := st.AcceptQuest("kebun_babi"); !errors.Is(err, ErrQuestLocked) {
+		t.Errorf("terima saat terkunci: %v", err)
 	}
-	finishQuest(t, &st, "serigala_perbatasan")
+	st.Story = 1
+	if locked("kebun_babi") || locked("serigala_perbatasan") || !locked("ramuan_nenek") {
+		t.Error("setelah prolog: kebun_babi dan serigala terbuka, ramuan_nenek belum")
+	}
+	finishQuest(t, &st, "kebun_babi")
+	st.Story = 6
 	if !locked("sisa_pasukan") || !locked("permata_nenek") {
-		t.Error("misi epilog harus terkunci sampai Raja Iblis dikalahkan")
+		t.Error("misi Benteng Orc harus terkunci sampai Panglima Orc Batu dikalahkan")
 	}
-	finishQuest(t, &st, "hentikan_raja_goblin")
+	st.Story = 7
 	if locked("sisa_pasukan") || locked("permata_nenek") {
-		t.Error("misi epilog harus terbuka setelah Raja Iblis")
+		t.Error("misi Benteng Orc harus terbuka setelah Panglima")
 	}
-	st.AddItem("permata_merah", 5) // beberapa sudah dipegang dari hadiah misi
+	st.AddItem("permata_merah", 5)
 	finishQuest(t, &st, "sisa_pasukan")
 	finishQuest(t, &st, "permata_nenek")
 	if st.itemQty("zirah_besi") != 1 || st.itemQty("pedang_baja") != 1 {

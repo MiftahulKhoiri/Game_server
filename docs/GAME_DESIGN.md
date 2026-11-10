@@ -77,19 +77,23 @@ bisa diminum di luar pertarungan. Istirahat di desa gratis dan memulihkan HP pen
 jadi ramuan dipakai untuk perjalanan jauh. Pedang Rune hanya didapat dari misi
 "Hentikan Raja Goblin".
 
-## Misi (v0.6.0)
+## Misi (v0.6.0; sejak v0.67.0 hanya misi sampingan)
 
-Misi bertipe "kalahkan N musuh". Server menghitung kemenangan (klien tidak bisa
-memalsukan) dan hadiah diambil satu kali dari NPC pemberi misi. Misi baru = satu
-baris di `internal/game/quest.go`; NPC baru = satu entri di `client/scripts/maps.gd`
-dan gambar `client/assets/characters/<id npc>.png`.
+Misi bertipe "kalahkan N musuh" atau "antar barang". Server menghitung kemenangan (klien tidak bisa
+memalsukan) dan hadiah diambil satu kali dari NPC pemberi misi. Misi baru = satu baris di
+`internal/game/quest.go`; NPC baru = satu entri di `client/scripts/maps.gd`.
 
-| Misi | Pemberi | Tugas | Hadiah |
-|------|---------|-------|--------|
-| Selamatkan Nenek | Nenek Penjual Sayur (3,6) | Usir 5 ayam liar atau kucing liar | 40 emas |
-| Selamatkan Petani | Petani (11,6) | Kalahkan 3 orc ladang di Perbatasan. Terkunci sampai hadiah Nenek diambil | 25 emas + Permata Merah |
-| Usir Monster Batu | Nenek (3,6) | Kalahkan 1 Monster Batu di Gunung Batu. Terkunci sampai hadiah Petani diambil | 150 emas + 2 Koin Kuno |
-| Hentikan Raja Iblis | Petani (11,6) | Kalahkan Raja Iblis di Gua Batu. Terkunci sampai hadiah Ogre diambil | 500 emas + 3 Permata Merah |
+Misi utama lama (Selamatkan Nenek -> Selamatkan Petani -> Usir Monster Batu -> Hentikan Raja Iblis) **dihapus**
+dan diganti cerita utama The Last Dragon (lihat "Cerita utama" di bawah). Catatan misi lama di data pemain dibiarkan
+dan tidak berpengaruh. Misi sampingan terbuka menurut langkah cerita (`StoryMin`):
+
+| Misi | Pemberi | Jenis | Tugas | Hadiah | Terbuka mulai |
+|------|---------|-------|-------|--------|---------------|
+| Kebun yang Dirusak | Nenek | kalahkan | 3 Babi Hutan | 35 emas + Baju Kulit | langkah 1 (setelah bicara dengan Kepala Desa) |
+| Serigala di Jalan Raja | Petani | kalahkan | 4 Serigala Hutan | 70 emas + 2 Ramuan | langkah 1 |
+| Obat untuk Korban Serangan | Nenek | antar barang | 3 Taring Goblin | 30 emas + 3 Ramuan | langkah 3 (setelah Penjaga Hutan) |
+| Sisa Pasukan Terkutuk | Petani | kalahkan | 5 orc Benteng Orc | 300 emas + Zirah Besi | langkah 7 (Panglima Orc Batu kalah) |
+| Permata Pengikat Kutukan | Nenek | antar barang | 3 Permata Merah | 120 emas + Pedang Baja | langkah 7 |
 
 ### Dunia hidup (v0.20.0)
 
@@ -106,29 +110,13 @@ Murni tampilan di klien (`client/scripts/atmosphere.gd`), tidak memengaruhi serv
   masing-masing, lewat petak jalan/rumput/bunga saja (tidak menembus pagar, air, atau rumah), berhenti
   sebentar, lalu lanjut. Mereka menghindari pemain dan sesama warga, tidak menghalangi, dan berhenti
   menyapa bila pemain mendekat. Tombol **Bicara** membuka dialog singkat (`client/scripts/warga_dialog.gd`)
-  yang mengikuti tahap cerita utama (Nenek -> Petani -> Monster Batu -> Raja Iblis, 0-4 misi tuntas):
+  yang mengikuti bab cerita utama (sejak v0.67.0: The Last Dragon, enam bab dari Prolog sampai Epilog):
   tiap warga berkomentar soal ancaman yang sedang terjadi dan memberi petunjuk ke mana harus pergi
   berikutnya, dan kalimatnya berganti tiap kali diajak bicara. Dialog murni di klien (tahap dibaca dari
   `GET /v1/quests`). Model KayKit hasil `tools/blender/kaykit_npc.py` (mode ibu, ibu2, bapak, bapak2, anak).
 
-### Misi sampingan (v0.20.0)
-
-Tidak perlu gambar baru: pemberinya Nenek dan Petani. Dialog menampilkan misi yang paling relevan
-(siap diklaim, lalu baru ditawarkan, lalu sedang dikerjakan), jadi misi utama tidak tertutup misi sampingan.
-
-| Misi | Pemberi | Jenis | Tugas | Hadiah | Terbuka setelah |
-|------|---------|-------|-------|--------|-----------------|
-| Kebun yang Dirusak | Nenek | kalahkan | 3 Babi Hutan | 35 emas + Baju Kulit | Selamatkan Nenek |
-| Obat untuk Pengungsi | Nenek | antar barang | 3 Taring Orc | 30 emas + 3 Ramuan | Selamatkan Nenek |
-| Serigala di Jalan Raja | Petani | kalahkan | 4 Serigala Hutan | 70 emas + 2 Ramuan | Selamatkan Petani |
-| Sisa Pasukan Iblis | Petani | kalahkan | 5 kerangka (gua, pejuang, penjaga) | 300 emas + Zirah Besi | Hentikan Raja Iblis |
-| Permata Sumber Kekuatan | Nenek | antar barang | 3 Permata Merah | 120 emas + Pedang Baja | Hentikan Raja Iblis |
-
-Misi antar barang: barang yang diminta diambil dari tas saat hadiah diklaim. Misi baru jenis ini =
-satu baris di `internal/game/quest.go` dengan `CollectID` (tanpa `TargetIDs`).
-
-Cara main: berdiri di sebelah Nenek, tekan **Bicara**, terima misi, lawan hama di
-ladang, lalu kembali ke Nenek untuk **Ambil hadiah**.
+Cara main misi sampingan: berdiri di sebelah Nenek atau Petani, tekan **Bicara**, terima misi, kerjakan, lalu
+kembali untuk **Ambil hadiah**. Misi antar barang: barang diambil dari tas saat hadiah diklaim.
 
 ## Cerita utama (diputuskan pemilik proyek, 11 Nov 2026)
 
@@ -142,10 +130,49 @@ utama mematahkan kutukan; Aldragor dikalahkan tetapi tidak dibunuh dan pulih set
 berakhir. Naskah lengkap, dialog kunci, tujuan bab, dan aturan kesinambungan ada di
 [docs/STORY.md](STORY.md).
 
-**Catatan implementasi:** dokumen cerita belum dengan sendirinya mengubah perilaku permainan.
-Misi dan kemajuan utama perlu diterapkan di `internal/game/quest.go`; dialog di
-`client/scripts/dialog.gd` dan `client/scripts/warga_dialog.gd`; wilayah dan pintu di
-`client/scripts/maps.gd` serta sistem dunia terkait.
+### Penerapan di game (v0.67.0)
+
+Cerita berjalan sebagai **12 langkah** yang disimpan server di `state.story` (0 = baru mulai, 12 = tamat), didefinisikan
+di `internal/game/story.go`. Server yang memeriksa syarat tiap langkah, memberi hadiahnya, dan memajukan cerita; klien
+(`client/scripts/story.gd`) menampilkan narasi bab, tujuan di papan kanan atas, dan kartu "Cerita Utama" di Jurnal.
+
+| # | Bab | Tujuan | Selesai bila | Hadiah |
+|---|-----|--------|--------------|--------|
+| 0 | Prolog | Bicara dengan Kepala Desa (ayah Elara) | bicara di dekatnya (`POST /v1/story/talk`) | 3 Ramuan + 2 Roti (bekal) |
+| 1 | Prolog | Temui Kapten Rimba di kem Perbatasan | arahan Kapten (Radar Musuh) | - |
+| 2 | Bab 1 Hutan Binatang | Temukan Penjaga Hutan Bayu yang terluka | bicara dengannya di dekat pintu masuk hutan | 2 Ramuan |
+| 3 | Bab 1 | Kalahkan tiga Goblin (ujian hutan 25/75/100) | ujian Hutan Binatang tuntas | 150 emas |
+| 4 | Bab 2 Gua Goblin | Kalahkan Raja Goblin (bos ketiga Gua Goblin) | ujian Gua Goblin tuntas | 250 emas + Lambang Malzareth |
+| 5 | Bab 3 Gunung Berapi | Kalahkan tiga Orc Batu di lereng | ujian lereng tuntas | 350 emas |
+| 6 | Bab 3 | Kalahkan Panglima Orc Batu di Benteng Orc | menang lawan bos singgasana Benteng Orc | 400 emas |
+| 7 | Bab 3 | Hancurkan Batu Sihir penguat kutukan | tombol **Hancurkan** di dekat batu | - |
+| 8 | Bab 3 | Bicara dengan Orc Tua yang mulai sadar | bicara dengannya | 3 Ramuan |
+| 9 | Bab 4 Istana Kegelapan | Kalahkan Aldragor tanpa membunuhnya | menang lawan Aldragor | 600 emas |
+| 10 | Bab 4 | Kalahkan Malzareth, bebaskan Elara | menang lawan Malzareth (3 fase) | 1000 emas |
+| 11 | Epilog | Bawa Elara pulang ke Kepala Desa | bicara dengan Kepala Desa | 1500 emas + Pedang Rune + 3 Permata Merah |
+
+Pencapaian **Legenda Eldoria** (500 emas) terbuka saat cerita tamat. Pemain lama yang sudah jauh berjalan hanya perlu
+bicara dengan Kepala Desa, Penjaga Hutan, dan seterusnya; ujian yang sudah tuntas langsung dihitung.
+
+**Wilayah cerita** (id peta tetap supaya data lama aman): Hutan Lebat = **Hutan Binatang** (ditambah Kelelawar
+Terkutuk, model kelelawar Quaternius CC0), Gunung Batu = **Lereng Gunung Berapi** (langit berasap jingga dan aliran lava
+`L`; bos ujian Orc Batu Lv 1, Orc Batu Lv 2, Panglima Lereng), Gua Batu = **Benteng Orc** (kolam lava, Batu Sihir,
+Orc Tua, dan lorong rahasia di selatan yang terbuka mulai langkah 9). Dua peta baru Bab 4:
+
+- **Istana Kegelapan** (`istana_kegelapan`, 31x26): halaman berlantai batu dengan pilar, obor ungu, dan kolam lava;
+  penjaga berkeliaran (Kelelawar Kegelapan, Prajurit Terkutuk, Orc Kegelapan, Iblis Bayangan; Lv 10-12); Aldragor di
+  singgasana tengah (15,14). Gerbang selatan ke ruang takhta terbuka setelah Aldragor kalah.
+- **Ruang Takhta** (`ruang_takhta`, 21x20): Malzareth di singgasana (10,13), Elara ditahan di belakangnya.
+
+**Bos cerita** (layar pertarungan khusus):
+
+| Bos | Tempat | HP | Serang | Tahan | Kemampuan |
+|-----|--------|----|--------|-------|-----------|
+| Panglima Orc Batu (`raja_goblin`) | Benteng Orc (7,14) | 3200 | 84 | 22 | Hantaman Gada Batu; bisa dilawan lagi |
+| Aldragor (`aldragor`, naga Quaternius CC0) | Istana Kegelapan (15,14) | 4200 | 92 | 24 | Semburan Api Naga; hanya pada langkah 9 |
+| Malzareth (`malzareth`) | Ruang Takhta (10,13) | 5200 | 98 | 26 | 3 fase: Gelombang Sihir Hitam (HP > 2/3), Panggilan Monster (> 1/3), Kutukan Terakhir (x2); hanya pada langkah 10 |
+
+Setelah tamat, Aldragor yang pulih terbang mengitari langit Desa Awal dan Elara tinggal di desa bersama ayahnya.
 
 ## Sistem yang sudah ada di server
 
@@ -187,7 +214,7 @@ separuh, kembali ke titik awal desa.
 | Monster Batu (`ogre_batu`) | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
 | Kerangka Penjaga (`goblin_penjaga`) | Gua Batu | 45 | 11 | 4 | 28 | 12 | 5 | Taring Orc 50% |
 | Iblis Lava (`golem_lava`) | Gua Batu | 62 | 13 | 6 | 40 | 18 | 6 | Permata Merah 20% |
-| **Raja Iblis (bos, `raja_goblin`)** | Gua Batu, singgasana (7,14) | 120 | 14 | 6 | 100 | 60 | 7 | Permata Merah 100% |
+| **Panglima Orc Batu (bos, `raja_goblin`; dulu Raja Iblis)** | Benteng Orc, singgasana (7,14) | 3200 | 84 | 22 | 1500 | 650 | - | Permata Merah 100% |
 
 Musuh dipilih dari wilayah (peta) tempat pemain berada, jadi server perlu tahu peta
 terakhir yang tersimpan (klien menyimpan posisi sebelum tiap pertarungan). Serigala
@@ -238,7 +265,9 @@ baru aktif setelah pemain bicara dengan Kapten Rimba, yang memberi **Radar Musuh
 
 Bos tidak muncul acak. Injak singgasana (petak `K`); klien meminta `POST /v1/battle/start`
 dengan `{"boss": true}` dan server memeriksa posisi tersimpan pemain. Bos bisa dilawan
-berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai model Iblis Biru.
+berulang (hadiahnya: XP, emas, dan drop), kecuali bos cerita Aldragor dan Malzareth yang hanya menyambut pemain pada
+langkah ceritanya. Sejak v0.67.0 id `raja_goblin` adalah Panglima Orc Batu (model Monster Batu besar kelabu); model
+Iblis Biru kini hanya dipakai di layar judul.
 
 ## Peta
 
@@ -246,10 +275,12 @@ berulang (hadiahnya: XP, emas, dan drop). Raja Iblis (id `raja_goblin`) memakai 
 |------|-----|-------|
 | Desa Awal (`desa_awal`, 85x50) | Hutan belantara timur lewat celah pagar timur (kolam, kebun, reruntuhan, tambang, 6 peti); tujuh rumah utara, empat rumah tengah, alun-alun, dua kandang berpagar, sungai, empat ladang berpagar dan pondok tani, dua kolam, Nenek dan Petani, serta 11 warga yang berjalan bebas (ibu, bapak, anak, penjaga, ayam) | Gerbang selatan (22,49) ke Perbatasan |
 | Perbatasan Kerajaan (`perbatasan`) | Kem Kapten Rimba tepat di bawah gapura desa (api unggun, tenda, panji), jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
-| Hutan Lebat (`hutan_lebat`, 170x50) | Hutan pinus lebat, padang terbuka di balik pintu masuk, jalan tanah lebar, kolam, tempat terbuka, singgasana bos dekat gerbang (142,47), enam peti, tiga jalan 2 petak yang bertemu di depan gerbang | Utara (22,0) ke Perbatasan; gerbang selatan (146-147,49) ke Gua Goblin (terkunci sampai tiga Goblin kalah) |
+| Hutan Binatang (`hutan_lebat`, 170x50) | Hutan pinus lebat, padang terbuka di balik pintu masuk, jalan tanah lebar, kolam, tempat terbuka, singgasana bos dekat gerbang (142,47), enam peti, tiga jalan 2 petak yang bertemu di depan gerbang | Utara (22,0) ke Perbatasan; gerbang selatan (146-147,49) ke Gua Goblin (terkunci sampai tiga Goblin kalah) |
 | Gua Goblin (`gua_goblin`, 25x30) | Peta 3: gua sarang goblin (goblin, pemburu, penjaga), tiga peti | Utara kembali ke hutan; selatan (11-13,29) ke Gunung Batu |
-| Gunung Batu (`gunung_batu`) | Lereng berbatu dan kerikil, sarang Ogre Batu | Utara (7,0) ke Perbatasan; selatan (7,19) masuk Gua Batu |
-| Gua Batu (`gua_batu`) | Lorong gua, sarang Raja Goblin | Utara (7,0) kembali ke Gunung Batu |
+| Lereng Gunung Berapi (`gunung_batu`) | Lereng berbatu, aliran lava, Orc Batu | Utara (22,0) ke Gua Goblin; selatan (22,49) masuk Benteng Orc |
+| Benteng Orc (`gua_batu`) | Lorong gua, kolam lava, singgasana Panglima Orc Batu, Batu Sihir, Orc Tua | Utara (7,0) ke lereng; selatan (7,19) ke Istana Kegelapan (mulai langkah cerita 9) |
+| Istana Kegelapan (`istana_kegelapan`) | Halaman istana, penjaga terkutuk, Aldragor | Utara ke Benteng Orc; selatan (14-16,25) ke ruang takhta (mulai langkah 10) |
+| Ruang Takhta (`ruang_takhta`) | Singgasana Malzareth, Elara | Utara (9-11,0) kembali ke halaman |
 
 Server mengenal ukuran tiap peta (`internal/game/world.go`) dan menolak posisi di luar
 peta atau peta asing. Bentuk petak (tembok, air) masih milik klien (`client/scripts/maps.gd`);

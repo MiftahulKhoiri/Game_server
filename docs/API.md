@@ -543,6 +543,20 @@ Pemain lama yang sudah pernah sampai ke peta sesudahnya (`state.visited`) diangg
 Sejak v0.49.0 pertarungan di `hutan_lebat` (`POST /v1/battle/start`, musuh biasa maupun bos) baru boleh setelah pemain bicara dengan Kapten Rimba:
 sebelum itu `422`. Pemain yang sudah punya kemajuan (`wave > 0` atau `kills > 0`) dianggap sudah diarahkan.
 
+### Cerita utama The Last Dragon (v0.67.0)
+
+`state.story` = langkah cerita yang sedang dijalani (0..12, 12 = tamat), hanya diubah server (lihat
+docs/GAME_DESIGN.md, "Penerapan di game").
+
+- `GET /v1/story` -> `{"story": {"step", "total", "done", "current": {...langkah...}}, "steps": [...]}`.
+- `POST /v1/story/talk` `{"npc": "kepala_suku" | "penjaga_hutan" | "batu_sihir" | "orc_tua"}` -> Player. Langkah
+  sekarang harus bertipe bicara dengan NPC/benda itu dan posisi tersimpan pemain harus di dekatnya; hadiah langkah
+  masuk ransel (bila ransel penuh: 422, tidak ada yang berubah). Salah NPC / bukan waktunya / terlalu jauh: 422.
+- Langkah lain maju sendiri: arahan Kapten Rimba (`POST /v1/hutan/brief`), ujian wilayah tuntas, dan menang melawan
+  bos cerita (`log` pertarungan memuat kalimat ceritanya).
+- `POST /v1/battle/start` `{"boss": true}` di singgasana Aldragor/Malzareth sebelum atau sesudah langkahnya: 422.
+  Pertarungan Malzareth punya `battle.phase` (1..3).
+
 ### `POST /v1/hutan/brief` (v0.49.0)
 
 Bicara dengan Kapten Rimba di kem hutan. Pemain harus ada di `perbatasan` dalam 8 petak dari Kapten (23,4), kalau tidak `422`.

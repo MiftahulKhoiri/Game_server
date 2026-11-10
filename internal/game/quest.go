@@ -36,6 +36,8 @@ type QuestDef struct {
 	// CollectID: bila diisi, misi ini jenis "antar barang": pemain menyerahkan Count
 	// buah barang ini ke pemberi misi (TargetIDs dikosongkan). Barang diambil saat hadiah diklaim.
 	CollectID string `json:"collect_id,omitempty"`
+	// StoryMin: langkah cerita utama (State.Story) minimum agar misi ini bisa diterima.
+	StoryMin int `json:"story_min,omitempty"`
 }
 
 // RewardText menjelaskan hadiah untuk ditampilkan, mis. "25 emas, Permata Merah x1".
@@ -54,104 +56,64 @@ func (q QuestDef) RewardText() string {
 	return strings.Join(parts, ", ")
 }
 
+// Misi utama lama (Nenek -> Petani -> Monster Batu -> Raja Iblis) diganti cerita utama The Last Dragon (story.go,
+// docs/STORY.md) sejak v0.67.0; catatan misi lama di data pemain dibiarkan dan tidak berpengaruh. Yang tersisa di sini
+// misi sampingan dari Nenek dan Petani; StoryMin = langkah cerita minimum agar misi bisa diterima.
 var quests = []QuestDef{
-	{
-		ID:          "selamatkan_nenek",
-		Title:       "Selamatkan Nenek",
-		Giver:       "nenek_penjual",
-		Description: "Binatang-binatang kecil mengerumuni nenek dan merusak sayurannya. Usir 5 ayam liar atau kucing liar di hutan perbatasan, di selatan gerbang desa.",
-		TargetIDs:   []string{"tikus_sawah", "belalang_raksasa"},
-		Count:       5,
-		RewardGold:  40,
-	},
-	{
-		ID:          "selamatkan_petani",
-		Title:       "Selamatkan Petani",
-		Giver:       "petani",
-		Description: "Goblin-goblin turun dari Gunung Batu, melewati hutan perbatasan, dan mengancam sang petani. Kalahkan 3 goblin di Gunung Batu.",
-		TargetIDs:   []string{"goblin"},
-		Count:       3,
-		RewardGold:  25,
-		RewardItems: []Item{{ID: "permata_merah", Qty: 1}},
-		Requires:    "selamatkan_nenek",
-	},
-	{
-		ID:          "usir_ogre",
-		Title:       "Usir Monster Batu",
-		Giver:       "nenek_penjual",
-		Description: "Monster Batu bersarang di Gunung Batu, di selatan hutan perbatasan, dan terus mengirim pasukan monster ke kerajaan. Kalahkan satu Monster Batu di sana.",
-		TargetIDs:   []string{"ogre_batu"},
-		Count:       1,
-		RewardGold:  150,
-		RewardItems: []Item{{ID: "koin_kuno", Qty: 2}},
-		Requires:    "selamatkan_petani",
-	},
-	{
-		ID:          "hentikan_raja_goblin",
-		Title:       "Hentikan Raja Iblis",
-		Giver:       "petani",
-		Description: "Ternyata dalang semua serangan adalah Raja Iblis, yang bersembunyi di dalam Gua Batu di bawah Gunung Batu. Kalahkan dia di singgasananya.",
-		TargetIDs:   []string{"raja_goblin"},
-		Count:       1,
-		RewardGold:  500,
-		RewardItems: []Item{{ID: "permata_merah", Qty: 3}, {ID: "pedang_rune", Qty: 1}},
-		Requires:    "usir_ogre",
-	},
-	// Misi sampingan (v0.20.0). Urutan penting: klien menampilkan misi utama lebih dulu.
 	{
 		ID:          "kebun_babi",
 		Title:       "Kebun yang Dirusak",
 		Giver:       "nenek_penjual",
-		Description: "Babi hutan dari hutan perbatasan mengobrak-abrik kebun sayur di desa. Kalahkan 3 babi hutan di hutan perbatasan.",
+		Description: "Sejak kutukan Malzareth, babi hutan di Perbatasan menjadi buas dan mengobrak-abrik kebun sayur desa. Kalahkan 3 babi hutan di Perbatasan.",
 		TargetIDs:   []string{"babi_hutan"},
 		Count:       3,
 		RewardGold:  35,
 		RewardItems: []Item{{ID: "baju_kulit", Qty: 1}},
-		Requires:    "selamatkan_nenek",
-	},
-	{
-		ID:          "ramuan_nenek",
-		Title:       "Obat untuk Pengungsi",
-		Giver:       "nenek_penjual",
-		Description: "Nenek ingin meracik obat bagi para pengungsi, tetapi butuh 3 Taring Goblin dari goblin di Gunung Batu. Bawa ke Nenek, lalu ambil hadiahnya.",
-		CollectID:   "taring_goblin",
-		Count:       3,
-		RewardGold:  30,
-		RewardItems: []Item{{ID: PotionID, Qty: 3}},
-		Requires:    "selamatkan_nenek",
+		StoryMin:    1,
 	},
 	{
 		ID:          "serigala_perbatasan",
 		Title:       "Serigala di Jalan Raja",
 		Giver:       "petani",
-		Description: "Serigala-serigala liar di hutan perbatasan menghadang pedagang di jalan raja. Kalahkan 4 serigala hutan.",
+		Description: "Serigala-serigala yang terkena kutukan menghadang pedagang di jalan raja Perbatasan. Kalahkan 4 serigala hutan.",
 		TargetIDs:   []string{"serigala_hutan"},
 		Count:       4,
 		RewardGold:  70,
 		RewardItems: []Item{{ID: PotionID, Qty: 2}},
-		Requires:    "selamatkan_petani",
+		StoryMin:    1,
+	},
+	{
+		ID:          "ramuan_nenek",
+		Title:       "Obat untuk Korban Serangan",
+		Giver:       "nenek_penjual",
+		Description: "Banyak warga terluka saat desa diserang malam itu. Nenek bisa meracik obat dari 3 Taring Goblin. Bawa taringnya ke Nenek, lalu ambil hadiahnya.",
+		CollectID:   "taring_goblin",
+		Count:       3,
+		RewardGold:  30,
+		RewardItems: []Item{{ID: PotionID, Qty: 3}},
+		StoryMin:    3,
 	},
 	{
 		ID:          "sisa_pasukan",
-		Title:       "Sisa Pasukan Iblis",
+		Title:       "Sisa Pasukan Terkutuk",
 		Giver:       "petani",
-		Description: "Raja Iblis sudah tumbang, tetapi sisa pasukan orangnya masih berkeliaran di gua. Kalahkan 5 orc di Gua Batu (Orc Gua, Orc Penjaga, atau Orc Buas).",
+		Description: "Panglima Orc Batu sudah tumbang, tetapi orc-orc yang masih terkutuk berkeliaran di Benteng Orc. Kalahkan 5 orc di sana (Orc Gua, Orc Penjaga, atau Orc Buas).",
 		TargetIDs:   []string{"orc_gua", "orc_penjaga", "orc_buas"},
 		Count:       5,
 		RewardGold:  300,
 		RewardItems: []Item{{ID: "zirah_besi", Qty: 1}},
-		Requires:    "hentikan_raja_goblin",
+		StoryMin:    7,
 	},
 	{
 		ID:          "permata_nenek",
-		Title:       "Permata Sumber Kekuatan",
+		Title:       "Permata Pengikat Kutukan",
 		Giver:       "nenek_penjual",
-		Description: "Permata Merah adalah sumber kekuatan pasukan iblis. Serahkan 3 Permata Merah kepada Nenek agar disimpan aman di kuil kerajaan.",
+		Description: "Permata Merah menyimpan sisa sihir Malzareth. Serahkan 3 Permata Merah kepada Nenek agar disucikan di kuil desa.",
 		CollectID:   "permata_merah",
 		Count:       3,
 		RewardGold:  120,
 		RewardItems: []Item{{ID: "pedang_baja", Qty: 1}},
-		Requires:    "hentikan_raja_goblin",
+		StoryMin:    7,
 	},
 }
 
@@ -221,6 +183,9 @@ func (s State) QuestViews() []QuestView {
 
 // questLocked: prasyarat misi ini belum diselesaikan (hadiahnya belum diambil).
 func (s *State) questLocked(def QuestDef) bool {
+	if s.Story < def.StoryMin {
+		return true
+	}
 	if def.Requires == "" {
 		return false
 	}

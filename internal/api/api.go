@@ -113,6 +113,8 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("GET /v1/world", s.auth(http.HandlerFunc(s.worldState)))
 	mux.Handle("POST /v1/world/break", s.auth(http.HandlerFunc(s.worldBreak)))
 	mux.Handle("POST /v1/hutan/brief", s.auth(http.HandlerFunc(s.hutanBrief)))
+	mux.Handle("GET /v1/story", s.auth(http.HandlerFunc(s.getStory)))
+	mux.Handle("POST /v1/story/talk", s.auth(http.HandlerFunc(s.storyTalk)))
 	mux.Handle("POST /v1/world/chest", s.auth(http.HandlerFunc(s.worldChest)))
 	mux.Handle("GET /v1/world/events", s.auth(http.HandlerFunc(s.worldEvents)))
 	mux.Handle("POST /v1/world/secret", s.auth(http.HandlerFunc(s.findSecret)))
@@ -467,7 +469,8 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	switch {
-	case errors.Is(err, game.ErrNoBoss), errors.Is(err, game.ErrBossNotReady), errors.Is(err, game.ErrNotBriefed):
+	case errors.Is(err, game.ErrNoBoss), errors.Is(err, game.ErrBossNotReady), errors.Is(err, game.ErrNotBriefed),
+		errors.Is(err, game.ErrStoryBoss), errors.Is(err, game.ErrStoryFreed):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, errBattleActive):
 		writeError(w, http.StatusConflict, "masih ada pertarungan yang berjalan; lanjutkan lewat GET /v1/battle")
@@ -622,6 +625,7 @@ func isRuleError(err error) bool {
 		game.ErrBankFar, game.ErrBankEmpty, game.ErrBankFull, game.ErrGoldMax, game.ErrBadAmount, game.ErrStorageFar, game.ErrStorageFull,
 		game.ErrNotStored, game.ErrBadPrice, game.ErrNotTradable, game.ErrEquipped, store.ErrInvalidState,
 		game.ErrUnknownSecret, game.ErrSecretFar, game.ErrSecretFound, game.ErrNoRaid, game.ErrRaidGoal, game.ErrRaidClaimed,
+		game.ErrStoryNotHere, game.ErrStoryFar, game.ErrStoryBoss, game.ErrStoryFreed,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -789,6 +793,32 @@ func (s *Server) buyAlly(w http.ResponseWriter, r *http.Request) {
 // pertarungan di Hutan Lebat. Mengembalikan Player.
 func (s *Server) hutanBrief(w http.ResponseWriter, r *http.Request) {
 	s.applyToState(w, r, func(st *game.State) error { return st.BriefHutan() })
+}
+
+type storyRequest struct {
+	NPC string `json:"npc"`
+}
+
+// getStory: kemajuan cerita utama The Last Dragon dan daftar langkahnya (docs/STORY.md).
+func (s *Server) getStory(w http.ResponseWriter, r *http.Request) {
+	p, err := s.store.PlayerByID(r.Context(), playerFrom(r).ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"story": p.State.StoryProgress(), "steps": game.Story})
+}
+
+// storyTalk: bicara dengan NPC cerita / memakai benda cerita (posisi tersimpan diperiksa server). Mengembalikan Player.
+func (s *Server) storyTalk(w http.ResponseWriter, r *http.Request) {
+	var req storyRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error {
+		_, err := st.TalkStory(req.NPC)
+		return err
+	})
 }
 
 // buySoldier membeli satu prajurit biasa (tidak bisa saat bertarung).

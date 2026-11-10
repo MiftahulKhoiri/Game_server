@@ -135,3 +135,6 @@ arah hadap (`rotz`, model menghadap -Y Blender) dan memperkecil tekstur (`max_te
   ular_sawah, Pig -> babi_hutan, Wolf -> serigala_hutan. Hewan hanya punya klip idle dan jalan;
   serang/terkena/mati digerakkan `model_rig.gd` (badan maju, terhuyung, roboh).
 Id musuh tidak berubah; yang berubah hanya nama tampilan (mis. `tikus_sawah` = "Ayam Liar").
+- Cerita The Last Dragon (v0.67.0; Quaternius Animated Monster Pack, CC0, OpenGameArt): Dragon -> aldragor
+  (klip Flying jadi idle/walk, Attack2, Hit, Death), Bat -> kelelawar_hutan. Warna bahan diatur di
+  `Models.ANIMAL_COLORS` karena warna asli hilang saat diubah ke GLB ringan.

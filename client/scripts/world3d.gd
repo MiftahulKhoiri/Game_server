@@ -14,6 +14,7 @@ const ProfileScreen = preload("res://scripts/profile.gd")
 const TempaScreen = preload("res://scripts/tempa.gd")
 const EkonomiScreen = preload("res://scripts/ekonomi.gd")
 const WorldLife = preload("res://scripts/world_life.gd")
+const StoryMod = preload("res://scripts/story.gd")
 const JurnalScreen = preload("res://scripts/jurnal.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
@@ -171,6 +172,7 @@ var _profile: CanvasLayer
 var _tempa: CanvasLayer                     # layar tempa di pandai besi (roadmap no. 145)
 var _ekonomi: CanvasLayer                   # bank, peti simpan, dagang (roadmap no. 176-182)
 var _life: Node                             # serbuan, Hari Pasar, wilayah, rahasia, hujan, ladang (roadmap no. 186-200)
+var _story: Node                            # cerita utama The Last Dragon: narasi, Batu Sihir, naga (story.gd)
 ## Tata letak HUD untuk berbagai ukuran layar (roadmap no. 217-218): [Control, posisi dasar 720x1280, jenis].
 ## Jenis: "tl" kiri atas, "tr" kanan atas, "tc" tengah atas, "br" kelompok kanan bawah (tombol aksi),
 ## "bl" kelompok kiri bawah (joystick, ramuan/kabur). Kelompok bawah ikut ukuran kontrol dan mode tangan kiri.
@@ -265,6 +267,9 @@ func _ready() -> void:
 	_life = WorldLife.new()
 	add_child(_life)
 	_life.setup(self)
+	_story = StoryMod.new()
+	add_child(_story)
+	_story.setup(self)
 	if not Session.offline and not Atmosphere.clock_locked:
 		_sync_world_clock()
 
@@ -386,6 +391,8 @@ func _load_map(map_id: String) -> void:
 	_sync_world()
 	if _life != null:
 		_life.on_map(map_id)
+	if _story != null:
+		_story.on_map(map_id)
 
 
 ## Jam dunia bersama (roadmap no. 186): selisih jam server dan jam HP, sekali per jalannya aplikasi.
@@ -441,6 +448,9 @@ func _spawn_warga(map_id: String) -> void:
 	for def: Dictionary in Maps.WARGA:
 		if def.map != map_id:
 			continue
+		var langkah := Session.story()
+		if langkah < int(def.get("cerita_min", 0)) or langkah > int(def.get("cerita_max", 99)):
+			continue  # tokoh cerita yang belum / sudah tidak ada di sini (The Last Dragon)
 		var w := Warga.new(def, _warga.size() * 7919 + str(def.name).hash())
 		var holder := Node3D.new()
 		holder.name = "Warga_%s_%d" % [def.model, _warga.size()]
@@ -887,6 +897,8 @@ func _update_world_life(delta: float) -> void:
 	_update_roamers(delta)
 	if _life != null:
 		_life.tick(delta)
+	if _story != null:
+		_story.tick(delta)
 	_poll_trades(delta)
 	_tick_reconnect(delta)
 
@@ -964,7 +976,7 @@ func _update_clock() -> void:
 		_clock.set_info("sun" if hh >= 5.5 and hh < 18.0 else "moon", str(Maps.NAMES.get(_map_id, "")))
 		return
 	if not Atmosphere.outdoors(_map_id):
-		_clock.set_info("cave", "Gua Batu")
+		_clock.set_info("cave", str(Maps.NAMES.get(_map_id, "Gua")))
 		return
 	var h := Atmosphere.hour()
 	_clock.set_info("sun" if h >= 5.5 and h < 18.0 else "moon", Atmosphere.label())
@@ -1032,7 +1044,11 @@ func _update_warga(delta: float) -> void:
 		var was_sleeping: bool = w.sleeping
 		# Berteduh saat hujan deras / serbuan (roadmap no. 190, 193); penjaga desa tetap di luar.
 		w.shelter = Atmosphere.outdoors(_map_id) and (Atmosphere.rain > 0.85 or (_life != null and _life.raid_on)) and not Maps.RAID_GUARDS.has(w.id)
-		w.step(dt, _pos, others, night, hour, monsters)
+		# Tokoh cerita yang sedang menunggu pemain (Kepala Desa di prolog dan epilog) tetap di luar saat malam.
+		var awake: bool = (Maps.STORY_AWAKE.get(w.id, []) as Array).has(Session.story())
+		if awake:
+			w.shelter = false
+		w.step(dt, _pos, others, night and not awake, hour, monsters)
 		w.apply()
 		if w.sleeping != was_sleeping and w.node != null:
 			_update_warga_label(w)
@@ -1136,9 +1152,19 @@ func _after_step(moved: float) -> void:
 				_show_toast("Gerbang terkunci!")
 				_set_status("Kalahkan 3 bos di %s untuk membuka jalan ke %s" % [Maps.NAMES.get(_map_id, _map_id), Maps.NAMES.get(str(Maps.TRIALS[_map_id].next), "")])
 				return
+			if Maps.story_locked(_map_id, t.x, t.y, Session.story()):
+				# Gerbang cerita The Last Dragon belum terbuka: mundur selangkah ke arah datang.
+				var back := -0.6 if t.y > Maps.height(_map_id) / 2 else 1.6
+				_pos = Vector2(_pos.x, float(t.y) + back)
+				_tile = Movement.tile_of(_pos)
+				_apply_transform()
+				_show_toast("Jalan tertutup!")
+				_set_status(str(Maps.STORY_GATES[_map_id].pesan))
+				return
 			_go_to_map(str(ex.to), ex.at)
 			return
-		if not Session.offline and _map_id != Maps.HUTAN and Maps.tile_at(_map_id, t.x, t.y) == Maps.BOSS_TILE:
+		if not Session.offline and _map_id != Maps.HUTAN and Maps.tile_at(_map_id, t.x, t.y) == Maps.BOSS_TILE \
+				and Maps.boss_tile_active(_map_id, Session.story()):
 			_start_encounter(true)
 			return
 	if Session.offline or _locked or _fight.busy():
@@ -1804,6 +1830,12 @@ func _update_talk_button() -> void:
 		_talk_button.disabled = Session.offline
 		_place_talk_button(Vector3(BED_AT.x, 1.4, BED_AT.y))
 		return
+	if _story != null and not Session.offline and _story.stone_near():
+		_talk_button.text = "Hancurkan"
+		_talk_button.visible = true
+		_talk_button.disabled = false
+		_place_talk_button(_story.stone_anchor())
+		return
 	var secret: String = _life.secret_near() if _life != null else ""
 	if secret != "" and not Session.offline:
 		_talk_button.text = "Periksa"
@@ -1923,6 +1955,9 @@ func _talk() -> void:
 		return
 	if _house_for_sale_near():
 		await _buy_house()
+		return
+	if _story != null and not Session.offline and _story.stone_near():
+		await _story.smash_stone()
 		return
 	var secret: String = _life.secret_near() if _life != null else ""
 	if secret != "" and not Session.offline:
@@ -2438,12 +2473,12 @@ func _refresh_hutan() -> void:
 		if wave >= 3 and old_wave < 3:
 			_show_toast("Jalan ke %s terbuka!" % Maps.NAMES.get(str(t.next), ""))
 		elif wave > old_wave:
-			_show_toast((str(t.boss_name) % wave) + " kalah!")
+			_show_toast(Maps.boss_label(_map_id, wave) + " kalah!")
 			_set_status("Tahap %d: kalahkan %d %s" % [wave + 1, need, str(t.foe).to_lower()])
 			for _i in int(_roam_cfg.get("n", 0)):
 				respawn_roamer()
 		elif kills >= need and _hutan_sig % 1000 < need:
-			_show_toast((str(t.boss_name) % (wave + 1)) + " muncul!")
+			_show_toast(Maps.boss_label(_map_id, wave + 1) + " muncul!")
 		elif kills > _hutan_sig % 1000:
 			_set_status("%s %d/%d" % [t.foe, kills, need])
 	_hutan_sig = sig
@@ -2468,7 +2503,7 @@ func _update_hutan_boss(show: bool, level: int) -> void:
 		_remove_roamer(cur)
 	if _terrain == null or _npc_root == null:
 		return
-	var kind := {"id": want, "name": str(t.boss_name) % level, "lv": 1}
+	var kind := {"id": want, "name": Maps.boss_label(_map_id, level), "lv": 1}
 	var bp: Vector2i = t.boss
 	var at := Vector2(float(bp.x) + 0.5, float(bp.y) - 1.5)
 	var r := _make_roamer(kind, _map_id, at, 7000 + level)

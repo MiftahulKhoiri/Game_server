@@ -139,7 +139,7 @@ static func tick(delta: float) -> void:
 
 
 static func outdoors(map_id: String) -> bool:
-	return map_id != Maps.GUA and not Maps.is_interior(map_id)
+	return map_id != Maps.GUA and map_id != Maps.TAKHTA and not Maps.is_interior(map_id)
 
 
 ## Nama waktu untuk ditampilkan, mis. "Sore, hujan".

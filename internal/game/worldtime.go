@@ -159,12 +159,13 @@ type Zone struct {
 var Zones = []Zone{
 	{MapDesaAwal, "aman", 1}, {MapPerbatasan, "waspada", 1}, {MapHutanLebat, "berbahaya", 3},
 	{MapGunungBatu, "berbahaya", 4}, {MapGuaGoblin, "berbahaya", 5}, {MapGuaBatu, "berbahaya", 6},
+	{MapIstana, "berbahaya", 10}, {MapTakhta, "berbahaya", 12},
 }
 
 // --- penjelajahan (no. 198) ---
 
 // ExploreMaps: peta yang dihitung untuk pencapaian Penjelajah.
-var ExploreMaps = []string{MapDesaAwal, MapPerbatasan, MapHutanLebat, MapGunungBatu, MapGuaGoblin, MapGuaBatu}
+var ExploreMaps = []string{MapDesaAwal, MapPerbatasan, MapHutanLebat, MapGunungBatu, MapGuaGoblin, MapGuaBatu, MapIstana, MapTakhta}
 
 // visit mencatat peta baru yang dikunjungi. true bila baru.
 func (s *State) visit(mapID string) bool {
@@ -201,9 +202,9 @@ var Secrets = []Secret{
 	{ID: "batu_bertulis", Name: "Batu Bertulis Kuno", Map: MapPerbatasan, X: 2, Y: 47, Gold: 60, Item: "koin_kuno",
 		Hint: "Di sudut barat daya Perbatasan ada batu tua bertulis."},
 	{ID: "pohon_keramat", Name: "Pohon Keramat", Map: MapHutanLebat, X: 84, Y: 2, Gold: 120, Item: "permata_merah",
-		Hint: "Di tepi utara Hutan Lebat, di tengah perjalanan, ada pohon tua bercahaya."},
+		Hint: "Di tepi utara Hutan Binatang, di tengah perjalanan, ada pohon tua bercahaya."},
 	{ID: "sarang_naga", Name: "Sarang Naga Tua", Map: MapGunungBatu, X: 41, Y: 7, Gold: 200, Item: DiamondID,
-		Hint: "Pendaki bercerita tentang sarang kosong di pojok timur laut Gunung Batu."},
+		Hint: "Pendaki bercerita tentang sarang naga kosong di pojok timur laut lereng Gunung Berapi."},
 }
 
 // Kesalahan dunia.

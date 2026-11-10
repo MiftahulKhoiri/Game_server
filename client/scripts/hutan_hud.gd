@@ -51,7 +51,7 @@ func _draw() -> void:
 	elif wave >= 3:
 		title = "Ketiga bos kalah!"
 	elif kills >= need:
-		title = (str(t.boss_name) % (wave + 1)) + " menunggu!"
+		title = Maps.boss_label(map_id, wave + 1) + " menunggu!"
 	else:
 		title = "%s %d / %d" % [t.foe, kills, need]
 	_text(font, title, Vector2(14, 32), 30, gold)

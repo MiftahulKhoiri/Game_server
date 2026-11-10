@@ -27,7 +27,7 @@ func TestTalkToRemembersAndCooldown(t *testing.T) {
 
 func TestQuestClaimAddsGiverRep(t *testing.T) {
 	st := NewState()
-	def, _ := QuestByID("selamatkan_nenek")
+	def, _ := QuestByID("kebun_babi")
 	st.Quests = append(st.Quests, QuestProgress{ID: def.ID, Status: QuestDone, Progress: def.Count})
 	if _, err := st.ClaimQuest(def.ID); err != nil {
 		t.Fatal(err)

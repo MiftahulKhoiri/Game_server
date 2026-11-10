@@ -156,6 +156,11 @@ func heal_ally(hero: String) -> Dictionary:
 
 
 ## Bicara dengan Kapten Rimba di kem hutan: server memberi Radar Musuh dan membuka pertarungan di Hutan Lebat.
+## Cerita utama: bicara dengan NPC cerita / memakai benda cerita (server memeriksa posisi tersimpan).
+func story_talk(npc: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/story/talk", {"npc": npc}, true)
+
+
 func hutan_brief() -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/hutan/brief", {}, true)
 

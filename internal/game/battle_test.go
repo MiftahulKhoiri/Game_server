@@ -447,7 +447,7 @@ func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
 	}
 	p.State.Map, p.State.X, p.State.Y = MapGuaBatu, 7, 14
 	b, err := StartBossBattle(p, 0)
-	if err != nil || b.EnemyID != "raja_goblin" || b.EnemyHP != 120 {
+	if err != nil || b.EnemyID != "raja_goblin" || b.EnemyHP != 3200 {
 		t.Fatalf("bos: %+v %v", b, err)
 	}
 	p.State.X = 8

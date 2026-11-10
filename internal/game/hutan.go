@@ -70,13 +70,17 @@ var Trials = []TrialDef{
 func MapName(id string) string {
 	switch id {
 	case MapHutanLebat:
-		return "Hutan Lebat"
+		return "Hutan Binatang"
 	case MapGuaGoblin:
 		return "Gua Goblin"
 	case MapGunungBatu:
-		return "Gunung Batu"
+		return "Lereng Gunung Berapi"
 	case MapGuaBatu:
-		return "Gua Batu"
+		return "Benteng Orc"
+	case MapIstana:
+		return "Istana Kegelapan"
+	case MapTakhta:
+		return "Ruang Takhta"
 	}
 	return id
 }
@@ -223,6 +227,7 @@ func (s *State) BriefHutan() error {
 		return ErrInventoryFull
 	}
 	s.Hutan.Briefed = true
+	s.advanceStory() // langkah cerita "temui Kapten Rimba" (story.go)
 	return nil
 }
 

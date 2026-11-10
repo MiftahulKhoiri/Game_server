@@ -15,7 +15,7 @@ const HudBars = preload("res://scripts/hud_bars.gd")
 const Models = preload("res://scripts/models.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 ## Musuh berbadan batu/kerangka: memercik serpihan, bukan darah (roadmap no. 165).
-const STONE_IDS := ["golem_kerikil", "golem_lava", "ogre_batu", "kelelawar_gua", "goblin_penjaga"]
+const STONE_IDS := ["golem_kerikil", "golem_lava", "ogre_batu", "kelelawar_gua", "goblin_penjaga", "prajurit_kutukan", "iblis_bayangan"]
 ## Warna lingkaran mantra jurus 2 per gaya senjata (roadmap no. 166).
 const MAGIC_COLOR := {"pedang": Color("ffe27a"), "kapak": Color("ff7a4a"), "busur": Color("9fe6c0"), "tombak": Color("8fd0ff"), "sihir": Color("b77dff")}
 
@@ -26,8 +26,11 @@ const FLEE_DIST := 6.0          # menjauh dari musuh sampai sini = otomatis menc
 const WARN_MS := 700            # musuh menandai serangan sekian ms sebelum jadwal
 const SAFE_STEPS_AFTER := 4     # langkah aman setelah pertarungan
 const RESPAWN_S := 45.0         # musuh pengganti muncul sekian detik setelah satu tumbang
-const BOSS_IDS := ["raja_goblin"]
+## Bos dengan layar pertarungan khusus: Panglima Orc Batu (id lama raja_goblin), Aldragor, Malzareth (The Last Dragon).
+const BOSS_IDS := ["raja_goblin", "aldragor", "malzareth"]
 const POTION_ID := "ramuan"
+## Seruan bos cerita saat pertarungan dimulai (The Last Dragon, docs/STORY.md).
+const TAUNTS := {"kepala_goblin_3": "Raja Goblin: \"Manusia! Penyihir itu memberi kami kekuatan! Kami tidak akan membiarkanmu melewati gua ini!\""}
 const ACTION_BUTTONS := {"attack": "tangan", "skill1": "kaki", "defend": "hindar", "dodge": "hindar"}
 
 ## Bar nyawa musuh yang selalu menghadap kamera: bidang kecil dengan shader (isi mengikuti `ratio`).
@@ -122,7 +125,9 @@ func engage(r: Roamer, first_action := "") -> void:
 	roamer = r
 	r.fight = true
 	r.chasing = false
-	world._set_status("%s menyerang!" % r.label)
+	world._set_status(str(TAUNTS.get(r.id, "%s menyerang!" % r.label)))
+	if TAUNTS.has(r.id):
+		_float_text(Vector3(r.pos.x, r.top + 0.9, r.pos.y), "Penyihir itu memberi kami kekuatan!", Color("ffb080"), 44)
 	await world._flush_save()  # posisi harus tersimpan dulu; server memilih musuh sesuai peta
 	var res: Dictionary = await Api.battle_start(false, r.id)
 	if not res.ok and res.status == 409:
