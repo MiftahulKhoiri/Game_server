@@ -2,6 +2,8 @@ extends RefCounted
 ## Efek visual kecil untuk aksi di dunia: serpihan, riak kejut, goresan serangan.
 ## Semua dibuat dari bentuk dasar dan membersihkan dirinya sendiri.
 
+const Perf = preload("res://scripts/perf.gd")
+
 static func _unshaded(color: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -21,7 +23,7 @@ static func burst(parent: Node3D, pos: Vector3, color: Color, amount := 10, spee
 	mat.roughness = 1.0
 	bit.material = mat
 	p.mesh = bit
-	p.amount = amount
+	p.amount = Perf.fx(amount)
 	p.lifetime = 0.7
 	p.one_shot = true
 	p.explosiveness = 1.0
@@ -176,7 +178,7 @@ static func blood(parent: Node3D, pos: Vector3, amount := 8, stone := false) -> 
 	mat.roughness = 0.4
 	drop.material = mat
 	p.mesh = drop
-	p.amount = amount
+	p.amount = Perf.fx(amount)
 	p.lifetime = 0.55
 	p.one_shot = true
 	p.explosiveness = 0.95

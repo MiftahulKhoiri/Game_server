@@ -158,11 +158,12 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	else:
 		_style_hero(inst)
 	var rig := Rig.new()
-	var holder := Node3D.new()  # badan utuh: digerakkan rig untuk model tanpa rangka
-	holder.name = "body"
+	var holder: Node3D = null  # badan utuh: digerakkan rig untuk model tanpa rangka
 	if is_hero(id):
-		rig.add_child(inst)
+		rig.add_child(inst)  # pahlawan tidak butuh pegangan (dulu tetap dibuat dan jadi node yatim, no. 253)
 	else:
+		holder = Node3D.new()
+		holder.name = "body"
 		holder.add_child(inst)
 		rig.add_child(holder)
 	var ap := _find_animation_player(inst)
@@ -172,7 +173,7 @@ static func _from_glb(id: String, path: String) -> Node3D:
 	elif id == "ksatria":
 		rig.setup("biped", _paladin_pivots(inst))
 	else:
-		rig.setup("static", {"body": holder})  # tanpa sendi: badan utuh bergoyang
+		rig.setup("static", {"body": holder} if holder != null else {})  # tanpa sendi: badan utuh bergoyang
 	return rig
 
 

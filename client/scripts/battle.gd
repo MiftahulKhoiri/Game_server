@@ -10,6 +10,7 @@ const WORLD_SCENE := "res://scenes/world3d.tscn"
 const Models = preload("res://scripts/models.gd")
 const WorldBuild = preload("res://scripts/world_build.gd")
 const Heroes = preload("res://scripts/heroes.gd")
+const Perf = preload("res://scripts/perf.gd")
 const Atmosphere = preload("res://scripts/atmosphere.gd")
 const POTION_ID := "ramuan"
 const MAX_LOG_LINES := 4
@@ -364,7 +365,7 @@ func _burst(at: Vector3, color: Color, amount: int, speed: float) -> void:
 	mesh.material = mat
 	var p := CPUParticles3D.new()
 	p.mesh = mesh
-	p.amount = amount
+	p.amount = Perf.fx(amount)
 	p.one_shot = true
 	p.explosiveness = 1.0
 	p.lifetime = 0.55
