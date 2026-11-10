@@ -105,10 +105,9 @@ func setup(w: Node) -> void:
 	var margin := MarginContainer.new()
 	for side in ["left", "right"]:
 		margin.add_theme_constant_override("margin_" + side, 44)
-	margin.add_theme_constant_override("margin_top", 120)
-	margin.add_theme_constant_override("margin_bottom", 90)
 	_panel.add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	preload("res://scripts/layar.gd").kolom(margin, 1000.0, 44, 40)  # layar mendatar: teks di kolom tengah
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 26)
 	margin.add_child(box)

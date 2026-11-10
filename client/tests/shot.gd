@@ -48,7 +48,7 @@ func _gallery() -> void:
 	cam.current = true
 	await get_tree().create_timer(0.8).timeout
 	var img := get_viewport().get_texture().get_image()
-	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	get_tree().quit()
 
@@ -78,7 +78,7 @@ func _battle() -> void:
 	scene._pop("-3", Color("ff5c5c"), true, 44)
 	await get_tree().create_timer(0.25).timeout
 	var img := get_viewport().get_texture().get_image()
-	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	get_tree().quit()
 
@@ -92,7 +92,7 @@ func _profile() -> void:
 	scr._select(int(OS.get_environment("SHOT_HERO")) if OS.get_environment("SHOT_HERO") != "" else 0)
 	await get_tree().create_timer(1.0).timeout
 	var img := get_viewport().get_texture().get_image()
-	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	get_tree().quit()
 
@@ -111,7 +111,7 @@ func _atribut() -> void:
 		scr._on_sol_step(-1)
 	await get_tree().create_timer(0.8).timeout
 	var img := get_viewport().get_texture().get_image()
-	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	get_tree().quit()
 
@@ -124,7 +124,7 @@ func _dialog() -> void:
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(1.6).timeout
 	var img := get_viewport().get_texture().get_image()
-	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	get_tree().quit()
 
@@ -141,7 +141,7 @@ func _file() -> void:
 		await get_tree().create_timer(0.8).timeout
 	var img := get_viewport().get_texture().get_image()
 	var vs := img.get_size()
-	img.resize(540, int(540.0 * vs.y / vs.x), Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * vs.y / vs.x), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	get_tree().quit()
 
@@ -202,7 +202,7 @@ func _ready() -> void:
 			scene._menu._show_page(false)
 	await get_tree().create_timer(0.8).timeout
 	var img := get_viewport().get_texture().get_image()
-	img.resize(540, 960, Image.INTERPOLATE_BILINEAR)
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
 	print("tangkapan layar: ", OS.get_environment("SHOT_OUT"))
 	if OS.get_environment("SHOT_PERF") != "":

@@ -2125,8 +2125,8 @@ func _run() -> void:
 	_check(wtk._bars.EN_Y > wtk._bars.HP_Y + wtk._bars.HP_H and wtk._bars.COIN_Y > wtk._bars.EN_Y + wtk._bars.EN_H, "bar energi di bawah bar nyawa, di atas koin")
 	# Menu tidak lagi punya tombol Toko
 	var has_toko_btn_v39 := false
-	for ch in wtk._menu._main.get_children():
-		if ch is Button and (ch as Button).text == "Toko":
+	for ch in wtk._menu._main.find_children("*", "Button", true, false):
+		if (ch as Button).text == "Toko":
 			has_toko_btn_v39 = true
 	_check(not has_toko_btn_v39 and not wtk._menu.has_signal("shop_requested"), "tombol Toko tidak ada di Menu (belanja lewat penjaga di toko)")
 	# Pintu bangunan di desa menuju ruangan; ruangannya tersambung penuh dan pintu keluarnya kembali ke desa

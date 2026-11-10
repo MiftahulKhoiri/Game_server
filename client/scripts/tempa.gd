@@ -35,6 +35,7 @@ func _ready() -> void:
 		margin.add_theme_constant_override("margin_" + side, 28)
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	preload("res://scripts/layar.gd").kolom(margin, 1040.0)  # layar mendatar: isi di kolom tengah
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color("2a211b")

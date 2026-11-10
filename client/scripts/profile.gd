@@ -42,6 +42,7 @@ func _ready() -> void:
 		margin.add_theme_constant_override("margin_" + side, 28)
 	add_child(margin)
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	preload("res://scripts/layar.gd").kolom(margin, 1180.0, 24, 16)
 
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -57,7 +58,7 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 12)
 	panel.add_child(box)
 
-	var title := _label("Profil", 44)
+	var title := _label("Profil", 36)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_color_override("font_color", Color("d8f0c8"))
 	box.add_child(title)
@@ -77,37 +78,55 @@ func _ready() -> void:
 		b.toggle_mode = true
 		b.button_group = group
 		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, 76)
+		b.custom_minimum_size = Vector2(0, 62)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 26 if Heroes.LIST.size() <= 4 else 21)
+		b.add_theme_font_size_override("font_size", 26)
 		b.clip_text = true
 		b.pressed.connect(_select.bind(i))
 		row.add_child(b)
 		_tabs.append(b)
 
+	# Layar mendatar (v0.68.0): kiri = pratinjau 3D pahlawan, kanan = nama, cerita, rincian, dan tombol.
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 20)
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(cols)
 	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(0, 300)
-	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.custom_minimum_size = Vector2(380, 0)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.size_flags_stretch_ratio = 0.8
 	holder.stretch = true
-	box.add_child(holder)
+	cols.add_child(holder)
 	holder.add_child(_build_preview())
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 8)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(right)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(scroll)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(info)
 
-	_name = _label("", 38)
+	_name = _label("", 34)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_name)
-	_story = _label("", 24)
+	info.add_child(_name)
+	_story = _label("", 22)
 	_story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_story.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_story.add_theme_color_override("font_color", Color("b9c9bd"))
-	box.add_child(_story)
-	_detail = _label("", 26)
+	info.add_child(_story)
+	_detail = _label("", 22)
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_detail)
+	info.add_child(_detail)
 
-	_status = _label("", 24)
+	_status = _label("", 22)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_color_override("font_color", Color("ffd27a"))
-	box.add_child(_status)
+	right.add_child(_status)
+	box = right  # tombol-tombol di kolom kanan
 
 	_use_btn = _button("Pakai pahlawan ini", _on_use)
 	box.add_child(_use_btn)
@@ -116,14 +135,14 @@ func _ready() -> void:
 	orow.add_theme_constant_override("separation", 10)
 	box.add_child(orow)
 	var prev := _button("<", _on_outfit.bind(-1))
-	prev.custom_minimum_size = Vector2(110, 76)
+	prev.custom_minimum_size = Vector2(100, 64)
 	orow.add_child(prev)
 	_outfit_label = _label("", 28)
 	_outfit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_outfit_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	orow.add_child(_outfit_label)
 	var nxt := _button(">", _on_outfit.bind(1))
-	nxt.custom_minimum_size = Vector2(110, 76)
+	nxt.custom_minimum_size = Vector2(100, 64)
 	orow.add_child(nxt)
 	box.add_child(_button("Tutup", func() -> void: closed.emit()))
 
@@ -283,8 +302,8 @@ func _label(text: String, size: int) -> Label:
 func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 84)
+	b.custom_minimum_size = Vector2(0, 64)
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 32)
+	b.add_theme_font_size_override("font_size", 28)
 	b.pressed.connect(cb)
 	return b
