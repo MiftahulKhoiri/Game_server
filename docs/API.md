@@ -208,6 +208,12 @@ Pahlawan: `ksatria`, `pendekar_kapak`, `pemanah`, `pendekar_tombak`.
 Body: `{"hero": "pemanah"}`. `200` berisi pemain terbaru (versi naik), `422` bila id tidak
 dikenal, `409` bila sedang bertarung. Nama skill di `log` pertarungan mengikuti pahlawan.
 
+### `POST /v1/warga/talk`  (login, v0.52.0)
+Body: `{"warga": "bu_sari"}`. Server mencatat pembicaraan di `state.reputation[id] = {"p": poin, "t": kali bicara,
+"l": detik terakhir poin naik}`. Poin +1 paling sering sekali per 600 d; menyelesaikan misi dari warga itu +5;
+berbelanja di toko +1 untuk penjaganya. Tingkat: Kenalan (0-2), Teman (3-9), Sahabat (10+). Sahabat penjaga toko
+mendapat potongan 10% di tokonya (dihitung server di `POST /v1/shop/buy`). `422` bila id warga tidak dikenal.
+
 ### `POST /v1/players/me/outfit`  (login, v0.50.0)
 Body: `{"outfit": 2}`. Variasi warna pakaian pahlawan `0..3` (`0` = warna asli), hanya tampilan.
 Disimpan di `state.outfit`. `200` berisi pemain terbaru, `422` bila di luar rentang.

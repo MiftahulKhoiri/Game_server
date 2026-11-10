@@ -46,6 +46,8 @@ type State struct {
 	Inventory []Item  `json:"inventory"`
 	// Hero adalah id pahlawan yang dipakai (lihat hero.go); kosong = pahlawan bawaan.
 	Hero string `json:"hero,omitempty"`
+	// Reputation: ingatan dan keakraban tiap warga (roadmap no. 58-59), hanya diubah server (warga.go).
+	Reputation map[string]Rep `json:"reputation,omitempty"`
 	// Outfit: variasi warna pakaian pahlawan 0..NumOutfits-1 (roadmap no. 14); 0 = warna asli.
 	Outfit int `json:"outfit,omitempty"`
 	// Allies: pahlawan yang sudah dibeli sebagai pendamping; Party: yang dipasang mendampingi (maks MaxParty).
@@ -193,6 +195,9 @@ func (s State) Validate() error {
 	}
 	if !s.Hutan.valid() {
 		return errors.New("kemajuan hutan tidak sah")
+	}
+	if !s.validReputation() {
+		return errors.New("data keakraban warga tidak sah")
 	}
 	if s.Outfit < 0 || s.Outfit >= NumOutfits {
 		return ErrUnknownOutfit

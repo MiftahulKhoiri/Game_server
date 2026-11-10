@@ -155,6 +155,9 @@ func BuyAt(st *State, shop, id string, qty int) error {
 		return ErrWrongShop
 	}
 	cost := def.BuyPrice * qty
+	if d := st.ShopDiscount(def.Shop); d > 0 {
+		cost = cost * (100 - d) / 100 // sahabat penjaga toko: potongan harga (roadmap no. 59)
+	}
 	if st.Gold < cost {
 		return ErrNoGold
 	}
@@ -162,6 +165,7 @@ func BuyAt(st *State, shop, id string, qty int) error {
 		return ErrInventoryFull
 	}
 	st.Gold -= cost
+	st.addRep(shopKeepers[def.Shop], 1) // berbelanja menambah keakraban dengan penjaganya
 	return nil
 }
 
