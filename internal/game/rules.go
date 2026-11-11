@@ -27,6 +27,14 @@ const (
 	SpawnY   = 5
 )
 
+// Pengali keseimbangan pertarungan. Damage pemain/pendamping sedikit diturunkan,
+// sementara serangan musuh diperkuat agar pertarungan tidak selesai terlalu cepat.
+const (
+	PlayerDamagePercent = 85
+	AllyDamagePercent   = 85
+	EnemyDamagePercent  = 125
+)
+
 // Rumus statistik pemain dari level. Angka-angka ini draf awal untuk diseimbangkan.
 
 // MaxHPForLevel adalah HP maksimum pada level tertentu.
