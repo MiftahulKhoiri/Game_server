@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -218,5 +219,64 @@ func TestStoryValidate(t *testing.T) {
 	st.Story = StoryEnd + 1
 	if st.Validate() == nil {
 		t.Error("langkah cerita di luar batas harus ditolak")
+	}
+}
+
+func TestTahapStrengthensTrialEnemies(t *testing.T) {
+	p := newPlayer()
+	p.State.Map, p.State.X, p.State.Y = MapHutanLebat, 30, 10
+	p.State.Hutan.Briefed = true
+	e := mustEnemy("serigala_hitam")
+	var hps [3]int
+	for w := 0; w < 3; w++ {
+		p.State.Hutan.Wave = w
+		b := newBattle(e, 0)
+		b.strengthen(p.State, e)
+		if b.Tahap != w+1 || b.EnemyHP <= e.HP || b.enemyAttack(e) <= e.Attack || !strings.HasSuffix(b.EnemyName, fmt.Sprintf("Lv %d", w+1)) {
+			t.Fatalf("tahap %d: %+v", w+1, b)
+		}
+		hps[w] = b.EnemyHP
+	}
+	if !(hps[0] < hps[1] && hps[1] < hps[2]) {
+		t.Errorf("HP harus naik tiap tahap: %v", hps)
+	}
+	// Pemain lebih tinggi levelnya: musuh ikut lebih kuat.
+	p.State.Hutan.Wave = 0
+	low := newBattle(e, 0)
+	low.strengthen(p.State, e)
+	p.State.Level = 20
+	high := newBattle(e, 0)
+	high.strengthen(p.State, e)
+	if high.EnemyHP <= low.EnemyHP || high.enemyAttack(e) <= low.enemyAttack(e) {
+		t.Errorf("level pemain tinggi: %d/%d vs %d/%d", high.EnemyHP, high.enemyAttack(e), low.EnemyHP, low.enemyAttack(e))
+	}
+	// Peta biasa dan bos tidak berubah.
+	p.State.Map = MapPerbatasan
+	plain := newBattle(e, 0)
+	plain.strengthen(p.State, e)
+	if plain.Tahap != 0 || plain.EnemyHP != e.HP {
+		t.Errorf("peta biasa ikut diperkuat: %+v", plain)
+	}
+	p.State.Map = MapHutanLebat
+	boss := mustEnemy("goblin_hutan_1")
+	bb := newBattle(boss, 0)
+	bb.strengthen(p.State, boss)
+	if bb.Tahap != 0 || bb.EnemyHP != boss.HP {
+		t.Errorf("bos ikut diperkuat: %+v", bb)
+	}
+}
+
+func TestTahapRewardsMore(t *testing.T) {
+	p := newPlayer()
+	p.State.Map = MapHutanLebat
+	p.State.Hutan = HutanProgress{Wave: 2, Briefed: true}
+	e := mustEnemy("kancil_hutan")
+	b := newBattle(e, 0)
+	b.strengthen(p.State, e)
+	b.EnemyHP = 1
+	gold := p.State.Gold
+	res, err := act(&b, p, ActionAttack, seq(20, 99, 99, 99))
+	if err != nil || res.Status != StatusWon || res.Rewards.Gold <= e.Gold || p.State.Gold-gold != res.Rewards.Gold {
+		t.Fatalf("hadiah tahap 3: %v %+v", err, res.Rewards)
 	}
 }

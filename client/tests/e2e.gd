@@ -2719,6 +2719,29 @@ func _run() -> void:
 	await process_frame
 	Session.offline = false
 
+	print("== v0.69.0: gerak bertarung musuh")
+	var RoamerT = load("res://scripts/roamer.gd")
+	var rf = RoamerT.new({"id": "serigala_hitam", "name": "Serigala", "lv": 4}, Maps.HUTAN, Vector2(30.5, 6.5), 7)
+	rf.fight = true
+	var me_f := Vector2(32.0, 6.5)
+	var start_f: Vector2 = rf.pos
+	for _i in 120:
+		rf.step(1.0 / 60.0, me_f, true)
+	var orbit_ok: bool = absf(rf.pos.distance_to(me_f) - RoamerT.STAND) < 0.3 and rf.pos.distance_to(start_f) > 0.3
+	_check(orbit_ok, "musuh bertarung mendekat lalu mengitari pemain (%.2f)" % rf.pos.distance_to(me_f))
+	var before_k: float = rf.pos.distance_to(me_f)
+	rf.knock(me_f, 1.0)
+	for _i in 10:
+		rf.step(1.0 / 60.0, me_f, true)
+	_check(rf.pos.distance_to(me_f) > before_k + 0.2, "dipukul: musuh terpental menjauh")
+	for _i in 60:
+		rf.step(1.0 / 60.0, me_f, true)
+	var before_l: float = rf.pos.distance_to(me_f)
+	rf.lunge()
+	for _i in 6:
+		rf.step(1.0 / 60.0, me_f, true)
+	_check(rf.pos.distance_to(me_f) < before_l - 0.2, "menyerang: musuh menerjang ke arah pemain")
+
 	print("== token salah")
 	Api.token = "salah"
 	var bad: Dictionary = await Api.get_me()

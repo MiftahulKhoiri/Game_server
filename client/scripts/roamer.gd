@@ -44,6 +44,16 @@ var fleeing := false        # sedang lari dari pemain
 var returning := false      # kembali ke wilayahnya setelah berhenti mengejar
 var steps := 0              # berapa kali step() dijalankan (uji optimasi no. 88)
 var lod_acc := 0.0
+# Gerak bertarung (v0.69.0): mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang,
+# dan terpental saat dipukul.
+const ORBIT_SPEED := 1.25
+const LUNGE_SPEED := 7.0
+const LUNGE_TIME := 0.2
+const WINDUP_BACK := 0.5     # mundur sejauh ini (petak) dari jarak berdiri saat bersiap menyerang
+var _orbit_dir := 1.0
+var _orbit_t := 0.0
+var _lunge_t := 0.0
+var _knock := Vector2.ZERO
 var _patrol_pts: Array[Vector2] = []
 var _patrol_i := 0
 
@@ -218,25 +228,63 @@ func _flee(delta: float, player: Vector2) -> void:
 	_has_target = false
 
 
-## Musuh yang sedang bertarung: menghadap pemain dan menempel di jaraknya (tanpa menyentuh = tanpa memulai lagi).
+## Musuh menerjang ke arah pemain (dipanggil saat serangannya tiba).
+func lunge() -> void:
+	_lunge_t = LUNGE_TIME
+
+
+## Musuh terpental menjauhi titik `from` (pukulan pemain); `power` 0..1.
+func knock(from: Vector2, power := 0.5) -> void:
+	var away := pos - from
+	if away.length() < 0.001:
+		away = Vector2(sin(yaw), cos(yaw)) * -1.0
+	_knock = away.normalized() * (2.5 + 3.5 * power)
+
+
+## Geser `move` bila bebas (menyusuri tembok satu sumbu bila terhalang). true bila bergerak.
+func _slide(move: Vector2) -> bool:
+	for m: Vector2 in [move, Vector2(move.x, 0.0), Vector2(0.0, move.y)]:
+		if m.length() > 0.0001 and Maps.roam_free(map_id, pos + m):
+			pos += m
+			return true
+	return false
+
+
+## Musuh yang sedang bertarung: menghadap pemain, mengitarinya, mundur bersiap sebelum menyerang, menerjang saat
+## menyerang, dan terpental saat dipukul (tanpa menyentuh = tanpa memulai pertarungan lagi).
 func _step_fight(delta: float, player: Vector2) -> void:
 	var to := player - pos
 	var d := to.length()
 	var want := yaw
+	var dir := Vector2.ZERO
 	if d > 0.001:
 		want = atan2(to.x, to.y)
-	if d > STAND:
-		var move := to / d * minf(chase_speed * delta, d - STAND)
-		var nxt := pos + move
-		if Maps.roam_free(map_id, nxt):
-			pos = nxt
-			walking = true
-		elif Maps.roam_free(map_id, pos + Vector2(move.x, 0.0)):
-			pos += Vector2(move.x, 0.0)
-			walking = true
-		elif Maps.roam_free(map_id, pos + Vector2(0.0, move.y)):
-			pos += Vector2(0.0, move.y)
-			walking = true
+		dir = to / d
+	if _knock.length() > 0.05:
+		_slide(_knock * delta)
+		_knock = _knock.move_toward(Vector2.ZERO, delta * 14.0)
+	elif _lunge_t > 0.0:
+		_lunge_t -= delta
+		if d > 0.75:
+			walking = _slide(dir * minf(LUNGE_SPEED * delta, d - 0.75))
+	else:
+		var stand := STAND + (WINDUP_BACK if warn else 0.0)
+		var move := Vector2.ZERO
+		if d > stand + 0.05:
+			move = dir * minf(chase_speed * delta, d - stand)
+		elif d < stand - 0.05:
+			move = -dir * minf(1.6 * delta, stand - d)  # mundur bersiap / menjaga jarak
+		if not warn:
+			# Mengitari pemain; arah putaran berganti sesekali atau saat menabrak.
+			_orbit_t -= delta
+			if _orbit_t <= 0.0:
+				_orbit_t = _rng.randf_range(1.2, 2.6)
+				_orbit_dir = -_orbit_dir if _rng.randf() < 0.6 else _orbit_dir
+			move += Vector2(-dir.y, dir.x) * _orbit_dir * ORBIT_SPEED * delta
+		if move.length() > 0.0001:
+			walking = _slide(move)
+			if not walking:
+				_orbit_dir = -_orbit_dir
 	yaw = lerp_angle(yaw, want, minf(1.0, delta * TURN_RATE))
 
 

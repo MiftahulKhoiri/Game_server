@@ -254,6 +254,19 @@ di singgasana (142,47, dekat gerbang Gua Goblin) dan binatang berhenti muncul ->
 
 Setelah Goblin Level 3 kalah, gerbang Gua Goblin (peta 3) terbuka. Angka di atas draf untuk diseimbangkan.
 
+**Musuh ujian makin tangguh (v0.69.0, `internal/game/tahap.go`).** Di Hutan Binatang, Gua Goblin, dan Lereng Gunung
+Berapi musuh biasa diperkuat menurut tahap ujian yang sedang berjalan dan tampil dengan nama "... Lv 1/2/3":
+
+| Tahap | HP | Serangan | XP dan emas |
+|-------|----|----------|-------------|
+| Lv 1 | x1,6 | x1,15 | x1,3 |
+| Lv 2 | x2,4 | x1,35 | x1,65 |
+| Lv 3 | x3,2 | x1,6 | x2,1 |
+
+Ditambah per level pemain di atas level musuh: HP +8% dan serangan +5% (paling banyak 20 level), supaya pemain yang
+sudah kuat tetap tertantang. Bos wilayah dan musuh di peta lain tidak berubah. Di klien musuh yang sedang bertarung
+mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, dan terpental saat dipukul (`roamer.gd`).
+
 Sejak v0.47.0: Goblin dilawan **di dunia** seperti binatang (berkeliaran di sekitar singgasana, mengejar saat pemain mendekat, lalu
 pertarungan langsung); kem (api unggun, tenda, panji) ada di Perbatasan **tepat di bawah gapura desa** sebagai zona aman dengan **Kapten Rimba** yang memberi
 tahu tugas (tombol Bicara). Papan misi di layar menampilkan Binatang X/100, kemajuan Goblin, dan panah arah ke singgasana, gerbang

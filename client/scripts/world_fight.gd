@@ -409,6 +409,8 @@ func _play_event(e: Dictionary) -> void:
 			"attack", "crit", "skill1", "combo":
 				if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
 					roamer.model.call("play_hurt")
+				if roamer != null:
+					roamer.knock(world._pos, 0.5 if kind == "attack" else 1.0)  # terpental sedikit (v0.69.0)
 				var col := Color("ffe9a0")
 				var burst := 9
 				if kind == "skill1":
@@ -442,6 +444,7 @@ func _play_event(e: Dictionary) -> void:
 			roamer.model.call("play_attack")
 		if roamer != null:
 			roamer.warn = false
+			roamer.lunge()  # menerjang ke arah pemain saat menyerang (v0.69.0)
 		var skill := str(e.get("skill", ""))
 		if skill != "":  # kemampuan khusus musuh (roadmap no. 85-86)
 			_float_text(enemy_at + Vector3(0, enemy_top + 1.0, 0), skill + "!", Color("ff9a3c"), 58)

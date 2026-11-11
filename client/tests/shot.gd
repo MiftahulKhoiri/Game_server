@@ -175,6 +175,7 @@ func _ready() -> void:
 		Session.player.state.inventory = [{"id": "radar_musuh", "qty": 1}]
 		Session.player.state["hutan"] = {"wave": 1, "kills": 15, "briefed": true}
 		Session.show_perf = true
+		Session.apply_display()
 	# SHOT_HOUR (0-24) dan SHOT_RAIN (0-1) memaksa waktu dan hujan untuk tangkapan layar.
 	const Atmo = preload("res://scripts/atmosphere.gd")
 	if OS.get_environment("SHOT_HOUR") != "":

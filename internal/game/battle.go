@@ -96,6 +96,10 @@ type Battle struct {
 	SoldierHP []int `json:"soldier_hp,omitempty"`
 	// Phase: fase bos bertahap (Malzareth: 1 sihir hitam, 2 panggilan monster, 3 kutukan terakhir); 0 = belum.
 	Phase int `json:"phase,omitempty"`
+	// Penguatan musuh wilayah ujian (tahap.go): tahap 1..3 (0 = biasa), serangan dan hadiah dalam persen.
+	Tahap     int `json:"tahap,omitempty"`
+	AtkPct    int `json:"atk_pct,omitempty"`
+	RewardPct int `json:"reward_pct,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -119,6 +123,7 @@ type BattleView struct {
 	ComboMs         int64            `json:"combo_ms"`             // sisa waktu agar kombo berlanjut
 	SoldierHP       []int            `json:"soldier_hp,omitempty"` // HP tiap prajurit yang masih bertarung
 	Phase           int              `json:"phase,omitempty"`      // fase bos bertahap (Malzareth 1..3)
+	Tahap           int              `json:"tahap,omitempty"`      // musuh wilayah ujian diperkuat: Lv 1..3
 }
 
 // Event adalah satu kejadian untuk dianimasikan klien.
@@ -153,7 +158,10 @@ type Result struct {
 // StartBattle memulai pertarungan melawan musuh acak yang cocok untuk level pemain.
 // now adalah jam server (ms).
 func StartBattle(p *Player, rng Rand, now int64) Battle {
-	return styled(p, newBattle(PickEnemy(p.State.Level, p.State.Map, rng), now))
+	e := PickEnemy(p.State.Level, p.State.Map, rng)
+	b := styled(p, newBattle(e, now))
+	b.strengthen(p.State, e)
+	return b
 }
 
 // styled mencatat isi ulang serangan biasa sesuai gaya senjata pahlawan (untuk View).
@@ -166,7 +174,10 @@ func styled(p *Player, b Battle) Battle {
 // StartBattleWith seperti StartBattle, tetapi memakai musuh `want` (id) bila boleh muncul di
 // peta pemain pada levelnya. Dipakai saat pemain menyentuh musuh yang berkeliaran di peta.
 func StartBattleWith(p *Player, want string, rng Rand, now int64) Battle {
-	return styled(p, newBattle(PickEnemyFor(p.State.Level, p.State.Map, want, rng), now))
+	e := PickEnemyFor(p.State.Level, p.State.Map, want, rng)
+	b := styled(p, newBattle(e, now))
+	b.strengthen(p.State, e)
+	return b
 }
 
 // ErrNoBoss berarti tidak ada bos di petak tempat pemain berdiri.
@@ -233,7 +244,7 @@ func (b *Battle) View(now int64) BattleView {
 		Cooldowns: map[string]int64{}, CooldownMax: map[string]int64{},
 		GuardMs: left(b.GuardUntil), ShieldMs: left(b.ShieldUntil),
 		Combo: b.ComboN, ComboMs: left(b.ComboUntil),
-		SoldierHP: b.SoldierHP, Phase: b.Phase,
+		SoldierHP: b.SoldierHP, Phase: b.Phase, Tahap: b.Tahap,
 	}
 	if e, ok := EnemyByID(b.EnemyID); ok {
 		v.EnemyIntervalMs = enemyInterval(e)
@@ -433,7 +444,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		t := b.NextEnemyMs
-		attack := e.Attack
+		attack := b.enemyAttack(e)
 		if b.Night {
 			attack = max(attack+1, attack*NightAttack/100) // minimal +1 supaya musuh lemah pun terasa
 		}
@@ -456,7 +467,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		case SpecialGempa:
 			dmg = dmg * 18 / 10
 		case SpecialRacun:
-			dmg += max(1, e.Attack/4)
+			dmg += max(1, b.enemyAttack(e)/4)
 		case SpecialBatu:
 			healed = min(b.EnemyMaxHP-b.EnemyHP, max(1, b.EnemyMaxHP*8/100))
 			b.EnemyHP += healed
@@ -616,21 +627,22 @@ func (b *Battle) ensureSoldiers(st *State) {
 
 func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	st := &p.State
-	xp := e.XP
+	xp := b.reward(e.XP)
+	gold := b.reward(e.Gold)
 	if b.Night {
 		xp = xp * NightXP / 100
 	}
-	rw := &Rewards{XP: xp, Gold: e.Gold}
+	rw := &Rewards{XP: xp, Gold: gold}
 	res.Status = StatusWon
 	st.endBattleBuffs()
 	res.Rewards = rw
-	res.Log = append(res.Log, fmt.Sprintf("%s kalah! +%d XP, +%d emas.", b.EnemyName, xp, e.Gold))
+	res.Log = append(res.Log, fmt.Sprintf("%s kalah! +%d XP, +%d emas.", b.EnemyName, xp, gold))
 	if b.Night {
 		res.Log = append(res.Log, "Bonus malam: XP +25%.")
 	}
 
 	st.XP += xp
-	st.gainGold(e.Gold)
+	st.gainGold(gold)
 	st.gainEnergy(EnergyPerWin)
 	for st.Level < MaxLevel && st.XP >= XPToNext(st.Level) {
 		st.XP -= XPToNext(st.Level)
