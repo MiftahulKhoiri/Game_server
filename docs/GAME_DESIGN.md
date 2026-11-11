@@ -272,7 +272,7 @@ mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, da
 | Peta | Musuh biasa | Bos besar |
 |------|-------------|-----------|
 | Hutan Binatang | binatang hutan | Goblin Level 1-3 |
-| Gua Goblin | binatang hutan + goblin + binatang tulang (Serigala Tulang, Beruang Tulang, Kerangka Gua) | Orc Batu Lv 1, Lv 2, Raja Orc Batu |
+| Gua Goblin | goblin + binatang tulang (v0.73.0, pengganti binatang hutan: Rubah, Ular, Babi, Serigala, Beruang Tulang, Kerangka Gua) | Orc Batu Lv 1, Lv 2, Raja Orc Batu |
 | Gunung Berapi | binatang hutan + goblin + orc batu | Naga Lava Lv 1, Lv 2, Induk Naga Lava |
 | Benteng Orc | binatang hutan + goblin + orc batu + orc benteng | Panglima Orc Batu (cerita) |
 | Istana Kegelapan | binatang hutan + goblin + orc batu + Naga Bayangan + Naga Api Muda + pasukan terkutuk | Aldragor (cerita), lalu Malzareth di ruang takhta |

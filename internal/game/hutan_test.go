@@ -276,7 +276,7 @@ func TestMapOrderAndPower(t *testing.T) {
 	has := func(m, id string) bool { e, _ := EnemyByID(id); return e.inZone(m) && !e.Boss }
 	checks := map[string][]string{
 		MapHutanLebat: {"rubah_hutan", "beruang_hutan"},
-		MapGuaGoblin:  {"rubah_hutan", "goblin", "serigala_tulang", "beruang_tulang"},
+		MapGuaGoblin:  {"goblin", "rubah_tulang", "ular_tulang", "babi_tulang", "serigala_tulang", "beruang_tulang"},
 		MapGunungBatu: {"beruang_hutan", "goblin_pemburu", "ogre_batu"},
 		MapGuaBatu:    {"serigala_hitam", "goblin", "ogre_batu", "orc_gua"},
 		MapIstana:     {"beruang_hutan", "goblin", "ogre_batu", "naga_bayangan", "naga_api"},
@@ -288,13 +288,13 @@ func TestMapOrderAndPower(t *testing.T) {
 			}
 		}
 	}
-	if has(MapHutanLebat, "goblin") || has(MapGuaGoblin, "ogre_batu") || has(MapGunungBatu, "naga_api") {
+	if has(MapHutanLebat, "goblin") || has(MapGuaGoblin, "ogre_batu") || has(MapGuaGoblin, "beruang_hutan") || has(MapGuaGoblin, "rubah_hutan") || has(MapGunungBatu, "naga_api") {
 		t.Error("golongan musuh peta berikutnya tidak boleh muncul lebih awal")
 	}
 	// Serigala Hitam makin kuat di tiap peta berikutnya.
 	e, _ := EnemyByID("serigala_hitam")
 	prev := 0
-	for _, m := range []string{MapHutanLebat, MapGuaGoblin, MapGunungBatu, MapGuaBatu, MapIstana} {
+	for _, m := range []string{MapHutanLebat, MapGunungBatu, MapGuaBatu, MapIstana} {
 		st := State{Map: m, Level: 4}
 		st.setTrial(m, HutanProgress{Wave: 0, Briefed: true})
 		b := Battle{EnemyHP: e.HP, EnemyMaxHP: e.HP}

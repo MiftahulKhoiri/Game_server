@@ -345,18 +345,15 @@ const ROAMERS := {
 		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 3},
 	]},
 	# Urutan musuh (v0.72.0): tiap peta = musuh peta sebelumnya + golongan baru, makin berat (server: mapPower).
-	# Gua Goblin: binatang hutan + goblin + binatang tulang; bos Orc Batu.
+	# Gua Goblin (v0.73.0): goblin + binatang tulang (pengganti binatang hutan); bos Orc Batu.
 	"gua_goblin": {"n": 26, "tiles": "MG", "min_y": 3, "kinds": [
-		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 4},
-		{"id": "ular_belang", "name": "Ular Belang", "lv": 4},
-		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 5},
-		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 5, "waktu": "malam"},
-		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
-		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 4},
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 3},
 		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 4, "patroli": true},
 		{"id": "kelelawar_gua", "name": "Kerangka Gua", "lv": 3},
+		{"id": "rubah_tulang", "name": "Rubah Tulang", "lv": 3},
+		{"id": "ular_tulang", "name": "Ular Tulang", "lv": 4},
+		{"id": "babi_tulang", "name": "Babi Tulang", "lv": 4},
 		{"id": "serigala_tulang", "name": "Serigala Tulang", "lv": 4},
 		{"id": "beruang_tulang", "name": "Beruang Tulang", "lv": 6},
 	]},
