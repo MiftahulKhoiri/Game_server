@@ -14,7 +14,7 @@ const Updater = preload("res://scripts/updater.gd")
 const JudulLatar = preload("res://scripts/judul_latar.gd")
 const PengaturanUmum = preload("res://scripts/pengaturan_umum.gd")
 const JUDUL_GAMBAR := "res://assets/ui/judul.jpg"  # gambar judul The Last Dragon 16:9 (1672x941); bila tidak ada, dipakai diorama 3D
-const JUDUL_TINGGI := 490.0  # tinggi gambar judul di layar mendatar (tinggi 720); lebarnya mengikuti 16:9
+const JUDUL_BAYANG := 170.0  # tinggi bayangan gelap di bawah gambar judul layar penuh (tempat tombol)
 ## Layar mendatar (v0.68.0): isi halaman di kolom tengah selebar ini (Beranda lebih lebar: tombol berjajar).
 const KOLOM_FORM := 820.0
 const KOLOM_HOME := 1180.0
@@ -202,11 +202,9 @@ func _filler() -> Control:
 
 func _build_home() -> void:
 	var p := _new_page("home", "")
-	p.add_theme_constant_override("separation", 12)
+	p.add_theme_constant_override("separation", 6 if _judul_gambar else 12)
 	if _judul_gambar:
-		var ruang := Control.new()  # gambar judul menempati bagian atas layar
-		ruang.custom_minimum_size = Vector2(0, JUDUL_TINGGI - 24.0 + 6.0)
-		p.add_child(ruang)
+		p.add_child(_filler())  # gambar judul memenuhi layar; tombol di bagian bawah, di atas bayangan gelap
 	else:
 		var top := Control.new()
 		top.custom_minimum_size = Vector2(0, 24)
@@ -232,7 +230,7 @@ func _build_home() -> void:
 	_btn_settings.pressed.connect(func() -> void: _show_page("settings"))
 	for b: Button in [_btn_continue, b_login, b_reg, _btn_settings]:
 		_style_home_button(b)
-		b.custom_minimum_size = Vector2(0, 78)
+		b.custom_minimum_size = Vector2(0, 64 if _judul_gambar else 78)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
 		baris.add_child(b)
@@ -241,58 +239,61 @@ func _build_home() -> void:
 	_home_status = _make_status()
 	_home_status.add_theme_color_override("font_outline_color", Color("1a0d05"))
 	_home_status.add_theme_constant_override("outline_size", 6)
-	p.add_child(_home_status)
+	# Gambar layar penuh: status server dan versi satu baris kecil di dasar layar, supaya tombol
+	# serendah mungkin dan kartu wilayah di gambar tetap terlihat.
+	var kaki := HBoxContainer.new()
+	kaki.add_theme_constant_override("separation", 24)
+	kaki.alignment = BoxContainer.ALIGNMENT_CENTER
+	if _judul_gambar:
+		_home_status.add_theme_font_size_override("font_size", 18)
+		_home_status.autowrap_mode = TextServer.AUTOWRAP_OFF
+		kaki.add_child(_home_status)
+		p.add_child(kaki)
+	else:
+		p.add_child(_home_status)
 	# Kaki beranda (roadmap no. 201): versi aplikasi dan petunjuk singkat.
-	p.add_child(_filler())
+	if not _judul_gambar:
+		p.add_child(_filler())
 	var foot := _make_label("Versi %s  ·  Raspberry Pi 5 sebagai server" % str(ProjectSettings.get_setting("application/config/version", "")), 20)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	foot.modulate = Color(1, 1, 1, 0.55)
+	foot.modulate = Color(1, 1, 1, 0.7)
+	foot.add_theme_color_override("font_outline_color", Color("1a0d05"))
+	foot.add_theme_constant_override("outline_size", 6)
 	home_footer = foot
-	p.add_child(foot)
+	if _judul_gambar:
+		foot.add_theme_font_size_override("font_size", 18)
+		kaki.add_child(foot)
+	else:
+		p.add_child(foot)
 
 
-## Gambar judul di bagian atas (selebar layar), memudar halus ke latar gelap di bawahnya.
+## Gambar judul memenuhi seluruh layar (v0.68.1): diperbesar sampai menutup layar (tepi yang lebih dari 16:9
+## terpotong sedikit di atas-bawah), lalu bagian bawahnya digelapkan supaya tombol tetap terbaca.
 func _pasang_gambar_judul(bg: ColorRect) -> void:
 	_judul_gambar = true
 	bg.color = TEPI
-	var turun := Gradient.new()  # latar gelap makin pekat ke bawah
-	turun.set_color(0, TEPI)
-	turun.set_color(1, Color("100c0b"))
-	var gt := GradientTexture2D.new()
-	gt.gradient = turun
-	gt.fill_from = Vector2(0, 0)
-	gt.fill_to = Vector2(0, 1)
-	var dasar := TextureRect.new()
-	dasar.texture = gt
-	dasar.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	dasar.stretch_mode = TextureRect.STRETCH_SCALE
-	dasar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(dasar)
-	dasar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var img := TextureRect.new()
 	img.texture = load(JUDUL_GAMBAR) as Texture2D
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(img)
-	img.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	img.offset_bottom = JUDUL_TINGGI
-	var pudar := Gradient.new()  # tepi bawah gambar menyatu dengan latar
-	pudar.set_color(0, Color(TEPI, 0.0))
-	pudar.set_color(1, TEPI)
+	img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var pudar := Gradient.new()  # bawah layar: dari bening ke gelap di belakang tombol
+	pudar.set_color(0, Color(0.06, 0.04, 0.03, 0.0))
+	pudar.set_color(1, Color(0.06, 0.04, 0.03, 0.88))
 	var gp := GradientTexture2D.new()
 	gp.gradient = pudar
 	gp.fill_from = Vector2(0, 0)
 	gp.fill_to = Vector2(0, 1)
-	var tepi := TextureRect.new()
-	tepi.texture = gp
-	tepi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tepi.stretch_mode = TextureRect.STRETCH_SCALE
-	tepi.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(tepi)
-	tepi.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	tepi.offset_top = JUDUL_TINGGI - 90.0
-	tepi.offset_bottom = JUDUL_TINGGI + 2.0
+	var bawah := TextureRect.new()
+	bawah.texture = gp
+	bawah.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bawah.stretch_mode = TextureRect.STRETCH_SCALE
+	bawah.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bawah)
+	bawah.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	bawah.offset_top = -JUDUL_BAYANG
 
 
 ## Judul emas bertepi cokelat tua dengan bayangan, ala logo RPG.
