@@ -21,14 +21,19 @@ fi
 
 version="$(sed -n 's/^config\/version="\(.*\)"/\1/p' client/project.godot)"
 
-# Batas bawah APK: tag paling awal yang (a) sudah memuat pemuat patch dan (b) isi folder aset-nya
-# sama persis dengan sekarang, karena patch tidak membawa aset. APK yang lebih tua tak diberi patch.
+# Batas bawah APK: tag paling awal yang (a) sudah memuat pemuat patch, (b) isi folder aset-nya sama persis
+# dengan sekarang, karena patch tidak membawa aset, dan (c) pengaturan layarnya sama. APK lebih tua tak diberi patch.
 min_apk="${MIN_APK:-}"
 if [ -z "$min_apk" ]; then
 	want="$(git rev-parse HEAD:client/assets)"
+	# (c) pengaturan layar APK sama (ukuran dasar + orientasi; v0.68.0 pindah ke layar mendatar), karena
+	# project.godot tidak ikut patch.
+	layar() { git show "$1:client/project.godot" 2>/dev/null | grep -E '^window/(size/viewport_|handheld/orientation)'; }
+	want_layar="$(layar HEAD)"
 	for tag in $(git tag --sort=v:refname); do
 		git cat-file -e "$tag:client/scripts/patcher.gd" 2>/dev/null || continue
 		[ "$(git rev-parse "$tag:client/assets" 2>/dev/null)" = "$want" ] || continue
+		[ "$(layar "$tag")" = "$want_layar" ] || continue
 		min_apk="${tag#v}"
 		break
 	done
