@@ -293,6 +293,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 	}
 	strike := func(power int, kind string) bool {
 		dmg, crit := rollDamage(power, style.styleDefense(e.Defense), rng, st.CritPercent()+style.CritBonus)
+		dmg = max(1, dmg*PlayerDamagePercent/100)
 		if kind == "combo" {
 			dmg = dmg * ComboPct / 100
 		}
@@ -433,7 +434,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		t := b.NextEnemyMs
-		attack := e.Attack
+		attack := max(1, e.Attack*EnemyDamagePercent/100)
 		if b.Night {
 			attack = max(attack+1, attack*NightAttack/100) // minimal +1 supaya musuh lemah pun terasa
 		}
@@ -559,6 +560,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 			continue
 		}
 		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, 0)
+		dmg = max(1, dmg*AllyDamagePercent/100)
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
 		name := id
@@ -575,6 +577,7 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 	total := 0
 	for n := 1; n <= len(b.SoldierHP); n++ {
 		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, 0)
+		dmg = max(1, dmg*AllyDamagePercent/100)
 		b.EnemyHP -= dmg
 		total += dmg
 		if n <= maxSoldierEvents { // klien menggerakkan beberapa prajurit saja
