@@ -31,6 +31,7 @@ var node: Node3D            # wadah di dunia (posisi)
 var model: Node3D           # model di dalamnya (berputar)
 var alert: Node3D           # tanda seru di atas kepala saat mengejar
 var name_label: Node3D
+var bulk := 1.0             # ukuran badan (m, sisi terpanjang) untuk besar titik di radar
 var top := 1.0              # tinggi badan (m), untuk menaruh bar nyawa dan angka kerusakan
 var fight := false          # sedang bertarung dengan pemain (pertarungan langsung di dunia)
 var warn := false           # tanda seru berkedip: sebentar lagi menyerang

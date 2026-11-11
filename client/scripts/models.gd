@@ -108,6 +108,35 @@ static func _color_by_material(n: Node, colors: Dictionary) -> void:
 		_color_by_material(c, colors)
 
 
+## Goblin (v0.69.1): model aslinya gelap di cahaya hutan. Warna dasar dikalikan faktor ini dan
+## diberi cahaya tepi tipis agar siluetnya tetap terbaca; warna varian dilunakkan ke putih.
+const BRIGHT := {"goblin": 1.15, "goblin_penjaga": 1.1}
+const BRIGHT_TINT_SOFTEN := 0.25
+const BRIGHT_RIM := 0.3
+const BRIGHT_GLOW := 0.2
+
+static func _brighten(n: Node, k: float) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var sm := mi.get_surface_override_material(i) as StandardMaterial3D
+				if sm == null:
+					continue
+				var c := sm.albedo_color
+				sm.albedo_color = Color(c.r * k, c.g * k, c.b * k, 1.0)
+				sm.rim_enabled = true
+				sm.rim = BRIGHT_RIM
+				sm.rim_tint = 0.5
+				# sisi yang membelakangi matahari tidak lagi hampir hitam
+				sm.emission_enabled = sm.albedo_texture != null
+				sm.emission = Color(c.r, c.g, c.b)
+				sm.emission_texture = sm.albedo_texture
+				sm.emission_energy_multiplier = BRIGHT_GLOW
+	for ch in n.get_children():
+		_brighten(ch, k)
+
+
 ## Mengalikan warna semua bahan model (hanya bahan hasil _fix_materials / bentuk dasar).
 static func _tint(n: Node, c: Color) -> void:
 	if n is MeshInstance3D:
@@ -133,7 +162,10 @@ static func create(id: String) -> Node3D:
 		var v: Dictionary = VARIANTS[id]
 		var base := create(str(v.base))
 		base.scale = base.scale * float(v.size)
-		_tint(base, v.tint)
+		var tint: Color = v.tint
+		if BRIGHT.has(str(v.base)):
+			tint = tint.lerp(Color.WHITE, BRIGHT_TINT_SOFTEN)  # warna varian goblin tidak menggelapkan model
+		_tint(base, tint)
 		base.name = id
 		return base
 	var path := MODEL_DIR + str(HERO_GLB.get(id, id)) + ".glb"
@@ -174,6 +206,8 @@ static func _from_glb(id: String, path: String) -> Node3D:
 		_fix_materials(inst, stylized_npc)
 		if ANIMAL_COLORS.has(id):
 			_color_by_material(inst, ANIMAL_COLORS[id])
+		if BRIGHT.has(id):
+			_brighten(inst, float(BRIGHT[id]))
 		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
 	else:
 		_style_hero(inst)

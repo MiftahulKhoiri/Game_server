@@ -678,12 +678,36 @@ func _make_roamer(kind: Dictionary, map_id: String, at: Vector2, seed_value: int
 	holder.add_child(bang)
 	_npc_root.add_child(holder)
 	r.node = holder
+	r.bulk = _model_bulk(model)
 	r.model = model
 	r.name_label = name_label
 	r.alert = bang
 	r.top = top
 	r.apply(false)
 	return r
+
+
+## Ukuran badan model (m): sisi terpanjang kotak pembatasnya (tinggi atau panjang badan).
+## Dipakai radar untuk membedakan musuh kecil, sedang, dan besar (v0.69.1).
+static func _model_bulk(model: Node3D) -> float:
+	var box := AABB()
+	var first := true
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh == null:
+			continue
+		var xf := Transform3D.IDENTITY  # letak mesh relatif terhadap model (tidak perlu berada di pohon adegan)
+		var n: Node = m
+		while n != model and n is Node3D:
+			xf = (n as Node3D).transform * xf
+			n = n.get_parent()
+		var bb: AABB = xf * m.get_aabb()
+		box = bb if first else box.merge(bb)
+		first = false
+	if first:
+		return 1.0
+	var s := box.size * model.scale
+	return maxf(s.y, maxf(s.x, s.z))
 
 
 ## Musuh berjalan, mengejar bila pemain mendekat, dan memulai pertarungan langsung saat menyentuh.
@@ -736,7 +760,10 @@ func _update_radar() -> void:
 	_radar.visible = on
 	if not on:
 		return
+	if _radar._road_map != _map_id:
+		_radar.set_roads(_map_id, Maps.rows(_map_id))
 	var pts: Array[Vector2] = []
+	var sizes: Array[int] = []
 	var boss := Vector2(-1, -1)
 	for r: Roamer in _roamers:
 		if r.dying:
@@ -745,7 +772,8 @@ func _update_radar() -> void:
 			boss = r.pos
 		else:
 			pts.append(r.pos)
-	_radar.update_view(_pos, _cam_yaw, pts, boss)
+			sizes.append(RadarMusuh.size_class(r.bulk))
+	_radar.update_view(_pos, _cam_yaw, pts, boss, sizes)
 
 
 ## Pukulan/tendangan mengenai musuh berkeliaran di depan: pertarungan langsung dimulai (bila belum)

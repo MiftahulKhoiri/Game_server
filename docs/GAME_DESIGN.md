@@ -267,12 +267,18 @@ Ditambah per level pemain di atas level musuh: HP +8% dan serangan +5% (paling b
 sudah kuat tetap tertantang. Bos wilayah dan musuh di peta lain tidak berubah. Di klien musuh yang sedang bertarung
 mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, dan terpental saat dipukul (`roamer.gd`).
 
+**Radar dan goblin (v0.69.1).** Radar Musuh kini menggambar rute jalan (petak `=`) sebagai garis krem. Besar titik merah
+mengikuti besar musuh (sisi terpanjang badan model): kecil di bawah 1,4 m (kancil, rubah, kelelawar), sedang sampai 2,3 m
+(ular, babi, serigala, goblin), besar di atasnya (beruang, orc, kepala goblin). Bos tampil sebagai tengkorak merah.
+Model goblin (`goblin`, `goblin_penjaga` dan semua variannya) dibuat lebih cerah: warna dasar x1,15, cahaya tepi,
+pancaran tipis dari teksturnya, dan warna varian dilunakkan 25% ke putih (`models.gd`, `BRIGHT`).
+
 Sejak v0.47.0: Goblin dilawan **di dunia** seperti binatang (berkeliaran di sekitar singgasana, mengejar saat pemain mendekat, lalu
 pertarungan langsung); kem (api unggun, tenda, panji) ada di Perbatasan **tepat di bawah gapura desa** sebagai zona aman dengan **Kapten Rimba** yang memberi
 tahu tugas (tombol Bicara). Papan misi di layar menampilkan Binatang X/100, kemajuan Goblin, dan panah arah ke singgasana, gerbang
 gua, dan kem. Sejak v0.49.0 jalan tanah selebar **2 petak** bercabang tiga (utara, tengah, selatan) dari pintu masuk dan semuanya
 bertemu di **satu persimpangan** tepat di depan gerbang Gua Goblin; gerbang 2 petak, tembok dan gapuranya dari batu. Musuh hutan
-baru aktif setelah pemain bicara dengan Kapten Rimba, yang memberi **Radar Musuh** (titik merah musuh di layar hutan, oranye = bos).
+baru aktif setelah pemain bicara dengan Kapten Rimba, yang memberi **Radar Musuh** (titik merah musuh di layar hutan, tengkorak merah = bos).
 
 ## Energi, makanan, dan toko (v0.39.0)
 

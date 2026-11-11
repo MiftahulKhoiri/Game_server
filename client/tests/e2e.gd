@@ -2540,6 +2540,22 @@ func _run() -> void:
 	_check(absf(b_up_v49.at.x) < 0.01 and b_up_v49.at.y < -10.0 and not b_up_v49.clamped, "titik radar: musuh di utara tampil di atas")
 	_check(b_right_v49.at.x > 10.0 and absf(b_right_v49.at.y) < 0.01, "titik radar: musuh di timur tampil di kanan")
 	_check(RMv49.blip(Vector2(50, 50), Vector2(150, 50), 0.0, 85.0).clamped, "musuh di luar jangkauan radar menempel di tepi")
+	# v0.69.1: besar titik mengikuti besar musuh, rute jalan ikut tergambar, goblin lebih cerah
+	_check(RMv49.size_class(0.7) == 0 and RMv49.size_class(1.8) == 1 and RMv49.size_class(3.0) == 2, "radar: musuh kecil/sedang/besar beda ukuran titik")
+	var rm_v691: Control = RMv49.new()
+	rm_v691.set_roads(Maps.HUTAN, Maps.rows(Maps.HUTAN))
+	_check(rm_v691.roads.size() > 50, "radar: petak jalan Hutan Lebat terbaca untuk rute")
+	rm_v691.free()
+	var W691: Script = load("res://scripts/world3d.gd")
+	_check(W691._model_bulk(load("res://scripts/models.gd").create("beruang_hutan")) > W691._model_bulk(load("res://scripts/models.gd").create("kancil_hutan")), "ukuran badan beruang > kancil")
+	var gob_v691: Node3D = load("res://scripts/models.gd").create("goblin")
+	var gob_lit := false
+	for mi in gob_v691.find_children("*", "MeshInstance3D", true, false):
+		var sm := (mi as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+		if sm != null and sm.emission_enabled and sm.rim_enabled:
+			gob_lit = true
+	_check(gob_lit, "goblin diberi cahaya tepi + pancaran supaya tidak gelap")
+	gob_v691.free()
 	var me_v49: Dictionary = await Api.get_me()
 	Session.set_player(me_v49.data)
 	var s49: Dictionary = Session.player.state.duplicate(true)

@@ -204,6 +204,19 @@ func _ready() -> void:
 	if OS.get_environment("SHOT_NARASI") != "":  # layar narasi cerita langkah SHOT_NARASI (-1 = prolog)
 		scene._story._queue.append(scene._story.NARASI[int(OS.get_environment("SHOT_NARASI"))])
 		scene._story._show_next()
+	if OS.get_environment("SHOT_NEAR") != "":  # beberapa musuh dibawa ke depan pemain (lihat model dari dekat)
+		var k := 0
+		var fwd := Vector2(-sin(scene._cam_yaw), -cos(scene._cam_yaw))
+		var side := Vector2(fwd.y, -fwd.x)
+		for r in scene._roamers:
+			if k >= int(OS.get_environment("SHOT_NEAR")):
+				break
+			r.pos = scene._pos + fwd * (2.6 + 0.8 * (k % 2)) + side * (float(k) - 1.0) * 1.3
+			r.home = r.pos; r.origin = r.pos; r.stun = 5.0
+			r.node.position = Vector3(r.pos.x, r.node.position.y, r.pos.y)
+			k += 1
+	if OS.get_environment("SHOT_RADAR") == "bos" and not scene._roamers.is_empty() and scene._hutan_boss == null:
+		scene._hutan_boss = scene._roamers[0]  # hanya untuk gambar: tengkorak bos di radar
 	if OS.get_environment("SHOT_MENU") != "":
 		scene._toggle_menu()
 		if OS.get_environment("SHOT_MENU") == "pengaturan":
