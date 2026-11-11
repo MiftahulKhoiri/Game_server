@@ -46,6 +46,8 @@ var saved_name := ""
 ## Pengaturan grafis/kontrol (disimpan di HP): 0 = Hemat, 1 = Normal, 2 = Tinggi.
 var quality := 1
 var cam_sens := 1.0
+## Kamera kembali ke belakang pahlawan (menghadap ke depan) setelah layar selesai digeser (v0.68.3).
+var cam_follow := true
 ## Layar tetap menyala selama game dibuka (disimpan di HP).
 var keep_on := false
 ## Percikan darah saat memukul makhluk hidup (roadmap no. 165); bisa dimatikan di Pengaturan.
@@ -88,6 +90,7 @@ func load_config() -> void:
 	saved_name = str(cfg.get_value("auth", "name", "")) if Api.token != "" else ""
 	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)
 	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
+	cam_follow = bool(cfg.get_value("game", "cam_follow", true))
 	keep_on = bool(cfg.get_value("game", "keep_on", false))
 	fx_blood = bool(cfg.get_value("game", "fx_blood", true))
 	ui_size = clampi(int(cfg.get_value("game", "ui_size", 1)), 0, UI_SCALES.size() - 1)
@@ -131,6 +134,7 @@ func save_config() -> void:
 	cfg.set_value("auth", "name", saved_name if Api.token != "" else "")
 	cfg.set_value("game", "quality", quality)
 	cfg.set_value("game", "cam_sens", cam_sens)
+	cfg.set_value("game", "cam_follow", cam_follow)
 	cfg.set_value("game", "keep_on", keep_on)
 	cfg.set_value("game", "fx_blood", fx_blood)
 	cfg.set_value("game", "ui_size", ui_size)

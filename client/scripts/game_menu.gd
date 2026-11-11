@@ -30,6 +30,7 @@ var _settings_scroll: ScrollContainer
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
 var _toggle_keep: CheckButton
+var _toggle_follow: CheckButton
 var _toggle_perf: CheckButton
 var _vol_npc_value: Label
 var _vol_music_value: Label
@@ -150,6 +151,10 @@ func _ready() -> void:
 	_settings.add_child(slider)
 	_sens_value = _label("")
 	_settings.add_child(_sens_value)
+	_toggle_follow = _toggle("Kamera kembali ke belakang pahlawan", func(on: bool) -> void:
+		Session.cam_follow = on
+		Session.save_config())
+	_settings.add_child(_toggle_follow)
 	_toggle_keep = _toggle("Layar tetap menyala", _on_toggle_keep)
 	_settings.add_child(_toggle_keep)
 	_toggle_perf = _toggle("Tampilkan FPS & memori", _on_toggle_perf)
@@ -270,6 +275,7 @@ func _sound_changed() -> void:
 func _refresh_settings() -> void:
 	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
 	_toggle_music.set_pressed_no_signal(Session.snd_music)
+	_toggle_follow.set_pressed_no_signal(Session.cam_follow)
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
 	_toggle_perf.set_pressed_no_signal(Session.show_perf)
 	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)

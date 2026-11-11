@@ -159,6 +159,7 @@ var _bars: HudBars
 
 var _joy: Control
 var _cam_finger := -1
+var _cam_idle := 99.0  # detik sejak kamera terakhir digeser (lihat _follow_camera)
 var _status: Label
 var _radar: Control            # Radar Musuh (titik musuh di hutan); tampil bila Radar ada di ransel
 var _hutan_hud: Control        # papan misi wilayah ujian: musuh X/25|75|100, bos, panah arah
@@ -843,6 +844,7 @@ func _process(delta: float) -> void:
 	_update_radar()
 	_update_doors(delta)
 	_tick_actions(delta)
+	_follow_camera(delta, _input_vector() if not _locked else Vector2.ZERO)
 	var rig := _player as Node
 	if _locked:
 		_set_moving(false)
@@ -1716,7 +1718,29 @@ func _input(event: InputEvent) -> void:
 			_rotate_camera(me.relative)
 
 
+## Kamera ikut di belakang (v0.68.3): selama layar digeser kamera bebas melihat ke kanan-kiri dan atas-bawah;
+## sejak jari dilepas CAM_RETURN_DELAY detik, kamera kembali pelan ke belakang pahlawan, menghadap ke arah
+## yang ia hadapi, dan sudut atas-bawah kembali normal. Saat berjalan menyamping kembalinya diperlambat supaya
+## pahlawan tidak berlari berputar-putar. Tidak berlaku di dalam ruangan (kamera ruangan tetap dari depan).
+const CAM_RETURN_DELAY := 1.2
+const CAM_RETURN_RATE := 2.6
+const CAM_PITCH_NORMAL := 0.62
+
+
+func _follow_camera(delta: float, input: Vector2) -> void:
+	if _cam_finger >= 0:
+		_cam_idle = 0.0
+		return
+	_cam_idle += delta
+	if not Session.cam_follow or _cam_idle < CAM_RETURN_DELAY or Maps.is_interior(_map_id):
+		return
+	var k := minf(1.0, delta * CAM_RETURN_RATE * (1.0 - 0.75 * clampf(absf(input.x), 0.0, 1.0)))
+	_cam_yaw = lerp_angle(_cam_yaw, _yaw + PI, k)
+	_cam_pitch = lerpf(_cam_pitch, CAM_PITCH_NORMAL, minf(1.0, delta * CAM_RETURN_RATE))
+
+
 func _rotate_camera(rel: Vector2) -> void:
+	_cam_idle = 0.0
 	_cam_yaw -= rel.x * 0.008 * Session.cam_sens
 	_cam_pitch = clampf(_cam_pitch + rel.y * 0.004 * Session.cam_sens, 0.3, 1.15)
 

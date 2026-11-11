@@ -2686,6 +2686,30 @@ func _run() -> void:
 	await process_frame
 	Session.player.state = saved67
 
+	print("== v0.68.3: kamera kembali ke belakang pahlawan")
+	Session.offline = true
+	var wcam: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(wcam)
+	await process_frame
+	wcam._yaw = 0.5
+	wcam._cam_yaw = 0.5 + PI + 1.2  # pemain menggeser kamera ke samping
+	wcam._cam_pitch = 1.0
+	wcam._cam_idle = 0.0
+	wcam._follow_camera(0.5, Vector2.ZERO)
+	_check(absf(angle_difference(wcam._cam_yaw, 0.5 + PI + 1.2)) < 0.001, "baru digeser: kamera tetap di arah pilihan pemain")
+	for _i in 60:
+		wcam._follow_camera(0.1, Vector2.ZERO)
+	_check(absf(angle_difference(wcam._cam_yaw, 0.5 + PI)) < 0.05 and absf(wcam._cam_pitch - 0.62) < 0.05, "setelah dilepas: kamera kembali ke belakang pahlawan menghadap ke depan")
+	Session.cam_follow = false
+	wcam._cam_yaw = 2.0
+	for _i in 30:
+		wcam._follow_camera(0.1, Vector2.ZERO)
+	_check(is_equal_approx(wcam._cam_yaw, 2.0), "pengaturan dimatikan: kamera tetap bebas")
+	Session.cam_follow = true
+	wcam.queue_free()
+	await process_frame
+	Session.offline = false
+
 	print("== token salah")
 	Api.token = "salah"
 	var bad: Dictionary = await Api.get_me()

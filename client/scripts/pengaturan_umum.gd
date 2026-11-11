@@ -14,6 +14,7 @@ var _quality_buttons: Array[Button] = []
 var _quality_hint: Label
 var _sens_value: Label
 var _toggle_keep: CheckButton
+var _toggle_follow: CheckButton
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
 var _toggle_blood: CheckButton
@@ -54,6 +55,8 @@ func _ready() -> void:
 	add_child(_slider(0.5, 2.0, 0.1, Session.cam_sens, _on_sens))
 	_sens_value = _label("", 24)
 	add_child(_sens_value)
+	_toggle_follow = _toggle("Kamera kembali ke belakang pahlawan", _on_follow)
+	add_child(_toggle_follow)
 	_toggle_keep = _toggle("Layar tetap menyala", _on_keep)
 	add_child(_toggle_keep)
 	_toggle_blood = _toggle("Percikan darah saat memukul", _on_blood)
@@ -93,6 +96,11 @@ func _on_perf(on: bool) -> void:
 
 func _on_sens(v: float) -> void:
 	Session.cam_sens = v
+	_simpan()
+
+
+func _on_follow(on: bool) -> void:
+	Session.cam_follow = on
 	_simpan()
 
 
@@ -142,6 +150,7 @@ func _refresh() -> void:
 		_quality_buttons[i].set_pressed_no_signal(i == Session.quality)
 	_quality_hint.text = QUALITY_HINTS[clampi(Session.quality, 0, 2)]
 	_sens_value.text = "%.1fx" % Session.cam_sens
+	_toggle_follow.set_pressed_no_signal(Session.cam_follow)
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
 	_toggle_blood.set_pressed_no_signal(Session.fx_blood)
 	_toggle_perf.set_pressed_no_signal(Session.show_perf)
