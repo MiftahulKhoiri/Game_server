@@ -31,6 +31,9 @@ var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
 var _toggle_keep: CheckButton
 var _toggle_follow: CheckButton
+var _toggle_lock: CheckButton
+var _dist_value: Label
+var _pitch_value: Label
 var _toggle_perf: CheckButton
 var _vol_npc_value: Label
 var _vol_music_value: Label
@@ -151,6 +154,25 @@ func _ready() -> void:
 	_settings.add_child(slider)
 	_sens_value = _label("")
 	_settings.add_child(_sens_value)
+	# Kamera (v0.68.4): jarak dan sudut pandang, lalu kunci supaya tetap seperti itu. Perubahan langsung terlihat.
+	_settings.add_child(_label("Jarak kamera"))
+	_settings.add_child(_cam_slider(Session.CAM_DIST_MIN, Session.CAM_DIST_MAX, 0.1, Session.cam_dist, func(v: float) -> void:
+		Session.cam_dist = v
+		Session.save_config()
+		_refresh_cam()))
+	_dist_value = _label("")
+	_settings.add_child(_dist_value)
+	_settings.add_child(_label("Sudut kamera (dari atas)"))
+	_settings.add_child(_cam_slider(rad_to_deg(Session.CAM_PITCH_MIN), rad_to_deg(Session.CAM_PITCH_MAX), 1.0, rad_to_deg(Session.cam_pitch), func(v: float) -> void:
+		Session.cam_pitch = deg_to_rad(v)
+		Session.save_config()
+		_refresh_cam()))
+	_pitch_value = _label("")
+	_settings.add_child(_pitch_value)
+	_toggle_lock = _toggle("Kunci kamera (tidak bisa digeser, selalu di belakang)", func(on: bool) -> void:
+		Session.cam_lock = on
+		Session.save_config())
+	_settings.add_child(_toggle_lock)
 	_toggle_follow = _toggle("Kamera kembali ke belakang pahlawan", func(on: bool) -> void:
 		Session.cam_follow = on
 		Session.save_config())
@@ -276,6 +298,8 @@ func _refresh_settings() -> void:
 	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
 	_toggle_music.set_pressed_no_signal(Session.snd_music)
 	_toggle_follow.set_pressed_no_signal(Session.cam_follow)
+	_toggle_lock.set_pressed_no_signal(Session.cam_lock)
+	_refresh_cam()
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
 	_toggle_perf.set_pressed_no_signal(Session.show_perf)
 	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)
@@ -313,6 +337,23 @@ func _section(text: String) -> Label:
 	l.add_theme_font_size_override("font_size", 34)
 	l.add_theme_color_override("font_color", Color("e0c070"))
 	return l
+
+
+func _cam_slider(lo: float, hi: float, step: float, value: float, cb: Callable) -> HSlider:
+	var sl := HSlider.new()
+	sl.min_value = lo
+	sl.max_value = hi
+	sl.step = step
+	sl.custom_minimum_size = Vector2(0, 56)
+	sl.value = value
+	sl.value_changed.connect(cb)
+	return sl
+
+
+func _refresh_cam() -> void:
+	if _dist_value != null:
+		_dist_value.text = "%.1f petak" % Session.cam_dist
+		_pitch_value.text = "%d°" % roundi(rad_to_deg(Session.cam_pitch))
 
 
 func _toggle(text: String, cb: Callable) -> CheckButton:

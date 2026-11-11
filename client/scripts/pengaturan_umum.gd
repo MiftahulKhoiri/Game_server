@@ -15,6 +15,9 @@ var _quality_hint: Label
 var _sens_value: Label
 var _toggle_keep: CheckButton
 var _toggle_follow: CheckButton
+var _toggle_lock: CheckButton
+var _dist_value: Label
+var _pitch_value: Label
 var _toggle_npc: CheckButton
 var _toggle_music: CheckButton
 var _toggle_blood: CheckButton
@@ -55,6 +58,17 @@ func _ready() -> void:
 	add_child(_slider(0.5, 2.0, 0.1, Session.cam_sens, _on_sens))
 	_sens_value = _label("", 24)
 	add_child(_sens_value)
+	# Kamera (v0.68.4): jarak dan sudut pandang, lalu kunci supaya tetap seperti itu.
+	add_child(_label("Jarak kamera"))
+	add_child(_slider(Session.CAM_DIST_MIN, Session.CAM_DIST_MAX, 0.1, Session.cam_dist, _on_dist))
+	_dist_value = _label("", 24)
+	add_child(_dist_value)
+	add_child(_label("Sudut kamera (dari atas)"))
+	add_child(_slider(rad_to_deg(Session.CAM_PITCH_MIN), rad_to_deg(Session.CAM_PITCH_MAX), 1.0, rad_to_deg(Session.cam_pitch), _on_pitch))
+	_pitch_value = _label("", 24)
+	add_child(_pitch_value)
+	_toggle_lock = _toggle("Kunci kamera (tidak bisa digeser, selalu di belakang)", _on_lock)
+	add_child(_toggle_lock)
 	_toggle_follow = _toggle("Kamera kembali ke belakang pahlawan", _on_follow)
 	add_child(_toggle_follow)
 	_toggle_keep = _toggle("Layar tetap menyala", _on_keep)
@@ -96,6 +110,21 @@ func _on_perf(on: bool) -> void:
 
 func _on_sens(v: float) -> void:
 	Session.cam_sens = v
+	_simpan()
+
+
+func _on_dist(v: float) -> void:
+	Session.cam_dist = v
+	_simpan()
+
+
+func _on_pitch(deg: float) -> void:
+	Session.cam_pitch = deg_to_rad(deg)
+	_simpan()
+
+
+func _on_lock(on: bool) -> void:
+	Session.cam_lock = on
 	_simpan()
 
 
@@ -151,6 +180,9 @@ func _refresh() -> void:
 	_quality_hint.text = QUALITY_HINTS[clampi(Session.quality, 0, 2)]
 	_sens_value.text = "%.1fx" % Session.cam_sens
 	_toggle_follow.set_pressed_no_signal(Session.cam_follow)
+	_toggle_lock.set_pressed_no_signal(Session.cam_lock)
+	_dist_value.text = "%.1f petak" % Session.cam_dist
+	_pitch_value.text = "%d°" % roundi(rad_to_deg(Session.cam_pitch))
 	_toggle_keep.set_pressed_no_signal(Session.keep_on)
 	_toggle_blood.set_pressed_no_signal(Session.fx_blood)
 	_toggle_perf.set_pressed_no_signal(Session.show_perf)

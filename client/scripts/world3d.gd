@@ -38,7 +38,7 @@ const RETRY_DELAY := 5.0
 const ENCOUNTER_CHANCE := 0.18  # peluang bertemu musuh tiap "langkah" (1 petak jalan) di ladang
 const TALK_RANGE := 1.5
 const KEEPER_RANGE := 2.3  # penjaga toko berdiri di balik meja kasir
-const CAM_DIST := 6.4
+const CAM_DIST := 6.4  # jarak lama; sejak v0.68.4 jarak diatur pemain (Session.cam_dist)
 const ATMO_STEP := 0.4        # detik antar pembaruan langit/cahaya (cukup halus, hemat tenaga)
 const NPC_NOTICE := 3.5       # jarak (petak) NPC mulai menoleh ke pemain
 const NPC_WANDER := 0.22      # NPC berjalan pelan di dalam petaknya sendiri (jangkauan, petak)
@@ -122,7 +122,7 @@ var _cam_target := Vector3.ZERO   # titik pandang kamera yang dihaluskan
 var _cam_ready := false
 const CAM_FOLLOW := 9.0           # makin besar makin rapat mengikuti
 const CAM_SNAP := 3.0             # petak: lebih jauh dari ini kamera langsung pindah
-var _cam_pitch := 0.62
+var _cam_pitch := 0.4  # disetel dari Session.cam_pitch saat dunia dibuka
 var _tile := Vector2i(-1, -1)
 var _step_acc := 0.0
 var _unsaved := false
@@ -290,6 +290,8 @@ func _ready() -> void:
 		start = Movement.safe_spot(_map_id, Movement.tile_of(start))
 	_pos = start
 	_yaw = float(st.yaw)
+	_cam_yaw = _yaw + PI  # mulai dari belakang pahlawan
+	_cam_pitch = maxf(Session.cam_pitch, 0.9) if Maps.is_interior(_map_id) else Session.cam_pitch
 	_tile = Movement.tile_of(_pos)
 	_spawn_roamers(_map_id)
 	_sync_state()
@@ -808,8 +810,8 @@ func _go_to_map(map_id: String, at: Vector2i) -> void:
 	_load_map(map_id)
 	if Maps.is_interior(map_id):
 		_cam_pitch = maxf(_cam_pitch, 0.9)  # dari atas, supaya isi ruangan terlihat
-	elif _cam_pitch > 0.85:
-		_cam_pitch = 0.62
+	else:
+		_cam_pitch = Session.cam_pitch  # keluar ruangan: kembali ke sudut pilihan pemain
 	_pos = Movement.safe_spot(map_id, at)
 	_tile = Movement.tile_of(_pos)
 	_step_acc = 0.0
@@ -1090,7 +1092,7 @@ func _apply_transform() -> void:
 		_shadow_disc.position.y = 0.02 - jy / maxf(0.01, _player.scale.x)  # bayangan tetap di tanah
 	var target := Vector3(_pos.x, 0.8 + jy * 0.5, _pos.y)
 	var inside := Maps.is_interior(_map_id)
-	var dist := CAM_DIST * (0.95 if inside else 1.0)
+	var dist := CAM_DIST * 0.95 if inside else Session.cam_dist
 	if inside:
 		target.z -= 1.5  # pandangan condong ke dalam ruangan: meja kasir dan penjaga ikut terlihat
 	# Kamera mengikuti dengan halus (roadmap no. 19); lompatan jauh (pindah peta, dipulangkan) langsung.
@@ -1724,7 +1726,6 @@ func _input(event: InputEvent) -> void:
 ## pahlawan tidak berlari berputar-putar. Tidak berlaku di dalam ruangan (kamera ruangan tetap dari depan).
 const CAM_RETURN_DELAY := 1.2
 const CAM_RETURN_RATE := 2.6
-const CAM_PITCH_NORMAL := 0.62
 
 
 func _follow_camera(delta: float, input: Vector2) -> void:
@@ -1732,17 +1733,26 @@ func _follow_camera(delta: float, input: Vector2) -> void:
 		_cam_idle = 0.0
 		return
 	_cam_idle += delta
-	if not Session.cam_follow or _cam_idle < CAM_RETURN_DELAY or Maps.is_interior(_map_id):
+	if Maps.is_interior(_map_id):
+		return
+	if Session.cam_lock:
+		# Kamera dikunci: selalu di belakang pahlawan dengan sudut pilihan pemain (tanpa jeda).
+		_cam_yaw = lerp_angle(_cam_yaw, _yaw + PI, minf(1.0, delta * CAM_RETURN_RATE * (1.0 - 0.75 * clampf(absf(input.x), 0.0, 1.0))))
+		_cam_pitch = Session.cam_pitch
+		return
+	if not Session.cam_follow or _cam_idle < CAM_RETURN_DELAY:
 		return
 	var k := minf(1.0, delta * CAM_RETURN_RATE * (1.0 - 0.75 * clampf(absf(input.x), 0.0, 1.0)))
 	_cam_yaw = lerp_angle(_cam_yaw, _yaw + PI, k)
-	_cam_pitch = lerpf(_cam_pitch, CAM_PITCH_NORMAL, minf(1.0, delta * CAM_RETURN_RATE))
+	_cam_pitch = lerpf(_cam_pitch, Session.cam_pitch, minf(1.0, delta * CAM_RETURN_RATE))
 
 
 func _rotate_camera(rel: Vector2) -> void:
+	if Session.cam_lock:
+		return  # kamera dikunci di Pengaturan
 	_cam_idle = 0.0
 	_cam_yaw -= rel.x * 0.008 * Session.cam_sens
-	_cam_pitch = clampf(_cam_pitch + rel.y * 0.004 * Session.cam_sens, 0.3, 1.15)
+	_cam_pitch = clampf(_cam_pitch + rel.y * 0.004 * Session.cam_sens, 0.12, 1.15)
 
 
 func _on_ui(p: Vector2) -> bool:

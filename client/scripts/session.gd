@@ -48,6 +48,15 @@ var quality := 1
 var cam_sens := 1.0
 ## Kamera kembali ke belakang pahlawan (menghadap ke depan) setelah layar selesai digeser (v0.68.3).
 var cam_follow := true
+## Pengaturan kamera (v0.68.4): jarak dari pahlawan (petak), sudut pandang dari atas (radian), dan kunci kamera
+## (kamera tidak bisa digeser; selalu di belakang pahlawan dengan jarak dan sudut ini).
+const CAM_DIST_MIN := 3.5
+const CAM_DIST_MAX := 9.0
+const CAM_PITCH_MIN := 0.2
+const CAM_PITCH_MAX := 1.0
+var cam_dist := 5.2
+var cam_pitch := 0.4
+var cam_lock := false
 ## Layar tetap menyala selama game dibuka (disimpan di HP).
 var keep_on := false
 ## Percikan darah saat memukul makhluk hidup (roadmap no. 165); bisa dimatikan di Pengaturan.
@@ -91,6 +100,9 @@ func load_config() -> void:
 	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)
 	cam_sens = clampf(float(cfg.get_value("game", "cam_sens", 1.0)), 0.5, 2.0)
 	cam_follow = bool(cfg.get_value("game", "cam_follow", true))
+	cam_dist = clampf(float(cfg.get_value("game", "cam_dist", 5.2)), CAM_DIST_MIN, CAM_DIST_MAX)
+	cam_pitch = clampf(float(cfg.get_value("game", "cam_pitch", 0.4)), CAM_PITCH_MIN, CAM_PITCH_MAX)
+	cam_lock = bool(cfg.get_value("game", "cam_lock", false))
 	keep_on = bool(cfg.get_value("game", "keep_on", false))
 	fx_blood = bool(cfg.get_value("game", "fx_blood", true))
 	ui_size = clampi(int(cfg.get_value("game", "ui_size", 1)), 0, UI_SCALES.size() - 1)
@@ -135,6 +147,9 @@ func save_config() -> void:
 	cfg.set_value("game", "quality", quality)
 	cfg.set_value("game", "cam_sens", cam_sens)
 	cfg.set_value("game", "cam_follow", cam_follow)
+	cfg.set_value("game", "cam_dist", cam_dist)
+	cfg.set_value("game", "cam_pitch", cam_pitch)
+	cfg.set_value("game", "cam_lock", cam_lock)
 	cfg.set_value("game", "keep_on", keep_on)
 	cfg.set_value("game", "fx_blood", fx_blood)
 	cfg.set_value("game", "ui_size", ui_size)

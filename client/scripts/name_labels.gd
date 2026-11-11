@@ -6,6 +6,7 @@ extends RefCounted
 ## - nama tidak tertutup tombol konteks (Bicara/Buka peti), kecuali milik orang yang diajak bicara.
 ## Dijalankan beberapa kali per detik dari world3d, bukan tiap frame.
 
+const NEAR := 3.2  # lebih dekat dari ini ke kamera: nama tidak ditampilkan (v0.68.4)
 const FAR := 20.0          # lebih jauh dari ini (meter/petak dari kamera) nama tidak digambar
 const REF_DIST := 7.0      # jarak kamera biasa; di sini skala = 1
 const MIN_SCALE := 0.7
@@ -49,7 +50,8 @@ func layout(camera: Camera3D, obstacle: Rect2, owner_label: Label3D, hud: Array 
 		if parent == null or not parent.is_visible_in_tree():
 			continue
 		var d := cam_pos.distance_to(l.global_position)
-		if d > FAR or camera.is_position_behind(l.global_position):
+		# Terlalu dekat kamera (orang lewat di antara kamera dan pahlawan): nama raksasa menutupi layar, sembunyikan.
+		if d > FAR or d < NEAR or camera.is_position_behind(l.global_position):
 			l.visible = false
 			if debug:
 				reasons[e.short] = "jauh %.1f" % d

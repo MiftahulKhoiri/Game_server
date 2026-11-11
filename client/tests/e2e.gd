@@ -2699,13 +2699,22 @@ func _run() -> void:
 	_check(absf(angle_difference(wcam._cam_yaw, 0.5 + PI + 1.2)) < 0.001, "baru digeser: kamera tetap di arah pilihan pemain")
 	for _i in 60:
 		wcam._follow_camera(0.1, Vector2.ZERO)
-	_check(absf(angle_difference(wcam._cam_yaw, 0.5 + PI)) < 0.05 and absf(wcam._cam_pitch - 0.62) < 0.05, "setelah dilepas: kamera kembali ke belakang pahlawan menghadap ke depan")
+	_check(absf(angle_difference(wcam._cam_yaw, 0.5 + PI)) < 0.05 and absf(wcam._cam_pitch - Session.cam_pitch) < 0.05, "setelah dilepas: kamera kembali ke belakang pahlawan menghadap ke depan")
 	Session.cam_follow = false
 	wcam._cam_yaw = 2.0
 	for _i in 30:
 		wcam._follow_camera(0.1, Vector2.ZERO)
 	_check(is_equal_approx(wcam._cam_yaw, 2.0), "pengaturan dimatikan: kamera tetap bebas")
 	Session.cam_follow = true
+	# v0.68.4: kunci kamera: geseran layar diabaikan, kamera tetap di belakang dengan sudut pilihan.
+	Session.cam_lock = true
+	wcam._cam_yaw = wcam._yaw + PI
+	wcam._rotate_camera(Vector2(300, 200))
+	_check(absf(angle_difference(wcam._cam_yaw, wcam._yaw + PI)) < 0.001, "kamera dikunci: geser layar tidak memutar kamera")
+	wcam._cam_pitch = 1.0
+	wcam._follow_camera(0.1, Vector2.ZERO)
+	_check(is_equal_approx(wcam._cam_pitch, Session.cam_pitch), "kamera dikunci: sudut tetap sesuai Pengaturan")
+	Session.cam_lock = false
 	wcam.queue_free()
 	await process_frame
 	Session.offline = false
