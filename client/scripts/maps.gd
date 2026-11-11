@@ -73,19 +73,20 @@ const EXITS := {
 	"hutan_lebat": [
 		{"pos": Vector2i(22, 0), "to": "perbatasan", "at": Vector2i(22, 48)},
 		# Gerbang Gua Goblin: terkunci sampai tiga Goblin kalah (lihat exit_locked dan TRIALS).
-		{"pos": Vector2i(146, 49), "to": "gua_goblin", "at": Vector2i(11, 1)},
-		{"pos": Vector2i(147, 49), "to": "gua_goblin", "at": Vector2i(12, 1)},
+		{"pos": Vector2i(146, 49), "to": "gua_goblin", "at": Vector2i(30, 1)},
+		{"pos": Vector2i(147, 49), "to": "gua_goblin", "at": Vector2i(31, 1)},
 	],
 	"gua_goblin": [
-		{"pos": Vector2i(11, 0), "to": "hutan_lebat", "at": Vector2i(146, 48)},
-		{"pos": Vector2i(12, 0), "to": "hutan_lebat", "at": Vector2i(147, 48)},
-		{"pos": Vector2i(13, 0), "to": "hutan_lebat", "at": Vector2i(147, 48)},
-		{"pos": Vector2i(11, 29), "to": "gunung_batu", "at": Vector2i(22, 1)},
-		{"pos": Vector2i(12, 29), "to": "gunung_batu", "at": Vector2i(22, 1)},
-		{"pos": Vector2i(13, 29), "to": "gunung_batu", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(29, 0), "to": "hutan_lebat", "at": Vector2i(146, 48)},
+		{"pos": Vector2i(30, 0), "to": "hutan_lebat", "at": Vector2i(147, 48)},
+		{"pos": Vector2i(31, 0), "to": "hutan_lebat", "at": Vector2i(147, 48)},
+		# Pintu utama: tiga jalan gua bertemu di balairung singgasana tepat di depannya.
+		{"pos": Vector2i(29, 71), "to": "gunung_batu", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(30, 71), "to": "gunung_batu", "at": Vector2i(22, 1)},
+		{"pos": Vector2i(31, 71), "to": "gunung_batu", "at": Vector2i(22, 1)},
 	],
 	"gunung_batu": [
-		{"pos": Vector2i(22, 0), "to": "gua_goblin", "at": Vector2i(12, 28)},
+		{"pos": Vector2i(22, 0), "to": "gua_goblin", "at": Vector2i(30, 70)},
 		{"pos": Vector2i(22, 49), "to": "gua_batu", "at": Vector2i(7, 1)},
 	],
 	"gua_batu": [
@@ -114,7 +115,7 @@ const STORY_GATES := {
 	"istana_kegelapan": {"gate": [14, 16, 25], "min": 10, "pesan": "Aldragor menjaga gerbang ruang takhta. Kalahkan dia dulu."},
 }
 const SPAWN := Vector2i(5, 5)
-const WALKABLE := ".=fTBDMGKO"
+const WALKABLE := ".=fTBDMGKOX"  # X: lantai gua bertumpuk tengkorak (Gua Goblin)
 ## Petak bos: menginjaknya memulai pertarungan bos di server (posisi harus sama dengan BossSpot di internal/game/world.go).
 const BOSS_TILE := "K"
 ## Singgasana bos Goblin di Hutan Lebat (sama dengan HutanBossX/Y di internal/game/hutan.go).
@@ -125,8 +126,8 @@ const HUTAN_BOSS := Vector2i(142, 47)
 const TRIALS := {
 	"hutan_lebat": {"boss": Vector2i(142, 47), "prefix": "goblin_hutan_", "boss_name": "Goblin Level %d", "next": "gua_goblin",
 		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
-	"gua_goblin": {"boss": Vector2i(12, 8), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "boss_names": ["Kepala Goblin Lv 1", "Kepala Goblin Lv 2", "Raja Goblin"], "next": "gunung_batu",
-		"gate": [11, 13, 29], "gate_point": Vector2(12.5, 28.5), "home": Vector2(12.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(12.5, 0.0, 29.45), "lock_w": 3.0},
+	"gua_goblin": {"boss": Vector2i(30, 61), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "boss_names": ["Kepala Goblin Lv 1", "Kepala Goblin Lv 2", "Raja Goblin"], "next": "gunung_batu",
+		"gate": [29, 31, 71], "gate_point": Vector2(30.5, 70.5), "home": Vector2(30.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(30.5, 0.0, 71.45), "lock_w": 3.0},
 	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Orc Batu Lv %d", "boss_names": ["Orc Batu Lv 1", "Orc Batu Lv 2", "Panglima Lereng"], "next": "gua_batu",
 		"gate": [22, 22, 49], "gate_point": Vector2(22.5, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Gua Goblin", "foe": "Musuh", "lock": Vector3(22.5, 0.0, 49.45), "lock_w": 3.0},
 }
@@ -341,7 +342,7 @@ const ROAMERS := {
 		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
 		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 3},
 	]},
-	"gua_goblin": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [
+	"gua_goblin": {"n": 24, "tiles": "MG", "min_y": 3, "kinds": [
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
 		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 5, "patroli": true},
@@ -424,9 +425,10 @@ const CHESTS := [
 	{"id": "hutan_4", "map": "hutan_lebat", "pos": Vector2i(80, 15), "tier": 3},
 	{"id": "hutan_5", "map": "hutan_lebat", "pos": Vector2i(25, 26), "tier": 2},
 	{"id": "hutan_6", "map": "hutan_lebat", "pos": Vector2i(144, 21), "tier": 3},
-	{"id": "gua_gob_1", "map": "gua_goblin", "pos": Vector2i(11, 20), "tier": 3},
-	{"id": "gua_gob_2", "map": "gua_goblin", "pos": Vector2i(18, 20), "tier": 3},
-	{"id": "gua_gob_3", "map": "gua_goblin", "pos": Vector2i(12, 7), "tier": 3},
+	# Gua Goblin: peti di ujung lorong buntu (hadiah menjelajah)
+	{"id": "gua_gob_1", "map": "gua_goblin", "pos": Vector2i(2, 69), "tier": 3},
+	{"id": "gua_gob_2", "map": "gua_goblin", "pos": Vector2i(57, 23), "tier": 3},
+	{"id": "gua_gob_3", "map": "gua_goblin", "pos": Vector2i(4, 3), "tier": 3},
 	{"id": "gua_1", "map": "gua_batu", "pos": Vector2i(1, 1), "tier": 4},
 	{"id": "gua_2", "map": "gua_batu", "pos": Vector2i(13, 1), "tier": 4},
 ]
@@ -670,38 +672,84 @@ const HUTAN_ROWS: Array[String] = [
 	"#PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPNN==NNPPPPPPPPPPPPPPPPPPP#",
 ]
 
-## Gua Goblin (25x30): peta 3, terbuka setelah tiga Goblin di Hutan Lebat kalah.
+## Gua Goblin (61x72, v0.70.0): peta 3, terbuka setelah tiga Goblin di Hutan Lebat kalah. Seperti Hutan Lebat ada
+## tiga jalan (barat, tengah berliku, timur) dari pintu masuk di utara; ketiganya bertemu di balairung singgasana
+## bos orc (Z) tepat di depan pintu utama selatan ke Gunung Batu. Sungai bawah tanah (~) memotong gua dan
+## dilewati tiga jembatan (B). Banyak lorong buntu (selebar 2 petak) sehingga Radar Musuh berguna; X = tumpukan
+## tengkorak (lantai biasa). Dibuat dengan alat bantu (tidak disimpan di repo); ubah langsung di sini bila perlu.
 const GUA_GOBLIN_ROWS: Array[String] = [
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRMMMMMMMMMMMMMMMMMRRRR",
-	"RRRRMGGGGMMMMMMMGGGGMRRRR",
-	"RRRRMGGGGMGGGGGMGGGGMRRRR",
-	"RRRRMGGGGMGGGGGMGGGGMRRRR",
-	"RRRRMMMMMMGGGGGMMMMMRRRRR",
-	"RRRRMMRMMMMMMMMMMMMMMRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRMMMMMMMMMMMRMMMMMMMMMRR",
-	"RRMGGGGMMMMMMRMMMGGGGMMRR",
-	"RRMGGGGMMMMMMRMMMGGGGRMRR",
-	"RRMGGGGMMMMMMRMMMGGGGMMRR",
-	"RRMGGGGMMMMMMRMMMGGGGMMRR",
-	"RRMMMMMMMMMMMRMMMMMMRMMRR",
-	"RRMMMMMMRMMMMRMMMMMMMMMRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRMMMMMRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
-	"RRRRRRRRRRRMMMRRRRRRRRRRR",
+	"RRRRRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+	"RRRRRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRMMMMMMMMMMMRRRRR",
+	"RRRRRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRMMMMMMMMMMMXRRRRR",
+	"RRMMMMRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRMMRRRRRRRRRRRRRRR",
+	"RMXMMXRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRMMRRRRRRRRRRRRRRR",
+	"RMMRRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRMMRRRRRRRRRRRRRRR",
+	"RMMRRRRRRRRRRRRRRRRRRRRMMMMMMX=XMMMMMMMMMMMMMMRRRRRRRRRRRRRRR",
+	"RMMRRRRRRRRRRRRRRRRRRRRMMMGGG===GGGMMMMMMMMMMMRRRRRRRRRRRRRRR",
+	"RMMRRRRRR===============MMGGG===GGGMM===============RRRRRRRRR",
+	"RMMRRRRR================MMGGG===GGGMM================RRRRRRRR",
+	"RMMRRRRR================MMGGG===GGGMM================RRRRRRRR",
+	"RMMRRRRR===RRRRRRRRRRRRMMMGGG===GGGMMMRRRRRRRRRRRR===RRRRRRRR",
+	"RMMRRRRR===RRRRRRRRRRRRMMMMMM===MMMMMMRRRRRRRRRRRR===RRRRRRRR",
+	"RMMMMMMMMM=RRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRRR",
+	"RMMMMMMMMM=RRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRRR",
+	"RRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRRMMMMMMMMRRR=MMMMMMMMRR",
+	"RRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRMMMMMMMMXRRR=MMMMMMMMRR",
+	"RRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRMMRRRRRRRRRR===RRRRMMRR",
+	"RRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRMMRRRRRRRRRR===RRRRMMRR",
+	"RRRRRRRR===RRRRRRRRRRRRRRRRRR===RRRRRRMMRRRRRRRRRR===RRRRMMRR",
+	"RRRRRRRR===RRRRRRRRRRRRMMMMMM===MMMMMMMMRRRRRRRRRR===RRRRMMRR",
+	"RRRRRRRR==========RRRRRMMGGGGGGGGGGGMMMMRRR==========RRRRMMRR",
+	"RRRRRRRR===========RRRRMMGGGGGGGGGGGMMMMRR===========RRRRMMRR",
+	"RRRRRRRRR==========RRRRMMGGGGGGGGGGGMMMMRR==========RRRRRMMRR",
+	"RRRRRRRRRRRRRRRR===RRRRMMGGGGGGGGGGGMMMMRR===RRRRRRRRRRRRMXRR",
+	"RRRRRRRRRRRRRRRR===RRRRMMGGGGGGGGGGGMMRRRR===RRRRRRRRRRRRRRRR",
+	"RRRRRRRRRRRRRRRR===RRRRMMGGGGGGGGGGGMMRRRR===RRRRRRRRRRRRRRRR",
+	"RRRMMMMMMMMMMRRR===RRRRMMMMMM===MMMMMMRRRR===RRRMMMMMMMMMMRRR",
+	"RRRMGGGGGGGGMRRR===RRRRRRRRRR===RRRRRRRRRR===RRRMGGGGGGGGMRRR",
+	"RRRMGGGGGGGGMMMMM==RRMMRRRRRR===RRRRRRRRRR==MMMMMGGGGGGGGMRRR",
+	"RRRMGGGGGGGGMMMMM==RRMMRRR======RRRRRRRRRR==MMMMMGGGGGGGGMRRR",
+	"RRRMGGGGGGGGMRRR===RRMMRR=======RRRRRRRRRR===RRRMGGGGGGGGMRRR",
+	"RRRMMMMMMMMMMRRR===RRMMMMMM====RRRRRRRRRRR===RRRMMMMMMMMMMRRR",
+	"RRRRRRRRRRRRRRRR===RRMMMMMM=RRRRRRRRRRRRRR===RRRRRRRRRRRRRRRR",
+	"R~~~~~~~~~~~~~~~BBB~~~~~~BBB~~~~~~~~~~~~~~BBB~~~~~~~~~~~~~~~R",
+	"R~~~~~~~~~~~~~~~BBB~~~~~~BBB~~~~~~~~~~~~~~BBB~~~~~~~~~~~~~~~R",
+	"RRRRRRRRRRRRRRRR===RRRRRR===RRRRRRRRRRMMRR===RRRRRRRRRRRRRRRR",
+	"RRRRRRR============RRRRRR=========RRRRMMRR============RRRRRRR",
+	"RRRRRR=============RRRRRR==========RRRMMRRMM===========RRRRRR",
+	"RRRRRR============RRRRRRRR=======MMMMMMMRRMM===========RRRRRR",
+	"RRRRRR===RRRRRRRRRRRRRRRRRRRRRRR=MMMMMMMRRMMRRRRRRRR===RRRRRR",
+	"RRRRRR===RRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRMMRRRRRRRR===RRRRRR",
+	"RRRRRR===RRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRMMRRRRRRRR===RRRRRR",
+	"RRMMMMMM=RRRRRRRRRRRRRMMMMMMMMMM===MMMMRRRMMRRRRRRRR=MMMMMMRR",
+	"RMMMMMMM=RRRRRRRRRRRRRMMGGGGGGGGGGGGGMMRRRMMRRRRRRRR=MMMMMMRR",
+	"RMMRRR===RRRRRRRRRRRRRMMGGGGGGGGGGGGGMMRRRMMRRRRRRRR===RRMMRR",
+	"RMMRRR===RRRMMMMMMMMMMMMGGGGGGGGGGGGGMMRRMMMMMMMMRRR===RRMMRR",
+	"RMMRRR===RRRMGGGGGGMMMMMGGGGGGGGGGGGGMMRRMGGGGGGMRRR===RRMMRR",
+	"RMMRRR===RRRMGGGGGGMRRMMGGGGGGGGGGGGGMMRRMGGGGGGMRRR===RRMMRR",
+	"RMMRRR===RRRXGGGGGGMRRMMGGGGGGGGGGGGGMMRRMGGGGGGMRRR===RRMMRR",
+	"RMMRRR===RRRMGGGGGGMRRMMMMMMM===MMMMMMMRRMGGGGGGMRRR===RRMMRR",
+	"RMMRRR===RRRMMMMMMMMRRRRRRRRR===RRRRRRRRRMMMMMMMMRRR===RRMMRR",
+	"RMMRRR===RRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRR===RRMMRR",
+	"RMMMMR===RRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRR===RRMXRR",
+	"RMMMXR===RRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRR===RRRRRR",
+	"RRRRRR===RRRRRRRRRRMMMMMMMMMM===MMMMMMMMMMRRRRRRRRRR===RRRRRR",
+	"RRRRRR===RRRRRRRRRRMMGGGGGGGGGGGGGGGGGGGMMRRRRRRRRRR===RRRRRR",
+	"RRRRRR===RRRRRRRRRRMMGGGGGGGGGGGGGGGGGGGMMRRRRRRRRRR===RRRRRR",
+	"RRRRRR===RRRRRRRRRRMMGGGGGGGGGGGGGGGGGGGMMRRRRRRRRRR===RRRRRR",
+	"RRRRRR==============MMMMMMMMMMMMMMMMMMMMM==============RRRRRR",
+	"RRRRRRMM============MMMMMMMMMMMMMMMMMMMMM===========MM=RRRRRR",
+	"RRRRRRMM============MMMMMMMMMMZMMMMMMMMMM===========MMRRRRRRR",
+	"RRRRRRMMRRRRRRRRRRRMMMMMMMMMMMMMMMMMMMMMMMRRRRRRRRRRMMRRRRRRR",
+	"RRRRRRMMRRRRRRRRRRRMMMMMMMMXMMMMMXMMMMMMMMRRRRRRRRRRMMRRRRRRR",
+	"RRRRRRMMRRRRRRRRRRRMMMMMXMMMMMMMMMMMXMMMMMRRRRRRRRRRMMRRRRRRR",
+	"RRRMMMMMRRRRRRRRRRRMMMMMMMMMMMMMMMMMMMMMMMRRRRRRRRRRMMMMMMRRR",
+	"RRMMMMMMRRRRRRRRRRRMMMMMMMMMM===MMMMMMMMMMRRRRRRRRRRMMMMMMRRR",
+	"RRMMRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRRRRRRMMRRR",
+	"RRMMRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRRRRRRMMRRR",
+	"RRMXRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRRRRRRMXRRR",
+	"RRRRRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+	"RRRRRRRRRRRRRRRRRRRRRRRRRRRRR===RRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
 ]
 
 

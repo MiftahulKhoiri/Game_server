@@ -30,7 +30,7 @@ var worldMaps = map[string]MapInfo{
 	MapDesaAwal:    {Width: 85, Height: 50},
 	MapPerbatasan:  {Width: 45, Height: 50},
 	MapHutanLebat:  {Width: 170, Height: 50},
-	MapGuaGoblin:   {Width: 25, Height: 30},
+	MapGuaGoblin:   {Width: 61, Height: 72}, // v0.70.0: tiga jalan, banyak lorong buntu
 	MapGunungBatu:  {Width: 45, Height: 50},
 	MapGuaBatu:     {Width: 15, Height: 20},
 	MapTokoRamuan:  {Width: 9, Height: 8},

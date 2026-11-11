@@ -142,6 +142,7 @@ void fragment() {
 
 static var _water_mat: ShaderMaterial
 static var _lava_mat: ShaderMaterial
+static var _cave_water_mat: ShaderMaterial
 
 ## Lava (petak L; cerita The Last Dragon: Gunung Berapi, Benteng Orc, Istana Kegelapan): aliran merah-jingga
 ## yang berdenyut pelan, tanpa cahaya (unshaded) supaya tetap menyala di gua yang gelap.
@@ -235,6 +236,18 @@ static func _lava_material() -> Material:
 		_lava_mat = ShaderMaterial.new()
 		_lava_mat.shader = sh
 	return _lava_mat
+
+
+## Air sungai bawah tanah (Gua Goblin): hijau-biru gelap, kilaunya tetap terlihat di bawah cahaya obor.
+static func _cave_water_material() -> Material:
+	if _cave_water_mat == null:
+		var sh := Shader.new()
+		sh.code = WATER_SHADER
+		_cave_water_mat = ShaderMaterial.new()
+		_cave_water_mat.shader = sh
+		_cave_water_mat.set_shader_parameter("dalam", Color(0.03, 0.12, 0.16, 1.0))
+		_cave_water_mat.set_shader_parameter("dangkal", Color(0.1, 0.3, 0.34, 1.0))
+	return _cave_water_mat
 
 
 static func _water_material() -> Material:
@@ -471,7 +484,8 @@ static func ground_color(tile: String) -> Color:
 	match tile:
 		"=": return Color("d9b97c")
 		"T": return Color("86603a")
-		"M": return Color("9d9285")
+		"M", "X": return Color("9d9285")
+		"Z": return Color("6e665c")  # lantai batu di bawah singgasana bos orc
 		"R": return Color("8a8175")
 		"G": return Color("7d7165")
 		"S": return Color("9a9aa3")
@@ -547,6 +561,11 @@ static func build(map_id: String) -> Node3D:
 	var stem_x: Array[Transform3D] = []   # jamur: batang
 	var cap_x: Array[Transform3D] = []    # jamur: tudung
 	var n_pasir := 0
+	var gob := map_id == Maps.GUA_GOBLIN
+	var skull_spots: Array[Vector3] = []   # tumpukan tengkorak (petak X, Gua Goblin)
+	var near_floor := _near_floor(rows, 3) if gob else {}  # batu jauh dari lorong tidak digambar (tertutup kabut)
+	# Dinding Gua Goblin lebih pendek supaya pemain tidak tertutup batu di lorong sempit (kamera dari atas-belakang).
+	var rock_h := Vector3(1.0, 0.62, 1.0) if gob else Vector3.ONE
 
 	for z in rows.size():
 		for x in rows[z].length():
@@ -562,6 +581,8 @@ static func build(map_id: String) -> Node3D:
 				ground_x.append(_xf(c))
 				if t == "O":  # lantai istana: ubin berselang-seling
 					gc = gc.darkened(0.08) if (x + z) % 2 == 0 else gc.lightened(0.03)
+				if gob and t == "=":  # jalan utama gua: tanah terinjak, sedikit lebih terang dari lantai batu
+					gc = Color("857258").lightened(0.06 * (j - 0.5))
 				ground_c.append(gc.lightened(0.025 * (j - 0.5) * 2.0) if t == "." or t == "f" else gc)
 				if tepi and t == "." and _jitter(x, z, 91) < 0.45:  # ilalang di tepi air
 					var oi := Vector3(_jitter(x, z, 92) - 0.5, 0.0, _jitter(x, z, 93) - 0.5) * 0.6
@@ -594,6 +615,10 @@ static func build(map_id: String) -> Node3D:
 					var sepanjang_x := _tile(rows, x, z - 1) == "~" and _tile(rows, x, z + 1) == "~"
 					plank_x.append(_xf(c, Vector3.ONE, PI * 0.5 if sepanjang_x else 0.0))
 					for sx in [-0.46, 0.46]:
+						# pegangan hanya di tepi luar jembatan yang lebarnya beberapa petak
+						var tetangga := _tile(rows, x, z + (1 if sx > 0 else -1)) if sepanjang_x else _tile(rows, x + (1 if sx > 0 else -1), z)
+						if tetangga == "B":
+							continue
 						if sepanjang_x:
 							post_x.append(_xf(c + Vector3(0, 0.2, sx), Vector3(0.08, 0.4, 0.08)))
 							rail_x.append(_xf(c + Vector3(0, 0.38, sx), Vector3(1.0, 0.05, 0.05)))
@@ -624,14 +649,16 @@ static func build(map_id: String) -> Node3D:
 						leaf_x.append(_xf(c + Vector3(0.05, 1.75 * s, 0), Vector3(0.72, 0.8 * s, 0.72)))
 						leaf_c.append(leaf.lightened(0.12))
 				"R":
+					if gob and not near_floor.has(Vector2i(x, z)):
+						continue
 					if use_rocks:
 						var rr := _jitter(x, z, 9)
 						if rr < 0.65:
 							var mid: String = MOUNTAINS[int(_jitter(x, z, 11) * 1000.0) % MOUNTAINS.size()]
-							_tambah(static_by, mid, _xf(c, Vector3.ONE * (0.85 + 0.45 * j), _jitter(x, z, 10) * TAU))
+							_tambah(static_by, mid, _xf(c, Vector3.ONE * (0.85 + 0.45 * j) * rock_h, _jitter(x, z, 10) * TAU))
 						else:
 							var rid: String = ROCKS[int(_jitter(x, z, 12) * 1000.0) % ROCKS.size()]
-							_tambah(static_by, rid, _xf(c, Vector3.ONE * (3.0 + 1.5 * j), _jitter(x, z, 10) * TAU))
+							_tambah(static_by, rid, _xf(c, Vector3.ONE * (3.0 + 1.5 * j) * rock_h, _jitter(x, z, 10) * TAU))
 					else:
 						var s2 := 0.9 + 0.7 * j
 						rock_x.append(_xf(c + Vector3(0, 0.35 * s2, 0), Vector3(1.0, 0.8 * s2, 1.0), j * 6.0))
@@ -673,6 +700,10 @@ static func build(map_id: String) -> Node3D:
 					_add_well(root, c)
 				"K":
 					_add_throne(root, c)
+				"X":
+					skull_spots.append(c)
+				"Z":
+					_add_orc_throne(root, c)
 				"J", "C", "A", "U", "Q", "Y":
 					(kecil[t] as Array).append(Vector2i(x, z))
 
@@ -682,7 +713,7 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, quad, mat(Color.WHITE, true), ground_x, ground_c, false)
 	var water := PlaneMesh.new()
 	water.size = Vector2(1.0, 1.0)
-	_multi(root, water, _water_material(), water_x, [], false)
+	_multi(root, water, _cave_water_material() if cave else _water_material(), water_x, [], false)
 	_multi(root, water, _lava_material(), lava_x, [], false)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("3d3847")), pillar_x)
 	_multi(root, _reed_mesh(), _grass_material(), reed_x, [], false)
@@ -731,6 +762,9 @@ static func build(map_id: String) -> Node3D:
 		_add_torches_at(root, ISTANA_TORCHES, Color("c070ff"))
 	elif map_id == Maps.TAKHTA:
 		_add_torches_at(root, TAKHTA_TORCHES, Color("c070ff"))
+	elif gob:
+		_add_skulls(root, skull_spots)
+		_add_torches_at(root, cave_torch_spots(rows), Color("ff7a1a"), true)
 	elif cave:
 		_add_torches(root, rows)
 	MeshMerge.merge(root, _jarak())  # ratusan bentuk kecil statis -> beberapa mesh (panggilan gambar turun)
@@ -1742,6 +1776,177 @@ static func _add_torches(root: Node3D, rows: Array[String]) -> void:
 	_add_torches_at(root, spots, Color("ff8a20"))
 
 
+## Obor Gua Goblin (v0.70.0): menempel di dinding lorong, berjarak supaya ada bagian terang dan gelap.
+## Selalu ada obor di pintu masuk, pintu utama, kiri-kanan singgasana, dan di ujung tiap jembatan.
+const TORCH_GAP := 6.5
+
+static func cave_torch_spots(rows: Array[String]) -> Array[Vector3]:
+	var must: Array[Vector2i] = []
+	for z in rows.size():
+		for x in rows[z].length():
+			var t := rows[z][x]
+			if t == "Z":
+				must.append_array([Vector2i(x - 3, z), Vector2i(x + 3, z)])
+			elif t == "B" and _tile(rows, x, z - 1) != "B" and _tile(rows, x - 1, z) != "B":
+				must.append_array([Vector2i(x - 1, z - 1), Vector2i(x + 3, z - 1), Vector2i(x - 1, z + 2), Vector2i(x + 3, z + 2)])
+	var h := rows.size()
+	var mid := rows[0].length() / 2
+	must.append_array([Vector2i(mid - 2, 2), Vector2i(mid + 2, 2), Vector2i(mid - 2, h - 3), Vector2i(mid + 2, h - 3)])
+	var tiles: Array[Vector2i] = []
+	for m in must:
+		if Maps.WALKABLE.contains(_tile(rows, m.x, m.y)):
+			tiles.append(m)
+	var cand: Array = []
+	for z in rows.size():
+		for x in rows[z].length():
+			if Maps.WALKABLE.contains(rows[z][x]) and rows[z][x] != "B":
+				cand.append([_jitter(x, z, 71), Vector2i(x, z)])
+	cand.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for c: Array in cand:
+		var t: Vector2i = c[1]
+		if _wall_dir(rows, t) == Vector2.ZERO:
+			continue
+		var ok := true
+		for o in tiles:
+			if Vector2(o).distance_to(Vector2(t)) < TORCH_GAP:
+				ok = false
+				break
+		if ok:
+			tiles.append(t)
+	var spots: Array[Vector3] = []
+	for t in tiles:
+		var wd := _wall_dir(rows, t)
+		spots.append(Vector3(t.x + 0.5 + wd.x * 0.38, 0.0, t.y + 0.5 + wd.y * 0.38))
+	return spots
+
+
+## Arah ke dinding batu di sebelah petak (nol bila petak tidak menempel dinding).
+static func _wall_dir(rows: Array[String], t: Vector2i) -> Vector2:
+	for d: Vector2i in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+		if _tile(rows, t.x + d.x, t.y + d.y) == "R":
+			return Vector2(d)
+	return Vector2.ZERO
+
+
+## Petak batu yang berjarak <= r dari petak bukan batu (hanya itu yang perlu digambar).
+static func _near_floor(rows: Array[String], r: int) -> Dictionary:
+	var out := {}
+	for z in rows.size():
+		for x in rows[z].length():
+			if rows[z][x] == "R":
+				continue
+			for dz in range(-r, r + 1):
+				for dx in range(-r, r + 1):
+					out[Vector2i(x + dx, z + dz)] = true
+	return out
+
+
+static var _pool_mats: Dictionary = {}
+
+## Pendar cahaya bulat di tanah (tambahan, tanpa bayangan) untuk obor gua.
+static func _pool_material(col: Color) -> StandardMaterial3D:
+	var key := col.to_html()
+	if _pool_mats.has(key):
+		return _pool_mats[key]
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var grad := Gradient.new()
+	grad.set_color(0, Color(col.r, col.g * 0.85, col.b * 0.6, 0.2))
+	grad.set_color(1, Color(col.r, col.g, col.b, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	m.albedo_texture = tex
+	_pool_mats[key] = m
+	return m
+
+
+## Tumpukan tengkorak dan tulang (petak X) dari bentuk dasar: tempurung, rahang, rongga mata, tulang.
+static func _add_skulls(root: Node3D, spots: Array[Vector3]) -> void:
+	var head_x: Array[Transform3D] = []
+	var jaw_x: Array[Transform3D] = []
+	var eye_x: Array[Transform3D] = []
+	var bone_x: Array[Transform3D] = []
+	var k := 0
+	for c in spots:
+		var n := 3 + k % 3
+		for i in n:
+			k += 1
+			var a := float(i) / n * TAU + float(k) * 0.7
+			var r := 0.0 if i == 0 else 0.22 + 0.06 * float(k % 3)
+			var y := 0.2 if i == 0 else 0.1
+			var p := c + Vector3(cos(a) * r, y, sin(a) * r)
+			var b := Basis(Vector3.UP, a + PI * 0.5 + 0.2 * float(k % 5 - 2))
+			var fwd := b * Vector3(0, 0, 1)
+			var side := b * Vector3(1, 0, 0)
+			head_x.append(Transform3D(b, p))
+			jaw_x.append(Transform3D(b, p + Vector3(0, -0.075, 0) + fwd * 0.03))
+			for e in [-1.0, 1.0]:
+				eye_x.append(Transform3D(b, p + fwd * 0.085 + side * 0.04 * e + Vector3(0, 0.01, 0)))
+		for j in 4:
+			var ab := float(j) * 1.7 + float(k)
+			bone_x.append(Transform3D(Basis(Vector3.UP, ab) * Basis(Vector3.FORWARD, PI * 0.5), c + Vector3(cos(ab) * 0.33, 0.03, sin(ab) * 0.33)))
+	var bone := mat(Color("d8cfb8"))
+	_multi(root, _sphere(0.1, 8), bone, head_x)
+	_multi(root, _box(Vector3(0.12, 0.05, 0.1)), bone, jaw_x, [], false)
+	_multi(root, _sphere(0.028, 5), mat(Color("1a1410")), eye_x, [], false)
+	_multi(root, _cyl(0.022, 0.022, 0.42, 5), bone, bone_x, [], false)
+
+
+## Singgasana bos orc (petak Z, Gua Goblin): kursi batu besar menghadap utara (arah datangnya pemain),
+## sandaran bertanduk, tengkorak di puncaknya, dua tiang tengkorak, dan karpet merah kusam di depannya.
+static func _add_orc_throne(root: Node3D, c: Vector3) -> void:
+	var stone := mat(Color("4a4440"))
+	var dark := mat(Color("2f2a27"))
+	var bone := mat(Color("d8cfb8"))
+	var parts := [
+		[_box(Vector3(1.5, 0.25, 1.3)), dark, Vector3(0, 0.12, 0)],           # alas berundak
+		[_box(Vector3(1.1, 0.5, 0.9)), stone, Vector3(0, 0.5, 0.05)],          # dudukan
+		[_box(Vector3(1.2, 1.9, 0.25)), stone, Vector3(0, 1.2, 0.45)],         # sandaran (di selatan: menghadap utara)
+		[_box(Vector3(0.22, 0.75, 0.9)), dark, Vector3(-0.6, 0.85, 0.05)],     # sandaran tangan
+		[_box(Vector3(0.22, 0.75, 0.9)), dark, Vector3(0.6, 0.85, 0.05)],
+		[_box(Vector3(1.3, 0.04, 2.4)), mat(Color("5a1a16")), Vector3(0, 0.02, -1.8)],  # karpet
+	]
+	for pr: Array in parts:
+		var m := MeshInstance3D.new()
+		m.mesh = pr[0]
+		m.material_override = pr[1]
+		m.position = c + (pr[2] as Vector3)
+		root.add_child(m)
+	for sx in [-1.0, 1.0]:  # tanduk di puncak sandaran
+		var horn := MeshInstance3D.new()
+		horn.mesh = _cyl(0.0, 0.11, 0.7, 7)
+		horn.material_override = bone
+		horn.position = c + Vector3(0.5 * sx, 2.35, 0.45)
+		horn.rotation = Vector3(0, 0, -0.55 * sx)
+		root.add_child(horn)
+	_add_skulls(root, [c + Vector3(0, 2.05, 0.3)])  # tengkorak di atas sandaran
+	for sx in [-1.6, 1.6]:  # tiang tengkorak
+		var pole := MeshInstance3D.new()
+		pole.mesh = _cyl(0.05, 0.06, 1.9, 6)
+		pole.material_override = mat(Color("3b2a1c"))
+		pole.position = c + Vector3(sx, 0.95, -0.2)
+		root.add_child(pole)
+		var sk := MeshInstance3D.new()
+		sk.mesh = _sphere(0.16, 8)
+		sk.material_override = bone
+		sk.position = c + Vector3(sx, 1.98, -0.2)
+		root.add_child(sk)
+		for e in [-1.0, 1.0]:
+			var eye := MeshInstance3D.new()
+			eye.mesh = _sphere(0.04, 5)
+			eye.material_override = mat(Color("1a1410"))
+			eye.position = c + Vector3(sx + 0.06 * e, 2.0, -0.33)
+			root.add_child(eye)
+
+
 ## Obor Istana Kegelapan dan ruang takhta: api ungu sihir Malzareth (titik dunia, satuan petak).
 const ISTANA_TORCHES: Array[Vector3] = [Vector3(13.3, 0, 2.5), Vector3(17.7, 0, 2.5), Vector3(4.5, 0, 9.5), Vector3(26.5, 0, 9.5),
 	Vector3(12.5, 0, 14.5), Vector3(18.5, 0, 14.5), Vector3(4.5, 0, 19.5), Vector3(26.5, 0, 19.5), Vector3(13.3, 0, 23.5), Vector3(17.7, 0, 23.5)]
@@ -1749,9 +1954,12 @@ const TAKHTA_TORCHES: Array[Vector3] = [Vector3(5.5, 0, 3.5), Vector3(15.5, 0, 3
 	Vector3(8.4, 0, 13.5), Vector3(12.6, 0, 13.5)]
 
 
-static func _add_torches_at(root: Node3D, spots: Array[Vector3], flame_col: Color) -> void:
+static func _add_torches_at(root: Node3D, spots: Array[Vector3], flame_col: Color, pools := false) -> void:
+	var pool_x: Array[Transform3D] = []
 	for i in spots.size():
 		var p := spots[i]
+		if pools:  # genangan cahaya di tanah: tetap terang walau lampu titiknya dibatasi (Perf.LIGHTS)
+			pool_x.append(_xf(Vector3(p.x, 0.02, p.z), Vector3(3.4, 1.0, 3.4)))
 		var stick := MeshInstance3D.new()
 		stick.mesh = _cyl(0.04, 0.05, 0.7, 6)
 		stick.material_override = mat(Color("5b3b1e"))
@@ -1767,13 +1975,15 @@ static func _add_torches_at(root: Node3D, spots: Array[Vector3], flame_col: Colo
 		flame.material_override = fm
 		flame.position = p + Vector3(0, 0.78, 0)
 		root.add_child(flame)
-		if i % 2 == 0:
+		if i % 2 == 0 or pools:
 			var light := OmniLight3D.new()
 			light.light_color = flame_col.lightened(0.2)
 			light.light_energy = 1.4
 			light.omni_range = 5.0
 			light.position = p + Vector3(0.0, 1.0, 0.0)
 			root.add_child(light)
+	if not pool_x.is_empty():
+		_multi(root, PlaneMesh.new(), _pool_material(flame_col), pool_x, [], false)
 
 
 ## Suasana per peta: langit, kabut, dan cahaya. Langit prosedural + tonemap filmik + sedikit
@@ -1794,13 +2004,20 @@ static func environment_for(map_id: String) -> Environment:
 		fog_c = Color("1d1710")
 		fog_d = 0.0
 	match map_id:
-		Maps.GUA, Maps.GUA_GOBLIN:
+		Maps.GUA:
 			top = Color("0b0908")
 			horizon = Color("0b0908")
 			ground = Color("0b0908")
 			ambient = 0.35
 			fog_c = Color("0b0908")
 			fog_d = 0.04
+		Maps.GUA_GOBLIN:  # v0.70.0: tanpa hujan, kabut asap tipis keabu-abuan, terang hanya di dekat obor
+			top = Color("0d0c0b")
+			horizon = Color("0d0c0b")
+			ground = Color("0d0c0b")
+			ambient = 0.2
+			fog_c = Color("2a2724")
+			fog_d = 0.05
 		Maps.GUNUNG:  # lereng Gunung Berapi (cerita The Last Dragon): langit berasap jingga
 			top = Color("5a3a3a")
 			horizon = Color("d9956a")
@@ -1860,6 +2077,8 @@ static func light_energy_for(map_id: String) -> float:
 		return 0.3
 	if map_id == Maps.ISTANA or map_id == Maps.TAKHTA:
 		return 0.3
+	if map_id == Maps.GUA_GOBLIN:
+		return 0.07  # hampir tanpa cahaya dari atas: terang datang dari obor
 	return 0.3 if map_id == Maps.GUA else 0.42
 
 
@@ -1868,4 +2087,4 @@ static func light_color_for(map_id: String) -> Color:
 		return Color("c8b4ff")
 	if map_id == Maps.GUNUNG:
 		return Color("ffd2a8")
-	return Color("ffa86a") if map_id == Maps.GUA else Color("fff0d2")
+	return Color("ffa86a") if map_id == Maps.GUA or map_id == Maps.GUA_GOBLIN else Color("fff0d2")

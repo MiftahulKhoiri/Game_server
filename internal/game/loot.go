@@ -79,9 +79,9 @@ var chests = []ChestDef{
 	{ID: "hutan_4", Map: MapHutanLebat, X: 80, Y: 15, Tier: 3},
 	{ID: "hutan_5", Map: MapHutanLebat, X: 25, Y: 26, Tier: 2},
 	{ID: "hutan_6", Map: MapHutanLebat, X: 144, Y: 21, Tier: 3},
-	{ID: "gua_gob_1", Map: MapGuaGoblin, X: 11, Y: 20, Tier: 3},
-	{ID: "gua_gob_2", Map: MapGuaGoblin, X: 18, Y: 20, Tier: 3},
-	{ID: "gua_gob_3", Map: MapGuaGoblin, X: 12, Y: 7, Tier: 3},
+	{ID: "gua_gob_1", Map: MapGuaGoblin, X: 2, Y: 69, Tier: 3}, // ujung lorong buntu (v0.70.0)
+	{ID: "gua_gob_2", Map: MapGuaGoblin, X: 57, Y: 23, Tier: 3},
+	{ID: "gua_gob_3", Map: MapGuaGoblin, X: 4, Y: 3, Tier: 3},
 	{ID: "gunung_1", Map: MapGunungBatu, X: 40, Y: 7, Tier: 3},
 	{ID: "gunung_2", Map: MapGunungBatu, X: 3, Y: 28, Tier: 3},
 	{ID: "gunung_3", Map: MapGunungBatu, X: 42, Y: 32, Tier: 3},

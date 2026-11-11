@@ -2333,11 +2333,11 @@ func _run() -> void:
 	print("== v0.46: Hutan Lebat, Gua Goblin, pendamping membantu")
 	_check(Maps.width(Maps.HUTAN) == 170 and Maps.height(Maps.HUTAN) == 50, "Hutan Lebat 170x50 (dua kali lebar Desa Awal)")
 	_check(Maps.width(Maps.HUTAN) == 2 * Maps.width(Maps.DEFAULT_MAP), "lebar Hutan Lebat dua kali Desa Awal")
-	_check(Maps.width(Maps.GUA_GOBLIN) == 25 and Maps.height(Maps.GUA_GOBLIN) == 30, "Gua Goblin 25x30")
+	_check(Maps.width(Maps.GUA_GOBLIN) == 61 and Maps.height(Maps.GUA_GOBLIN) == 72, "Gua Goblin 61x72 (v0.70.0)")
 	_check(Maps.tile_at(Maps.HUTAN, Maps.HUTAN_BOSS.x, Maps.HUTAN_BOSS.y) == "K", "singgasana bos hutan di petak K (142,47), dekat gerbang Gua Goblin")
 	_check(Maps.exit_at(Maps.PERBATASAN, 22, 49).get("to", "") == Maps.HUTAN, "Perbatasan selatan menuju Hutan Lebat")
 	_check(Maps.exit_at(Maps.HUTAN, 147, 49).get("to", "") == Maps.GUA_GOBLIN, "gerbang hutan menuju Gua Goblin")
-	_check(Maps.exit_at(Maps.GUA_GOBLIN, 12, 29).get("to", "") == Maps.GUNUNG, "Gua Goblin selatan menuju Gunung Batu")
+	_check(Maps.exit_at(Maps.GUA_GOBLIN, 30, 71).get("to", "") == Maps.GUNUNG, "Gua Goblin selatan menuju Gunung Batu")
 	_check(Maps.exit_locked(Maps.HUTAN, 147, 49, 0) and Maps.exit_locked(Maps.HUTAN, 146, 49, 2), "gerbang Gua Goblin (2 petak) terkunci sebelum tiga Goblin kalah")
 	_check(not Maps.exit_locked(Maps.HUTAN, 147, 49, 3) and not Maps.exit_locked(Maps.HUTAN, 22, 0, 0) and not Maps.exit_locked(Maps.PERBATASAN, 147, 49, 0), "gerbang terbuka setelah tiga Goblin; pintu lain tidak terkunci")
 	var seen_v46 := {Vector2i(22, 1): true}
@@ -2429,12 +2429,13 @@ func _run() -> void:
 
 	print("== v0.65: ujian bertingkat 25/75/100 di Hutan Lebat, Gua Goblin, Gunung Batu")
 	_check(Session.stage_need(0) == 25 and Session.stage_need(1) == 75 and Session.stage_need(2) == 100, "tahap ujian 25, 75, 100")
-	_check(Maps.exit_locked(Maps.GUA_GOBLIN, 12, 29, 0) and not Maps.exit_locked(Maps.GUA_GOBLIN, 12, 29, 3) and not Maps.exit_locked(Maps.GUA_GOBLIN, 12, 0, 0), "Gua Goblin: jalan ke Gunung Batu terkunci sampai 3 bos kalah, jalan pulang tidak")
+	_check(Maps.exit_locked(Maps.GUA_GOBLIN, 30, 71, 0) and not Maps.exit_locked(Maps.GUA_GOBLIN, 30, 71, 3) and not Maps.exit_locked(Maps.GUA_GOBLIN, 30, 0, 0), "Gua Goblin: jalan ke Gunung Batu terkunci sampai 3 bos kalah, jalan pulang tidak")
 	_check(Maps.exit_locked(Maps.GUNUNG, 22, 49, 2) and not Maps.exit_locked(Maps.GUNUNG, 22, 49, 3), "Gunung Batu: jalan ke Gua Batu terkunci sampai 3 bos kalah")
 	var tr_ok := true
 	for tr_m: String in Maps.TRIALS:
 		var tr_b: Vector2i = Maps.TRIALS[tr_m].boss
-		tr_ok = tr_ok and Maps.walkable(tr_m, tr_b.x, tr_b.y) and Maps.walkable(tr_m, tr_b.x, tr_b.y - 2)
+		# singgasana orc Gua Goblin (Z) sendiri pejal; bos muncul di depannya
+		tr_ok = tr_ok and (Maps.walkable(tr_m, tr_b.x, tr_b.y) or Maps.tile_at(tr_m, tr_b.x, tr_b.y) == "Z") and Maps.walkable(tr_m, tr_b.x, tr_b.y - 2)
 		var tr_g: Array = Maps.TRIALS[tr_m].gate
 		tr_ok = tr_ok and not Maps.exit_at(tr_m, int(tr_g[0]), int(tr_g[2])).is_empty()
 	_check(tr_ok, "singgasana tiap wilayah ujian bisa didatangi dan gerbangnya memang pintu keluar")
@@ -2446,7 +2447,7 @@ func _run() -> void:
 	_check(Session.trial_wave(Maps.GUA_GOBLIN) == 3 and Session.trial_wave(Maps.GUNUNG) == 0, "pemain lama yang sudah sampai Gunung Batu tidak terkunci di Gua Goblin")
 	Session.player.state["visited"] = []
 	Session.player.state.map = Maps.GUA_GOBLIN
-	Session.player.state.x = 12
+	Session.player.state.x = 30
 	Session.player.state.y = 2
 	Session.player.state.level = 6
 	Session.player.state["trials"] = {"gua_goblin": {"wave": 0, "kills": 25}}
@@ -2556,6 +2557,72 @@ func _run() -> void:
 			gob_lit = true
 	_check(gob_lit, "goblin diberi cahaya tepi + pancaran supaya tidak gelap")
 	gob_v691.free()
+
+	print("== v0.70.0: Gua Goblin besar, tiga jalan, singgasana orc, sungai, asap, radar persegi")
+	var gg_70 := Maps.GUA_GOBLIN
+	var gt_70: Dictionary = Maps.TRIALS[gg_70]
+	var bp_70: Vector2i = gt_70.boss
+	_check(Maps.tile_at(gg_70, bp_70.x, bp_70.y) == "Z" and not Maps.walkable(gg_70, bp_70.x, bp_70.y), "singgasana bos orc (Z) di titik bos, tidak bisa dilewati")
+	_check(Maps.walkable(gg_70, bp_70.x, bp_70.y - 2) and Maps.walkable(gg_70, bp_70.x, bp_70.y - 1), "bos muncul di lantai di depan singgasana")
+	_check(absi(bp_70.y - int(gt_70.gate[2])) <= 12 and absi(bp_70.x - int(gt_70.gate[0])) <= 3, "singgasana dekat pintu utama")
+	# Tiga jalan terpisah: dari aula masuk dan balairung singgasana ditutup, barat/tengah/timur tidak saling tembus.
+	var block_70 := {}
+	for y_70 in range(0, 13):
+		for x_70 in range(23, 38):
+			block_70[Vector2i(x_70, y_70)] = true
+	for y_70 in range(55, 72):
+		for x_70 in range(19, 42):
+			block_70[Vector2i(x_70, y_70)] = true
+	var reach_70 := func(start_70: Vector2i, blocked_70: Dictionary) -> Dictionary:
+		var seen_70 := {start_70: true}
+		var q_70: Array[Vector2i] = [start_70]
+		while not q_70.is_empty():
+			var cur_70: Vector2i = q_70.pop_back()
+			for d_70: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n_70: Vector2i = cur_70 + d_70
+				if not seen_70.has(n_70) and not blocked_70.has(n_70) and Maps.walkable(gg_70, n_70.x, n_70.y):
+					seen_70[n_70] = true
+					q_70.append(n_70)
+		return seen_70
+	var all_g_70: Dictionary = reach_70.call(Vector2i(30, 1), {})
+	_check(all_g_70.has(Vector2i(30, 70)) and all_g_70.has(Vector2i(bp_70.x, bp_70.y - 2)), "dari pintu masuk gua, singgasana dan pintu utama dapat dicapai")
+	var w_r_70: Dictionary = reach_70.call(Vector2i(17, 30), block_70)
+	var c_r_70: Dictionary = reach_70.call(Vector2i(26, 30), block_70)
+	var e_r_70: Dictionary = reach_70.call(Vector2i(43, 30), block_70)
+	var cross_70 := false
+	for k_70 in w_r_70:
+		if c_r_70.has(k_70) or e_r_70.has(k_70):
+			cross_70 = true
+	for k_70 in c_r_70:
+		if e_r_70.has(k_70):
+			cross_70 = true
+	_check(not cross_70, "tiga jalan gua (barat, tengah, timur) terpisah sampai balairung singgasana")
+	var n_water_70 := 0
+	var n_bridge_70 := 0
+	var n_skull_70 := 0
+	for row_70 in Maps.rows(gg_70):
+		n_water_70 += row_70.count("~")
+		n_bridge_70 += row_70.count("B")
+		n_skull_70 += row_70.count("X")
+	_check(n_water_70 > 50 and n_bridge_70 >= 6 and n_skull_70 >= 10, "sungai bawah tanah, jembatan, dan tumpukan tengkorak ada di gua")
+	for c_g_70: Dictionary in Maps.chests_in(gg_70):
+		_check(all_g_70.has(Vector2i(c_g_70.pos.x - 1, c_g_70.pos.y)) or all_g_70.has(Vector2i(c_g_70.pos.x + 1, c_g_70.pos.y)) or all_g_70.has(Vector2i(c_g_70.pos.x, c_g_70.pos.y - 1)) or all_g_70.has(Vector2i(c_g_70.pos.x, c_g_70.pos.y + 1)), "peti %s di gua dapat dicapai" % c_g_70.id)
+	for ex_g_70: Dictionary in Maps.EXITS[gg_70]:
+		_check(Maps.walkable(ex_g_70.to, ex_g_70.at.x, ex_g_70.at.y), "tujuan pintu gua %s dapat dipijak" % str(ex_g_70.pos))
+	for ex_g2_70: Dictionary in Maps.EXITS[Maps.HUTAN] + Maps.EXITS[Maps.GUNUNG]:
+		if ex_g2_70.to == gg_70:
+			_check(Maps.walkable(gg_70, ex_g2_70.at.x, ex_g2_70.at.y), "masuk ke gua dari %s di petak lantai" % str(ex_g2_70.pos))
+	var Atmo70: Script = load("res://scripts/atmosphere.gd")
+	_check(not Atmo70.outdoors(gg_70) and Atmo70.misty(gg_70) and not Atmo70.misty(Maps.HUTAN), "Gua Goblin: tanpa hujan/siang-malam, berasap tipis")
+	var WB70: Script = load("res://scripts/world_build.gd")
+	var torches_70: Array[Vector3] = WB70.cave_torch_spots(Maps.rows(gg_70))
+	_check(torches_70.size() >= 40, "obor gua banyak (%d)" % torches_70.size())
+	var rm70: Control = RMv49.new()
+	rm70.set_roads(gg_70, Maps.rows(gg_70))
+	_check(rm70.size.x > rm70.size.y + 40 and rm70.floors.size() > 500 and rm70.waters.size() > 50, "radar persegi lebar menggambar lorong gua dan sungai")
+	var bx_70: Dictionary = RMv49.blip_rect(Vector2(10, 10), Vector2(200, 10), 0.0)
+	_check(bx_70.clamped and absf(bx_70.at.x) <= rm70.size.x * 0.5, "musuh jauh menempel di tepi radar persegi")
+	rm70.free()
 	var me_v49: Dictionary = await Api.get_me()
 	Session.set_player(me_v49.data)
 	var s49: Dictionary = Session.player.state.duplicate(true)

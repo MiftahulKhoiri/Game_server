@@ -139,7 +139,7 @@ static func tick(delta: float) -> void:
 
 
 static func outdoors(map_id: String) -> bool:
-	return map_id != Maps.GUA and map_id != Maps.TAKHTA and not Maps.is_interior(map_id)
+	return map_id != Maps.GUA and map_id != Maps.GUA_GOBLIN and map_id != Maps.TAKHTA and not Maps.is_interior(map_id)
 
 
 ## Nama waktu untuk ditampilkan, mis. "Sore, hujan".
@@ -247,6 +247,56 @@ static func make_rain(extents: Vector3, amount: int) -> CPUParticles3D:
 	p.initial_velocity_max = 13.0
 	p.emitting = false
 	return p
+
+
+## Asap tipis yang melayang pelan di gua (Gua Goblin, v0.70.0). Taruh mengikuti pemain seperti hujan.
+static func make_mist(extents: Vector3, amount: int) -> CPUParticles3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.vertex_color_use_as_albedo = true
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1, 1, 1, 1))
+	grad.set_color(1, Color(1, 1, 1, 0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	mat.albedo_texture = tex
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(2.6, 2.6)
+	mesh.material = mat
+	var p := CPUParticles3D.new()
+	p.mesh = mesh
+	p.amount = amount
+	p.lifetime = 9.0
+	p.preprocess = 9.0
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = extents
+	p.direction = Vector3(1, 0.15, 0.3)
+	p.spread = 180.0
+	p.gravity = Vector3.ZERO
+	p.initial_velocity_min = 0.08
+	p.initial_velocity_max = 0.25
+	p.scale_amount_min = 0.7
+	p.scale_amount_max = 1.6
+	var ramp := Gradient.new()  # muncul dan hilang perlahan
+	ramp.offsets = PackedFloat32Array([0.0, 0.3, 0.7, 1.0])
+	ramp.colors = PackedColorArray([Color(0.62, 0.6, 0.56, 0.0), Color(0.62, 0.6, 0.56, 0.16), Color(0.62, 0.6, 0.56, 0.16), Color(0.62, 0.6, 0.56, 0.0)])
+	p.color_ramp = ramp
+	p.emitting = false
+	return p
+
+
+## Peta gua yang berasap (kabut tipis melayang).
+static func misty(map_id: String) -> bool:
+	return map_id == Maps.GUA_GOBLIN
 
 
 ## Jumlah tetesan menurut kualitas grafis (0 hemat, 1 normal, 2 tinggi).

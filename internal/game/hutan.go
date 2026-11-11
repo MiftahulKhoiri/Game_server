@@ -62,7 +62,7 @@ type TrialDef struct {
 // Trials: wilayah ujian berurutan.
 var Trials = []TrialDef{
 	{Map: MapHutanLebat, BossPrefix: "goblin_hutan_", BossX: HutanBossX, BossY: HutanBossY, Next: MapGuaGoblin},
-	{Map: MapGuaGoblin, BossPrefix: "kepala_goblin_", BossX: 12, BossY: 8, Next: MapGunungBatu},
+	{Map: MapGuaGoblin, BossPrefix: "kepala_goblin_", BossX: 30, BossY: 61, Next: MapGunungBatu}, // v0.70.0: singgasana di depan pintu utama
 	{Map: MapGunungBatu, BossPrefix: "ogre_gunung_", BossX: 21, BossY: 27, Next: MapGuaBatu},
 }
 

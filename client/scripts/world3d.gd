@@ -140,6 +140,7 @@ var _save_timer: Timer
 var _atmo_base: Dictionary = {}   # suasana dasar peta ini (sebelum waktu/cuaca)
 var _atmo_acc := 0.0
 var _rain: CPUParticles3D
+var _mist: CPUParticles3D        # asap tipis di Gua Goblin
 var _clock: ClockBadge
 var _companions: Companions
 var _npc_models: Dictionary = {}  # id NPC -> model 3D
@@ -162,6 +163,8 @@ var _cam_finger := -1
 var _cam_idle := 99.0  # detik sejak kamera terakhir digeser (lihat _follow_camera)
 var _status: Label
 var _radar: Control            # Radar Musuh (titik musuh di hutan); tampil bila Radar ada di ransel
+var _radar_acc := 0.0
+const RADAR_STEP := 0.066
 var _hutan_hud: Control        # papan misi wilayah ujian: musuh X/25|75|100, bos, panah arah
 var _hutan_boss: Roamer        # Goblin yang menunggu di singgasana hutan (bila sudah waktunya)
 var _hutan_sig := -1           # tanda kemajuan terakhir (untuk pesan saat berubah)
@@ -263,6 +266,8 @@ func _ready() -> void:
 	_camera.current = true
 	_rain = Atmosphere.make_rain(Vector3(6, 0.2, 6), Atmosphere.rain_amount(Session.quality))
 	add_child(_rain)
+	_mist = Atmosphere.make_mist(Vector3(9, 0.5, 9), [10, 18, 26][clampi(Session.quality, 0, 2)])
+	add_child(_mist)
 
 	_make_player()
 	_life = WorldLife.new()
@@ -388,6 +393,9 @@ func _load_map(map_id: String) -> void:
 	_atmo_base = Atmosphere.capture(_env.environment, _sun)
 	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
 	Atmosphere.set_rain(_rain, map_id)
+	if _mist != null:
+		_mist.emitting = Atmosphere.misty(map_id)
+		_mist.visible = _mist.emitting
 	_lights = _terrain.find_children("*", "OmniLight3D", true, false) + _npc_root.find_children("*", "OmniLight3D", true, false)
 	_update_lamps()
 	_cull_lights()
@@ -871,7 +879,10 @@ func _process(delta: float) -> void:
 		_cull_lights()
 	if _hutan_hud != null and _hutan_hud.visible:
 		_hutan_hud.update_view(Session.trial_kills(_map_id), Session.trial_wave(_map_id), _pos, _cam_yaw, Session.hutan_started() or _map_id != Maps.HUTAN, _map_id)
-	_update_radar()
+	_radar_acc += delta
+	if _radar_acc >= RADAR_STEP:  # peta kecil radar cukup digambar ulang ~15 kali per detik
+		_radar_acc = 0.0
+		_update_radar()
 	_update_doors(delta)
 	_tick_actions(delta)
 	_follow_camera(delta, _input_vector() if not _locked else Vector2.ZERO)
@@ -925,6 +936,8 @@ func _update_world_life(delta: float) -> void:
 		_update_clock()
 	if _rain != null:
 		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
+	if _mist != null and _mist.emitting:
+		_mist.position = Vector3(_pos.x, 0.9, _pos.y)
 	_update_npcs(delta)
 	_update_roamers(delta)
 	if _life != null:
