@@ -126,11 +126,11 @@ const HUTAN_BOSS := Vector2i(142, 47)
 const TRIALS := {
 	"hutan_lebat": {"boss": Vector2i(142, 47), "prefix": "goblin_hutan_", "boss_name": "Goblin Level %d", "next": "gua_goblin",
 		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
-	"gua_goblin": {"boss": Vector2i(30, 61), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "boss_names": ["Kepala Goblin Lv 1", "Kepala Goblin Lv 2", "Raja Goblin"], "next": "gunung_batu",
+	"gua_goblin": {"boss": Vector2i(30, 61), "prefix": "kepala_goblin_", "boss_name": "Orc Batu Lv %d", "boss_names": ["Orc Batu Lv 1", "Orc Batu Lv 2", "Raja Orc Batu"], "next": "gunung_batu",
 		"gate": [29, 31, 71], "gate_point": Vector2(30.5, 70.5), "home": Vector2(30.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(30.5, 0.0, 71.45), "lock_w": 3.0,
 		# v0.71.0: bos memburu pemain ke seluruh gua (server: TrialDef.Hunt); kecepatan dan kegesitan per tahap
 		"hunt": true, "boss_speed": [2.8, 3.1, 3.45], "boss_agility": [1.35, 1.6, 1.9]},
-	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Orc Batu Lv %d", "boss_names": ["Orc Batu Lv 1", "Orc Batu Lv 2", "Panglima Lereng"], "next": "gua_batu",
+	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Naga Lava Lv %d", "boss_names": ["Naga Lava Lv 1", "Naga Lava Lv 2", "Induk Naga Lava"], "next": "gua_batu",
 		"gate": [22, 22, 49], "gate_point": Vector2(22.5, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Gua Goblin", "foe": "Musuh", "lock": Vector3(22.5, 0.0, 49.45), "lock_w": 3.0},
 }
 ## Kem Kapten Rimba (api unggun, tenda, panji) tepat di bawah gapura desa di Perbatasan: zona aman per peta, binatang tidak masuk.
@@ -344,30 +344,74 @@ const ROAMERS := {
 		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
 		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 3},
 	]},
-	"gua_goblin": {"n": 24, "tiles": "MG", "min_y": 3, "kinds": [
+	# Urutan musuh (v0.72.0): tiap peta = musuh peta sebelumnya + golongan baru, makin berat (server: mapPower).
+	# Gua Goblin: binatang hutan + goblin + binatang tulang; bos Orc Batu.
+	"gua_goblin": {"n": 26, "tiles": "MG", "min_y": 3, "kinds": [
+		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 4},
+		{"id": "ular_belang", "name": "Ular Belang", "lv": 4},
+		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 5},
+		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 5, "waktu": "malam"},
+		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 6},
+		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 4},
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
-		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
-		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 5, "patroli": true},
+		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 3},
+		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 4, "patroli": true},
 		{"id": "kelelawar_gua", "name": "Kerangka Gua", "lv": 3},
+		{"id": "serigala_tulang", "name": "Serigala Tulang", "lv": 4},
+		{"id": "beruang_tulang", "name": "Beruang Tulang", "lv": 6},
 	]},
-	"gunung_batu": {"n": 14, "tiles": "MG", "min_y": 3, "kinds": [
-		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
-		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 4},
+	# Gunung Berapi: binatang hutan + goblin + orc batu; bos Naga Lava.
+	"gunung_batu": {"n": 16, "tiles": "MG", "min_y": 3, "kinds": [
+		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 7},
+		{"id": "ular_belang", "name": "Ular Belang", "lv": 7},
+		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 8},
+		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 8, "waktu": "malam"},
+		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 9},
+		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 7},
+		{"id": "goblin", "name": "Goblin Gunung", "lv": 7},
+		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 8},
+		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 9, "patroli": true},
 		{"id": "ogre_rawa", "name": "Ogre Rawa", "lv": 4},
 		{"id": "ogre_batu", "name": "Prajurit Orc Batu", "lv": 5},
 	]},
-	"gua_batu": {"n": 7, "tiles": "MG", "min_y": 3, "kinds": [
-		{"id": "orc_gua", "name": "Orc Gua", "lv": 5},
-		{"id": "orc_penjaga", "name": "Orc Penjaga", "lv": 6, "patroli": true},
-		{"id": "golem_lava", "name": "Iblis Lava", "lv": 6},
-		{"id": "orc_buas", "name": "Orc Buas", "lv": 7},
+	# Benteng Orc: binatang hutan + goblin + orc batu + orc benteng; bos Panglima Orc Batu (cerita).
+	"gua_batu": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [
+		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 10},
+		{"id": "ular_belang", "name": "Ular Belang", "lv": 10},
+		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 11},
+		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 11, "waktu": "malam"},
+		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 12},
+		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 10},
+		{"id": "goblin", "name": "Goblin Gunung", "lv": 10},
+		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 11},
+		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 12, "patroli": true},
+		{"id": "ogre_rawa", "name": "Ogre Rawa", "lv": 10},
+		{"id": "ogre_batu", "name": "Prajurit Orc Batu", "lv": 11},
+		{"id": "orc_gua", "name": "Orc Gua", "lv": 11},
+		{"id": "orc_penjaga", "name": "Orc Penjaga", "lv": 12, "patroli": true},
+		{"id": "golem_lava", "name": "Iblis Lava", "lv": 12},
+		{"id": "orc_buas", "name": "Orc Buas", "lv": 13},
 	]},
-	# Halaman Istana Kegelapan (Bab 4): sisa pasukan terkutuk penjaga istana.
-	"istana_kegelapan": {"n": 10, "tiles": "O", "min_y": 6, "kinds": [
+	# Halaman Istana Kegelapan (Bab 4): binatang hutan + goblin + orc batu + dua naga kecil + pasukan terkutuk;
+	# bos besarnya Malzareth (Aldragor tetap bos cerita di singgasana halaman).
+	"istana_kegelapan": {"n": 16, "tiles": "O", "min_y": 6, "kinds": [
+		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 13},
+		{"id": "ular_belang", "name": "Ular Belang", "lv": 13},
+		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 14},
+		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 14, "waktu": "malam"},
+		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 15},
+		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 13},
+		{"id": "goblin", "name": "Goblin Gunung", "lv": 13},
+		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 14},
+		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 15, "patroli": true},
+		{"id": "ogre_rawa", "name": "Ogre Rawa", "lv": 13},
+		{"id": "ogre_batu", "name": "Prajurit Orc Batu", "lv": 14},
 		{"id": "kelelawar_istana", "name": "Kelelawar Kegelapan", "lv": 10},
 		{"id": "prajurit_kutukan", "name": "Prajurit Terkutuk", "lv": 10, "patroli": true},
 		{"id": "orc_kegelapan", "name": "Orc Kegelapan", "lv": 11},
 		{"id": "iblis_bayangan", "name": "Iblis Bayangan", "lv": 12},
+		{"id": "naga_bayangan", "name": "Naga Bayangan", "lv": 12},
+		{"id": "naga_api", "name": "Naga Api Muda", "lv": 13},
 	]},
 }
 
@@ -889,7 +933,7 @@ const TAKHTA_ROWS: Array[String] = [
 ]
 
 
-## Nama bos ujian Level `level` (1..3) di peta itu, mis. "Raja Goblin" untuk bos ketiga Gua Goblin.
+## Nama bos ujian Level `level` (1..3) di peta itu, mis. "Raja Orc Batu" untuk bos ketiga Gua Goblin.
 static func boss_label(map_id: String, level: int) -> String:
 	var t: Dictionary = TRIALS.get(map_id, {})
 	var names: Array = t.get("boss_names", [])

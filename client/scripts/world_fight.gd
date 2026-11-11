@@ -30,7 +30,7 @@ const RESPAWN_S := 45.0         # musuh pengganti muncul sekian detik setelah sa
 const BOSS_IDS := ["raja_goblin", "aldragor", "malzareth"]
 const POTION_ID := "ramuan"
 ## Seruan bos cerita saat pertarungan dimulai (The Last Dragon, docs/STORY.md).
-const TAUNTS := {"kepala_goblin_3": "Raja Goblin: \"Manusia! Penyihir itu memberi kami kekuatan! Kami tidak akan membiarkanmu melewati gua ini!\""}
+const TAUNTS := {"kepala_goblin_3": "Raja Orc Batu: \"Manusia! Penyihir itu memberi kami kekuatan! Kami tidak akan membiarkanmu melewati gua ini!\""}
 const ACTION_BUTTONS := {"attack": "tangan", "skill1": "kaki", "defend": "hindar", "dodge": "hindar"}
 
 ## Bar nyawa musuh yang selalu menghadap kamera: bidang kecil dengan shader (isi mengikuti `ratio`).

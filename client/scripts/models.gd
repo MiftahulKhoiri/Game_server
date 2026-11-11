@@ -33,11 +33,14 @@ static func is_hero(id: String) -> bool:
 const SCALES := {
 	"ksatria": 0.42, "pendekar_kapak": 0.44, "pemanah": 0.42, "pendekar_tombak": 0.42, "penyihir": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
 	"goblin": 0.58, "goblin_penjaga": 0.68, "raja_goblin": 0.95, "ogre_batu": 1.1,
-	"golem_kerikil": 1.0, "golem_lava": 1.1,
+	"golem_kerikil": 1.0, "golem_lava": 1.1, "serigala_tulang": 1.25, "beruang_tulang": 1.45,
 	"tikus_sawah": 0.8, "babi_hutan": 0.95, "serigala_hutan": 0.95,
 	"ular_sawah": 1.0, "belalang_raksasa": 0.95, "kelelawar_gua": 1.0,
 }
 
+
+## Warna Naga Lava (bos Gunung Berapi): merah lava, sayap hangus, perut jingga menyala.
+const NAGA_LAVA := {"Main": Color("9a2412"), "Wings": Color("3a0e08"), "Belly": Color("ff9a2a"), "Claws": Color("f2ead6"), "Eyes": Color("fff060")}
 
 ## Musuh yang memakai model musuh lain dengan ukuran (kali lipat) dan warna (pengali) berbeda,
 ## supaya satu model bisa jadi goblin kecil, orc besar, atau serigala alfa tanpa berkas baru.
@@ -62,13 +65,16 @@ const VARIANTS := {
 	"goblin_hutan_1": {"base": "goblin_penjaga", "size": 1.6, "tint": Color("b8e0a0")},
 	"goblin_hutan_2": {"base": "goblin_penjaga", "size": 1.95, "tint": Color("e8c070")},
 	"goblin_hutan_3": {"base": "goblin_penjaga", "size": 2.3, "tint": Color("e07060")},
-	# Bos ujian Gua Goblin dan Gunung Batu (v0.65.0): makin besar dan gelap tiap level.
-	"kepala_goblin_1": {"base": "goblin", "size": 1.8, "tint": Color("c0a8f0")},
-	"kepala_goblin_2": {"base": "goblin", "size": 2.15, "tint": Color("8fb4ff")},
-	"kepala_goblin_3": {"base": "goblin", "size": 2.5, "tint": Color("ff9a5a")},
-	"ogre_gunung_1": {"base": "ogre_batu", "size": 1.25, "tint": Color("d8d0b8")},
-	"ogre_gunung_2": {"base": "ogre_batu", "size": 1.5, "tint": Color("b8c8e8")},
-	"ogre_gunung_3": {"base": "ogre_batu", "size": 1.8, "tint": Color("e89a80")},
+	# Urutan bos (v0.72.0): Hutan = Goblin, Gua Goblin = Orc Batu, Gunung Berapi = Naga Lava. Id lama dipertahankan.
+	"kepala_goblin_1": {"base": "ogre_batu", "size": 1.6, "tint": Color("d6ccb4")},
+	"kepala_goblin_2": {"base": "ogre_batu", "size": 1.9, "tint": Color("b4bccc")},
+	"kepala_goblin_3": {"base": "ogre_batu", "size": 2.25, "tint": Color("e6a888")},
+	"ogre_gunung_1": {"base": "aldragor", "size": 0.8, "tint": Color.WHITE, "colors": NAGA_LAVA},
+	"ogre_gunung_2": {"base": "aldragor", "size": 0.95, "tint": Color.WHITE, "colors": NAGA_LAVA},
+	"ogre_gunung_3": {"base": "aldragor", "size": 1.1, "tint": Color("fff0e0"), "colors": NAGA_LAVA},
+	# Istana Kegelapan (v0.72.0): dua jenis naga kecil berkeliaran.
+	"naga_bayangan": {"base": "aldragor", "size": 0.5, "tint": Color.WHITE, "colors": {"Main": Color("3e2e62"), "Wings": Color("1c1230"), "Belly": Color("8a6ab4"), "Claws": Color("d8d0e8"), "Eyes": Color("d080ff")}},
+	"naga_api": {"base": "aldragor", "size": 0.56, "tint": Color.WHITE, "colors": {"Main": Color("d8662c"), "Wings": Color("7a2a12"), "Belly": Color("f4c868"), "Claws": Color("f2ead6"), "Eyes": Color("ffe040")}},
 	# Ogre Rawa (roadmap no. 63): Monster Batu yang lebih kecil dan hijau lumut.
 	"ogre_rawa": {"base": "ogre_batu", "size": 0.88, "tint": Color("a8d090")},
 	# Cerita The Last Dragon (v0.67.0). Panglima Orc Batu (id lama raja_goblin) memakai model Monster Batu yang besar
@@ -162,6 +168,8 @@ static func create(id: String) -> Node3D:
 		var v: Dictionary = VARIANTS[id]
 		var base := create(str(v.base))
 		base.scale = base.scale * float(v.size)
+		if v.has("colors"):  # warna per bahan (model Quaternius), mis. naga lava / naga bayangan
+			_color_by_material(base, v.colors)
 		var tint: Color = v.tint
 		if BRIGHT.has(str(v.base)):
 			tint = tint.lerp(Color.WHITE, BRIGHT_TINT_SOFTEN)  # warna varian goblin tidak menggelapkan model
@@ -774,6 +782,12 @@ static func build_placeholder(id: String) -> Node3D:
 		"kelelawar_gua":
 			pv = _bat(rig)
 			kind = "bat"
+		"serigala_tulang":
+			pv = _bone_beast(rig, {"len": 0.42, "wid": 0.17, "hgt": 0.2, "leg_len": 0.3, "head_r": 0.13, "snout": 2.1})
+			kind = "quad"
+		"beruang_tulang":
+			pv = _bone_beast(rig, {"len": 0.52, "wid": 0.3, "hgt": 0.32, "leg_len": 0.34, "head_r": 0.17, "snout": 1.4, "spikes": true})
+			kind = "quad"
 		_:
 			pv = _humanoid(rig, {"skin": Color("c8a878"), "shirt": Color("8a5a3c"), "pants": Color("4a3a2a"), "shoes": Color("3a2a1a")})
 	rig.setup(kind, pv)
@@ -935,6 +949,75 @@ static func _quad(root: Node3D, o: Dictionary) -> Dictionary:
 		var leg := pivot(body, nm, Vector3(d.x * wid * 0.6, leg_len + hgt * 0.2, d.y * len * 0.55))
 		pv[nm] = leg
 		box(leg, Vector3(0.07 + wid * 0.12, leg_len + hgt * 0.2, 0.07 + wid * 0.12), Vector3(0, -(leg_len + hgt * 0.2) / 2.0, 0), c.darkened(0.15))
+	return pv
+
+
+## Binatang tulang (v0.72.0, Gua Goblin): kerangka binatang yang dibangkitkan kutukan, dari bentuk dasar. Tengkorak
+## bermata merah menyala, rahang bergigi, tulang punggung, rongga rusuk, panggul, kaki bertulang dua ruas, dan ekor
+## dari ruas tulang. Memakai sendi yang sama dengan _quad (leg_fl.., head, tail) supaya geraknya ikut rig "quad".
+const BONE := Color("e8dec6")
+const BONE_DARK := Color("1e1612")
+const BONE_EYE := Color("ff3020")
+
+static func _bone_beast(root: Node3D, o: Dictionary) -> Dictionary:
+	var ln := float(o.len)
+	var wid := float(o.wid)
+	var hgt := float(o.hgt)
+	var leg_len := float(o.leg_len)
+	var hr := float(o.head_r)
+	var pv: Dictionary = {}
+	var body := pivot(root, "body", Vector3.ZERO)
+	pv["body"] = body
+	var by := leg_len + hgt * 0.75
+	for i in 9:  # tulang punggung melengkung
+		var t := float(i) / 8.0
+		var z := lerpf(-ln, ln, t)
+		ball(body, 0.05 + wid * 0.12, Vector3(0, by + sin(t * PI) * hgt * 0.25, z), BONE, Vector3(1.0, 0.8, 1.2))
+	for k in 5:  # rongga rusuk: cincin tulang dari punggung ke dada
+		var z2 := lerpf(-ln * 0.15, ln * 0.7, float(k) / 4.0)
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.85
+		ring.outer_radius = 1.0
+		ring.rings = 12
+		ring.ring_segments = 5
+		var rib := _mi(body, ring, Vector3(0, by - hgt * 0.35, z2), BONE, Vector3(PI / 2.0, 0, 0))
+		var shrink := 1.0 - absf(float(k) - 2.0) * 0.12
+		rib.scale = Vector3(wid * shrink, 1.0 / 0.15 * 0.03, hgt * 0.75 * shrink)
+	box(body, Vector3(wid * 1.3, hgt * 0.35, ln * 0.3), Vector3(0, by - hgt * 0.1, -ln * 0.8), BONE)  # panggul
+	var head := pivot(body, "head", Vector3(0, by + hgt * 0.35, ln * 1.05))
+	pv["head"] = head
+	ball(head, hr, Vector3(0, 0, 0), BONE, Vector3(0.8, 0.75, 0.95))  # tempurung
+	var sn := float(o.snout)
+	box(head, Vector3(hr * 1.0, hr * 0.55, hr * sn), Vector3(0, -hr * 0.2, hr * (0.55 + sn * 0.5)), BONE)  # moncong
+	box(head, Vector3(hr * 0.9, hr * 0.18, hr * sn * 0.95), Vector3(0, -hr * 0.62, hr * (0.5 + sn * 0.5)), BONE, Vector3(0.18, 0, 0))  # rahang
+	for i2 in 5:  # gigi
+		var tz := hr * (0.75 + sn * 0.8) - i2 * hr * sn * 0.16
+		for sx in [-1.0, 1.0]:
+			cone(head, hr * 0.06, hr * 0.22, Vector3(sx * hr * 0.38, -hr * 0.5, tz), BONE, Vector3(PI, 0, 0))
+	for s in [-1.0, 1.0]:
+		ball(head, hr * 0.22, Vector3(s * hr * 0.36, hr * 0.12, hr * 0.62), BONE_DARK)  # rongga mata
+		ball(head, hr * 0.12, Vector3(s * hr * 0.37, hr * 0.12, hr * 0.74), BONE_EYE, Vector3.ONE, true)  # mata menyala
+		cone(head, hr * 0.22, hr * 0.7, Vector3(s * hr * 0.55, hr * 0.85, -hr * 0.2), BONE, Vector3(-0.3, 0, -s * 0.35))  # telinga/tanduk
+	ball(head, hr * 0.12, Vector3(0, -hr * 0.05, hr * (0.6 + sn)), BONE_DARK)  # lubang hidung
+	if bool(o.get("spikes", false)):
+		for i3 in 4:  # duri tulang di punggung beruang
+			cone(body, wid * 0.12, hgt * 0.7, Vector3(0, by + hgt * 0.5, lerpf(-ln * 0.4, ln * 0.6, float(i3) / 3.0)), BONE, Vector3(-0.25, 0, 0))
+	var tail := pivot(body, "tail", Vector3(0, by, -ln * 1.05))
+	pv["tail"] = tail
+	for i4 in 5:
+		ball(tail, 0.04 + wid * 0.08 - i4 * 0.008, Vector3(0, -i4 * 0.03, -0.06 - i4 * 0.08), BONE)
+	var legs := {"leg_fl": Vector2(-1, 1), "leg_fr": Vector2(1, 1), "leg_bl": Vector2(-1, -1), "leg_br": Vector2(1, -1)}
+	for nm: String in legs:
+		var d: Vector2 = legs[nm]
+		var top := leg_len + hgt * 0.3
+		var leg := pivot(body, nm, Vector3(d.x * wid * 0.75, top, d.y * ln * 0.6))
+		pv[nm] = leg
+		var r := 0.025 + wid * 0.08
+		ball(leg, r * 1.5, Vector3(0, 0, 0), BONE)                                 # sendi bahu/pinggul
+		cyl(leg, r, r * 0.9, top * 0.52, Vector3(0, -top * 0.26, 0), BONE)        # tulang atas
+		ball(leg, r * 1.25, Vector3(0, -top * 0.52, 0), BONE)                     # lutut
+		cyl(leg, r * 0.85, r * 0.75, top * 0.46, Vector3(0, -top * 0.76, 0.0), BONE)  # tulang bawah
+		box(leg, Vector3(r * 3.0, r * 1.2, r * 3.6), Vector3(0, -top + r * 0.6, r * 0.9), BONE)  # cakar
 	return pv
 
 

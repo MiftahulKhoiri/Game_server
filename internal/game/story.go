@@ -85,11 +85,11 @@ var Story = []StoryStep{
 		Kind: StoryTrial, Trial: MapHutanLebat, RewardGold: 150,
 		Done: "Jejak pasukan Goblin mengarah ke Gua Goblin. Elara dibawa ke sana!"},
 	// Bab 2 — Gua Goblin
-	{ID: "gua_raja", Chapter: "Bab 2: Gua Goblin", Goal: "Masuki Gua Goblin dan kalahkan Raja Goblin yang terkutuk",
+	{ID: "gua_raja", Chapter: "Bab 2: Gua Goblin", Goal: "Masuki Gua Goblin dan kalahkan Raja Orc Batu yang menguasainya",
 		Kind: StoryTrial, Trial: MapGuaGoblin, RewardGold: 250, RewardItems: []Item{{ID: LambangID, Qty: 1}},
-		Done: "Kamu menemukan Lambang Malzareth: para Goblin hanya diperintah penyihir itu. Sumber kekuatannya ada di gunung berapi."},
+		Done: "Kamu menemukan Lambang Malzareth: para Goblin dan Orc Batu hanya diperintah penyihir itu. Sumber kekuatannya ada di gunung berapi."},
 	// Bab 3 — Gunung Berapi dan Orc Batu
-	{ID: "gunung_orc", Chapter: "Bab 3: Gunung Berapi", Goal: "Lewati lereng Gunung Berapi dan kalahkan tiga Orc Batu",
+	{ID: "gunung_orc", Chapter: "Bab 3: Gunung Berapi", Goal: "Lewati lereng Gunung Berapi dan kalahkan tiga Naga Lava",
 		Kind: StoryTrial, Trial: MapGunungBatu, RewardGold: 350,
 		Done: "Jalan ke Benteng Orc di perut gunung terbuka."},
 	{ID: "benteng_panglima", Chapter: "Bab 3: Gunung Berapi", Goal: "Masuki Benteng Orc dan kalahkan Panglima Orc Batu di singgasananya",

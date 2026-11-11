@@ -270,3 +270,47 @@ func TestGuaGoblinBossHunts(t *testing.T) {
 		t.Fatalf("bos hutan tetap hanya di dekat singgasana: %v", err)
 	}
 }
+
+// v0.72.0: urutan musuh tiap peta bertumpuk (binatang hutan -> goblin -> orc batu -> naga) dan makin berat.
+func TestMapOrderAndPower(t *testing.T) {
+	has := func(m, id string) bool { e, _ := EnemyByID(id); return e.inZone(m) && !e.Boss }
+	checks := map[string][]string{
+		MapHutanLebat: {"rubah_hutan", "beruang_hutan"},
+		MapGuaGoblin:  {"rubah_hutan", "goblin", "serigala_tulang", "beruang_tulang"},
+		MapGunungBatu: {"beruang_hutan", "goblin_pemburu", "ogre_batu"},
+		MapGuaBatu:    {"serigala_hitam", "goblin", "ogre_batu", "orc_gua"},
+		MapIstana:     {"beruang_hutan", "goblin", "ogre_batu", "naga_bayangan", "naga_api"},
+	}
+	for m, ids := range checks {
+		for _, id := range ids {
+			if !has(m, id) {
+				t.Errorf("%s harus punya musuh %s", m, id)
+			}
+		}
+	}
+	if has(MapHutanLebat, "goblin") || has(MapGuaGoblin, "ogre_batu") || has(MapGunungBatu, "naga_api") {
+		t.Error("golongan musuh peta berikutnya tidak boleh muncul lebih awal")
+	}
+	// Serigala Hitam makin kuat di tiap peta berikutnya.
+	e, _ := EnemyByID("serigala_hitam")
+	prev := 0
+	for _, m := range []string{MapHutanLebat, MapGuaGoblin, MapGunungBatu, MapGuaBatu, MapIstana} {
+		st := State{Map: m, Level: 4}
+		st.setTrial(m, HutanProgress{Wave: 0, Briefed: true})
+		b := Battle{EnemyHP: e.HP, EnemyMaxHP: e.HP}
+		b.strengthen(st, e)
+		if b.EnemyMaxHP <= prev {
+			t.Fatalf("%s: HP Serigala Hitam %d tidak lebih berat dari peta sebelumnya (%d)", m, b.EnemyMaxHP, prev)
+		}
+		prev = b.EnemyMaxHP
+	}
+	// Bos terakhir tiap peta makin kuat: Goblin Lv 3 < Raja Orc Batu < Induk Naga Lava < Panglima < Aldragor < Malzareth.
+	prevHP := 0
+	for _, id := range []string{"goblin_hutan_3", "kepala_goblin_3", "ogre_gunung_3", "raja_goblin", AldragorID, MalzarethID} {
+		b, _ := EnemyByID(id)
+		if b.HP <= prevHP {
+			t.Fatalf("bos %s (HP %d) harus lebih kuat dari bos peta sebelumnya (%d)", id, b.HP, prevHP)
+		}
+		prevHP = b.HP
+	}
+}

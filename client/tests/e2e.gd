@@ -532,7 +532,7 @@ func _run() -> void:
 	_check(Maps.tile_at(Maps.ISTANA, 15, 14) == "K" and Maps.tile_at(Maps.TAKHTA, 10, 13) == "K", "singgasana Aldragor dan Malzareth (sama dengan BossSpot server)")
 	_check(Maps.boss_tile_active(Maps.ISTANA, 9) and not Maps.boss_tile_active(Maps.ISTANA, 10) and Maps.boss_tile_active(Maps.GUA, 0), "singgasana bos cerita hanya aktif pada langkahnya")
 	_check(Maps.width(Maps.ISTANA) == 31 and Maps.height(Maps.ISTANA) == 26 and Maps.width(Maps.TAKHTA) == 21 and Maps.height(Maps.TAKHTA) == 20, "ukuran peta Bab 4 sama dengan server")
-	_check(Maps.boss_label(Maps.GUA_GOBLIN, 3) == "Raja Goblin" and Maps.boss_label(Maps.GUA_GOBLIN, 1) == "Kepala Goblin Lv 1" and Maps.boss_label(Maps.HUTAN, 2) == "Goblin Level 2", "nama bos ujian (Raja Goblin)")
+	_check(Maps.boss_label(Maps.GUA_GOBLIN, 3) == "Raja Orc Batu" and Maps.boss_label(Maps.GUA_GOBLIN, 1) == "Orc Batu Lv 1" and Maps.boss_label(Maps.HUTAN, 2) == "Goblin Level 2" and Maps.boss_label(Maps.GUNUNG, 3) == "Induk Naga Lava", "nama bos ujian: Goblin -> Orc Batu -> Naga Lava")
 	_check(StoryMod.GOALS.size() == StoryMod.END and StoryMod.GOALS_LONG.size() == StoryMod.END and StoryMod.CHAPTERS.size() == StoryMod.END, "tiap langkah cerita punya tujuan dan bab")
 	var narasi_ok: bool = StoryMod.NARASI.has(-1)
 	for i in StoryMod.END:
@@ -2644,6 +2644,25 @@ func _run() -> void:
 	for _i71 in 600:
 		oc71 = oc71 or ob71.step(0.05, Vector2(4.5, 4.5), true, 6)
 	_check(not oc71, "musuh biasa tidak memburu ke seluruh gua")
+
+	print("== v0.72.0: urutan musuh tiap peta, binatang tulang, naga kecil, bos orc batu dan naga lava")
+	var kinds72 := func(m: String) -> Array:
+		var out72: Array = []
+		for k72: Dictionary in Maps.ROAMERS[m].kinds:
+			out72.append(str(k72.id))
+		return out72
+	var gua72: Array = kinds72.call(Maps.GUA_GOBLIN)
+	var gun72: Array = kinds72.call(Maps.GUNUNG)
+	var ist72: Array = kinds72.call(Maps.ISTANA)
+	_check(gua72.has("beruang_hutan") and gua72.has("goblin") and gua72.has("serigala_tulang") and gua72.has("beruang_tulang") and not gua72.has("ogre_batu"), "Gua Goblin: binatang hutan + goblin + binatang tulang, belum ada orc batu")
+	_check(gun72.has("serigala_hitam") and gun72.has("goblin_pemburu") and gun72.has("ogre_batu") and not gun72.has("naga_api"), "Gunung Berapi: binatang hutan + goblin + orc batu")
+	_check(ist72.has("rubah_hutan") and ist72.has("goblin") and ist72.has("ogre_batu") and ist72.has("naga_bayangan") and ist72.has("naga_api"), "Istana Kegelapan: binatang + goblin + orc batu + dua naga kecil")
+	var M72: Script = load("res://scripts/models.gd")
+	for id72: String in ["serigala_tulang", "beruang_tulang", "naga_bayangan", "naga_api", "kepala_goblin_1", "ogre_gunung_3"]:
+		var n72: Node3D = M72.create(id72)
+		_check(n72 != null and n72.find_children("*", "MeshInstance3D", true, false).size() > 0, "model %s dibuat" % id72)
+		n72.free()
+	_check(str(M72.VARIANTS.kepala_goblin_3.base) == "ogre_batu" and str(M72.VARIANTS.ogre_gunung_1.base) == "aldragor", "bos gua = Orc Batu, bos gunung = naga")
 	var me_v49: Dictionary = await Api.get_me()
 	Session.set_player(me_v49.data)
 	var s49: Dictionary = Session.player.state.duplicate(true)

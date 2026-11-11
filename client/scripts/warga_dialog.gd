@@ -79,7 +79,7 @@ const WARGA := {
 		["Kak Elara bilang binatang di hutan dulu teman. Kenapa sekarang mereka menggigit?",
 		"Kalau Kakak ketemu Kak Elara, bilang aku rindu, ya!"],
 		["Goblin itu bau tidak, Kak? Kata Dika mereka hijau dan bau!",
-		"Aku menggambar Kakak melawan Raja Goblin. Bagus, kan?"],
+		"Aku menggambar Kakak melawan Raja Orc Batu. Bagus, kan?"],
 		["Gunung berapi itu ada lavanya, Kak? Jangan sampai kakinya kepanasan!",
 		"Aku mimpi Orc batu menangis. Aneh, ya."],
 		["Kak Elara akan pulang, kan? Kakak janji, ya!",

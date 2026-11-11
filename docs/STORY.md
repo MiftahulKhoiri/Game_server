@@ -73,7 +73,7 @@ Pahlawan menelusuri jejak penculik sambil menghadapi binatang yang terkena kutuk
 
 Gua Goblin dahulu merupakan tempat tinggal bangsa Goblin yang bekerja sebagai penambang dan pengrajin. Setelah Malzareth menyebarkan kutukan, para Goblin berubah menjadi makhluk ganas dan gua mereka menjadi sarang monster.
 
-Pahlawan melewati penjaga gua, lorong tambang, dan pasukan Goblin hingga mencapai ruang pemimpin. Raja Goblin telah berubah menjadi monster besar. Setelah mengalahkannya, pahlawan menemukan sebuah catatan dan lambang sihir milik Malzareth. Catatan itu mengungkap bahwa Goblin bukan dalang penculikan; mereka hanya diperintah oleh penyihir.
+Pahlawan melewati penjaga gua, lorong tambang, dan pasukan Goblin hingga mencapai ruang pemimpin. Gua itu kini dikuasai Orc Batu kiriman penyihir; pemimpinnya, Raja Orc Batu, menunggu di singgasana. (v0.72.0: bos gua = Orc Batu, menggantikan Raja Goblin.) Setelah mengalahkannya, pahlawan menemukan sebuah catatan dan lambang sihir milik Malzareth. Catatan itu mengungkap bahwa Goblin bukan dalang penculikan; mereka hanya diperintah oleh penyihir.
 
 Petunjuk tersebut juga menyebut kekuatan sihir yang berasal dari wilayah gunung berapi dan naga yang menjaga istana penyihir.
 
@@ -107,7 +107,7 @@ Seorang Orc tua yang mulai sadar menjelaskan bahwa penyihir bersembunyi di Istan
 **Tujuan permainan:**
 1. Masuki wilayah Gunung Berapi.
 2. Lewati jalur lava dan pasukan Orc.
-3. Kalahkan Orc Batu dan panglimanya.
+3. Kalahkan Naga Lava penjaga lereng (v0.72.0), lalu Panglima Orc Batu di Benteng Orc.
 4. Hancurkan batu penguat kutukan.
 5. Dapatkan petunjuk menuju Istana Kegelapan.
 

@@ -30,19 +30,53 @@ func (s State) tahapOf(e Enemy) int {
 	return min(s.Trial(s.Map).Wave, HutanWaves-1) + 1
 }
 
-// strengthen menerapkan penguatan tahap pada pertarungan baru melawan musuh biasa di wilayah ujian.
+// Makin jauh petanya makin berat (v0.72.0). Musuh tiap peta = musuh peta sebelumnya + golongan baru (binatang hutan ->
+// goblin -> orc batu -> naga), jadi musuh biasa diperkuat menurut kekuatan peta tempat ia dilawan dibanding peta
+// asalnya (Zones[0]): HP, XP, dan emas x mapPower/homePower, serangan naik 60% dari kenaikan itu.
+var mapPower = map[string]int{MapHutanLebat: 100, MapGuaGoblin: 150, MapGunungBatu: 220, MapGuaBatu: 380, MapIstana: 500}
+
+// homePower: kekuatan bawaan musuh menurut peta asalnya. Musuh asli Istana Kegelapan sudah dibuat kuat (400);
+// musuh peta lain dirancang setara binatang hutan (100).
+var homePower = map[string]int{MapIstana: 400}
+
+// mapPct: pengali kekuatan (persen) musuh biasa `e` di peta pemain; 100 bila tidak diperkuat.
+func mapPct(st State, e Enemy) int {
+	if e.Boss || e.Raid {
+		return 100
+	}
+	p, ok := mapPower[st.Map]
+	if !ok {
+		return 100
+	}
+	h := 100
+	if len(e.Zones) > 0 {
+		if v, ok := homePower[e.Zones[0]]; ok {
+			h = v
+		}
+	}
+	return max(100, p*100/h)
+}
+
+// strengthen menerapkan penguatan peta dan tahap ujian pada pertarungan baru melawan musuh biasa.
 func (b *Battle) strengthen(st State, e Enemy) {
+	mp := mapPct(st, e)
 	t := st.tahapOf(e)
-	if t == 0 {
+	if t == 0 && mp == 100 {
 		return
 	}
-	gap := min(TahapLevelMax, max(0, st.Level-e.MinLevel))
-	hp := e.HP * tahapHP[t-1] / 100 * (100 + gap*TahapLevelHP) / 100
-	b.Tahap = t
-	b.AtkPct = tahapAtk[t-1] * (100 + gap*TahapLevelAtk) / 100
-	b.RewardPct = tahapHadiah[t-1]
+	hpPct, atkPct, rewPct := mp, 100+(mp-100)*3/5, mp
+	if t > 0 {
+		gap := min(TahapLevelMax, max(0, st.Level-e.MinLevel))
+		hpPct = hpPct * tahapHP[t-1] / 100 * (100 + gap*TahapLevelHP) / 100
+		atkPct = atkPct * tahapAtk[t-1] / 100 * (100 + gap*TahapLevelAtk) / 100
+		rewPct = rewPct * tahapHadiah[t-1] / 100
+		b.Tahap = t
+		b.EnemyName = fmt.Sprintf("%s Lv %d", e.Name, t)
+	}
+	hp := e.HP * hpPct / 100
+	b.AtkPct = atkPct
+	b.RewardPct = rewPct
 	b.EnemyHP, b.EnemyMaxHP = hp, hp
-	b.EnemyName = fmt.Sprintf("%s Lv %d", e.Name, t)
 }
 
 // enemyAttack: serangan musuh dalam pertarungan ini (sudah dengan penguatan tahap).

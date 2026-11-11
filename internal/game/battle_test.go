@@ -333,7 +333,7 @@ func TestPickEnemyRespectsLevelAndZone(t *testing.T) {
 		seen := map[string]bool{}
 		want := 0
 		for _, e := range enemies {
-			if e.inZone(zone) && !e.Boss {
+			if e.inZone(zone) && !e.Boss && e.timeAllows(Now()) { // serigala hitam hanya malam
 				want++
 			}
 		}
@@ -437,7 +437,7 @@ func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
 			}
 		}
 	}
-	if e := PickEnemy(1, MapGuaBatu, RandomSource{}); e.Boss || e.ID != "orc_gua" {
+	if e := PickEnemy(1, MapGuaBatu, RandomSource{}); e.Boss || !e.inZone(MapGuaBatu) || e.MinLevel != weakestMinLevel(MapGuaBatu) {
 		t.Errorf("level rendah di gua harus bertemu musuh terlemah gua non-bos, dapat %s", e.ID)
 	}
 
@@ -447,7 +447,7 @@ func TestBossNeverRandomAndOnlyAtSpot(t *testing.T) {
 	}
 	p.State.Map, p.State.X, p.State.Y = MapGuaBatu, 7, 14
 	b, err := StartBossBattle(p, 0)
-	if err != nil || b.EnemyID != "raja_goblin" || b.EnemyHP != 3200 {
+	if err != nil || b.EnemyID != "raja_goblin" || b.EnemyHP != 7500 {
 		t.Fatalf("bos: %+v %v", b, err)
 	}
 	p.State.X = 8
