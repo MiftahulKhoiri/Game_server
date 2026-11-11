@@ -25,7 +25,11 @@ func _ready() -> void:
 	label.anchor_right = 0.5
 	label.offset_left = -330
 	label.offset_right = 330
-	label.offset_top = 2
+	# Layar mendatar (v0.68.2): di tepi bawah tengah supaya tidak menutupi jam dan papan misi di atas.
+	label.anchor_top = 1.0
+	label.anchor_bottom = 1.0
+	label.offset_top = -30
+	label.offset_bottom = -4
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(label)
 	refresh()

@@ -3,7 +3,7 @@ extends Control
 ## titik merah per musuh di sekitarnya. Atas layar radar = arah pandang kamera, sama dengan panah di papan misi.
 ## Musuh yang lebih jauh dari RANGE petak digambar pudar di tepi lingkaran supaya arahnya tetap terbaca.
 
-const SIZE := 176.0
+const SIZE := 150.0  # layar mendatar (v0.68.2): di kiri, di antara status dan joystick
 const RANGE := 26.0                         # jangkauan radar (petak)
 
 var player := Vector2.ZERO

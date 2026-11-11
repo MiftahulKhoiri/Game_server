@@ -171,6 +171,10 @@ func _ready() -> void:
 	var x := float(OS.get_environment("SHOT_X")) if OS.get_environment("SHOT_X") != "" else 5.5
 	var z := float(OS.get_environment("SHOT_Z")) if OS.get_environment("SHOT_Z") != "" else 7.5
 	Session.use_offline_player()
+	if OS.get_environment("SHOT_RADAR") != "":  # Radar Musuh di ransel + sudah diarahkan Kapten Rimba
+		Session.player.state.inventory = [{"id": "radar_musuh", "qty": 1}]
+		Session.player.state["hutan"] = {"wave": 1, "kills": 15, "briefed": true}
+		Session.show_perf = true
 	# SHOT_HOUR (0-24) dan SHOT_RAIN (0-1) memaksa waktu dan hujan untuk tangkapan layar.
 	const Atmo = preload("res://scripts/atmosphere.gd")
 	if OS.get_environment("SHOT_HOUR") != "":

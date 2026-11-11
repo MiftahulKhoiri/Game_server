@@ -2221,7 +2221,8 @@ func _build_ui() -> void:
 	layer.add_child(_hutan_hud)
 
 	_radar = RadarMusuh.new()
-	_radar.position = Vector2(700.0 - RadarMusuh.SIZE, 216)
+	# Layar mendatar (v0.68.2): radar di kolom kiri di bawah tulisan status, tidak menabrak papan kanan dan tombol aksi.
+	_radar.position = Vector2(20, 296)
 	_radar.visible = false
 	layer.add_child(_radar)
 
@@ -2334,7 +2335,7 @@ func _build_ui() -> void:
 	if not Session.achievement_unlocked.is_connected(_on_achievement):
 		Session.achievement_unlocked.connect(_on_achievement)
 	_profile.hero_changed.connect(_make_player)
-	for pair: Array in [[_bars, "tl"], [_status, "tl"], [_hutan_hud, "tc"], [_net_label, "tc"], [_radar, "tr"], [menu_btn, "tr"], [_joy, "bl"]]:
+	for pair: Array in [[_bars, "tl"], [_status, "tl"], [_hutan_hud, "tc"], [_net_label, "tc"], [_radar, "tl"], [menu_btn, "tr"], [_joy, "bl"]]:
 		register_hud(pair[0], pair[1])
 	for b: Control in _act_buttons:
 		register_hud(b, "br")

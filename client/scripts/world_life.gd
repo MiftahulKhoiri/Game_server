@@ -243,12 +243,22 @@ func _on_claim() -> void:
 
 # --- papan kejadian & wilayah (no. 195-196, 200) ---
 
+## Lebar baris terpanjang papan (rata kanan): dipakai untuk memeriksa tumpukan dengan papan ujian.
+func _banner_lebar_teks() -> float:
+	var font := _banner.get_theme_font("font")
+	var fs := _banner.get_theme_font_size("font_size")
+	var w := 0.0
+	for line in _banner.text.split("\n"):
+		w = maxf(w, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+	return minf(w, _banner.size.x)
+
 func _update_banner() -> void:
 	if _banner == null or world == null:
 		return
 	# Papan ujian wilayah (kanan atas) tampil: papan ini turun ke bawahnya supaya tidak bertumpuk.
 	var hud: Control = world._hutan_hud
-	_banner_low = hud != null and hud.visible
+	# Turun ke bawah papan ujian hanya bila keduanya bertumpuk mendatar (layar mendatar sempit, mis. 16:9).
+	_banner_low = hud != null and hud.visible and hud.position.x + hud.size.x + 8.0 > _banner.position.x + _banner.size.x - _banner_lebar_teks()
 	if _banner_low:
 		_banner.position.y = hud.position.y + hud.size.y + 6.0
 	else:
