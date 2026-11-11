@@ -273,16 +273,16 @@ mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, da
 |------|-------------|-----------|
 | Hutan Binatang | binatang hutan | Goblin Level 1-3 |
 | Gua Goblin | goblin + binatang tulang (v0.73.0, pengganti binatang hutan: Rubah, Ular, Babi, Serigala, Beruang Tulang, Kerangka Gua) | Orc Batu Lv 1, Lv 2, Raja Orc Batu |
-| Gunung Berapi | binatang hutan + goblin + orc batu | Naga Lava Lv 1, Lv 2, Induk Naga Lava |
-| Benteng Orc | binatang hutan + goblin + orc batu + orc benteng | Panglima Orc Batu (cerita) |
-| Istana Kegelapan | binatang hutan + goblin + orc batu + Naga Bayangan + Naga Api Muda + pasukan terkutuk | Aldragor (cerita), lalu Malzareth di ruang takhta |
+| Gunung Berapi | binatang lava (v0.74.0) + goblin + orc batu | Naga Lava Lv 1, Lv 2, Induk Naga Lava |
+| Benteng Orc | binatang batu (v0.74.0) + goblin + orc batu + orc benteng | Panglima Orc Batu (cerita) |
+| Istana Kegelapan | binatang bayangan (v0.74.0) + goblin + orc batu + Naga Bayangan + Naga Api Muda + pasukan terkutuk | Aldragor (cerita), lalu Malzareth di ruang takhta |
 
 Musuh biasa diperkuat menurut peta tempat ia dilawan dibanding peta asalnya (`mapPower` di `tahap.go`: Hutan 100, Gua
 150, Gunung 220, Benteng 380, Istana 500; musuh asli Istana dihitung 400): HP, XP, dan emas dikali angka itu, serangan
 naik 60% dari kenaikannya; di wilayah ujian pengali tahap Lv 1-3 ikut berlaku. HP bos terakhir tiap peta naik terus:
 Goblin Lv 3 1040 < Raja Orc Batu 2800 < Induk Naga Lava 6200 < Panglima 7500 < Aldragor 9000 < Malzareth 11000. Id
-lama dipertahankan (`kepala_goblin_N` = Orc Batu, `ogre_gunung_N` = Naga Lava). Binatang tulang dirakit dari bentuk dasar
-(`models.gd` `_bone_beast`), naga memakai model Aldragor dengan warna per bahan.
+lama dipertahankan (`kepala_goblin_N` = Orc Batu, `ogre_gunung_N` = Naga Lava). Binatang kerangka (rubah, ular, babi, serigala, beruang) dirakit dari bentuk dasar dengan palet per peta: tulang
+(Gua), lava hangus dengan rusuk menyala (Gunung), batu berlumut (Benteng), bayangan ungu menyala (Istana) (`models.gd` `_bone_beast`), naga memakai model Aldragor dengan warna per bahan.
 
 **Bos Gua Goblin memburu (v0.71.0).** Kepala Goblin Lv 1 / Lv 2 / Raja Goblin kini HP 1100 / 2000 / 2800, serangan
 46 / 62 / 76, jeda serangan 1,45 / 1,25 / 1,1 detik (masih 25% lebih cepat saat HP di bawah separuh). Begitu muncul, bos

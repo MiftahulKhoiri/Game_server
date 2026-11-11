@@ -2655,10 +2655,10 @@ func _run() -> void:
 	var gun72: Array = kinds72.call(Maps.GUNUNG)
 	var ist72: Array = kinds72.call(Maps.ISTANA)
 	_check(not gua72.has("beruang_hutan") and not gua72.has("rubah_hutan") and gua72.has("goblin") and gua72.has("rubah_tulang") and gua72.has("ular_tulang") and gua72.has("babi_tulang") and gua72.has("serigala_tulang") and gua72.has("beruang_tulang") and not gua72.has("ogre_batu"), "Gua Goblin: goblin + binatang tulang (tanpa binatang hutan), belum ada orc batu")
-	_check(gun72.has("serigala_hitam") and gun72.has("goblin_pemburu") and gun72.has("ogre_batu") and not gun72.has("naga_api"), "Gunung Berapi: binatang hutan + goblin + orc batu")
-	_check(ist72.has("rubah_hutan") and ist72.has("goblin") and ist72.has("ogre_batu") and ist72.has("naga_bayangan") and ist72.has("naga_api"), "Istana Kegelapan: binatang + goblin + orc batu + dua naga kecil")
+	_check(gun72.has("serigala_lava") and gun72.has("beruang_lava") and not gun72.has("serigala_hitam") and gun72.has("goblin_pemburu") and gun72.has("ogre_batu") and not gun72.has("naga_api"), "Gunung Berapi: binatang lava + goblin + orc batu")
+	_check(ist72.has("rubah_bayangan") and not ist72.has("rubah_hutan") and ist72.has("goblin") and ist72.has("ogre_batu") and ist72.has("naga_bayangan") and ist72.has("naga_api"), "Istana Kegelapan: binatang bayangan + goblin + orc batu + dua naga kecil")
 	var M72: Script = load("res://scripts/models.gd")
-	for id72: String in ["rubah_tulang", "ular_tulang", "babi_tulang", "serigala_tulang", "beruang_tulang", "naga_bayangan", "naga_api", "kepala_goblin_1", "ogre_gunung_3"]:
+	for id72: String in ["rubah_tulang", "ular_tulang", "babi_tulang", "serigala_tulang", "beruang_tulang", "ular_lava", "beruang_lava", "serigala_batu", "babi_bayangan", "ular_bayangan", "naga_bayangan", "naga_api", "kepala_goblin_1", "ogre_gunung_3"]:
 		var n72: Node3D = M72.create(id72)
 		_check(n72 != null and n72.find_children("*", "MeshInstance3D", true, false).size() > 0, "model %s dibuat" % id72)
 		n72.free()

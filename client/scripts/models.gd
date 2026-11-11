@@ -33,7 +33,7 @@ static func is_hero(id: String) -> bool:
 const SCALES := {
 	"ksatria": 0.42, "pendekar_kapak": 0.44, "pemanah": 0.42, "pendekar_tombak": 0.42, "penyihir": 0.42, "nenek_penjual": 0.66, "petani": 0.74,
 	"goblin": 0.58, "goblin_penjaga": 0.68, "raja_goblin": 0.95, "ogre_batu": 1.1,
-	"golem_kerikil": 1.0, "golem_lava": 1.1, "serigala_tulang": 1.25, "beruang_tulang": 1.45, "rubah_tulang": 1.2, "babi_tulang": 1.3, "ular_tulang": 1.15,
+	"golem_kerikil": 1.0, "golem_lava": 1.1, 
 	"tikus_sawah": 0.8, "babi_hutan": 0.95, "serigala_hutan": 0.95,
 	"ular_sawah": 1.0, "belalang_raksasa": 0.95, "kelelawar_gua": 1.0,
 }
@@ -163,6 +163,10 @@ static func _tint(n: Node, c: Color) -> void:
 
 
 ## Membuat model untuk id. Selalu mengembalikan node (placeholder bila tidak dikenal).
+## Skala binatang kerangka menurut jenisnya (sama untuk tiap palet peta).
+const BONE_SCALES := {"rubah": 1.2, "babi": 1.3, "ular": 1.15, "serigala": 1.25, "beruang": 1.45}
+
+
 static func create(id: String) -> Node3D:
 	if VARIANTS.has(id):
 		var v: Dictionary = VARIANTS[id]
@@ -187,7 +191,8 @@ static func create(id: String) -> Node3D:
 	if from_glb and not is_hero(id):
 		node.scale = Vector3.ONE  # sudah dinormalkan di _from_glb
 	else:
-		node.scale = Vector3.ONE * float(SCALES.get(id, 0.7))
+		var bk := _bone_kind(id)
+		node.scale = Vector3.ONE * float(BONE_SCALES[bk] if bk != "" else SCALES.get(id, 0.7))
 	node.name = id
 	return node
 
@@ -709,6 +714,16 @@ static func cyl(parent: Node3D, r_top: float, r_bottom: float, h: float, pos: Ve
 	return _mi(parent, m, pos, color, rot)
 
 
+static func _cone_mesh(r: float, h: float) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = 0.0
+	m.bottom_radius = r
+	m.height = h
+	m.radial_segments = 8
+	m.rings = 1
+	return m
+
+
 ## Kerucut dengan ujung di +Y (diputar lewat rot).
 static func cone(parent: Node3D, r: float, h: float, pos: Vector3, color: Color, rot := Vector3.ZERO) -> MeshInstance3D:
 	return cyl(parent, 0.0, r, h, pos, color, rot)
@@ -782,21 +797,19 @@ static func build_placeholder(id: String) -> Node3D:
 		"kelelawar_gua":
 			pv = _bat(rig)
 			kind = "bat"
-		"rubah_tulang":
-			pv = _bone_beast(rig, {"len": 0.32, "wid": 0.13, "hgt": 0.15, "leg_len": 0.22, "head_r": 0.11, "snout": 2.3})
-			kind = "quad"
-		"babi_tulang":
-			pv = _bone_beast(rig, {"len": 0.42, "wid": 0.23, "hgt": 0.25, "leg_len": 0.17, "head_r": 0.16, "snout": 1.5, "tusks": true})
-			kind = "quad"
-		"ular_tulang":
-			pv = _bone_snake(rig)
-			kind = "snake"
-		"serigala_tulang":
-			pv = _bone_beast(rig, {"len": 0.42, "wid": 0.17, "hgt": 0.2, "leg_len": 0.3, "head_r": 0.13, "snout": 2.1})
-			kind = "quad"
-		"beruang_tulang":
-			pv = _bone_beast(rig, {"len": 0.52, "wid": 0.3, "hgt": 0.32, "leg_len": 0.34, "head_r": 0.17, "snout": 1.4, "spikes": true})
-			kind = "quad"
+		_ when _bone_kind(id) != "":
+			# Binatang kerangka khas tiap peta (v0.73.0-v0.74.0): tulang (Gua Goblin), lava (Gunung Berapi),
+			# batu (Benteng Orc), bayangan (Istana Kegelapan). Bentuk sama, warna/cahaya beda.
+			var bk := _bone_kind(id)
+			var pal: Dictionary = BONE_PALETTES[id.substr(bk.length() + 1)]
+			if bk == "ular":
+				pv = _bone_snake(rig, pal)
+				kind = "snake"
+			else:
+				var o: Dictionary = (BONE_SHAPES[bk] as Dictionary).duplicate()
+				o.merge(pal)
+				pv = _bone_beast(rig, o)
+				kind = "quad"
 		_:
 			pv = _humanoid(rig, {"skin": Color("c8a878"), "shirt": Color("8a5a3c"), "pants": Color("4a3a2a"), "shoes": Color("3a2a1a")})
 	rig.setup(kind, pv)
@@ -967,6 +980,28 @@ static func _quad(root: Node3D, o: Dictionary) -> Dictionary:
 const BONE := Color("e8dec6")
 const BONE_DARK := Color("1e1612")
 const BONE_EYE := Color("ff3020")
+## Bentuk tiap jenis binatang kerangka dan palet warna tiap peta (bone = tulang, rib = rusuk, glow = rusuk menyala).
+const BONE_SHAPES := {
+	"rubah": {"len": 0.32, "wid": 0.13, "hgt": 0.15, "leg_len": 0.22, "head_r": 0.11, "snout": 2.3},
+	"babi": {"len": 0.42, "wid": 0.23, "hgt": 0.25, "leg_len": 0.17, "head_r": 0.16, "snout": 1.5, "tusks": true},
+	"serigala": {"len": 0.42, "wid": 0.17, "hgt": 0.2, "leg_len": 0.3, "head_r": 0.13, "snout": 2.1},
+	"beruang": {"len": 0.52, "wid": 0.3, "hgt": 0.32, "leg_len": 0.34, "head_r": 0.17, "snout": 1.4, "spikes": true},
+	"ular": {},
+}
+const BONE_PALETTES := {
+	"tulang": {"bone": Color("e8dec6"), "rib": Color("e8dec6"), "eye": Color("ff3020"), "dark": Color("1e1612"), "glow": false},
+	"lava": {"bone": Color("2e2420"), "rib": Color("d83a0c"), "eye": Color("ffd040"), "dark": Color("0a0605"), "glow": true},
+	"batu": {"bone": Color("8e8b84"), "rib": Color("6c7f5a"), "eye": Color("ffb040"), "dark": Color("1a1a18"), "glow": false},
+	"bayangan": {"bone": Color("3a2c52"), "rib": Color("7a3ae0"), "eye": Color("e090ff"), "dark": Color("08050f"), "glow": true},
+}
+
+
+## Jenis dasar binatang kerangka dari id (mis. "serigala_lava" -> "serigala"), "" bila bukan.
+static func _bone_kind(id: String) -> String:
+	for k: String in BONE_SHAPES:
+		if id.begins_with(k + "_") and BONE_PALETTES.has(id.substr(k.length() + 1)):
+			return k
+	return ""
 
 static func _bone_beast(root: Node3D, o: Dictionary) -> Dictionary:
 	var ln := float(o.len)
@@ -974,6 +1009,11 @@ static func _bone_beast(root: Node3D, o: Dictionary) -> Dictionary:
 	var hgt := float(o.hgt)
 	var leg_len := float(o.leg_len)
 	var hr := float(o.head_r)
+	var bc: Color = o.get("bone", BONE)
+	var dk: Color = o.get("dark", BONE_DARK)
+	var ey: Color = o.get("eye", BONE_EYE)
+	var rib_c: Color = o.get("rib", bc)
+	var rib_glow := bool(o.get("glow", false))
 	var pv: Dictionary = {}
 	var body := pivot(root, "body", Vector3.ZERO)
 	pv["body"] = body
@@ -981,7 +1021,7 @@ static func _bone_beast(root: Node3D, o: Dictionary) -> Dictionary:
 	for i in 9:  # tulang punggung melengkung
 		var t := float(i) / 8.0
 		var z := lerpf(-ln, ln, t)
-		ball(body, 0.05 + wid * 0.12, Vector3(0, by + sin(t * PI) * hgt * 0.25, z), BONE, Vector3(1.0, 0.8, 1.2))
+		ball(body, 0.05 + wid * 0.12, Vector3(0, by + sin(t * PI) * hgt * 0.25, z), bc, Vector3(1.0, 0.8, 1.2))
 	for k in 5:  # rongga rusuk: cincin tulang dari punggung ke dada
 		var z2 := lerpf(-ln * 0.15, ln * 0.7, float(k) / 4.0)
 		var ring := TorusMesh.new()
@@ -989,35 +1029,35 @@ static func _bone_beast(root: Node3D, o: Dictionary) -> Dictionary:
 		ring.outer_radius = 1.0
 		ring.rings = 12
 		ring.ring_segments = 5
-		var rib := _mi(body, ring, Vector3(0, by - hgt * 0.35, z2), BONE, Vector3(PI / 2.0, 0, 0))
+		var rib := _mi(body, ring, Vector3(0, by - hgt * 0.35, z2), rib_c, Vector3(PI / 2.0, 0, 0), rib_glow)
 		var shrink := 1.0 - absf(float(k) - 2.0) * 0.12
 		rib.scale = Vector3(wid * shrink, 1.0 / 0.15 * 0.03, hgt * 0.75 * shrink)
-	box(body, Vector3(wid * 1.3, hgt * 0.35, ln * 0.3), Vector3(0, by - hgt * 0.1, -ln * 0.8), BONE)  # panggul
+	box(body, Vector3(wid * 1.3, hgt * 0.35, ln * 0.3), Vector3(0, by - hgt * 0.1, -ln * 0.8), bc)  # panggul
 	var head := pivot(body, "head", Vector3(0, by + hgt * 0.35, ln * 1.05))
 	pv["head"] = head
-	ball(head, hr, Vector3(0, 0, 0), BONE, Vector3(0.8, 0.75, 0.95))  # tempurung
+	ball(head, hr, Vector3(0, 0, 0), bc, Vector3(0.8, 0.75, 0.95))  # tempurung
 	var sn := float(o.snout)
-	box(head, Vector3(hr * 1.0, hr * 0.55, hr * sn), Vector3(0, -hr * 0.2, hr * (0.55 + sn * 0.5)), BONE)  # moncong
-	box(head, Vector3(hr * 0.9, hr * 0.18, hr * sn * 0.95), Vector3(0, -hr * 0.62, hr * (0.5 + sn * 0.5)), BONE, Vector3(0.18, 0, 0))  # rahang
+	box(head, Vector3(hr * 1.0, hr * 0.55, hr * sn), Vector3(0, -hr * 0.2, hr * (0.55 + sn * 0.5)), bc)  # moncong
+	box(head, Vector3(hr * 0.9, hr * 0.18, hr * sn * 0.95), Vector3(0, -hr * 0.62, hr * (0.5 + sn * 0.5)), bc, Vector3(0.18, 0, 0))  # rahang
 	for i2 in 5:  # gigi
 		var tz := hr * (0.75 + sn * 0.8) - i2 * hr * sn * 0.16
 		for sx in [-1.0, 1.0]:
-			cone(head, hr * 0.06, hr * 0.22, Vector3(sx * hr * 0.38, -hr * 0.5, tz), BONE, Vector3(PI, 0, 0))
+			cone(head, hr * 0.06, hr * 0.22, Vector3(sx * hr * 0.38, -hr * 0.5, tz), bc, Vector3(PI, 0, 0))
 	for s in [-1.0, 1.0]:
-		ball(head, hr * 0.22, Vector3(s * hr * 0.36, hr * 0.12, hr * 0.62), BONE_DARK)  # rongga mata
-		ball(head, hr * 0.12, Vector3(s * hr * 0.37, hr * 0.12, hr * 0.74), BONE_EYE, Vector3.ONE, true)  # mata menyala
-		cone(head, hr * 0.22, hr * 0.7, Vector3(s * hr * 0.55, hr * 0.85, -hr * 0.2), BONE, Vector3(-0.3, 0, -s * 0.35))  # telinga/tanduk
-	ball(head, hr * 0.12, Vector3(0, -hr * 0.05, hr * (0.6 + sn)), BONE_DARK)  # lubang hidung
+		ball(head, hr * 0.22, Vector3(s * hr * 0.36, hr * 0.12, hr * 0.62), dk)  # rongga mata
+		ball(head, hr * 0.12, Vector3(s * hr * 0.37, hr * 0.12, hr * 0.74), ey, Vector3.ONE, true)  # mata menyala
+		cone(head, hr * 0.22, hr * 0.7, Vector3(s * hr * 0.55, hr * 0.85, -hr * 0.2), bc, Vector3(-0.3, 0, -s * 0.35))  # telinga/tanduk
+	ball(head, hr * 0.12, Vector3(0, -hr * 0.05, hr * (0.6 + sn)), dk)  # lubang hidung
 	if bool(o.get("tusks", false)):  # taring babi melengkung ke atas
 		for s3 in [-1.0, 1.0]:
-			cone(head, hr * 0.12, hr * 0.9, Vector3(s3 * hr * 0.5, -hr * 0.3, hr * (0.4 + sn * 0.8)), BONE, Vector3(0.5, 0, s3 * 0.35))
+			cone(head, hr * 0.12, hr * 0.9, Vector3(s3 * hr * 0.5, -hr * 0.3, hr * (0.4 + sn * 0.8)), bc, Vector3(0.5, 0, s3 * 0.35))
 	if bool(o.get("spikes", false)):
 		for i3 in 4:  # duri tulang di punggung beruang
-			cone(body, wid * 0.12, hgt * 0.7, Vector3(0, by + hgt * 0.5, lerpf(-ln * 0.4, ln * 0.6, float(i3) / 3.0)), BONE, Vector3(-0.25, 0, 0))
+			cone(body, wid * 0.12, hgt * 0.7, Vector3(0, by + hgt * 0.5, lerpf(-ln * 0.4, ln * 0.6, float(i3) / 3.0)), bc, Vector3(-0.25, 0, 0))
 	var tail := pivot(body, "tail", Vector3(0, by, -ln * 1.05))
 	pv["tail"] = tail
 	for i4 in 5:
-		ball(tail, 0.04 + wid * 0.08 - i4 * 0.008, Vector3(0, -i4 * 0.03, -0.06 - i4 * 0.08), BONE)
+		ball(tail, 0.04 + wid * 0.08 - i4 * 0.008, Vector3(0, -i4 * 0.03, -0.06 - i4 * 0.08), bc)
 	var legs := {"leg_fl": Vector2(-1, 1), "leg_fr": Vector2(1, 1), "leg_bl": Vector2(-1, -1), "leg_br": Vector2(1, -1)}
 	for nm: String in legs:
 		var d: Vector2 = legs[nm]
@@ -1025,17 +1065,22 @@ static func _bone_beast(root: Node3D, o: Dictionary) -> Dictionary:
 		var leg := pivot(body, nm, Vector3(d.x * wid * 0.75, top, d.y * ln * 0.6))
 		pv[nm] = leg
 		var r := 0.025 + wid * 0.08
-		ball(leg, r * 1.5, Vector3(0, 0, 0), BONE)                                 # sendi bahu/pinggul
-		cyl(leg, r, r * 0.9, top * 0.52, Vector3(0, -top * 0.26, 0), BONE)        # tulang atas
-		ball(leg, r * 1.25, Vector3(0, -top * 0.52, 0), BONE)                     # lutut
-		cyl(leg, r * 0.85, r * 0.75, top * 0.46, Vector3(0, -top * 0.76, 0.0), BONE)  # tulang bawah
-		box(leg, Vector3(r * 3.0, r * 1.2, r * 3.6), Vector3(0, -top + r * 0.6, r * 0.9), BONE)  # cakar
+		ball(leg, r * 1.5, Vector3(0, 0, 0), bc)                                 # sendi bahu/pinggul
+		cyl(leg, r, r * 0.9, top * 0.52, Vector3(0, -top * 0.26, 0), bc)        # tulang atas
+		ball(leg, r * 1.25, Vector3(0, -top * 0.52, 0), bc)                     # lutut
+		cyl(leg, r * 0.85, r * 0.75, top * 0.46, Vector3(0, -top * 0.76, 0.0), bc)  # tulang bawah
+		box(leg, Vector3(r * 3.0, r * 1.2, r * 3.6), Vector3(0, -top + r * 0.6, r * 0.9), bc)  # cakar
 	return pv
 
 
 ## Ular tulang (v0.73.0): ruas tulang belakang dengan sepasang rusuk kecil di tiap ruas, tengkorak bertaring, mata
 ## merah menyala. Sendinya sama dengan _snake (seg_0..seg_9) supaya meliuk dengan rig "snake".
-static func _bone_snake(root: Node3D) -> Dictionary:
+static func _bone_snake(root: Node3D, pal: Dictionary = {}) -> Dictionary:
+	var bc: Color = pal.get("bone", BONE)
+	var dk: Color = pal.get("dark", BONE_DARK)
+	var ey: Color = pal.get("eye", BONE_EYE)
+	var rib_c: Color = pal.get("rib", bc)
+	var rib_glow := bool(pal.get("glow", false))
 	var pv: Dictionary = {}
 	var body := pivot(root, "body", Vector3.ZERO)
 	pv["body"] = body
@@ -1044,17 +1089,17 @@ static func _bone_snake(root: Node3D) -> Dictionary:
 		var seg := pivot(parent, "seg_%d" % i, Vector3(0, 0.1, 0.5) if i == 0 else Vector3(0, 0, -0.17))
 		pv["seg_%d" % i] = seg
 		var r := 0.075 - i * 0.005
-		ball(seg, r, Vector3.ZERO, BONE, Vector3(1.0, 0.9, 1.15))
+		ball(seg, r, Vector3.ZERO, bc, Vector3(1.0, 0.9, 1.15))
 		if i > 0 and i < 9:
 			for s in [-1.0, 1.0]:
-				cone(seg, r * 0.35, r * 2.4, Vector3(s * r * 1.3, -r * 0.3, 0), BONE, Vector3(0, 0, -s * 1.9))
+				_mi(seg, _cone_mesh(r * 0.35, r * 2.4), Vector3(s * r * 1.3, -r * 0.3, 0), rib_c, Vector3(0, 0, -s * 1.9), rib_glow)
 		parent = seg
 	var head: Node3D = pv.seg_0
-	ball(head, 0.11, Vector3(0, 0.02, 0.1), BONE, Vector3(0.9, 0.65, 1.35))  # tengkorak pipih
+	ball(head, 0.11, Vector3(0, 0.02, 0.1), bc, Vector3(0.9, 0.65, 1.35))  # tengkorak pipih
 	for s2 in [-1.0, 1.0]:
-		ball(head, 0.035, Vector3(s2 * 0.05, 0.06, 0.16), BONE_DARK)
-		ball(head, 0.02, Vector3(s2 * 0.05, 0.065, 0.185), BONE_EYE, Vector3.ONE, true)
-		cone(head, 0.015, 0.09, Vector3(s2 * 0.035, -0.04, 0.22), BONE, Vector3(PI, 0, 0))  # taring
+		ball(head, 0.035, Vector3(s2 * 0.05, 0.06, 0.16), dk)
+		ball(head, 0.02, Vector3(s2 * 0.05, 0.065, 0.185), ey, Vector3.ONE, true)
+		cone(head, 0.015, 0.09, Vector3(s2 * 0.035, -0.04, 0.22), bc, Vector3(PI, 0, 0))  # taring
 	return pv
 
 

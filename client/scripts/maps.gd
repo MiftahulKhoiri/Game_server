@@ -357,28 +357,26 @@ const ROAMERS := {
 		{"id": "serigala_tulang", "name": "Serigala Tulang", "lv": 4},
 		{"id": "beruang_tulang", "name": "Beruang Tulang", "lv": 6},
 	]},
-	# Gunung Berapi: binatang hutan + goblin + orc batu; bos Naga Lava.
+	# Gunung Berapi: binatang lava (v0.74.0) + goblin + orc batu; bos Naga Lava.
 	"gunung_batu": {"n": 16, "tiles": "MG", "min_y": 3, "kinds": [
-		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 7},
-		{"id": "ular_belang", "name": "Ular Belang", "lv": 7},
-		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 8},
-		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 8, "waktu": "malam"},
-		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 9},
-		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 7},
+		{"id": "rubah_lava", "name": "Rubah Lava", "lv": 7},
+		{"id": "ular_lava", "name": "Ular Lava", "lv": 7},
+		{"id": "babi_lava", "name": "Babi Lava", "lv": 8},
+		{"id": "serigala_lava", "name": "Serigala Lava", "lv": 8},
+		{"id": "beruang_lava", "name": "Beruang Lava", "lv": 9},
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 7},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 8},
 		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 9, "patroli": true},
 		{"id": "ogre_rawa", "name": "Ogre Rawa", "lv": 4},
 		{"id": "ogre_batu", "name": "Prajurit Orc Batu", "lv": 5},
 	]},
-	# Benteng Orc: binatang hutan + goblin + orc batu + orc benteng; bos Panglima Orc Batu (cerita).
+	# Benteng Orc: binatang batu (v0.74.0) + goblin + orc batu + orc benteng; bos Panglima Orc Batu (cerita).
 	"gua_batu": {"n": 9, "tiles": "MG", "min_y": 3, "kinds": [
-		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 10},
-		{"id": "ular_belang", "name": "Ular Belang", "lv": 10},
-		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 11},
-		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 11, "waktu": "malam"},
-		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 12},
-		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 10},
+		{"id": "rubah_batu", "name": "Rubah Batu", "lv": 10},
+		{"id": "ular_batu", "name": "Ular Batu", "lv": 10},
+		{"id": "babi_batu", "name": "Babi Batu", "lv": 11},
+		{"id": "serigala_batu", "name": "Serigala Batu", "lv": 11},
+		{"id": "beruang_batu", "name": "Beruang Batu", "lv": 12},
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 10},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 11},
 		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 12, "patroli": true},
@@ -389,15 +387,14 @@ const ROAMERS := {
 		{"id": "golem_lava", "name": "Iblis Lava", "lv": 12},
 		{"id": "orc_buas", "name": "Orc Buas", "lv": 13},
 	]},
-	# Halaman Istana Kegelapan (Bab 4): binatang hutan + goblin + orc batu + dua naga kecil + pasukan terkutuk;
+	# Halaman Istana Kegelapan (Bab 4): binatang bayangan (v0.74.0) + goblin + orc batu + dua naga kecil + pasukan terkutuk;
 	# bos besarnya Malzareth (Aldragor tetap bos cerita di singgasana halaman).
 	"istana_kegelapan": {"n": 16, "tiles": "O", "min_y": 6, "kinds": [
-		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 13},
-		{"id": "ular_belang", "name": "Ular Belang", "lv": 13},
-		{"id": "babi_bertaring", "name": "Babi Bertaring", "lv": 14},
-		{"id": "serigala_hitam", "name": "Serigala Hitam", "lv": 14, "waktu": "malam"},
-		{"id": "beruang_hutan", "name": "Beruang Hutan", "lv": 15},
-		{"id": "kelelawar_hutan", "name": "Kelelawar Terkutuk", "lv": 13},
+		{"id": "rubah_bayangan", "name": "Rubah Bayangan", "lv": 13},
+		{"id": "ular_bayangan", "name": "Ular Bayangan", "lv": 13},
+		{"id": "babi_bayangan", "name": "Babi Bayangan", "lv": 14},
+		{"id": "serigala_bayangan", "name": "Serigala Bayangan", "lv": 14},
+		{"id": "beruang_bayangan", "name": "Beruang Bayangan", "lv": 15},
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 13},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 14},
 		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 15, "patroli": true},
