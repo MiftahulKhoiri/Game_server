@@ -230,3 +230,43 @@ func TestBriefHutan(t *testing.T) {
 		t.Error("kemajuan lama harus dianggap sudah diarahkan")
 	}
 }
+
+// v0.71.0: bos Gua Goblin makin kuat tiap tahap, menyerang lebih cepat, memburu pemain ke seluruh gua,
+// dan diperkuat untuk pemain di atas level 6.
+func TestGuaGoblinBossHunts(t *testing.T) {
+	var prevHP, prevAtk int
+	prevIv := int64(BossIntervalMs)
+	for lv := 1; lv <= 3; lv++ {
+		e, _ := EnemyByID(fmt.Sprintf("kepala_goblin_%d", lv))
+		if e.HP <= prevHP || e.Attack <= prevAtk || enemyInterval(e) >= prevIv {
+			t.Fatalf("Kepala Goblin Lv %d harus lebih kuat dan cepat dari tahap sebelumnya: %+v", lv, e)
+		}
+		prevHP, prevAtk, prevIv = e.HP, e.Attack, enemyInterval(e)
+	}
+	p := newPlayer()
+	st := &p.State
+	st.Map = MapGuaGoblin
+	st.Level = 6
+	st.setTrial(MapGuaGoblin, HutanProgress{Wave: 1, Kills: StageKills[1]})
+	st.X, st.Y = 3, 5 // ujung lorong buntu, jauh dari singgasana
+	b, err := StartHutanBossBattle(p, 0)
+	if err != nil || b.EnemyID != "kepala_goblin_2" {
+		t.Fatalf("bos gua harus bisa dilawan di mana saja di gua: %v %+v", err, b)
+	}
+	e2, _ := EnemyByID("kepala_goblin_2")
+	if b.EnemyMaxHP != e2.HP {
+		t.Fatalf("pemain level 6: HP bos belum diperkuat, dapat %d", b.EnemyMaxHP)
+	}
+	st.Level = 11
+	b, _ = StartHutanBossBattle(p, 0)
+	if b.EnemyMaxHP != e2.HP*(100+5*BossLevelHP)/100 || b.enemyAttack(e2) <= e2.Attack {
+		t.Fatalf("pemain level 11: bos +5 level, dapat HP %d serangan %d", b.EnemyMaxHP, b.enemyAttack(e2))
+	}
+	st.Map = MapHutanLebat
+	st.Level = 6
+	st.setTrial(MapHutanLebat, HutanProgress{Wave: 0, Kills: StageKills[0], Briefed: true})
+	st.X, st.Y = 3, 5
+	if _, err := StartHutanBossBattle(p, 0); !errors.Is(err, ErrNoBoss) {
+		t.Fatalf("bos hutan tetap hanya di dekat singgasana: %v", err)
+	}
+}

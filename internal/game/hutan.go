@@ -57,12 +57,16 @@ type TrialDef struct {
 	BossX      int
 	BossY      int
 	Next       string // peta yang terbuka setelah ketiga bos kalah
+	// v0.71.0: Hunt = bos memburu pemain ke seluruh peta (pertarungan boleh dimulai di mana saja di peta itu);
+	// BossLevel > 0 = bos makin kuat untuk pemain di atas level ini (lihat strengthenBoss).
+	Hunt      bool
+	BossLevel int
 }
 
 // Trials: wilayah ujian berurutan.
 var Trials = []TrialDef{
 	{Map: MapHutanLebat, BossPrefix: "goblin_hutan_", BossX: HutanBossX, BossY: HutanBossY, Next: MapGuaGoblin},
-	{Map: MapGuaGoblin, BossPrefix: "kepala_goblin_", BossX: 30, BossY: 61, Next: MapGunungBatu}, // v0.70.0: singgasana di depan pintu utama
+	{Map: MapGuaGoblin, BossPrefix: "kepala_goblin_", BossX: 30, BossY: 61, Next: MapGunungBatu, Hunt: true, BossLevel: 6}, // v0.70.0: singgasana di depan pintu utama
 	{Map: MapGunungBatu, BossPrefix: "ogre_gunung_", BossX: 21, BossY: 27, Next: MapGuaBatu},
 }
 
@@ -196,7 +200,7 @@ func hutanBoss(p *Player) (Enemy, error) {
 		return Enemy{}, ErrNoBoss
 	}
 	dx, dy := st.X-t.BossX, st.Y-t.BossY
-	if dx*dx+dy*dy > HutanBossRadius*HutanBossRadius {
+	if !t.Hunt && dx*dx+dy*dy > HutanBossRadius*HutanBossRadius {
 		return Enemy{}, ErrNoBoss
 	}
 	h := st.Trial(st.Map)
@@ -246,7 +250,9 @@ func StartHutanBossBattle(p *Player, now int64) (Battle, error) {
 	if err != nil {
 		return Battle{}, err
 	}
-	return newBattle(e, now), nil
+	b := styled(p, newBattle(e, now))
+	b.strengthenBoss(p.State, e)
+	return b, nil
 }
 
 // recordHutan mencatat kemenangan di wilayah ujian (Hutan Lebat, Gua Goblin, Gunung Batu). Mengembalikan baris log.

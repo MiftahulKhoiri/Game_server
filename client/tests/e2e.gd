@@ -2623,6 +2623,27 @@ func _run() -> void:
 	var bx_70: Dictionary = RMv49.blip_rect(Vector2(10, 10), Vector2(200, 10), 0.0)
 	_check(bx_70.clamped and absf(bx_70.at.x) <= rm70.size.x * 0.5, "musuh jauh menempel di tepi radar persegi")
 	rm70.free()
+
+	print("== v0.71.0: bos Gua Goblin memburu pemain ke seluruh gua")
+	var RoamerS71: Script = load("res://scripts/roamer.gd")
+	var path71: Array[Vector2i] = RoamerS71.find_path(Maps.GUA_GOBLIN, Vector2i(30, 59), Vector2i(4, 4))
+	_check(path71.size() > 60 and path71[-1] == Vector2i(4, 4), "jalur lorong dari singgasana ke ujung lorong buntu barat laut (%d petak)" % path71.size())
+	var tg71: Dictionary = Maps.TRIALS[Maps.GUA_GOBLIN]
+	_check(bool(tg71.get("hunt", false)) and float(tg71.boss_speed[2]) > float(tg71.boss_speed[0]) and float(tg71.boss_agility[2]) > float(tg71.boss_agility[0]), "bos gua memburu, tahap 3 lebih cepat dan gesit dari tahap 1")
+	var hb71 = RoamerS71.new({"id": "kepala_goblin_1", "name": "Kepala Goblin Lv 1", "lv": 1}, Maps.GUA_GOBLIN, Vector2(30.5, 59.5), 7001)
+	hb71.hunter = true
+	hb71.chase_speed = float(tg71.boss_speed[0])
+	var caught71 := false
+	var t71 := 0.0
+	while t71 < 90.0 and not caught71:
+		caught71 = hb71.step(0.05, Vector2(4.5, 4.5), true, 6)
+		t71 += 0.05
+	_check(caught71, "bos gua menyusul pemain di lorong buntu jauh dari singgasana (%.0f d)" % t71)
+	var ob71 = RoamerS71.new({"id": "goblin", "name": "Goblin", "lv": 2}, Maps.GUA_GOBLIN, Vector2(30.5, 59.5), 7002)
+	var oc71 := false
+	for _i71 in 600:
+		oc71 = oc71 or ob71.step(0.05, Vector2(4.5, 4.5), true, 6)
+	_check(not oc71, "musuh biasa tidak memburu ke seluruh gua")
 	var me_v49: Dictionary = await Api.get_me()
 	Session.set_player(me_v49.data)
 	var s49: Dictionary = Session.player.state.duplicate(true)

@@ -58,6 +58,15 @@ var _knock := Vector2.ZERO
 var _patrol_pts: Array[Vector2] = []
 var _patrol_i := 0
 
+## Pemburu (v0.71.0, bos Gua Goblin): mengejar pemain ke mana pun di peta lewat jalur lorong terpendek (BFS
+## antarpetak), tidak terikat wilayah. `agility` mempercepat gerak bertarungnya (mengitari, menerjang, mundur).
+var hunter := false
+var agility := 1.0
+var _path: Array[Vector2i] = []
+var _path_t := 0.0
+const HUNT_REPATH := 0.45
+const HUNT_DIRECT := 2.2     # sedekat ini dan jalannya lurus bebas: langsung menuju pemain
+
 var _target := Vector2.ZERO
 var _has_target := false
 var _wait := 0.0
@@ -137,6 +146,8 @@ func step(delta: float, player: Vector2, can_aggro: bool, player_level := 1) -> 
 	if fight:
 		_step_fight(delta, player)
 		return false
+	if hunter and can_aggro:
+		return _hunt(delta, player)
 	var d := pos.distance_to(player)
 	if can_aggro and d < AGGRO and afraid_of(player_level):
 		chasing = false
@@ -213,6 +224,66 @@ func step(delta: float, player: Vector2, can_aggro: bool, player_level := 1) -> 
 	return false
 
 
+## Memburu pemain lewat lorong: jalur petak terpendek dihitung ulang tiap HUNT_REPATH detik.
+func _hunt(delta: float, player: Vector2) -> bool:
+	chasing = true
+	returning = false
+	var d := pos.distance_to(player)
+	if d < CONTACT:
+		return true
+	var goal := player
+	if d > HUNT_DIRECT or not Maps.roam_path_free(map_id, pos, player):
+		_path_t -= delta
+		if _path_t <= 0.0 or _path.is_empty():
+			_path_t = HUNT_REPATH
+			_path = find_path(map_id, Vector2i(int(floor(pos.x)), int(floor(pos.y))), Vector2i(int(floor(player.x)), int(floor(player.y))))
+		while not _path.is_empty() and pos.distance_to(Vector2(_path[0]) + Vector2(0.5, 0.5)) < 0.35:
+			_path.pop_front()
+		if _path.is_empty():
+			return false
+		goal = Vector2(_path[0]) + Vector2(0.5, 0.5)
+	var to := goal - pos
+	var tl := to.length()
+	if tl < 0.001:
+		return false
+	walking = _slide(to / tl * minf(chase_speed * delta, tl))
+	yaw = lerp_angle(yaw, atan2(to.x, to.y), minf(1.0, delta * TURN_RATE))
+	return false
+
+
+## Jalur petak terpendek (tanpa petak awal) dari `from` ke `to` lewat petak yang boleh dilalui musuh; [] bila
+## tidak ada. Peta gua terbesar 61x72 petak, jadi BFS biasa cukup murah.
+static func find_path(map: String, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if from == to:
+		return out
+	var prev := {from: from}
+	var q: Array[Vector2i] = [from]
+	var head := 0
+	var found := false
+	while head < q.size():
+		var cur: Vector2i = q[head]
+		head += 1
+		if cur == to:
+			found = true
+			break
+		for dv: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = cur + dv
+			if prev.has(n):
+				continue
+			if n != to and not Maps.roam_free(map, Vector2(n) + Vector2(0.5, 0.5)):
+				continue
+			prev[n] = cur
+			q.append(n)
+	if not found:
+		return out
+	var c := to
+	while c != from:
+		out.push_front(c)
+		c = prev[c]
+	return out
+
+
 ## Lari menjauhi pemain (dicoba beberapa arah supaya tidak menabrak tembok).
 func _flee(delta: float, player: Vector2) -> void:
 	var away := pos - player
@@ -267,26 +338,26 @@ func _step_fight(delta: float, player: Vector2) -> void:
 	elif _lunge_t > 0.0:
 		_lunge_t -= delta
 		if d > 0.75:
-			walking = _slide(dir * minf(LUNGE_SPEED * delta, d - 0.75))
+			walking = _slide(dir * minf(LUNGE_SPEED * agility * delta, d - 0.75))
 	else:
 		var stand := STAND + (WINDUP_BACK if warn else 0.0)
 		var move := Vector2.ZERO
 		if d > stand + 0.05:
 			move = dir * minf(chase_speed * delta, d - stand)
 		elif d < stand - 0.05:
-			move = -dir * minf(1.6 * delta, stand - d)  # mundur bersiap / menjaga jarak
+			move = -dir * minf(1.6 * agility * delta, stand - d)  # mundur bersiap / menjaga jarak
 		if not warn:
 			# Mengitari pemain; arah putaran berganti sesekali atau saat menabrak.
 			_orbit_t -= delta
 			if _orbit_t <= 0.0:
-				_orbit_t = _rng.randf_range(1.2, 2.6)
+				_orbit_t = _rng.randf_range(1.2, 2.6) / agility
 				_orbit_dir = -_orbit_dir if _rng.randf() < 0.6 else _orbit_dir
-			move += Vector2(-dir.y, dir.x) * _orbit_dir * ORBIT_SPEED * delta
+			move += Vector2(-dir.y, dir.x) * _orbit_dir * ORBIT_SPEED * agility * delta
 		if move.length() > 0.0001:
 			walking = _slide(move)
 			if not walking:
 				_orbit_dir = -_orbit_dir
-	yaw = lerp_angle(yaw, want, minf(1.0, delta * TURN_RATE))
+	yaw = lerp_angle(yaw, want, minf(1.0, delta * TURN_RATE * agility))
 
 
 ## Menyalin keadaan ke node 3D. `near` = pemain cukup dekat untuk menampilkan nama.

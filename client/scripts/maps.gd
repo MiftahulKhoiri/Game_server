@@ -127,7 +127,9 @@ const TRIALS := {
 	"hutan_lebat": {"boss": Vector2i(142, 47), "prefix": "goblin_hutan_", "boss_name": "Goblin Level %d", "next": "gua_goblin",
 		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
 	"gua_goblin": {"boss": Vector2i(30, 61), "prefix": "kepala_goblin_", "boss_name": "Kepala Goblin Lv %d", "boss_names": ["Kepala Goblin Lv 1", "Kepala Goblin Lv 2", "Raja Goblin"], "next": "gunung_batu",
-		"gate": [29, 31, 71], "gate_point": Vector2(30.5, 70.5), "home": Vector2(30.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(30.5, 0.0, 71.45), "lock_w": 3.0},
+		"gate": [29, 31, 71], "gate_point": Vector2(30.5, 70.5), "home": Vector2(30.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(30.5, 0.0, 71.45), "lock_w": 3.0,
+		# v0.71.0: bos memburu pemain ke seluruh gua (server: TrialDef.Hunt); kecepatan dan kegesitan per tahap
+		"hunt": true, "boss_speed": [2.8, 3.1, 3.45], "boss_agility": [1.35, 1.6, 1.9]},
 	"gunung_batu": {"boss": Vector2i(21, 27), "prefix": "ogre_gunung_", "boss_name": "Orc Batu Lv %d", "boss_names": ["Orc Batu Lv 1", "Orc Batu Lv 2", "Panglima Lereng"], "next": "gua_batu",
 		"gate": [22, 22, 49], "gate_point": Vector2(22.5, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Gua Goblin", "foe": "Musuh", "lock": Vector3(22.5, 0.0, 49.45), "lock_w": 3.0},
 }
@@ -371,7 +373,7 @@ const ROAMERS := {
 
 ## Petak yang boleh diinjak musuh berkeliaran: seperti bisa dilewati pemain, tetapi bukan pintu
 ## rumah, pintu antar-peta, singgasana bos, petak NPC, atau peti.
-const ROAM_TILES := ".=fTBMGO"
+const ROAM_TILES := ".=fTBMGOX"
 
 
 ## Apakah titik (x, z) bebas dilalui musuh berkeliaran (keempat sudut badan jari-jari 0,25 juga).

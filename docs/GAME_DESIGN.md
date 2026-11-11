@@ -267,6 +267,13 @@ Ditambah per level pemain di atas level musuh: HP +8% dan serangan +5% (paling b
 sudah kuat tetap tertantang. Bos wilayah dan musuh di peta lain tidak berubah. Di klien musuh yang sedang bertarung
 mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, dan terpental saat dipukul (`roamer.gd`).
 
+**Bos Gua Goblin memburu (v0.71.0).** Kepala Goblin Lv 1 / Lv 2 / Raja Goblin kini HP 1100 / 2000 / 2800, serangan
+46 / 62 / 76, jeda serangan 1,45 / 1,25 / 1,1 detik (masih 25% lebih cepat saat HP di bawah separuh). Begitu muncul, bos
+**memburu pemain ke seluruh gua** lewat jalur lorong terpendek (kecepatan 2,8 / 3,1 / 3,45 petak/detik; pemain 3,3, Boost
+4,45) dan bertarung lebih gesit (mengitari, menerjang, mundur 1,35 / 1,6 / 1,9 kali lebih cepat). Pertarungannya boleh
+dimulai di mana saja di gua (`TrialDef.Hunt`). Untuk pemain di atas level 6 HP bos +7% dan serangan +4% per level (paling
+banyak 15 level, `strengthenBoss`). Bos hutan tetap hanya di sekitar singgasananya.
+
 **Radar dan goblin (v0.69.1).** Radar Musuh kini menggambar rute jalan (petak `=`) sebagai garis krem. Besar titik merah
 mengikuti besar musuh (sisi terpanjang badan model): kecil di bawah 1,4 m (kancil, rubah, kelelawar), sedang sampai 2,3 m
 (ular, babi, serigala, goblin), besar di atasnya (beruang, orc, kepala goblin). Bos tampil sebagai tengkorak merah.

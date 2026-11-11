@@ -207,6 +207,9 @@ func newBattle(e Enemy, now int64) Battle {
 }
 
 func enemyInterval(e Enemy) int64 {
+	if e.IntervalMs > 0 {
+		return e.IntervalMs
+	}
 	if e.Boss {
 		return BossIntervalMs
 	}

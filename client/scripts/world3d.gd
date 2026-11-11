@@ -2586,6 +2586,11 @@ func _update_hutan_boss(show: bool, level: int) -> void:
 	var at := Vector2(float(bp.x) + 0.5, float(bp.y) - 1.5)
 	var r := _make_roamer(kind, _map_id, at, 7000 + level)
 	r.chase_speed = 2.0
+	if bool(t.get("hunt", false)):  # bos gua: memburu pemain ke seluruh peta, lebih cepat dan gesit tiap tahap
+		var li := clampi(level - 1, 0, 2)
+		r.hunter = true
+		r.chase_speed = float(t.boss_speed[li])
+		r.agility = float(t.boss_agility[li])
 	_roamers.append(r)
 	_hutan_boss = r
 

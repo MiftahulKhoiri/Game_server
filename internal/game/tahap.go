@@ -60,3 +60,26 @@ func (b *Battle) reward(v int) int {
 	}
 	return v * b.RewardPct / 100
 }
+
+// Bos wilayah ujian yang memburu pemain (v0.71.0, Gua Goblin): untuk pemain di atas TrialDef.BossLevel HP bos naik
+// BossLevelHP% dan serangannya BossLevelAtk% per level (paling banyak BossLevelMax level), supaya pemain yang
+// sudah kuat tetap tertantang. Hadiah tidak berubah.
+const (
+	BossLevelHP  = 7
+	BossLevelAtk = 4
+	BossLevelMax = 15
+)
+
+func (b *Battle) strengthenBoss(st State, e Enemy) {
+	t, ok := TrialFor(st.Map)
+	if !ok || t.BossLevel <= 0 || !e.Boss {
+		return
+	}
+	gap := min(BossLevelMax, max(0, st.Level-t.BossLevel))
+	if gap == 0 {
+		return
+	}
+	hp := e.HP * (100 + gap*BossLevelHP) / 100
+	b.EnemyHP, b.EnemyMaxHP = hp, hp
+	b.AtkPct = 100 + gap*BossLevelAtk
+}

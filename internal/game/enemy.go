@@ -23,6 +23,8 @@ type Enemy struct {
 	// Raid = penyerbu desa, hanya ada saat Serbuan Goblin.
 	Time string
 	Raid bool
+	// IntervalMs: jeda serangan khusus musuh ini (0 = bawaan: EnemyIntervalMs / BossIntervalMs).
+	IntervalMs int64
 }
 
 // Jenis kemampuan khusus musuh. Dipakai pada setiap serangan ke-SpecialEvery (bos: ke-BossSpecialEvery).
@@ -66,9 +68,10 @@ var enemies = []Enemy{
 	{ID: "goblin_hutan_3", Zones: []string{MapHutanLebat}, Boss: true, Name: "Goblin Level 3", HP: 1040, Attack: 50, Defense: 12, XP: 480, Gold: 225, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Goblin"},
 	// v0.66.0: semua bos ujian 2x HP dan serangan (Goblin Level 1 terasa terlalu mudah), hadiah 1,5x.
 	// Bos ujian Gua Goblin dan Gunung Batu (v0.65.0): muncul setelah 25/75/100 musuh kalah di peta itu (hutan.go).
-	{ID: "kepala_goblin_1", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 1", HP: 760, Attack: 40, Defense: 8, XP: 300, Gold: 135, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
-	{ID: "kepala_goblin_2", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 2", HP: 1120, Attack: 48, Defense: 11, XP: 450, Gold: 195, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
-	{ID: "kepala_goblin_3", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Raja Goblin", HP: 1560, Attack: 58, Defense: 14, XP: 675, Gold: 300, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
+	// v0.71.0: bos Gua Goblin jauh lebih kuat, menyerang lebih cepat (IntervalMs), dan memburu pemain ke seluruh gua.
+	{ID: "kepala_goblin_1", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 1", HP: 1100, Attack: 46, Defense: 9, XP: 360, Gold: 160, IntervalMs: 1450, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
+	{ID: "kepala_goblin_2", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Kepala Goblin Lv 2", HP: 2000, Attack: 62, Defense: 13, XP: 600, Gold: 260, IntervalMs: 1250, MinLevel: 1, DropID: "taring_goblin", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
+	{ID: "kepala_goblin_3", Zones: []string{MapGuaGoblin}, Boss: true, Name: "Raja Goblin", HP: 2800, Attack: 76, Defense: 17, XP: 950, Gold: 420, IntervalMs: 1100, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hantaman Kepala Goblin"},
 	{ID: "ogre_gunung_1", Zones: []string{MapGunungBatu}, Boss: true, Name: "Orc Batu Lv 1", HP: 1300, Attack: 54, Defense: 13, XP: 600, Gold: 270, MinLevel: 1, DropID: "koin_kuno", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hentakan Orc Batu"},
 	{ID: "ogre_gunung_2", Zones: []string{MapGunungBatu}, Boss: true, Name: "Orc Batu Lv 2", HP: 1800, Attack: 62, Defense: 16, XP: 840, Gold: 360, MinLevel: 1, DropID: "koin_kuno", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hentakan Orc Batu"},
 	{ID: "ogre_gunung_3", Zones: []string{MapGunungBatu}, Boss: true, Name: "Panglima Lereng", HP: 2400, Attack: 72, Defense: 19, XP: 1125, Gold: 495, MinLevel: 1, DropID: "permata_merah", DropPercent: 100, Special: SpecialGempa, SpecialName: "Hentakan Orc Batu"},
