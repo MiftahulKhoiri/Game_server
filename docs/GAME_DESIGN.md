@@ -273,7 +273,7 @@ mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, da
 |------|-------------|-----------|
 | Hutan Binatang | binatang hutan | Goblin Level 1-3 |
 | Gua Goblin | goblin + binatang tulang (v0.73.0, pengganti binatang hutan: Rubah, Ular, Babi, Serigala, Beruang Tulang, Kerangka Gua) | Orc Batu Lv 1, Lv 2, Raja Orc Batu |
-| Gunung Berapi | binatang lava (v0.74.0) + goblin + orc batu | Naga Lava Lv 1, Lv 2, Induk Naga Lava |
+| Gunung Berapi | binatang tengkorak lava (v0.74.0) + goblin + orc batu, semuanya bermodel merah lava; 50 musuh sekaligus (v0.75.0) | Naga Lava Lv 1, Lv 2, Induk Naga Lava |
 | Benteng Orc | binatang batu (v0.74.0) + goblin + orc batu + orc benteng | Panglima Orc Batu (cerita) |
 | Istana Kegelapan | binatang bayangan (v0.74.0) + goblin + orc batu + Naga Bayangan + Naga Api Muda + pasukan terkutuk | Aldragor (cerita), lalu Malzareth di ruang takhta |
 
@@ -329,7 +329,7 @@ Iblis Biru kini hanya dipakai di layar judul.
 | Perbatasan Kerajaan (`perbatasan`) | Kem Kapten Rimba tepat di bawah gapura desa (api unggun, tenda, panji), jalan raja, ladang yang dirusak monster, reruntuhan benteng | Utara (7,0) ke desa; selatan (7,19) naik ke Gunung Batu |
 | Hutan Binatang (`hutan_lebat`, 170x50) | Hutan pinus lebat, padang terbuka di balik pintu masuk, jalan tanah lebar, kolam, tempat terbuka, singgasana bos dekat gerbang (142,47), enam peti, tiga jalan 2 petak yang bertemu di depan gerbang | Utara (22,0) ke Perbatasan; gerbang selatan (146-147,49) ke Gua Goblin (terkunci sampai tiga Goblin kalah) |
 | Gua Goblin (`gua_goblin`, 61x72, v0.70.0) | Peta 3: gua sarang goblin. Tiga jalan (barat, tengah berliku, timur) dari pintu masuk; ketiganya bertemu di balairung **singgasana bos orc** (30,61) tepat di depan pintu utama. Sungai bawah tanah dengan tiga jembatan, banyak lorong buntu (Radar Musuh menggambar lorongnya), tumpukan tengkorak, obor di dinding (terang-gelap bergantian), asap tipis, tanpa hujan dan siang-malam. Tiga peti di ujung lorong buntu | Utara (29-31,0) kembali ke hutan; pintu utama selatan (29-31,71) ke Gunung Batu |
-| Lereng Gunung Berapi (`gunung_batu`) | Lereng berbatu, aliran lava, Orc Batu | Utara (22,0) ke Gua Goblin; selatan (22,49) masuk Benteng Orc |
+| Lereng Gunung Berapi (`gunung_batu`, 180x50, v0.75.0) | Empat kali lebar peta lama. Empat jalan selebar 2 petak dari alun-alun kerikil di pintu masuk berliku ke timur dan bertemu di balairung **singgasana Naga Lava** (160,41). Sungai lava selebar 2 petak dengan tiga jembatan, banyak lorong buntu (labirin) berujung kantong kerikil, aliran lava di sela batu, tumpukan tengkorak, lima peti di ujung lorong buntu, Sarang Naga Tua (178,17) | Utara (22-23,0) ke Gua Goblin; gerbang selatan (160-161,49) masuk Benteng Orc (terkunci sampai tiga Naga Lava kalah) |
 | Benteng Orc (`gua_batu`) | Lorong gua, kolam lava, singgasana Panglima Orc Batu, Batu Sihir, Orc Tua | Utara (7,0) ke lereng; selatan (7,19) ke Istana Kegelapan (mulai langkah cerita 9) |
 | Istana Kegelapan (`istana_kegelapan`) | Halaman istana, penjaga terkutuk, Aldragor | Utara ke Benteng Orc; selatan (14-16,25) ke ruang takhta (mulai langkah 10) |
 | Ruang Takhta (`ruang_takhta`) | Singgasana Malzareth, Elara | Utara (9-11,0) kembali ke halaman |

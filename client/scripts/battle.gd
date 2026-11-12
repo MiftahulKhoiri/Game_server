@@ -692,7 +692,7 @@ func _build_arena() -> SubViewportContainer:
 		sold.set_meta("bx", sold.position.x)
 		vp.add_child(sold)
 		_ally_rigs["prajurit_%d" % (n + 1)] = sold
-	_enemy_rig = Models.create(_enemy_id)
+	_enemy_rig = Models.create(Models.skin(_enemy_id, map_id))
 	_enemy_rig.position = Vector3(ENEMY_X, 0, 0)
 	_enemy_rig.rotation.y = -PI / 2.0  # menghadap -x
 	vp.add_child(_enemy_rig)

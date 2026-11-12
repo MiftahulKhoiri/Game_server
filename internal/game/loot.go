@@ -82,11 +82,11 @@ var chests = []ChestDef{
 	{ID: "gua_gob_1", Map: MapGuaGoblin, X: 2, Y: 69, Tier: 3}, // ujung lorong buntu (v0.70.0)
 	{ID: "gua_gob_2", Map: MapGuaGoblin, X: 57, Y: 23, Tier: 3},
 	{ID: "gua_gob_3", Map: MapGuaGoblin, X: 4, Y: 3, Tier: 3},
-	{ID: "gunung_1", Map: MapGunungBatu, X: 40, Y: 7, Tier: 3},
-	{ID: "gunung_2", Map: MapGunungBatu, X: 3, Y: 28, Tier: 3},
-	{ID: "gunung_3", Map: MapGunungBatu, X: 42, Y: 32, Tier: 3},
-	{ID: "gunung_4", Map: MapGunungBatu, X: 5, Y: 45, Tier: 3},
-	{ID: "gunung_5", Map: MapGunungBatu, X: 39, Y: 45, Tier: 3},
+	{ID: "gunung_1", Map: MapGunungBatu, X: 17, Y: 34, Tier: 3}, // v0.75.0: ujung lorong buntu
+	{ID: "gunung_2", Map: MapGunungBatu, X: 47, Y: 48, Tier: 3},
+	{ID: "gunung_3", Map: MapGunungBatu, X: 88, Y: 13, Tier: 3},
+	{ID: "gunung_4", Map: MapGunungBatu, X: 81, Y: 38, Tier: 3},
+	{ID: "gunung_5", Map: MapGunungBatu, X: 127, Y: 22, Tier: 3},
 	{ID: "gua_1", Map: MapGuaBatu, X: 1, Y: 1, Tier: 4},
 	{ID: "gua_2", Map: MapGuaBatu, X: 13, Y: 1, Tier: 4},
 }

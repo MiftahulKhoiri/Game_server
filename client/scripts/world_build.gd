@@ -155,8 +155,12 @@ void vertex() {
 }
 void fragment() {
 	float n = sin(wp.x * 2.3 + TIME * 0.9) * sin(wp.z * 2.1 - TIME * 0.7) + 0.5 * sin((wp.x + wp.z) * 4.0 + TIME * 1.7);
-	float k = clamp(n * 0.45 + 0.5, 0.0, 1.0);
-	ALBEDO = mix(vec3(0.5, 0.06, 0.02), vec3(1.0, 0.62, 0.12), k * k);
+	// v0.75.0: alur lava yang mengalir (riak bergeser ke selatan dan timur), bukan hanya berdenyut di tempat.
+	float f = sin((wp.z - TIME * 1.1) * 3.1 + sin(wp.x * 1.7) * 1.4) * 0.5 + sin((wp.x - TIME * 0.8) * 2.6 + sin(wp.z * 1.3) * 1.2) * 0.35;
+	float k = clamp(n * 0.3 + f * 0.4 + 0.5, 0.0, 1.0);
+	vec3 c = mix(vec3(0.5, 0.06, 0.02), vec3(1.0, 0.62, 0.12), k * k);
+	c += vec3(1.0, 0.85, 0.4) * smoothstep(0.82, 0.98, k) * 0.35;  // kerak panas yang berkilau
+	ALBEDO = c;
 }
 """
 static var _mats: Dictionary = {}
@@ -562,8 +566,13 @@ static func build(map_id: String) -> Node3D:
 	var cap_x: Array[Transform3D] = []    # jamur: tudung
 	var n_pasir := 0
 	var gob := map_id == Maps.GUA_GOBLIN
-	var skull_spots: Array[Vector3] = []   # tumpukan tengkorak (petak X, Gua Goblin)
-	var near_floor := _near_floor(rows, 3) if gob else {}  # batu jauh dari lorong tidak digambar (tertutup kabut)
+	var gunung := map_id == Maps.GUNUNG
+	var skull_spots: Array[Vector3] = []   # tumpukan tengkorak (petak X, Gua Goblin dan Gunung Berapi)
+	# Batu jauh dari lorong tidak digambar sebagai model (Gua Goblin: tertutup kabut). Gunung Berapi 180x50 (v0.75.0):
+	# batu jauh diganti balok batu basal sederhana (satu panggilan gambar) supaya HP tetap ringan.
+	var near_floor := _near_floor(rows, 3) if gob else (_near_floor(rows, 2) if gunung else {})
+	var basal_x: Array[Transform3D] = []
+	var basal_c: Array[Color] = []
 	# Dinding Gua Goblin lebih pendek supaya pemain tidak tertutup batu di lorong sempit (kamera dari atas-belakang).
 	var rock_h := Vector3(1.0, 0.62, 1.0) if gob else Vector3.ONE
 
@@ -610,9 +619,15 @@ static func build(map_id: String) -> Node3D:
 				"L":
 					lava_x.append(_xf(c + Vector3(0, -0.03, 0)))
 				"B":
-					water_x.append(_xf(c + Vector3(0, -0.035, 0)))  # di atas alas luas (-0,06), di bawah petak tanah (0)
-					# Air di utara dan selatan petak jembatan = jalannya memanjang ke arah x (parit ladang); selain itu ke arah z.
-					var sepanjang_x := _tile(rows, x, z - 1) == "~" and _tile(rows, x, z + 1) == "~"
+					# v0.75.0: jembatan di atas sungai lava (Gunung Berapi) berdiri di atas lava, bukan air.
+					if _tile(rows, x, z - 1) == "L" or _tile(rows, x, z + 1) == "L" or _tile(rows, x - 1, z) == "L" or _tile(rows, x + 1, z) == "L":
+						lava_x.append(_xf(c + Vector3(0, -0.03, 0)))
+					else:
+						water_x.append(_xf(c + Vector3(0, -0.035, 0)))  # di atas alas luas (-0,06), di bawah petak tanah (0)
+					# Air/lava di utara dan selatan petak jembatan (atau jembatan selebar beberapa petak) dan bukan di kiri-kanannya
+					# = jalannya memanjang ke arah x (parit ladang, sungai lava); selain itu ke arah z.
+					var sepanjang_x := _basah(_tile(rows, x, z - 1)) and _basah(_tile(rows, x, z + 1)) \
+							and not (_basah(_tile(rows, x - 1, z)) and _basah(_tile(rows, x + 1, z)))
 					plank_x.append(_xf(c, Vector3.ONE, PI * 0.5 if sepanjang_x else 0.0))
 					for sx in [-0.46, 0.46]:
 						# pegangan hanya di tepi luar jembatan yang lebarnya beberapa petak
@@ -650,6 +665,11 @@ static func build(map_id: String) -> Node3D:
 						leaf_c.append(leaf.lightened(0.12))
 				"R":
 					if gob and not near_floor.has(Vector2i(x, z)):
+						continue
+					if gunung and not near_floor.has(Vector2i(x, z)):
+						var hb := 0.9 + 0.9 * j
+						basal_x.append(_xf(c + Vector3(0, hb * 0.5, 0), Vector3(1.0, hb, 1.0)))
+						basal_c.append(Color("2c2622").lerp(Color("4a3a30"), _jitter(x, z, 13)))
 						continue
 					if use_rocks:
 						var rr := _jitter(x, z, 9)
@@ -724,6 +744,7 @@ static func build(map_id: String) -> Node3D:
 	_multi(root, _cyl(0.12, 0.14, 0.9, 6), mat(Color("5b3b1e")), trunk_x)
 	_multi(root, _sphere(0.5, 9), mat(Color.WHITE, true), leaf_x, leaf_c)
 	_multi(root, _sphere(0.6, 7), mat(Color.WHITE, true, 1.0), rock_x, rock_c)
+	_multi(root, _box(Vector3(1, 1, 1)), mat(Color.WHITE, true, 1.0), basal_x, basal_c)
 	var breakables: Array = []  # benda yang bisa dihancurkan (lihat breakables.gd)
 	for id: String in sway_by:
 		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id], [], true, breakables, "pohon", id)
@@ -765,6 +786,8 @@ static func build(map_id: String) -> Node3D:
 	elif gob:
 		_add_skulls(root, skull_spots)
 		_add_torches_at(root, cave_torch_spots(rows), Color("ff7a1a"), true)
+	elif gunung:
+		_add_skulls(root, skull_spots)
 	elif cave:
 		_add_torches(root, rows)
 	MeshMerge.merge(root, _jarak())  # ratusan bentuk kecil statis -> beberapa mesh (panggilan gambar turun)
@@ -1829,6 +1852,11 @@ static func _wall_dir(rows: Array[String], t: Vector2i) -> Vector2:
 
 
 ## Petak batu yang berjarak <= r dari petak bukan batu (hanya itu yang perlu digambar).
+## Air, lava, atau jembatan (untuk arah papan jembatan).
+static func _basah(t: String) -> bool:
+	return t == "~" or t == "L" or t == "B"
+
+
 static func _near_floor(rows: Array[String], r: int) -> Dictionary:
 	var out := {}
 	for z in rows.size():

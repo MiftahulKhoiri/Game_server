@@ -87,7 +87,47 @@ const VARIANTS := {
 	"iblis_bayangan": {"base": "golem_lava", "size": 1.15, "tint": Color("9070c8")},
 	# Prajurit biasa (pasukan dari tenda hijau): pendekar tombak yang lebih kecil dan kehijauan.
 	"prajurit": {"base": "pendekar_tombak", "size": 0.88, "tint": Color("b6d8a4")},
+	# Lereng Gunung Berapi (v0.75.0): goblin dan orc batu bermodel merah lava yang berpendar (lihat MAP_SKINS).
+	"goblin_lava": {"base": "goblin", "size": 1.0, "tint": Color("ff5a3a"), "lava": true},
+	"goblin_pemburu_lava": {"base": "goblin", "size": 1.2, "tint": Color("ff8a40"), "lava": true},
+	"goblin_penjaga_lava": {"base": "goblin_penjaga", "size": 1.0, "tint": Color("ff4630"), "lava": true},
+	"orc_batu_lava": {"base": "ogre_batu", "size": 1.0, "tint": Color("e0502c"), "lava": true},
 }
+
+## Model khas peta (v0.75.0): musuh yang sama (id server sama) tampil dengan model lain di peta tertentu.
+## Lereng Gunung Berapi: goblin dan orc batu berwarna merah lava seperti binatang tengkorak lava di sana.
+const MAP_SKINS := {
+	"gunung_batu": {"goblin": "goblin_lava", "goblin_pemburu": "goblin_pemburu_lava", "goblin_penjaga": "goblin_penjaga_lava", "ogre_batu": "orc_batu_lava"},
+}
+const LAVA_GLOW := Color("ff4a12")
+
+
+## Id model untuk musuh `id` di peta `map_id` (id itu sendiri bila peta tidak punya model khas).
+static func skin(id: String, map_id: String) -> String:
+	return str((MAP_SKINS.get(map_id, {}) as Dictionary).get(id, id))
+
+
+## Pendar merah lava pada semua bahan model (tepi menyala + cahaya jingga redup).
+static func _lava_glow(n: Node) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		var mats: Array[StandardMaterial3D] = []
+		if mi.material_override is StandardMaterial3D:
+			mats.append(mi.material_override as StandardMaterial3D)
+		elif mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.get_surface_override_material(i)
+				if m is StandardMaterial3D:
+					mats.append(m as StandardMaterial3D)
+		for sm in mats:
+			sm.rim_enabled = true
+			sm.rim = 0.7
+			sm.rim_tint = 0.9
+			sm.emission_enabled = true
+			sm.emission = LAVA_GLOW
+			sm.emission_energy_multiplier = 0.32
+	for ch in n.get_children():
+		_lava_glow(ch)
 
 
 ## Warna hewan Quaternius per nama bahan (roadmap no. 61-70): warna aslinya hilang saat diubah ke GLB
@@ -178,6 +218,8 @@ static func create(id: String) -> Node3D:
 		if BRIGHT.has(str(v.base)):
 			tint = tint.lerp(Color.WHITE, BRIGHT_TINT_SOFTEN)  # warna varian goblin tidak menggelapkan model
 		_tint(base, tint)
+		if bool(v.get("lava", false)):
+			_lava_glow(base)
 		base.name = id
 		return base
 	var path := MODEL_DIR + str(HERO_GLB.get(id, id)) + ".glb"

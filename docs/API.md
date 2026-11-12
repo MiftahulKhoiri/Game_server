@@ -141,7 +141,7 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 | 401 | Token tidak valid |
 | 409 | Versi tidak cocok |
 | 426 | Versi aplikasi di bawah `min_client` |
-| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `hutan_lebat`, `gua_goblin`, `gunung_batu`, `gua_batu`, Desa Awal 85x50, Hutan Lebat 170x50, Gua Goblin 61x72, lainnya 45x50 (Gua Batu 15x20)) |
+| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `hutan_lebat`, `gua_goblin`, `gunung_batu`, `gua_batu`, Desa Awal 85x50, Hutan Lebat 170x50, Gua Goblin 61x72, Gunung Berapi 180x50, lainnya 45x50 (Gua Batu 15x20)) |
 
 ## Pertarungan (v0.3.0)
 
@@ -533,7 +533,7 @@ tahap 3 **100**; tiap tahap ditutup satu bos. Setelah ketiga bos kalah, gerbang 
 |------|-----|-----------|--------------------|
 | `hutan_lebat` | `goblin_hutan_1..3` | (142,47) | `gua_goblin` |
 | `gua_goblin` | `kepala_goblin_1..3` | (30,61) | `gunung_batu` |
-| `gunung_batu` | `ogre_gunung_1..3` | (21,27) | `gua_batu` |
+| `gunung_batu` | `ogre_gunung_1..3` | (160,41) | `gua_batu` |
 
 Kemajuan Hutan Lebat tetap di `state.hutan`; peta lain di `state.trials: {"gua_goblin": {"wave","kills"}, "gunung_batu": {...}}`
 (hanya diubah server; kunci lain / nilai di luar rentang ditolak `422`). `kills` naik tiap kemenangan atas musuh biasa di peta itu

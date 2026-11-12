@@ -203,8 +203,8 @@ var Secrets = []Secret{
 		Hint: "Di sudut barat daya Perbatasan ada batu tua bertulis."},
 	{ID: "pohon_keramat", Name: "Pohon Keramat", Map: MapHutanLebat, X: 84, Y: 2, Gold: 120, Item: "permata_merah",
 		Hint: "Di tepi utara Hutan Binatang, di tengah perjalanan, ada pohon tua bercahaya."},
-	{ID: "sarang_naga", Name: "Sarang Naga Tua", Map: MapGunungBatu, X: 41, Y: 7, Gold: 200, Item: DiamondID,
-		Hint: "Pendaki bercerita tentang sarang naga kosong di pojok timur laut lereng Gunung Berapi."},
+	{ID: "sarang_naga", Name: "Sarang Naga Tua", Map: MapGunungBatu, X: 178, Y: 17, Gold: 200, Item: DiamondID,
+		Hint: "Pendaki bercerita tentang sarang naga kosong di ujung lorong buntu paling timur lereng Gunung Berapi."},
 }
 
 // Kesalahan dunia.

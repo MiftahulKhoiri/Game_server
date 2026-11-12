@@ -602,17 +602,29 @@ func _kind_time_ok(k: Dictionary, map_id: String) -> bool:
 
 ## Titik acak yang cocok untuk musuh berkeliaran: petak yang sesuai, jauh dari pemain dan musuh lain.
 ## Vector2.ZERO bila tidak ada.
+## Petak calon dihitung sekali per peta (v0.75.0: Gunung Berapi 180x50 dengan 50 musuh; dulu seluruh peta
+## diperiksa ulang untuk tiap musuh yang muncul).
+var _roam_cands_all: Array[Vector2] = []
+var _roam_cands_map := ""
+
+
 func _roam_spot(map_id: String, rng: RandomNumberGenerator) -> Vector2:
-	var rows := Maps.rows(map_id)
+	if _roam_cands_map != map_id:
+		_roam_cands_map = map_id
+		_roam_cands_all = []
+		var rows := Maps.rows(map_id)
+		for y in range(int(_roam_cfg.min_y), rows.size()):
+			for x in rows[y].length():
+				if not str(_roam_cfg.tiles).contains(rows[y][x]):
+					continue
+				var c0 := Vector2(x + 0.5, y + 0.5)
+				if Maps.roam_free(map_id, c0):
+					_roam_cands_all.append(c0)
 	var min_d := 10.0 if Maps.width(map_id) >= 30 else 6.0
 	var cands: Array[Vector2] = []
-	for y in range(int(_roam_cfg.min_y), rows.size()):
-		for x in rows[y].length():
-			if not str(_roam_cfg.tiles).contains(rows[y][x]):
-				continue
-			var c := Vector2(x + 0.5, y + 0.5)
-			if c.distance_to(_pos) >= min_d and Maps.roam_free(map_id, c):
-				cands.append(c)
+	for c: Vector2 in _roam_cands_all:
+		if c.distance_to(_pos) >= min_d:
+			cands.append(c)
 	for _i in 40:
 		if cands.is_empty():
 			return Vector2.ZERO
@@ -650,17 +662,18 @@ func _make_roamer(kind: Dictionary, map_id: String, at: Vector2, seed_value: int
 	var r := Roamer.new(kind, map_id, at, seed_value)
 	var holder := Node3D.new()
 	holder.name = "Musuh_%s_%d" % [r.id, _roamers.size()]
-	var model := Models.create(r.id)
+	var model_id := Models.skin(r.id, map_id)  # v0.75.0: model khas peta (goblin merah lava di Gunung Berapi)
+	var model := Models.create(model_id)
 	# Variasi ukuran tiap ekor (roadmap no. 72): 90%-115% dari ukuran jenisnya.
 	var jitter := 0.9 + float(seed_value % 26) / 100.0
 	model.scale = model.scale * jitter
 	holder.add_child(model)
 	_add_shadow(holder, 0.35)
-	var base_id := r.id
+	var base_id := model_id
 	var size := jitter
-	if Models.VARIANTS.has(r.id):
-		base_id = str(Models.VARIANTS[r.id].base)
-		size *= float(Models.VARIANTS[r.id].size)
+	if Models.VARIANTS.has(model_id):
+		base_id = str(Models.VARIANTS[model_id].base)
+		size *= float(Models.VARIANTS[model_id].size)
 	var top := float(Models.HEIGHTS.get(base_id, 1.0)) * size
 	var name_label := Label3D.new()
 	name_label.text = "%s  Lv %d" % [r.label, r.lv]  # level musuh (no. 84)

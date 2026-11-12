@@ -151,7 +151,7 @@ func _run() -> void:
 			_check(Maps.walkable(e.to, e.at.x, e.at.y) and Maps.exit_at(e.to, e.at.x, e.at.y).is_empty(), "tujuan pintu %s -> %s aman dan bukan pintu" % [id, e.to])
 	_check(not Maps.walkable(Maps.PERBATASAN, 26, 14), "tembok batu menghalangi")
 	_check(not Maps.walkable(Maps.GUNUNG, 0, 5) and Maps.walkable(Maps.GUNUNG, 22, 0), "batu besar menghalangi, pintu gunung terbuka")
-	_check(Maps.ENCOUNTER_TILES.contains(Maps.tile_at(Maps.GUNUNG, 6, 8)), "kerikil gunung tempat pertemuan musuh")
+	_check(Maps.ENCOUNTER_TILES.contains(Maps.tile_at(Maps.GUNUNG, 10, 5)), "kerikil gunung tempat pertemuan musuh")
 
 	print("== api")
 	Api.base_url = OS.get_environment("GAME_URL") if OS.get_environment("GAME_URL") != "" else "http://127.0.0.1:8099"
@@ -2430,7 +2430,7 @@ func _run() -> void:
 	print("== v0.65: ujian bertingkat 25/75/100 di Hutan Lebat, Gua Goblin, Gunung Batu")
 	_check(Session.stage_need(0) == 25 and Session.stage_need(1) == 75 and Session.stage_need(2) == 100, "tahap ujian 25, 75, 100")
 	_check(Maps.exit_locked(Maps.GUA_GOBLIN, 30, 71, 0) and not Maps.exit_locked(Maps.GUA_GOBLIN, 30, 71, 3) and not Maps.exit_locked(Maps.GUA_GOBLIN, 30, 0, 0), "Gua Goblin: jalan ke Gunung Batu terkunci sampai 3 bos kalah, jalan pulang tidak")
-	_check(Maps.exit_locked(Maps.GUNUNG, 22, 49, 2) and not Maps.exit_locked(Maps.GUNUNG, 22, 49, 3), "Gunung Batu: jalan ke Gua Batu terkunci sampai 3 bos kalah")
+	_check(Maps.exit_locked(Maps.GUNUNG, 160, 49, 2) and Maps.exit_locked(Maps.GUNUNG, 161, 49, 2) and not Maps.exit_locked(Maps.GUNUNG, 161, 49, 3), "Gunung Batu: jalan ke Gua Batu terkunci sampai 3 bos kalah")
 	var tr_ok := true
 	for tr_m: String in Maps.TRIALS:
 		var tr_b: Vector2i = Maps.TRIALS[tr_m].boss
@@ -2717,6 +2717,150 @@ func _run() -> void:
 	Session.offline = false
 	Session.player.state = saved_w_v49
 
+	print("== v0.75.0: Lereng Gunung Berapi 180x50, empat jalan, sungai lava, labirin buntu, 50 musuh merah lava")
+	var gn75 := Maps.GUNUNG
+	var rows75 := Maps.rows(gn75)
+	_check(Maps.width(gn75) == 180 and Maps.height(gn75) == 50, "Gunung Berapi 4x lebar peta lama (180x50)")
+	var gt75: Dictionary = Maps.TRIALS[gn75]
+	var bp75: Vector2i = gt75.boss
+	_check(Maps.tile_at(gn75, bp75.x, bp75.y) == "Z" and Maps.walkable(gn75, bp75.x, bp75.y - 2), "singgasana Naga Lava di titik bos, bos muncul di lantai depannya")
+	_check(int(gt75.gate[0]) == 160 and int(gt75.gate[1]) == 161 and absi(bp75.y - int(gt75.gate[2])) <= 10, "gerbang 2 petak tepat di balik singgasana")
+	var reach75 := func(start75: Vector2i, blocked75: Dictionary) -> Dictionary:
+		var seen75 := {start75: true}
+		var q75: Array[Vector2i] = [start75]
+		while not q75.is_empty():
+			var cur75: Vector2i = q75.pop_back()
+			for d75: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n75: Vector2i = cur75 + d75
+				if not seen75.has(n75) and not blocked75.has(n75) and Maps.walkable(gn75, n75.x, n75.y):
+					seen75[n75] = true
+					q75.append(n75)
+		return seen75
+	var all75: Dictionary = reach75.call(Vector2i(22, 1), {})
+	_check(all75.has(Vector2i(160, 49)) and all75.has(Vector2i(bp75.x, bp75.y - 2)), "dari pintu masuk, singgasana dan gerbang dapat dicapai")
+	# Empat jalan terpisah: tutup alun-alun awal dan balairung bos, lalu tiap jalan tidak saling tembus.
+	var block75 := {}
+	for y75 in range(0, 12):
+		for x75 in range(0, 38):
+			block75[Vector2i(x75, y75)] = true
+	for y75 in range(33, 50):
+		for x75 in range(144, 176):
+			block75[Vector2i(x75, y75)] = true
+	var starts75 := [Vector2i(40, 5), Vector2i(40, 16), Vector2i(40, 28), Vector2i(8, 20)]
+	var parts75: Array = []
+	for st75: Vector2i in starts75:
+		_check(Maps.walkable(gn75, st75.x, st75.y), "jalan %s bisa dilewati" % str(st75))
+		parts75.append(reach75.call(st75, block75))
+	var cross75 := false
+	for i75 in parts75.size():
+		for j75 in range(i75 + 1, parts75.size()):
+			for k75 in parts75[i75]:
+				if (parts75[j75] as Dictionary).has(k75):
+					cross75 = true
+	_check(not cross75, "empat cabang jalan terpisah sampai balairung singgasana")
+	var n_lava75 := 0
+	var n_br75 := 0
+	var n_sk75 := 0
+	for r75 in rows75:
+		n_lava75 += r75.count("L")
+		n_br75 += r75.count("B")
+		n_sk75 += r75.count("X")
+	_check(n_lava75 > 400 and n_sk75 >= 60, "banyak aliran lava (%d) dan tumpukan tengkorak (%d)" % [n_lava75, n_sk75])
+	# sungai lava selebar 2 petak (x 60..61) dengan tepat tiga jembatan
+	var spans75 := 0
+	for y75 in range(0, 32):
+		if rows75[y75][60] == "B" and (y75 == 0 or rows75[y75 - 1][60] != "B"):
+			spans75 += 1
+	_check(spans75 == 3 and n_br75 == 12, "tiga jembatan selebar 2 petak melintasi sungai lava")
+	var river_ok75 := true
+	for y75 in range(0, 31):
+		if not (rows75[y75][60] in ["L", "B"] and rows75[y75][61] in ["L", "B"]):
+			river_ok75 = false
+	_check(river_ok75, "sungai lava selebar 2 petak dari utara")
+	# jalan selebar 2 petak: tiap petak jalan punya tetangga jalan di kiri/kanan dan atas/bawah sebagai pasangan
+	var thin75 := 0
+	for y75 in range(1, 49):
+		for x75 in range(1, 179):
+			if rows75[y75][x75] != "=":
+				continue
+			var hz75 := "=GXB".contains(rows75[y75][x75 - 1]) or "=GXB".contains(rows75[y75][x75 + 1])
+			var vt75 := "=GXB".contains(rows75[y75 - 1][x75]) or "=GXB".contains(rows75[y75 + 1][x75])
+			if not (hz75 and vt75):
+				thin75 += 1
+	_check(thin75 == 0, "jalan selebar 2 petak (%d petak tipis)" % thin75)
+	# lorong buntu: petak lorong (M/G/X) di luar alun-alun dan balairung yang hanya punya satu tetangga = ujung buntu
+	var ends75 := 0
+	for y75 in range(12, 49):
+		for x75 in range(1, 144):
+			if not "MGX".contains(rows75[y75][x75]):
+				continue
+			var nb75 := 0
+			for d75: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if Maps.walkable(gn75, x75 + d75.x, y75 + d75.y):
+					nb75 += 1
+			if nb75 <= 2:
+				ends75 += 1
+	_check(ends75 >= 40, "banyak lorong buntu (%d sudut ujung)" % ends75)
+	for c75: Dictionary in Maps.chests_in(gn75):
+		_check(all75.has(Vector2i(c75.pos.x - 1, c75.pos.y)) or all75.has(Vector2i(c75.pos.x + 1, c75.pos.y)) or all75.has(Vector2i(c75.pos.x, c75.pos.y - 1)) or all75.has(Vector2i(c75.pos.x, c75.pos.y + 1)), "peti %s di lereng dapat dicapai" % c75.id)
+	for rh75: Dictionary in Maps.RAHASIA:
+		if rh75.map == gn75:
+			_check(all75.has(rh75.pos), "Sarang Naga Tua dapat dicapai")
+	for ex75: Dictionary in Maps.EXITS[gn75]:
+		_check(Maps.walkable(ex75.to, ex75.at.x, ex75.at.y), "tujuan pintu lereng %s dapat dipijak" % str(ex75.pos))
+	for ex75b: Dictionary in Maps.EXITS[Maps.GUA_GOBLIN] + Maps.EXITS[Maps.GUA]:
+		if ex75b.to == gn75:
+			_check(all75.has(ex75b.at), "masuk ke lereng dari %s di petak jalan" % str(ex75b.pos))
+	var cfg75: Dictionary = Maps.ROAMERS[gn75]
+	var ids75: Array = []
+	for k75b: Dictionary in cfg75.kinds:
+		ids75.append(str(k75b.id))
+	_check(int(cfg75.n) == 50 and ids75.has("serigala_lava") and ids75.has("goblin") and ids75.has("ogre_batu") and not ids75.has("ogre_rawa"), "50 musuh: binatang tengkorak lava + goblin + orc batu")
+	var M75: Script = load("res://scripts/models.gd")
+	for id75: String in ["goblin", "goblin_pemburu", "goblin_penjaga", "ogre_batu"]:
+		var sk75: String = M75.skin(id75, gn75)
+		_check(sk75 != id75 and bool(M75.VARIANTS[sk75].lava) and M75.skin(id75, Maps.GUA_GOBLIN) == id75, "%s bermodel merah lava hanya di gunung" % id75)
+		var m75: Node3D = M75.create(sk75)
+		var glow75 := false
+		for mi75: MeshInstance3D in m75.find_children("*", "MeshInstance3D", true, false):
+			var mats75: Array = [mi75.material_override]
+			if mi75.mesh != null:
+				for si75 in mi75.mesh.get_surface_count():
+					mats75.append(mi75.get_surface_override_material(si75))
+			for mm75 in mats75:
+				if mm75 is StandardMaterial3D and (mm75 as StandardMaterial3D).emission_enabled and (mm75 as StandardMaterial3D).emission == M75.LAVA_GLOW:
+					glow75 = true
+		_check(glow75, "model %s berpendar lava" % sk75)
+		m75.free()
+	# dunia gunung dimuat: musuh banyak, tengkorak dan lava di jembatan digambar
+	var saved75: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state.map = gn75
+	Session.player.state.x = 22
+	Session.player.state.y = 2
+	Session.player.state.level = 12
+	Session.offline = true
+	var t0_75 := Time.get_ticks_msec()
+	var w75: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(w75)
+	await process_frame
+	await process_frame
+	var ms75 := Time.get_ticks_msec() - t0_75
+	var lava_sk75 := 0
+	for r75b in w75._roamers:
+		if M75.MAP_SKINS[gn75].has(r75b.id):
+			lava_sk75 += 1 if str(r75b.model.name).ends_with("_lava") else 0
+	_check(w75._roamers.size() >= 25, "lereng dimuat dengan banyak musuh (%d, %d ms)" % [w75._roamers.size(), ms75])
+	_check(lava_sk75 > 0 or w75._roamers.is_empty(), "goblin/orc di lereng memakai model lava (%d)" % lava_sk75)
+	var far75 := true
+	for r75c in w75._roamers:
+		if r75c.pos.distance_to(Vector2(22.5, 2.5)) < 10.0:
+			far75 = false
+	_check(far75, "musuh muncul jauh dari pintu masuk")
+	w75.queue_free()
+	await process_frame
+	Session.offline = false
+	Session.player.state = saved75
+
 	print("== v0.67: cerita The Last Dragon (peta Bab 4, model, Batu Sihir, narasi)")
 	var Mdl67 = load("res://scripts/models.gd")
 	for mid67: String in ["aldragor", "kelelawar_hutan", "malzareth", "raja_goblin", "kelelawar_istana", "prajurit_kutukan", "orc_kegelapan", "iblis_bayangan", "orc_gua", "iblis_biru"]:
@@ -2745,7 +2889,7 @@ func _run() -> void:
 					q67.append(n67)
 		_check(seen67.size() == total67, "%s: semua lantai tersambung dari pintu masuk (%d dari %d)" % [m67b, seen67.size(), total67])
 	_check(Maps.walkable(Maps.GUA, 7, 18) and Maps.exit_at(Maps.GUA, 7, 19).get("to", "") == Maps.ISTANA, "lorong selatan Benteng Orc menuju Istana Kegelapan")
-	_check(Maps.tile_at(Maps.GUNUNG, 20, 11) == "L" and not Maps.walkable(Maps.GUNUNG, 20, 11), "Gunung Berapi punya aliran lava yang tidak bisa dilewati")
+	_check(Maps.tile_at(Maps.GUNUNG, 60, 10) == "L" and not Maps.walkable(Maps.GUNUNG, 60, 10), "Gunung Berapi punya aliran lava yang tidak bisa dilewati")
 	_check(Maps.NAMES[Maps.HUTAN] == "Hutan Binatang" and Maps.NAMES[Maps.GUNUNG] == "Lereng Gunung Berapi" and Maps.NAMES[Maps.GUA] == "Benteng Orc", "nama wilayah mengikuti cerita")
 	var saved67: Dictionary = Session.player.state.duplicate(true)
 	Session.player.state.map = Maps.ISTANA
