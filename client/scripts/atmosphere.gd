@@ -177,9 +177,100 @@ static func dawn_fog() -> float:
 	return clampf(1.0 - absf(hour() - 6.5) / 2.3, 0.0, 1.0)
 
 
-## Kekuatan angin (no. 107): biasa 1, makin kencang saat hujan.
+## Kekuatan angin (no. 107): biasa 1, makin kencang saat hujan. v0.76.0: ditambah embusan yang datang dan pergi
+## (gust 0..1, puncaknya kira-kira tiap 9 detik) supaya angin terasa hidup.
 static func wind_strength() -> float:
-	return 1.0 + 1.5 * rain
+	return (1.0 + 1.5 * rain) * (1.0 + 0.7 * gust())
+
+
+static func gust() -> float:
+	var t := Time.get_ticks_msec() / 1000.0
+	var g := sin(t * 0.7) * 0.6 + sin(t * 1.9 + 1.3) * 0.4
+	return clampf(g, 0.0, 1.0)
+
+
+## Garis angin (v0.76.0): goresan tipis putih yang melesat searah angin (+x) di sekitar pemain. Kecepatan dan
+## kerapatannya mengikuti embusan (lihat tick_wind).
+static func make_wind(extents: Vector3, amount: int) -> CPUParticles3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(1.1, 0.014, 0.014)
+	mesh.material = mat
+	var p := CPUParticles3D.new()
+	p.mesh = mesh
+	p.amount = amount
+	p.lifetime = 0.9
+	p.preprocess = 0.9
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = extents
+	p.direction = Vector3(1, 0.04, 0.12)
+	p.spread = 4.0
+	p.gravity = Vector3.ZERO
+	p.initial_velocity_min = 10.0
+	p.initial_velocity_max = 14.0
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.25, 0.7, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.32), Color(1, 1, 1, 0.22), Color(1, 1, 1, 0.0)])
+	p.color_ramp = ramp
+	p.emitting = false
+	return p
+
+
+## Bara api dan abu yang terbawa angin di Gunung Berapi (v0.76.0): titik jingga menyala melayang naik dan ke timur.
+static func make_embers(extents: Vector3, amount: int) -> CPUParticles3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.vertex_color_use_as_albedo = true
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(0.07, 0.07)
+	mesh.material = mat
+	var p := CPUParticles3D.new()
+	p.mesh = mesh
+	p.amount = amount
+	p.lifetime = 3.2
+	p.preprocess = 3.2
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = extents
+	p.direction = Vector3(1, 0.5, 0.15)
+	p.spread = 25.0
+	p.gravity = Vector3(0, 0.25, 0)
+	p.initial_velocity_min = 1.5
+	p.initial_velocity_max = 3.2
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.6
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.15, 0.6, 1.0])
+	ramp.colors = PackedColorArray([Color(1.0, 0.85, 0.3, 0.0), Color(1.0, 0.7, 0.2, 1.0), Color(1.0, 0.35, 0.08, 0.8), Color(0.3, 0.25, 0.22, 0.0)])
+	p.color_ramp = ramp
+	p.emitting = false
+	return p
+
+
+## Peta yang berangin kencang (garis angin tampil): semua peta luar ruangan.
+static func windy(map_id: String) -> bool:
+	return outdoors(map_id)
+
+
+## Peta dengan bara api terbawa angin.
+static func embers(map_id: String) -> bool:
+	return map_id == Maps.GUNUNG
+
+
+## Atur garis angin/bara mengikuti embusan: makin kencang = makin cepat dan rapat.
+static func tick_wind(p: CPUParticles3D, base_speed := 1.0) -> void:
+	if p == null or not p.emitting:
+		return
+	var w := wind_strength()
+	p.speed_scale = base_speed * clampf(0.55 + 0.35 * w, 0.5, 2.2)
 
 
 ## Terapkan waktu dan cuaca sekarang ke lingkungan dan matahari. `base` dari capture().

@@ -2430,7 +2430,7 @@ func _run() -> void:
 	print("== v0.65: ujian bertingkat 25/75/100 di Hutan Lebat, Gua Goblin, Gunung Batu")
 	_check(Session.stage_need(0) == 25 and Session.stage_need(1) == 75 and Session.stage_need(2) == 100, "tahap ujian 25, 75, 100")
 	_check(Maps.exit_locked(Maps.GUA_GOBLIN, 30, 71, 0) and not Maps.exit_locked(Maps.GUA_GOBLIN, 30, 71, 3) and not Maps.exit_locked(Maps.GUA_GOBLIN, 30, 0, 0), "Gua Goblin: jalan ke Gunung Batu terkunci sampai 3 bos kalah, jalan pulang tidak")
-	_check(Maps.exit_locked(Maps.GUNUNG, 160, 49, 2) and Maps.exit_locked(Maps.GUNUNG, 161, 49, 2) and not Maps.exit_locked(Maps.GUNUNG, 161, 49, 3), "Gunung Batu: jalan ke Gua Batu terkunci sampai 3 bos kalah")
+	_check(Maps.exit_locked(Maps.GUNUNG, 159, 49, 2) and Maps.exit_locked(Maps.GUNUNG, 161, 49, 2) and not Maps.exit_locked(Maps.GUNUNG, 160, 49, 3), "Gunung Batu: jalan ke Gua Batu terkunci sampai 3 bos kalah")
 	var tr_ok := true
 	for tr_m: String in Maps.TRIALS:
 		var tr_b: Vector2i = Maps.TRIALS[tr_m].boss
@@ -2724,7 +2724,7 @@ func _run() -> void:
 	var gt75: Dictionary = Maps.TRIALS[gn75]
 	var bp75: Vector2i = gt75.boss
 	_check(Maps.tile_at(gn75, bp75.x, bp75.y) == "Z" and Maps.walkable(gn75, bp75.x, bp75.y - 2), "singgasana Naga Lava di titik bos, bos muncul di lantai depannya")
-	_check(int(gt75.gate[0]) == 160 and int(gt75.gate[1]) == 161 and absi(bp75.y - int(gt75.gate[2])) <= 10, "gerbang 2 petak tepat di balik singgasana")
+	_check(int(gt75.gate[0]) == 159 and int(gt75.gate[1]) == 161 and absi(bp75.y - int(gt75.gate[2])) <= 10, "gerbang 3 petak tepat di balik singgasana")
 	var reach75 := func(start75: Vector2i, blocked75: Dictionary) -> Dictionary:
 		var seen75 := {start75: true}
 		var q75: Array[Vector2i] = [start75]
@@ -2771,23 +2771,29 @@ func _run() -> void:
 	for y75 in range(0, 32):
 		if rows75[y75][60] == "B" and (y75 == 0 or rows75[y75 - 1][60] != "B"):
 			spans75 += 1
-	_check(spans75 == 3 and n_br75 == 12, "tiga jembatan selebar 2 petak melintasi sungai lava")
+	_check(spans75 == 3 and n_br75 == 18, "tiga jembatan selebar 3 petak melintasi sungai lava")
 	var river_ok75 := true
 	for y75 in range(0, 31):
 		if not (rows75[y75][60] in ["L", "B"] and rows75[y75][61] in ["L", "B"]):
 			river_ok75 = false
 	_check(river_ok75, "sungai lava selebar 2 petak dari utara")
-	# jalan selebar 2 petak: tiap petak jalan punya tetangga jalan di kiri/kanan dan atas/bawah sebagai pasangan
+	# v0.76.0: jalan selebar 3 petak — tiap petak jalan berada di deretan lantai minimal 3 petak, mendatar dan menurun.
 	var thin75 := 0
+	var run75 := func(x0: int, y0: int, dx: int, dy: int) -> int:
+		var n := 1
+		for sgn in [-1, 1]:
+			var k := 1
+			while Maps.walkable(gn75, x0 + dx * k * sgn, y0 + dy * k * sgn) and k < 4:
+				n += 1
+				k += 1
+		return n
 	for y75 in range(1, 49):
 		for x75 in range(1, 179):
 			if rows75[y75][x75] != "=":
 				continue
-			var hz75 := "=GXB".contains(rows75[y75][x75 - 1]) or "=GXB".contains(rows75[y75][x75 + 1])
-			var vt75 := "=GXB".contains(rows75[y75 - 1][x75]) or "=GXB".contains(rows75[y75 + 1][x75])
-			if not (hz75 and vt75):
+			if run75.call(x75, y75, 1, 0) < 3 or run75.call(x75, y75, 0, 1) < 3:
 				thin75 += 1
-	_check(thin75 == 0, "jalan selebar 2 petak (%d petak tipis)" % thin75)
+	_check(thin75 == 0, "jalan selebar 3 petak (%d petak tipis)" % thin75)
 	# lorong buntu: petak lorong (M/G/X) di luar alun-alun dan balairung yang hanya punya satu tetangga = ujung buntu
 	var ends75 := 0
 	for y75 in range(12, 49):
@@ -2800,7 +2806,7 @@ func _run() -> void:
 					nb75 += 1
 			if nb75 <= 2:
 				ends75 += 1
-	_check(ends75 >= 40, "banyak lorong buntu (%d sudut ujung)" % ends75)
+	_check(ends75 >= 30, "banyak lorong buntu (%d sudut ujung)" % ends75)
 	for c75: Dictionary in Maps.chests_in(gn75):
 		_check(all75.has(Vector2i(c75.pos.x - 1, c75.pos.y)) or all75.has(Vector2i(c75.pos.x + 1, c75.pos.y)) or all75.has(Vector2i(c75.pos.x, c75.pos.y - 1)) or all75.has(Vector2i(c75.pos.x, c75.pos.y + 1)), "peti %s di lereng dapat dicapai" % c75.id)
 	for rh75: Dictionary in Maps.RAHASIA:
@@ -2860,6 +2866,80 @@ func _run() -> void:
 	await process_frame
 	Session.offline = false
 	Session.player.state = saved75
+
+	print("== v0.76.0: Naga Lava lebih besar, menyembur api, memburu ke seluruh lereng; prajurit gugur satu per satu; angin")
+	var M76: Script = load("res://scripts/models.gd")
+	_check(float(M76.VARIANTS.ogre_gunung_1.size) >= 1.0 and float(M76.VARIANTS.ogre_gunung_3.size) > float(M76.VARIANTS.ogre_gunung_1.size), "Naga Lava diperbesar")
+	var tg76: Dictionary = Maps.TRIALS[Maps.GUNUNG]
+	_check(bool(tg76.get("hunt", false)) and float(tg76.boss_speed[2]) > float(tg76.boss_speed[0]), "Naga Lava memburu ke seluruh lereng, makin cepat tiap tahap")
+	var R76: Script = load("res://scripts/roamer.gd")
+	var t0_76 := Time.get_ticks_msec()
+	var path76: Array[Vector2i] = R76.find_path(Maps.GUNUNG, Vector2i(160, 39), Vector2i(22, 2))
+	var ms76 := Time.get_ticks_msec() - t0_76
+	var t1_76 := Time.get_ticks_msec()
+	R76.find_path(Maps.GUNUNG, Vector2i(160, 39), Vector2i(4, 48))
+	var ms76b := Time.get_ticks_msec() - t1_76
+	_check(path76.size() > 150 and path76[-1] == Vector2i(22, 2), "jalur Naga Lava dari singgasana ke pintu masuk lereng (%d petak)" % path76.size())
+	_check(ms76b < 60, "pencarian jalur berikutnya cepat (%d ms; pertama %d ms termasuk peta)" % [ms76b, ms76])
+	var nb76 = R76.new({"id": "ogre_gunung_1", "name": "Naga Lava Lv 1", "lv": 1}, Maps.GUNUNG, Vector2(160.5, 39.5), 7101)
+	nb76.hunter = true
+	nb76.chase_speed = float(tg76.boss_speed[0])
+	var caught76 := false
+	var tt76 := 0.0
+	while tt76 < 150.0 and not caught76:
+		caught76 = nb76.step(0.05, Vector2(22.5, 3.5), true, 9)
+		tt76 += 0.05
+	_check(caught76, "Naga Lava menyusul pemain di pintu masuk lereng (%.0f d)" % tt76)
+	var fx_root76 := Node3D.new()
+	get_root().add_child(fx_root76)
+	var FX76: Script = load("res://scripts/hero_fx.gd")
+	FX76.fire_breath(fx_root76, Vector3(0, 1.2, 0), Vector3(4, 0.5, 0))
+	var fire76 := fx_root76.find_children("*", "CPUParticles3D", true, false)
+	_check(fire76.size() >= 1 and (fire76[0] as CPUParticles3D).emitting and fx_root76.find_children("*", "OmniLight3D", true, false).size() == 1, "semburan api naga: kobaran api + cahaya")
+	fx_root76.queue_free()
+	var Atmo76: Script = load("res://scripts/atmosphere.gd")
+	_check(Atmo76.windy(Maps.GUNUNG) and Atmo76.windy(Maps.HUTAN) and not Atmo76.windy(Maps.GUA_GOBLIN) and Atmo76.embers(Maps.GUNUNG) and not Atmo76.embers(Maps.HUTAN), "angin di luar ruangan, bara api terbawa angin di gunung")
+	var g_lo76 := 99.0
+	var g_hi76 := -1.0
+	for _g76 in 1:
+		g_lo76 = minf(g_lo76, Atmo76.wind_strength())
+		g_hi76 = maxf(g_hi76, Atmo76.wind_strength())
+	_check(g_lo76 >= 1.0 and g_hi76 <= 1.7 + 2.5 * 1.7, "kekuatan angin wajar")
+	# Prajurit gugur satu per satu (dunia gunung, tanpa server)
+	var saved76: Dictionary = Session.player.state.duplicate(true)
+	Session.player.state.map = Maps.GUNUNG
+	Session.player.state.x = 22
+	Session.player.state.y = 2
+	Session.player.state["party"] = []
+	Session.player.state["soldiers"] = 4
+	Session.player.state["soldiers_rest"] = 0
+	Session.offline = true
+	var w76: Node = load("res://scenes/world3d.tscn").instantiate()
+	get_root().add_child(w76)
+	await process_frame
+	await process_frame
+	_check(w76._wind.emitting and w76._embers.emitting, "garis angin dan bara api menyala di lereng")
+	var comp76 = w76._companions
+	_check(comp76.count() == 4, "empat prajurit berbaris (%d)" % comp76.count())
+	var first76: Node3D = comp76._units[0].node
+	var second76: Node3D = comp76._units[1].node
+	comp76.hit("prajurit_1", true)  # kejadian "down" dari server
+	_check(comp76.count() == 3 and is_instance_valid(first76) and comp76._units[0].node == second76 and str(comp76._units[0].id) == "prajurit_1", "prajurit terdepan gugur: barisan tinggal 3, yang di belakang maju")
+	Session.player.state["soldiers"] = 3  # server: satu prajurit gugur
+	comp76.sync()
+	_check(comp76.count() == 3 and comp76._units[0].node == second76, "barisan tidak dibuat ulang setelah data server menyusul")
+	Session.player.state["soldiers"] = 2  # urutan sebaliknya: data server dulu, kejadian menyusul
+	comp76.sync()
+	_check(comp76.count() == 2, "data server dulu: prajurit terdepan langsung roboh")
+	var third76: Node3D = comp76._units[0].node
+	comp76.hit("prajurit_1", true)
+	_check(comp76.count() == 2 and comp76._units[0].node == third76, "kejadian gugur yang menyusul tidak merobohkan prajurit kedua kali")
+	await create_timer(2.2).timeout
+	_check(not is_instance_valid(first76), "prajurit yang gugur hilang dari dunia")
+	w76.queue_free()
+	await process_frame
+	Session.offline = false
+	Session.player.state = saved76
 
 	print("== v0.67: cerita The Last Dragon (peta Bab 4, model, Batu Sihir, narasi)")
 	var Mdl67 = load("res://scripts/models.gd")

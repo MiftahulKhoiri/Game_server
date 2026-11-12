@@ -673,9 +673,12 @@ static func build(map_id: String) -> Node3D:
 						continue
 					if use_rocks:
 						var rr := _jitter(x, z, 9)
-						if rr < 0.65:
+						# v0.76.0: di Gunung Berapi batu di tepi jalan lebih kecil supaya tidak menjorok ke jalan.
+						var tepi_jalan := gunung and _next_to_floor(rows, x, z)
+						var k_tepi := 0.72 if tepi_jalan else 1.0
+						if rr < 0.65 or tepi_jalan:
 							var mid: String = MOUNTAINS[int(_jitter(x, z, 11) * 1000.0) % MOUNTAINS.size()]
-							_tambah(static_by, mid, _xf(c, Vector3.ONE * (0.85 + 0.45 * j) * rock_h, _jitter(x, z, 10) * TAU))
+							_tambah(static_by, mid, _xf(c, Vector3.ONE * (0.85 + 0.45 * j) * rock_h * k_tepi, _jitter(x, z, 10) * TAU))
 						else:
 							var rid: String = ROCKS[int(_jitter(x, z, 12) * 1000.0) % ROCKS.size()]
 							_tambah(static_by, rid, _xf(c, Vector3.ONE * (3.0 + 1.5 * j) * rock_h, _jitter(x, z, 10) * TAU))
@@ -1852,6 +1855,16 @@ static func _wall_dir(rows: Array[String], t: Vector2i) -> Vector2:
 
 
 ## Petak batu yang berjarak <= r dari petak bukan batu (hanya itu yang perlu digambar).
+## Apakah petak (x, z) bersebelahan (8 arah) dengan petak yang bisa diinjak.
+static func _next_to_floor(rows: Array[String], x: int, z: int) -> bool:
+	for dz in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			var t := _tile(rows, x + dx, z + dz)
+			if (dx != 0 or dz != 0) and t != "" and Maps.WALKABLE.contains(t):
+				return true
+	return false
+
+
 ## Air, lava, atau jembatan (untuk arah papan jembatan).
 static func _basah(t: String) -> bool:
 	return t == "~" or t == "L" or t == "B"

@@ -46,6 +46,8 @@ const MAX_SHOWN_SOLDIERS := 6
 
 
 ## Samakan pendamping di dunia dengan Session.player.state.party.
+## v0.76.0: berubah sedikit demi sedikit (tidak semua dibuat ulang). Prajurit yang gugur roboh lalu hilang satu per
+## satu; bila pasukan lebih banyak dari yang digambar, prajurit cadangan maju mengisi barisan dari belakang.
 func sync() -> void:
 	var party: Array = (Session.player.get("state", {}).get("party", []) as Array).duplicate()
 	for n in mini(Session.active_soldiers(), MAX_SHOWN_SOLDIERS):
@@ -53,23 +55,86 @@ func sync() -> void:
 	var key := ",".join(PackedStringArray(party))
 	if key == _party_key:
 		return
-	_party_key = key
-	for u: Dictionary in _units:
-		if is_instance_valid(u.node):
-			u.node.queue_free()
-	_units.clear()
 	if world == null or world._player == null:
 		_party_key = ""
 		return
+	# Prajurit berkurang (server mencatat yang gugur) sebelum kejadian "down" sampai: yang terdepan roboh.
+	var want_sold := 0
+	for id: String in party:
+		if id.begins_with("prajurit_"):
+			want_sold += 1
+	var have_sold := 0
+	for u: Dictionary in _units:
+		if str(u.id).begins_with("prajurit_"):
+			have_sold += 1
+	while have_sold > want_sold:
+		_fall_front_soldier()
+		have_sold -= 1
+		_skip_down += 1  # kejadian "down" untuk prajurit ini nanti hanya menampilkan tulisan
+	var keep: Array = []
+	for u: Dictionary in _units:
+		if party.has(str(u.id)):
+			keep.append(u)
+		elif is_instance_valid(u.node):
+			u.node.queue_free()
+	var by_id := {}
+	for u: Dictionary in keep:
+		by_id[str(u.id)] = u
+	_units.clear()
 	var i := 0
 	for id: String in party:
-		var node: Node3D = Models.create("prajurit" if id.begins_with("prajurit_") else id)
-		world.add_child(node)
-		var shadow: Variant = world._add_shadow(node, 0.3)
-		var start: Vector2 = _slot(i)
-		node.position = Vector3(start.x, 0.0, start.y)
-		_units.append({"id": id, "node": node, "pos": start, "yaw": world._yaw, "shadow": shadow})
+		if by_id.has(id):
+			_units.append(by_id[id])
+		else:
+			var node: Node3D = Models.create("prajurit" if id.begins_with("prajurit_") else id)
+			world.add_child(node)
+			var shadow: Variant = world._add_shadow(node, 0.3)
+			var start: Vector2 = _slot(i)
+			node.position = Vector3(start.x, 0.0, start.y)
+			_units.append({"id": id, "node": node, "pos": start, "yaw": world._yaw, "shadow": shadow})
 		i += 1
+	_party_key = key
+
+
+var _skip_down := 0          # prajurit yang sudah dirobohkan sync() sebelum kejadian "down"-nya sampai
+var _fallen: Array = []      # model prajurit yang sedang roboh (dibersihkan sendiri)
+
+
+## Prajurit terdepan (server selalu mengenai prajurit pertama) roboh, tenggelam, lalu hilang. Prajurit di
+## belakangnya naik urutan (prajurit_2 menjadi prajurit_1, dst.) supaya sama dengan daftar HP di server.
+func _fall_front_soldier() -> void:
+	var idx := -1
+	for k in _units.size():
+		if str(_units[k].id).begins_with("prajurit_"):
+			idx = k
+			break
+	if idx < 0:
+		return
+	var u: Dictionary = _units[idx]
+	_units.remove_at(idx)
+	var node: Node3D = u.node
+	if is_instance_valid(node):
+		_fallen.append(node)
+		if node.has_method("play_die"):
+			node.call("play_die")
+		var tw := node.create_tween()
+		tw.tween_interval(1.1)
+		tw.set_parallel(true)
+		tw.tween_property(node, "position:y", node.position.y - 0.7, 0.7)
+		tw.tween_property(node, "scale", node.scale * 0.35, 0.7)
+		tw.chain().tween_callback(func() -> void:
+			_fallen.erase(node)
+			if is_instance_valid(node):
+				node.queue_free())
+	var shadow: Variant = u.get("shadow")
+	if shadow is Node and is_instance_valid(shadow) and not (shadow as Node).is_ancestor_of(node) and shadow != node:
+		(shadow as Node).queue_free()
+	var n := 1
+	for v: Dictionary in _units:
+		if str(v.id).begins_with("prajurit_"):
+			v.id = "prajurit_%d" % n
+			n += 1
+	_party_key = ""  # sync() berikutnya menambah prajurit cadangan bila pasukan masih lebih banyak dari barisan
 
 
 func count() -> int:
@@ -90,6 +155,12 @@ func attack(hero_id: String) -> void:
 ## Posisi dunia (x, 0, z) pendamping `hero_id`; Vector3.ZERO bila tidak ada.
 ## Reaksi saat pendamping terkena serangan atau tumbang.
 func hit(hero_id: String, down: bool) -> void:
+	if down and hero_id.begins_with("prajurit_"):
+		if _skip_down > 0:
+			_skip_down -= 1  # sudah dirobohkan sync()
+		else:
+			_fall_front_soldier()
+		return
 	for u: Dictionary in _units:
 		if u.id != hero_id or not is_instance_valid(u.node):
 			continue

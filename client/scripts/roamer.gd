@@ -252,34 +252,70 @@ func _hunt(delta: float, player: Vector2) -> bool:
 
 
 ## Jalur petak terpendek (tanpa petak awal) dari `from` ke `to` lewat petak yang boleh dilalui musuh; [] bila
-## tidak ada. Peta gua terbesar 61x72 petak, jadi BFS biasa cukup murah.
+## tidak ada. v0.76.0: petak yang boleh dilalui dihitung sekali per peta (Gunung Berapi 180x50 diburu Naga Lava),
+## lalu BFS memakai larik biasa supaya murah di HP.
+static var _grid_map := ""
+static var _grid := PackedByteArray()
+static var _grid_w := 0
+static var _grid_h := 0
+
+
+static func _ensure_grid(map: String) -> void:
+	if _grid_map == map:
+		return
+	_grid_map = map
+	_grid_w = Maps.width(map)
+	_grid_h = Maps.height(map)
+	_grid = PackedByteArray()
+	_grid.resize(_grid_w * _grid_h)
+	for y in _grid_h:
+		for x in _grid_w:
+			_grid[y * _grid_w + x] = 1 if Maps.roam_free(map, Vector2(x + 0.5, y + 0.5)) else 0
+
+
 static func find_path(map: String, from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if from == to:
 		return out
-	var prev := {from: from}
-	var q: Array[Vector2i] = [from]
+	_ensure_grid(map)
+	var w := _grid_w
+	var h := _grid_h
+	if w <= 0 or from.x < 0 or from.y < 0 or from.x >= w or from.y >= h or to.x < 0 or to.y < 0 or to.x >= w or to.y >= h:
+		return out
+	var prev := PackedInt32Array()
+	prev.resize(w * h)
+	prev.fill(-1)
+	var start := from.y * w + from.x
+	var goal := to.y * w + to.x
+	prev[start] = start
+	var q := PackedInt32Array([start])
 	var head := 0
 	var found := false
 	while head < q.size():
-		var cur: Vector2i = q[head]
+		var cur := q[head]
 		head += 1
-		if cur == to:
+		if cur == goal:
 			found = true
 			break
-		for dv: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var n: Vector2i = cur + dv
-			if prev.has(n):
+		var cx := cur % w
+		var cy := cur / w
+		for k in 4:
+			var nx := cx + (1 if k == 0 else (-1 if k == 1 else 0))
+			var ny := cy + (1 if k == 2 else (-1 if k == 3 else 0))
+			if nx < 0 or ny < 0 or nx >= w or ny >= h:
 				continue
-			if n != to and not Maps.roam_free(map, Vector2(n) + Vector2(0.5, 0.5)):
+			var n := ny * w + nx
+			if prev[n] != -1:
+				continue
+			if n != goal and _grid[n] == 0:
 				continue
 			prev[n] = cur
 			q.append(n)
 	if not found:
 		return out
-	var c := to
-	while c != from:
-		out.push_front(c)
+	var c := goal
+	while c != start:
+		out.push_front(Vector2i(c % w, c / w))
 		c = prev[c]
 	return out
 

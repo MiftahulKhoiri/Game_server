@@ -69,9 +69,10 @@ const VARIANTS := {
 	"kepala_goblin_1": {"base": "ogre_batu", "size": 1.6, "tint": Color("d6ccb4")},
 	"kepala_goblin_2": {"base": "ogre_batu", "size": 1.9, "tint": Color("b4bccc")},
 	"kepala_goblin_3": {"base": "ogre_batu", "size": 2.25, "tint": Color("e6a888")},
-	"ogre_gunung_1": {"base": "aldragor", "size": 0.8, "tint": Color.WHITE, "colors": NAGA_LAVA},
-	"ogre_gunung_2": {"base": "aldragor", "size": 0.95, "tint": Color.WHITE, "colors": NAGA_LAVA},
-	"ogre_gunung_3": {"base": "aldragor", "size": 1.1, "tint": Color("fff0e0"), "colors": NAGA_LAVA},
+	# v0.76.0: Naga Lava ±25% lebih besar.
+	"ogre_gunung_1": {"base": "aldragor", "size": 1.0, "tint": Color.WHITE, "colors": NAGA_LAVA},
+	"ogre_gunung_2": {"base": "aldragor", "size": 1.2, "tint": Color.WHITE, "colors": NAGA_LAVA},
+	"ogre_gunung_3": {"base": "aldragor", "size": 1.4, "tint": Color("fff0e0"), "colors": NAGA_LAVA},
 	# Istana Kegelapan (v0.72.0): dua jenis naga kecil berkeliaran.
 	"naga_bayangan": {"base": "aldragor", "size": 0.5, "tint": Color.WHITE, "colors": {"Main": Color("3e2e62"), "Wings": Color("1c1230"), "Belly": Color("8a6ab4"), "Claws": Color("d8d0e8"), "Eyes": Color("d080ff")}},
 	"naga_api": {"base": "aldragor", "size": 0.56, "tint": Color.WHITE, "colors": {"Main": Color("d8662c"), "Wings": Color("7a2a12"), "Belly": Color("f4c868"), "Claws": Color("f2ead6"), "Eyes": Color("ffe040")}},

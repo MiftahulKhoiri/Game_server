@@ -141,6 +141,9 @@ var _atmo_base: Dictionary = {}   # suasana dasar peta ini (sebelum waktu/cuaca)
 var _atmo_acc := 0.0
 var _rain: CPUParticles3D
 var _mist: CPUParticles3D        # asap tipis di Gua Goblin
+var _wind: CPUParticles3D        # garis angin di luar ruangan (v0.76.0)
+var _embers: CPUParticles3D      # bara api terbawa angin di Gunung Berapi (v0.76.0)
+var _boss_fire_t := 0.0          # jeda semburan api Naga Lava saat memburu (v0.76.0)
 var _clock: ClockBadge
 var _companions: Companions
 var _npc_models: Dictionary = {}  # id NPC -> model 3D
@@ -268,6 +271,10 @@ func _ready() -> void:
 	add_child(_rain)
 	_mist = Atmosphere.make_mist(Vector3(9, 0.5, 9), [10, 18, 26][clampi(Session.quality, 0, 2)])
 	add_child(_mist)
+	_wind = Atmosphere.make_wind(Vector3(9, 1.4, 9), [10, 18, 26][clampi(Session.quality, 0, 2)])
+	add_child(_wind)
+	_embers = Atmosphere.make_embers(Vector3(10, 1.5, 10), [24, 45, 70][clampi(Session.quality, 0, 2)])
+	add_child(_embers)
 
 	_make_player()
 	_life = WorldLife.new()
@@ -393,9 +400,17 @@ func _load_map(map_id: String) -> void:
 	_atmo_base = Atmosphere.capture(_env.environment, _sun)
 	Atmosphere.apply(_env.environment, _sun, _atmo_base, map_id)
 	Atmosphere.set_rain(_rain, map_id)
+	if bool((Maps.TRIALS.get(map_id, {}) as Dictionary).get("hunt", false)):
+		Roamer._ensure_grid(map_id)  # peta jalur bos pemburu disiapkan saat peta dimuat, bukan saat bos mulai mengejar
 	if _mist != null:
 		_mist.emitting = Atmosphere.misty(map_id)
 		_mist.visible = _mist.emitting
+	if _wind != null:
+		_wind.emitting = Atmosphere.windy(map_id)
+		_wind.visible = _wind.emitting
+	if _embers != null:
+		_embers.emitting = Atmosphere.embers(map_id)
+		_embers.visible = _embers.emitting
 	_lights = _terrain.find_children("*", "OmniLight3D", true, false) + _npc_root.find_children("*", "OmniLight3D", true, false)
 	_update_lamps()
 	_cull_lights()
@@ -951,6 +966,13 @@ func _update_world_life(delta: float) -> void:
 		_rain.position = Vector3(_pos.x, 7.0, _pos.y)  # hujan mengikuti pemain
 	if _mist != null and _mist.emitting:
 		_mist.position = Vector3(_pos.x, 0.9, _pos.y)
+	if _wind != null and _wind.emitting:
+		_wind.position = Vector3(_pos.x - 4.0, 1.3, _pos.y)  # angin datang dari barat, melintasi pemain
+		Atmosphere.tick_wind(_wind)
+	if _embers != null and _embers.emitting:
+		_embers.position = Vector3(_pos.x - 3.0, 0.6, _pos.y)
+		Atmosphere.tick_wind(_embers, 0.8)
+	_boss_breath(delta)
 	_update_npcs(delta)
 	_update_roamers(delta)
 	if _life != null:
@@ -2606,6 +2628,21 @@ func _update_hutan_boss(show: bool, level: int) -> void:
 		r.agility = float(t.boss_agility[li])
 	_roamers.append(r)
 	_hutan_boss = r
+
+
+## Naga Lava menyemburkan api ke arah pemain saat memburu dari dekat (v0.76.0, hanya tampilan; kerusakan tetap
+## dihitung server saat bertarung).
+func _boss_breath(delta: float) -> void:
+	var b: Roamer = _hutan_boss
+	if b == null or b.dying or b.node == null or not is_instance_valid(b.node) or not b.id.begins_with("ogre_gunung_"):
+		return
+	_boss_fire_t -= delta
+	var d := b.pos.distance_to(_pos)
+	if _boss_fire_t > 0.0 or d > 7.0 or d < 1.2 or (_fight != null and _fight.busy()):
+		return
+	_boss_fire_t = 3.5
+	var from := Vector3(b.pos.x, b.top * 0.62, b.pos.y)
+	HeroFx.fire_breath(self, from, Vector3(_pos.x, 0.6, _pos.y))
 
 
 func _remove_roamer(r: Roamer) -> void:

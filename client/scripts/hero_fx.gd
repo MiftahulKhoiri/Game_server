@@ -249,3 +249,80 @@ static func magic_circle(parent: Node3D, pos: Vector3, color: Color, radius := 1
 	tw.tween_property(ring_mi, "rotation:y", TAU * 0.5, time)
 	tw.tween_property(mat, "albedo_color:a", 0.0, time * 0.5).set_delay(time * 0.5)
 	tw.chain().tween_callback(ring_mi.queue_free)
+
+
+static var _fire_tex: GradientTexture2D
+
+
+## Semburan api naga (v0.76.0): kobaran bola api dari mulut `from` ke arah `to` (kuning -> jingga -> merah ->
+## asap), cahaya jingga yang berkedip, dan lingkaran api di tanah tempat semburan mendarat.
+static func fire_breath(parent: Node3D, from: Vector3, to: Vector3, length := 0.0) -> void:
+	if _fire_tex == null:
+		var grad := Gradient.new()
+		grad.set_color(0, Color(1, 1, 1, 1))
+		grad.set_color(1, Color(1, 1, 1, 0))
+		_fire_tex = GradientTexture2D.new()
+		_fire_tex.gradient = grad
+		_fire_tex.fill = GradientTexture2D.FILL_RADIAL
+		_fire_tex.fill_from = Vector2(0.5, 0.5)
+		_fire_tex.fill_to = Vector2(1.0, 0.5)
+		_fire_tex.width = 32
+		_fire_tex.height = 32
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = _fire_tex
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.55, 0.55)
+	quad.material = mat
+	var dir := to - from
+	var dist := maxf(1.0, length if length > 0.0 else dir.length())
+	dir = dir.normalized() if dir.length() > 0.001 else Vector3(0, 0, 1)
+	var p := CPUParticles3D.new()
+	p.mesh = quad
+	p.amount = Perf.fx(70)
+	p.lifetime = 0.55
+	p.one_shot = true
+	p.explosiveness = 0.0  # semburan mengalir sepanjang ~0,55 detik
+	p.local_coords = false
+	p.direction = dir
+	p.spread = 11.0
+	p.gravity = Vector3(0, 1.2, 0)  # api naik sedikit
+	var v := dist / 0.5
+	p.initial_velocity_min = v * 0.75
+	p.initial_velocity_max = v * 1.05
+	p.damping_min = 1.0
+	p.damping_max = 3.0
+	p.scale_amount_min = 0.7
+	p.scale_amount_max = 1.3
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.4))
+	grow.add_point(Vector2(1.0, 2.6))
+	p.scale_amount_curve = grow
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.2, 0.55, 0.85, 1.0])
+	ramp.colors = PackedColorArray([Color(1.0, 0.95, 0.6, 1.0), Color(1.0, 0.7, 0.15, 1.0), Color(1.0, 0.3, 0.05, 0.85), Color(0.45, 0.12, 0.05, 0.4), Color(0.15, 0.12, 0.1, 0.0)])
+	p.color_ramp = ramp
+	p.position = from
+	parent.add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
+	# cahaya jingga yang berkedip selama semburan
+	var light := OmniLight3D.new()
+	light.light_color = Color("ff8a2a")
+	light.light_energy = 2.4
+	light.omni_range = 4.5
+	light.shadow_enabled = false
+	light.position = from.lerp(from + dir * dist, 0.45)
+	parent.add_child(light)
+	var tw := light.create_tween()
+	tw.tween_property(light, "light_energy", 3.2, 0.12)
+	tw.tween_property(light, "light_energy", 1.6, 0.15)
+	tw.tween_property(light, "light_energy", 0.0, 0.5)
+	tw.tween_callback(light.queue_free)
+	# lingkaran api di tanah tempat semburan mendarat
+	var land := from + dir * dist
+	ring(parent, Vector3(land.x, 0.0, land.z), Color("ff6a1a"), 1.3, 0.6)

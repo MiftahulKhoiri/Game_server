@@ -445,6 +445,8 @@ func _play_event(e: Dictionary) -> void:
 		if roamer != null:
 			roamer.warn = false
 			roamer.lunge()  # menerjang ke arah pemain saat menyerang (v0.69.0)
+			if roamer.id.begins_with("ogre_gunung_"):  # Naga Lava menyemburkan api tiap menyerang (v0.76.0)
+				HeroFx.fire_breath(world, enemy_at + Vector3(0, enemy_top * 0.62, 0), me_at + Vector3(0, 0.6, 0))
 		var skill := str(e.get("skill", ""))
 		if skill != "":  # kemampuan khusus musuh (roadmap no. 85-86)
 			_float_text(enemy_at + Vector3(0, enemy_top + 1.0, 0), skill + "!", Color("ff9a3c"), 58)
@@ -484,9 +486,9 @@ func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> voi
 		_blood(enemy_at + Vector3(0, enemy_top * 0.5, 0), 4)
 		_float_text(enemy_at + Vector3(0.35, enemy_top + 0.4, 0), "-%d" % int(e.get("dmg", 0)), col, 44)
 	else:
+		var at: Vector3 = comp.position_of(hero) if comp != null else Vector3.ZERO  # sebelum prajurit gugur dilepas
 		if comp != null and comp.has_method("hit"):
 			comp.hit(hero, kind == "down")
-		var at: Vector3 = comp.position_of(hero) if comp != null else Vector3.ZERO
 		var col := Color("ff6b5c") if kind == "down" else Color("ffb36b")
 		HeroFx.burst(world, at + Vector3(0, 0.9, 0), col, 12, 2.6)
 		_float_text(at + Vector3(0, 1.9, 0), "-%d" % int(e.get("dmg", 0)), col, 48)
