@@ -58,6 +58,12 @@ Badan permintaan harus **tepat satu** objek JSON (spasi di belakangnya boleh): J
 kolom yang tidak dikenal, objek kedua, atau karakter sisa di belakang objek ditolak `400`. Badan lebih dari
 64 KiB ditolak `413`. Semua galat berbentuk `{"error": "..."}`.
 
+## Batas laju umum
+
+Sejak v0.77.0 setiap IP boleh 120 permintaan sekaligus lalu 60 per detik, dan setiap akun (setelah login)
+60 sekaligus lalu 20 per detik. Lebih dari itu dijawab `429` dengan header `Retry-After` (detik). Klien normal
+memakai ±1-3 permintaan per detik. `/healthz` tidak dibatasi.
+
 ## Endpoint
 
 ### `GET /healthz`

@@ -43,6 +43,7 @@ di Pi, CI menjalankannya dengan `-race`.
 | Dagang | `store/trades_test.go` (bertarung: penjual/pembeli/keduanya × buat/terima/batal/tolak; alur normal; kepemilikan & IDOR; rollback; 16 permintaan bersamaan tanpa duplikasi) |
 | Versi klien & JSON | `api/hardening_test.go` (`TestClientVersionGate`, `TestDecodeStrictJSON`, `TestTrailingJSONRejectedEndToEnd`) |
 | Pembatas & IP | `auth/limiter_test.go` (riwayat terbatas, pulih, banyak identitas, pembersihan, bersamaan, tolok ukur), `TestLoginLimitPerAccountAcrossNameAndEmail`, `TestClientIPTrustedProxies`, `config.TestParseProxies` |
+| Batas laju umum & patch | `auth/bucket_test.go` (burst & isi ulang, pemakaian normal tidak pernah kena, kunci terbatas, bersamaan), `TestRateLimitPerIPAndPlayer`, `TestPatchEndpointsInsideServer` |
 | Sesi, migrasi, cadangan | `store/hardening_test.go` (sesi sah/kedaluwarsa/dicabut/rusak, gagal last_used, database mati, bersamaan; skema baru/sama/lebih baru/gagal di tengah; kerusakan terdeteksi, cadangan saat ramai, cadangan gagal, pemulihan), `cmd/gameserver.TestCheckDatabaseFailSafe` |
 
 `go test -race` tidak bisa dijalankan di Pi 5 (ThreadSanitizer Go di arm64 butuh ruang alamat 48-bit, kernel Pi

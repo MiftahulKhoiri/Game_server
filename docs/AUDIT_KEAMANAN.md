@@ -10,8 +10,8 @@ server yang berjalan di Pi belum di-restart.
 | File dibaca langsung | ±32 (semua handler API, store, auth, config, version, main, aturan gerak/peti/rumah/ujian/cerita di `game`, `maps.gd`/`world3d.gd`/`session.gd`/`api.gd` klien, skrip cadangan/pulih, CI) + 66 file Go disisir dengan pencarian |
 | File diubah | 26 diubah + 7 baru (33 file, +2.311 / −215 baris) |
 | Masalah ditemukan | 21 (1 Critical, 4 High, 10 Medium, 6 Low) |
-| Masalah diperbaiki | 19 |
-| Belum diperbaiki | 2 temuan (no. 20-21) + 4 batasan desain yang tersisa (lihat bagian G) |
+| Masalah diperbaiki | 21 (no. 20-21 menyusul di cabang `rate-limit`) |
+| Belum diperbaiki | 4 batasan desain yang tersisa (lihat bagian G) |
 
 ### Daftar temuan
 
@@ -36,8 +36,8 @@ server yang berjalan di Pi belum di-restart.
 | 17 | Low | Goroutine cadangan bisa masih menulis saat `st.Close()` ketika shutdown | Diperbaiki |
 | 18 | Low | `MaxHeaderBytes` bawaan 1 MB | Diperbaiki (32 KiB) |
 | 19 | Low | Membuat tawaran menaikkan versi pembeli (409 palsu di klien pembeli) | Diperbaiki |
-| 20 | Medium | Tidak ada pembatas laju umum per IP/pemain untuk endpoint yang sudah login (spam → semua permintaan antre di satu koneksi SQLite) | Belum |
-| 21 | Low | Endpoint patch (`WithPatches`) berada di luar middleware log/recover | Belum |
+| 20 | Medium | Tidak ada pembatas laju umum per IP/pemain untuk endpoint yang sudah login (spam → semua permintaan antre di satu koneksi SQLite) | Diperbaiki (ember token per IP 60/d burst 120, per pemain 20/d burst 60) |
+| 21 | Low | Endpoint patch (`WithPatches`) berada di luar middleware log/recover | Diperbaiki (`api.PatchDir`) |
 
 Dicek dan **tidak** ditemukan masalah: injeksi SQL (semua kueri berparameter; nama tabel di `Counts` dari daftar tetap),
 IDOR (semua handler memakai id dari token; dagang hanya pemilik/penerima — kini ada tesnya), overflow emas/jumlah
@@ -99,7 +99,7 @@ Tes lama yang dulu memakai teleport (8 tes) diubah agar menaruh pemain lewat sto
 | Database | Migrasi atomik, skema lebih baru ditolak, rusak = tidak menyala |
 | Backup | Atomik dan diperiksa; restore aman |
 | API validation | JSON ketat, versi klien ketat, angka ekstrem ditolak |
-| Rate limiting | Login/daftar/ganti sandi baik; **belum ada** pembatas umum per IP untuk endpoint lain (G-1) |
+| Rate limiting | Login/daftar/ganti sandi + batas laju umum per IP dan per pemain |
 
 ## E. Kompatibilitas
 
@@ -123,14 +123,14 @@ Dokumen: `docs/{API, ARCHITECTURE, BACKUP, TESTING, VERSIONING}.md`, laporan ini
 
 ## G. Risiko yang Tersisa
 
-1. **Spam/DoS (Medium)**: belum ada pembatas laju umum per IP/pemain untuk endpoint yang sudah login; semua tulis
-   antre di satu koneksi SQLite, jadi satu klien nakal bisa memperlambat semua pemain.
+1. **Spam/DoS (Low, sisa)**: batas laju umum sudah ada, tetapi penyerang dengan sangat banyak IP tetap bisa
+   membebani satu koneksi SQLite; pertahanan lebih jauh ada di Cloudflare/proxy.
 2. **Tembok (Low-Medium)**: bentuk petak hanya ada di klien, jadi server memakai jarak lurus. Dalam batas waktu,
    pemain curang bisa "menembus" tembok atau memotong lorong; tidak bisa melewati gerbang terkunci.
 3. **Waktu menganggur (Low)**: waktu sejak gerakan terakhir (termasuk saat offline) menambah jatah jarak; setelah
    lama tidak bermain pemain bisa langsung muncul jauh di wilayah yang sudah terbuka.
 4. **HTTP biasa (Low/operasional)**: tanpa TLS kecuali lewat Cloudflare; token terlihat di jaringan lokal (catatan no. 239).
-5. **Endpoint patch** tidak lewat log/recover (Low). **Status 429 per akun** bisa menunjukkan nama dan email milik
+5. **Status 429 per akun** bisa menunjukkan nama dan email milik
    akun yang sama bila penyerang sudah menebak keduanya (Low).
 6. Uji `-race` belum dijalankan (lihat C); uji arena 3D "Raja Goblin" di e2e diganti uji penolakan lompatan.
 
@@ -139,4 +139,4 @@ Dokumen: `docs/{API, ARCHITECTURE, BACKUP, TESTING, VERSIONING}.md`, laporan ini
 **Layak untuk pengujian lokal dan staging.** Semua tes server dan uji klien ujung-ke-ujung lolos, dan server baru
 membuka salinan database Pi dengan sehat. Sebelum dipertimbangkan untuk produksi: jalankan CI (termasuk `-race`),
 uji main di HP sungguhan beberapa sesi (pindah peta, sinyal putus-sambung, buka peti) sambil memantau log
-`posisi ditolak`, lalu pertimbangkan pembatas laju umum (G-1).
+`posisi ditolak` dan `status=429`.
