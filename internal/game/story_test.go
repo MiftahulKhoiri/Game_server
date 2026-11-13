@@ -250,12 +250,18 @@ func TestTahapStrengthensTrialEnemies(t *testing.T) {
 	if high.EnemyHP <= low.EnemyHP || high.enemyAttack(e) <= low.enemyAttack(e) {
 		t.Errorf("level pemain tinggi: %d/%d vs %d/%d", high.EnemyHP, high.enemyAttack(e), low.EnemyHP, low.enemyAttack(e))
 	}
-	// Peta biasa dan bos tidak berubah.
+	// Peta tanpa ujian: tanpa tahap; Perbatasan hanya pengali peta x1,5 (v0.77.0), Desa Awal tidak berubah.
 	p.State.Map = MapPerbatasan
 	plain := newBattle(e, 0)
 	plain.strengthen(p.State, e)
-	if plain.Tahap != 0 || plain.EnemyHP != e.HP {
-		t.Errorf("peta biasa ikut diperkuat: %+v", plain)
+	if plain.Tahap != 0 || plain.EnemyHP != e.HP*150/100 || plain.AtkPct != 130 {
+		t.Errorf("Perbatasan harus x1,5 tanpa tahap: %+v", plain)
+	}
+	p.State.Map = MapDesaAwal
+	village := newBattle(e, 0)
+	village.strengthen(p.State, e)
+	if village.Tahap != 0 || village.EnemyHP != e.HP {
+		t.Errorf("Desa Awal ikut diperkuat: %+v", village)
 	}
 	p.State.Map = MapHutanLebat
 	boss := mustEnemy("goblin_hutan_1")

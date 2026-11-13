@@ -33,7 +33,8 @@ func (s State) tahapOf(e Enemy) int {
 // Makin jauh petanya makin berat (v0.72.0). Musuh tiap peta = musuh peta sebelumnya + golongan baru (binatang hutan ->
 // goblin -> orc batu -> naga), jadi musuh biasa diperkuat menurut kekuatan peta tempat ia dilawan dibanding peta
 // asalnya (Zones[0]): HP, XP, dan emas x mapPower/homePower, serangan naik 60% dari kenaikan itu.
-var mapPower = map[string]int{MapHutanLebat: 100, MapGuaGoblin: 150, MapGunungBatu: 220, MapGuaBatu: 380, MapIstana: 500}
+// v0.77.0 (roadmap no. 170): Perbatasan juga x1,5 — sebelumnya pertarungan di sana selesai dalam 0-2 detik.
+var mapPower = map[string]int{MapPerbatasan: 150, MapHutanLebat: 100, MapGuaGoblin: 150, MapGunungBatu: 220, MapGuaBatu: 380, MapIstana: 500}
 
 // homePower: kekuatan bawaan musuh menurut peta asalnya. Musuh asli Istana Kegelapan sudah dibuat kuat (400);
 // musuh peta lain dirancang setara binatang hutan (100).
