@@ -102,6 +102,9 @@ type State struct {
 	Chests map[string]int64 `json:"chests,omitempty"`
 	// LastWorldMs: waktu permintaan hadiah dunia terakhir (milidetik), untuk membatasi kecepatan.
 	LastWorldMs int64 `json:"last_world_ms,omitempty"`
+	// PoseMs: jam server (milidetik) saat posisi terakhir diterima lewat MoveTo; dasar batas kecepatan gerak.
+	// Hanya diubah server (nilai dari klien diabaikan). 0 = data lama (dipakai waktu updated_at pemain).
+	PoseMs int64 `json:"pose_ms,omitempty"`
 	// PowerLeft: sisa pertarungan dengan Ramuan Kekuatan aktif.
 	PowerLeft int `json:"power_left,omitempty"`
 	// EnergyUsed: energi (kekuatan) yang terpakai, 0..MaxEnergy; 0 = penuh. Disimpan sebagai
@@ -194,6 +197,8 @@ func (s State) Validate() error {
 		return errors.New("posisi tidak boleh negatif")
 	case !finite(s.FX) || !finite(s.FZ) || !finite(s.Yaw):
 		return errors.New("posisi halus harus bilangan biasa")
+	case s.PoseMs < 0 || s.LastWorldMs < 0:
+		return errors.New("cap waktu tidak boleh negatif")
 	case len(s.Broken) > maxBrokenKept+MaxBreakBatch || len(s.Chests) > len(chests):
 		return errors.New("catatan dunia terlalu banyak")
 	case s.EnergyUsed < 0 || s.EnergyUsed > MaxEnergy:

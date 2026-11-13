@@ -47,7 +47,16 @@ dan `/v1/version`) menjawab `426 Upgrade Required`:
  "min_client": "0.2.0", "update_url": "https://github.com/.../releases/latest"}
 ```
 
-Header yang tidak ada diabaikan (klien lama). Aturan lengkap: [VERSIONING.md](VERSIONING.md).
+Header yang tidak ada diabaikan (klien lama, sebelum header ini ada; mereka tidak bisa dipaksa update lewat
+header). Sejak v0.77.0 header yang **formatnya salah** (bukan `MAJOR.MINOR.PATCH`, boleh berawalan `v`;
+lebih dari 32 karakter; angka meluap) ditolak `400` dengan isi yang sama seperti `426`. `/healthz` dan
+`/v1/version` selalu boleh. Aturan lengkap: [VERSIONING.md](VERSIONING.md).
+
+## Badan permintaan (JSON)
+
+Badan permintaan harus **tepat satu** objek JSON (spasi di belakangnya boleh): JSON rusak/terpotong/kosong,
+kolom yang tidak dikenal, objek kedua, atau karakter sisa di belakang objek ditolak `400`. Badan lebih dari
+64 KiB ditolak `413`. Semua galat berbentuk `{"error": "..."}`.
 
 ## Endpoint
 
@@ -126,7 +135,15 @@ Menyimpan **posisi** pemain. Sejak v0.3.0 server otoritatif: hanya `map`, `x`,
 petak, `x <= fx < x+1`, `y <= fz < y+1`) dan arah hadap `yaw` (radian). Posisi halus
 di luar petak `x,y` (atau klien lama yang tidak mengirimnya) diganti tengah petak;
 nilai bukan angka (NaN/Inf) ditolak `422`. Kalah bertarung memulangkan pemain ke
-tengah petak awal. Level, XP, HP, emas, dan tas hanya berubah lewat aksi
+tengah petak awal.
+
+**Gerakan diperiksa server (v0.77.0).** Posisi baru hanya diterima bila bisa dicapai dari posisi tersimpan
+terakhir dalam waktu sejak posisi itu diterima: jarak lurus (lewat pintu antarpeta bila pindah peta, sama
+dengan `EXITS` di `client/scripts/maps.gd`) paling jauh `9 petak/detik x waktu + 8 petak`. Pintu yang masih
+terkunci (gerbang wilayah ujian sebelum ketiga bosnya kalah, gerbang cerita, rumah milik orang lain) tidak bisa
+dilewati. Posisi yang ditolak tidak mengubah apa pun dan menjawab `422` (`posisi tidak sah: ...`); penolakan
+dicatat di log server sebagai `posisi ditolak`. Server mencatat waktu gerakan terakhir di `state.pose_ms`
+(hanya diubah server). Level, XP, HP, emas, dan tas hanya berubah lewat aksi
 server (pertarungan) dan nilai kiriman klien untuk field itu diabaikan.
 
 Body: `{"version": 1, "state": { ... }}`
@@ -141,7 +158,7 @@ Klien harus mengambil `GET /v1/players/me` lalu menggabungkan.
 | 401 | Token tidak valid |
 | 409 | Versi tidak cocok |
 | 426 | Versi aplikasi di bawah `min_client` |
-| 422 | State tidak masuk akal, atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `hutan_lebat`, `gua_goblin`, `gunung_batu`, `gua_batu`, Desa Awal 85x50, Hutan Lebat 170x50, Gua Goblin 61x72, Gunung Berapi 180x50, lainnya 45x50 (Gua Batu 15x20)) |
+| 422 | State tidak masuk akal, posisi tidak bisa dicapai secepat itu / wilayah masih terkunci (v0.77.0), atau posisi di luar peta / peta tidak dikenal (peta: `desa_awal`, `perbatasan`, `hutan_lebat`, `gua_goblin`, `gunung_batu`, `gua_batu`, Desa Awal 85x50, Hutan Lebat 170x50, Gua Goblin 61x72, Gunung Berapi 180x50, lainnya 45x50 (Gua Batu 15x20)) |
 
 ## Pertarungan (v0.3.0)
 

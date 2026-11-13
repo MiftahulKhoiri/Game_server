@@ -119,14 +119,26 @@ func Open(path string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// migrate membuat skema baru, atau memigrasikan database versi lama tanpa menghapus data.
+// ErrSchemaTooNew: database dibuat oleh versi server yang lebih baru; server ini menolak menyala supaya tidak
+// salah membaca/menulis data dengan skema yang tidak dikenalnya.
+var ErrSchemaTooNew = errors.New("store: versi skema database lebih baru daripada server ini")
+
+// migrate membuat skema baru, atau memigrasikan database versi lama tanpa menghapus data. Setiap langkah
+// berjalan dalam transaksi bersama kenaikan user_version-nya, jadi server yang mati di tengah migrasi
+// meninggalkan database di versi sebelumnya (utuh) dan langkah itu diulang saat menyala lagi.
 func migrate(db *sql.DB) error {
 	var ver int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&ver); err != nil {
 		return err
 	}
-	if ver >= schemaVersion {
+	switch {
+	case ver > schemaVersion:
+		return fmt.Errorf("%w: database v%d, server memahami sampai v%d (pakai server yang lebih baru atau pulihkan cadangan)",
+			ErrSchemaTooNew, ver, schemaVersion)
+	case ver == schemaVersion:
 		return nil
+	case ver < 0:
+		return fmt.Errorf("versi skema database tidak sah: %d", ver)
 	}
 	var legacy int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('players') WHERE name = 'token_hash'`).Scan(&legacy); err != nil {
@@ -136,11 +148,7 @@ func migrate(db *sql.DB) error {
 		return migrateUp(db, ver)
 	}
 	if legacy == 0 { // database baru
-		if _, err := db.Exec(fmt.Sprintf(playersDDL, "players") + ";" + schemaRest); err != nil {
-			return err
-		}
-		_, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
-		return err
+		return inTx(db, fmt.Sprintf(playersDDL, "players")+";"+schemaRest+fmt.Sprintf(`; PRAGMA user_version = %d`, schemaVersion))
 	}
 	if err := migrateFromV1(db); err != nil {
 		return err
@@ -148,7 +156,21 @@ func migrate(db *sql.DB) error {
 	return migrateUp(db, 3)
 }
 
-// migrateUp menjalankan langkah migrasi kecil berurutan dari versi `ver` sampai schemaVersion.
+// inTx menjalankan perintah SQL dalam satu transaksi: semuanya berhasil, atau tidak ada yang berubah.
+func inTx(db *sql.DB, q string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(q); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// migrateUp menjalankan langkah migrasi kecil berurutan dari versi `ver` sampai schemaVersion. Setiap
+// langkah aman diulang (IF NOT EXISTS / kolom diperiksa dulu).
 func migrateUp(db *sql.DB, ver int) error {
 	steps := map[int]string{
 		2: tradesDDL, // v2 -> v3
@@ -165,11 +187,8 @@ func migrateUp(db *sql.DB, ver int) error {
 				steps[3] = `UPDATE sessions SET last_used = created_at WHERE last_used = '';`
 			}
 		}
-		if _, err := db.Exec(steps[ver]); err != nil {
+		if err := inTx(db, steps[ver]+fmt.Sprintf(`; PRAGMA user_version = %d`, ver+1)); err != nil {
 			return fmt.Errorf("migrasi v%d -> v%d: %w", ver, ver+1, err)
-		}
-		if _, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, ver+1)); err != nil {
-			return err
 		}
 	}
 	return nil
@@ -336,20 +355,24 @@ func (s *Store) Battle(ctx context.Context, playerID string) (game.Battle, error
 }
 
 // SavePosition menyimpan posisi pemain (peta, petak, posisi halus, arah) dari klien. Hanya posisi yang
-// diterima: HP, XP, emas, level, dan tas dihitung server dan tidak bisa diubah klien.
-// expectedVersion harus sama dengan versi tersimpan, jika tidak ErrConflict.
-func (s *Store) SavePosition(ctx context.Context, id string, pose game.Pose, expectedVersion int) (game.Player, error) {
+// diterima: HP, XP, emas, level, dan tas dihitung server dan tidak bisa diubah klien. Posisi baru harus
+// bisa dicapai dari posisi tersimpan sejak gerakan terakhir (MovePlayer). expectedVersion harus sama
+// dengan versi tersimpan, jika tidak ErrConflict. now = jam server.
+func (s *Store) SavePosition(ctx context.Context, id string, pose game.Pose, expectedVersion int, now time.Time) (game.Player, error) {
 	sess, err := s.mutate(ctx, id, expectedVersion, func(sess *Session) error {
-		st := &sess.Player.State
-		if !st.CanEnter(pose.Map) {
-			return game.ErrHouseLocked
-		}
-		st.Map, st.X, st.Y = pose.Map, pose.X, pose.Y
-		st.FX, st.FZ, st.Yaw = pose.FX, pose.FZ, pose.Yaw
-		st.Visit(pose.Map) // penjelajahan (roadmap no. 198)
-		return nil
+		return MovePlayer(&sess.Player, pose, now)
 	})
 	return sess.Player, err
+}
+
+// MovePlayer memindahkan pemain ke pose (sudah dinormalkan) bila sah menurut game.State.MoveTo. Data lama
+// tanpa PoseMs memakai waktu terakhir pemain diubah sebagai acuan, jadi tidak ada "lompatan gratis".
+func MovePlayer(p *game.Player, pose game.Pose, now time.Time) error {
+	st := &p.State
+	if st.PoseMs == 0 && !p.UpdatedAt.IsZero() {
+		st.PoseMs = min(p.UpdatedAt.UnixMilli(), now.UnixMilli())
+	}
+	return st.MoveTo(pose, now.UnixMilli())
 }
 
 // Update menjalankan fn atas pemain dan pertarungannya dalam SATU transaksi:

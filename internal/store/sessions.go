@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -25,6 +26,11 @@ var (
 // ErrSessionExpired berarti token dikenal tetapi sudah kedaluwarsa (dan sudah dihapus).
 var ErrSessionExpired = errors.New("store: sesi kedaluwarsa")
 
+// ErrSessionTouch: sesi SAH, tetapi waktu terakhir dipakainya gagal diperbarui. AuthSession tetap mengembalikan
+// pemainnya (bersama error yang membungkus ErrSessionTouch) supaya permintaan tidak gagal hanya karena catatan
+// pemakaian; pemanggil wajib mencatatnya di log.
+var ErrSessionTouch = errors.New("store: gagal memperbarui waktu pakai sesi")
+
 // SessionInfo adalah satu sesi (perangkat) milik pemain, tanpa tokennya.
 type SessionInfo struct {
 	Created  time.Time `json:"created"`
@@ -35,30 +41,44 @@ type SessionInfo struct {
 func stampOf(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
 // AuthSession mencari pemain pemilik token (hash) dan memeriksa masa berlakunya pada `now`.
-// Sesi yang masih berlaku diperbarui waktu terakhir dipakainya (paling sering sekali sejam).
+//   - token tidak ada: ErrNotFound; kesalahan database lain dikembalikan apa adanya (bukan dianggap 401).
+//   - kedaluwarsa (atau cap waktunya rusak — gagal aman): sesi dihapus, ErrSessionExpired.
+//   - sah: waktu terakhir dipakai diperbarui paling sering sekali per touchEvery (hemat tulis). Bila
+//     pembaruan itu gagal, pemain tetap dikembalikan bersama error yang membungkus ErrSessionTouch.
 func (s *Store) AuthSession(ctx context.Context, hash string, now time.Time) (game.Player, error) {
 	var playerID, created, used string
 	err := s.db.QueryRowContext(ctx, `SELECT player_id, created_at, last_used FROM sessions WHERE token_hash = ?`, hash).
 		Scan(&playerID, &created, &used)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		return game.Player{}, ErrNotFound
+	}
+	if err != nil {
+		return game.Player{}, fmt.Errorf("baca sesi: %w", err)
 	}
 	c, err1 := time.Parse(time.RFC3339Nano, created)
 	u, err2 := time.Parse(time.RFC3339Nano, used)
-	if err1 != nil {
-		c = now
+	if err2 != nil && used == "" { // baris lama sebelum kolom last_used terisi
+		u, err2 = c, err1
 	}
-	if err2 != nil {
-		u = c
-	}
-	if now.Sub(u) > SessionIdle || now.Sub(c) > SessionMax {
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, hash)
+	if err1 != nil || err2 != nil || now.Sub(u) > SessionIdle || now.Sub(c) > SessionMax {
+		if _, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE token_hash = ?`, hash); err != nil {
+			return game.Player{}, fmt.Errorf("%w (hapus sesi gagal: %v)", ErrSessionExpired, err)
+		}
 		return game.Player{}, ErrSessionExpired
 	}
+	var touchErr error
 	if now.Sub(u) > touchEvery {
-		_, _ = s.db.ExecContext(ctx, `UPDATE sessions SET last_used = ? WHERE token_hash = ?`, stampOf(now), hash)
+		// Bersyarat pada nilai lama: dua permintaan bersamaan tidak menulis dua kali.
+		if _, err := s.db.ExecContext(ctx, `UPDATE sessions SET last_used = ? WHERE token_hash = ? AND last_used = ?`,
+			stampOf(now), hash, used); err != nil {
+			touchErr = fmt.Errorf("%w: %v", ErrSessionTouch, err)
+		}
 	}
-	return s.PlayerByID(ctx, playerID)
+	p, err := s.PlayerByID(ctx, playerID)
+	if err != nil {
+		return game.Player{}, err
+	}
+	return p, touchErr
 }
 
 // Sessions: semua sesi pemain, terbaru dipakai di atas. `current` = hash token permintaan ini.
@@ -150,6 +170,10 @@ func (s *Store) QuickCheck(ctx context.Context) (string, error) {
 
 // Backup menyalin seluruh database ke dir/game-YYYYMMDD-HHMMSS.db memakai VACUUM INTO (salinan utuh dan
 // konsisten walau server sedang berjalan), lalu menyisakan `keep` cadangan terbaru. Mengembalikan path-nya.
+//
+// Aman terhadap kegagalan: salinan ditulis dulu ke berkas sementara (.tmp), diperiksa (quick_check +
+// tabel players terbaca), di-fsync, baru diganti nama menjadi nama akhirnya. Cadangan lama baru dihapus
+// setelah cadangan baru dipastikan berhasil. Database utama hanya dibaca.
 func (s *Store) Backup(ctx context.Context, dir string, keep int, now time.Time) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("buat folder cadangan: %w", err)
@@ -158,17 +182,84 @@ func (s *Store) Backup(ctx context.Context, dir string, keep int, now time.Time)
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	}
-	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
+	tmp := path + ".tmp"
+	_ = os.Remove(tmp) // sisa percobaan yang gagal sebelumnya
+	if _, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, tmp); err != nil {
+		_ = os.Remove(tmp)
 		return "", fmt.Errorf("cadangkan database: %w", err)
 	}
+	if err := VerifyBackup(ctx, tmp); err != nil {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("cadangan tidak lolos pemeriksaan: %w", err)
+	}
+	if err := syncFile(tmp); err != nil {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("tulis cadangan ke disk: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("simpan cadangan: %w", err)
+	}
+	_ = syncFile(dir) // nama berkas baru ikut tersimpan di disk
 	if keep > 0 {
 		old, _ := filepath.Glob(filepath.Join(dir, "game-*.db"))
 		sort.Strings(old) // nama memuat waktu: urut = urut waktu
 		for i := 0; i < len(old)-keep; i++ {
-			_ = os.Remove(old[i])
+			if old[i] != path {
+				_ = os.Remove(old[i])
+			}
 		}
 	}
 	return path, nil
+}
+
+// VerifyBackup membuka berkas database hanya-baca dan memastikan sehat (quick_check) serta berisi tabel
+// pemain yang terbaca. Dipakai untuk cadangan baru dan sebelum memulihkan.
+func VerifyBackup(ctx context.Context, path string) error {
+	if _, err := os.Stat(path); err != nil {
+		return err
+	}
+	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro&_pragma=busy_timeout(5000)")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	var msgs []string
+	rows, err := db.QueryContext(ctx, `PRAGMA quick_check`)
+	if err != nil {
+		return fmt.Errorf("quick_check: %w", err)
+	}
+	for rows.Next() {
+		var m string
+		if err := rows.Scan(&m); err != nil {
+			rows.Close()
+			return err
+		}
+		if m != "ok" {
+			msgs = append(msgs, m)
+		}
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return fmt.Errorf("quick_check: %w", err)
+	}
+	if len(msgs) > 0 {
+		return fmt.Errorf("database rusak: %s", strings.Join(msgs, "; "))
+	}
+	var n int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM players`).Scan(&n); err != nil {
+		return fmt.Errorf("tabel players tidak terbaca: %w", err)
+	}
+	return nil
+}
+
+func syncFile(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return f.Sync()
 }
 
 // LatestBackup: cadangan terbaru di dir dan waktunya ("" bila belum ada).

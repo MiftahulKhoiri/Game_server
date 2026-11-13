@@ -10,8 +10,30 @@
 
 Manual kapan saja: `make backup` (database saja) atau `make backup-all` (lengkap).
 
-Cadangan database dibuat dengan `VACUUM INTO` (aman saat server berjalan) dan cadangan lengkap
-diperiksa `PRAGMA integrity_check` serta `git bundle verify` sebelum disimpan.
+Cadangan database dibuat dengan `VACUUM INTO` (aman saat server berjalan) ke berkas sementara `*.tmp`,
+diperiksa (`quick_check` di server, `integrity_check` di `make backup`), di-fsync, lalu baru diganti nama ke
+`game-*.db`. Jadi tidak pernah ada cadangan setengah jadi, dan cadangan lama baru dihapus setelah cadangan
+baru berhasil. Cadangan lengkap diperiksa `PRAGMA integrity_check` serta `git bundle verify` sebelum disimpan.
+
+## Database rusak saat server menyala
+
+Server menjalankan `PRAGMA quick_check` setiap menyala. Bila database rusak, server **menolak menyala**
+(log: `database rusak: ...`) supaya tidak terus menulis di atas data rusak. Pulihkan cadangan terbaru
+(lihat di bawah). Hanya untuk menyelamatkan data darurat: `GAME_DB_CHECK=warn` menyalakan server walau rusak.
+
+## Sebelum memperbarui server (migrasi skema)
+
+Server baru memigrasikan database lama secara otomatis (setiap langkah dalam transaksi). Tetap buat cadangan
+dulu sebelum memasang versi server baru:
+
+```bash
+make backup            # atau make backup-all
+git pull && make restart
+```
+
+Bila server lama dipasang lagi di atas database yang sudah dimigrasikan versi baru, server menolak menyala
+(`versi skema database lebih baru daripada server ini`): pasang lagi server baru, atau pulihkan cadangan
+yang dibuat sebelum pembaruan.
 
 ## Simpan di tempat lain (disarankan)
 
@@ -30,8 +52,9 @@ systemctl --user edit gameserver-backup     # tambahkan: [Service] Environment=B
 make restore FILE=data/backup/game-20261110-030000.db
 ```
 
-Server dihentikan, database lama disimpan sebagai `game.db.sebelum-pulih-*`, cadangan diperiksa
-`quick_check`, lalu server dinyalakan lagi.
+Cadangan diperiksa `integrity_check` dulu (berkas rusak ditolak, database sekarang tidak disentuh). Lalu
+server dihentikan, database lama beserta `-wal`/`-shm`-nya disimpan sebagai `game.db.sebelum-pulih-*`,
+cadangan disalin ke berkas sementara dan diganti nama (atomik), lalu server dinyalakan lagi.
 
 ## Memulihkan semuanya (Pi baru / disk baru)
 

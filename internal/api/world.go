@@ -10,7 +10,8 @@ import (
 )
 
 // Hadiah dunia: hancurkan pohon/batu/rumput dan buka peti harta. Server mengundi hadiah.
-// Posisi pemain ikut dikirim tiap permintaan (sama seperti simpan posisi), lalu dipakai untuk memeriksa jarak.
+// Posisi pemain ikut dikirim tiap permintaan (sama seperti simpan posisi) tetapi baru dipakai setelah lolos
+// pemeriksaan gerakan server (store.MovePlayer / game.State.MoveTo).
 
 type worldPose struct {
 	Map string  `json:"map"`
@@ -34,32 +35,40 @@ type worldResponse struct {
 	Loot   game.Loot   `json:"loot"`
 }
 
-// apply memperbarui posisi state dari permintaan (peta dan petak harus sah).
-func (p worldPose) apply(st *game.State) bool {
-	x, z := int(math.Floor(p.FX)), int(math.Floor(p.FZ))
-	pose, ok := game.NormalizePose(game.Pose{Map: p.Map, X: x, Y: z, FX: p.FX, FZ: p.FZ, Yaw: p.Yaw})
-	if !ok {
-		return false
+// pose mengubah posisi permintaan menjadi Pose yang sudah dinormalkan (peta dikenal, petak di dalam peta,
+// angka terhingga). Posisi ini BELUM dipercaya: worldAction memeriksanya lewat store.MovePlayer.
+func (p worldPose) pose() (game.Pose, bool) {
+	if !finiteCoord(p.FX) || !finiteCoord(p.FZ) || math.IsNaN(p.Yaw) || math.IsInf(p.Yaw, 0) {
+		return game.Pose{}, false
 	}
-	st.Map, st.X, st.Y = pose.Map, pose.X, pose.Y
-	st.FX, st.FZ, st.Yaw = pose.FX, pose.FZ, pose.Yaw
-	return true
+	x, z := int(math.Floor(p.FX)), int(math.Floor(p.FZ))
+	return game.NormalizePose(game.Pose{Map: p.Map, X: x, Y: z, FX: p.FX, FZ: p.FZ, Yaw: p.Yaw})
 }
+
+// finiteCoord: bilangan terhingga dan cukup kecil untuk diubah ke int dengan aman (peta terbesar < 1000 petak).
+func finiteCoord(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) && math.Abs(v) < 1e6 }
 
 var errBadPose = errors.New("posisi di luar peta atau peta tidak dikenal")
 
-// worldAction menjalankan fn atas state pemain secara atomik (ditolak saat bertarung).
-func (s *Server) worldAction(w http.ResponseWriter, r *http.Request, pose worldPose, fn func(st *game.State) (game.Loot, error)) {
+// worldAction menjalankan fn atas state pemain secara atomik (ditolak saat bertarung). Posisi yang dikirim
+// klien hanya dipakai bila lolos pemeriksaan gerakan server (bisa dicapai dari posisi tersimpan dalam waktu
+// yang berlalu, lewat pintu yang terbuka); fn lalu memeriksa jarak dari posisi server yang sudah sah itu.
+func (s *Server) worldAction(w http.ResponseWriter, r *http.Request, wp worldPose, fn func(st *game.State) (game.Loot, error)) {
+	pose, ok := wp.pose()
+	if !ok {
+		writeError(w, http.StatusUnprocessableEntity, errBadPose.Error())
+		return
+	}
+	now := s.clock()
 	var loot game.Loot
 	sess, err := s.store.Update(r.Context(), playerFrom(r).ID, func(sess *store.Session) error {
 		if sess.Battle != nil {
 			return errBattleActive
 		}
-		st := &sess.Player.State
-		if !pose.apply(st) {
-			return errBadPose
+		if err := store.MovePlayer(&sess.Player, pose, now); err != nil {
+			return err
 		}
-		l, err := fn(st)
+		l, err := fn(&sess.Player.State)
 		loot = l
 		return err
 	})
@@ -68,12 +77,26 @@ func (s *Server) worldAction(w http.ResponseWriter, r *http.Request, pose worldP
 		writeJSON(w, http.StatusOK, worldResponse{Player: sess.Player, Loot: loot})
 	case errors.Is(err, errBattleActive):
 		writeError(w, http.StatusConflict, "tidak bisa dilakukan saat bertarung")
-	case errors.Is(err, errBadPose), errors.Is(err, game.ErrBadObject), errors.Is(err, game.ErrTooFar),
+	case isMoveError(err):
+		s.logMoveReject(r, pose, err)
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, game.ErrBadObject), errors.Is(err, game.ErrTooFar),
 		errors.Is(err, game.ErrTooFast), errors.Is(err, game.ErrUnknownChest), errors.Is(err, game.ErrChestEmpty):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	default:
 		s.fail(w, r, err)
 	}
+}
+
+// isMoveError: posisi baru ditolak aturan gerakan server.
+func isMoveError(err error) bool {
+	return errors.Is(err, game.ErrMoveTooFar) || errors.Is(err, game.ErrMapLocked) || errors.Is(err, game.ErrHouseLocked)
+}
+
+// logMoveReject mencatat penolakan posisi untuk diperiksa pemilik server (tanpa token/data rahasia).
+func (s *Server) logMoveReject(r *http.Request, pose game.Pose, err error) {
+	s.log.Warn("posisi ditolak", "player", playerFrom(r).ID, "ip", clientIP(r), "path", r.URL.Path,
+		"map", pose.Map, "x", pose.X, "y", pose.Y, "alasan", err.Error())
 }
 
 func (s *Server) worldBreak(w http.ResponseWriter, r *http.Request) {

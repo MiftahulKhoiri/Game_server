@@ -44,6 +44,8 @@ const NAMES := {"desa_awal": "Desa Awal", "perbatasan": "Perbatasan Kerajaan", "
 
 ## Pintu antar-peta. Menginjak petak `pos` memindahkan pemain ke `to` di petak `at`
 ## (petak tujuan bukan pintu, agar tidak bolak-balik terus).
+## HARUS sama dengan game.Doors di internal/game/movement.go: server menolak perpindahan peta yang tidak
+## lewat pintu di sana (diperiksa TestDoorsMatchClient).
 const EXITS := {
 	"desa_awal": [
 		{"pos": Vector2i(21, 49), "to": "perbatasan", "at": Vector2i(21, 1)},

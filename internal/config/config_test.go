@@ -50,3 +50,19 @@ func TestBadNumbersFallBack(t *testing.T) {
 		}
 	}
 }
+
+func TestParseProxies(t *testing.T) {
+	for _, c := range []struct {
+		in   string
+		n    int
+		fail bool
+	}{
+		{"", 0, false}, {"none", 0, false}, {DefaultTrustedProxies, 2, false},
+		{"10.0.0.1, 192.168.1.0/24", 2, false}, {"bukan-ip", 0, true}, {"10.0.0.1,300.1.1.1", 0, true},
+	} {
+		got, err := ParseProxies(c.in)
+		if (err != nil) != c.fail || len(got) != c.n {
+			t.Errorf("%q: %v %v", c.in, got, err)
+		}
+	}
+}

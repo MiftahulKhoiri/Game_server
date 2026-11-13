@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MiftahulKhoiri/Game_server/internal/game"
 )
@@ -86,17 +87,17 @@ func TestSavePositionOnlyTouchesPosition(t *testing.T) {
 	st, ctx := newStore(t), context.Background()
 	p := newPlayer(t, st, "C")
 
-	got, err := st.SavePosition(ctx, p.ID, game.Pose{Map: "desa_awal", X: 3, Y: 4, FX: 3.25, FZ: 4.75, Yaw: 1.5}, 1)
+	got, err := st.SavePosition(ctx, p.ID, game.Pose{Map: "desa_awal", X: 3, Y: 4, FX: 3.25, FZ: 4.75, Yaw: 1.5}, 1, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.State.X != 3 || got.State.Y != 4 || got.State.FX != 3.25 || got.State.FZ != 4.75 || got.State.Yaw != 1.5 || got.Version != 2 || got.State.HP != p.State.HP {
 		t.Errorf("hasil salah: %+v", got)
 	}
-	if _, err := st.SavePosition(ctx, p.ID, game.Pose{Map: "desa_awal", X: 1, Y: 1}, 1); !errors.Is(err, ErrConflict) {
+	if _, err := st.SavePosition(ctx, p.ID, game.Pose{Map: "desa_awal", X: 1, Y: 1}, 1, time.Now()); !errors.Is(err, ErrConflict) {
 		t.Errorf("versi lama harus ErrConflict, dapat %v", err)
 	}
-	if _, err := st.SavePosition(ctx, "tidak-ada", game.Pose{Map: "desa_awal", X: 1, Y: 1}, 1); !errors.Is(err, ErrNotFound) {
+	if _, err := st.SavePosition(ctx, "tidak-ada", game.Pose{Map: "desa_awal", X: 1, Y: 1}, 1, time.Now()); !errors.Is(err, ErrNotFound) {
 		t.Errorf("pemain tidak ada harus ErrNotFound, dapat %v", err)
 	}
 }

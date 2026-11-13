@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -50,16 +51,19 @@ func run(log *slog.Logger) error {
 	if err := validateVersions(info); err != nil {
 		return err
 	}
+	proxies, err := config.ParseProxies(cfg.TrustedProxies)
+	if err != nil {
+		return err
+	}
+	api.TrustedProxies = proxies
 
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
 		return err
 	}
 	defer st.Close()
-	if msg, err := st.QuickCheck(context.Background()); err != nil || msg != "" {
-		log.Error("pemeriksaan database menemukan masalah", "pesan", msg, "err", err)
-	} else {
-		log.Info("pemeriksaan database: sehat")
+	if err := checkDatabase(log, st, cfg.DBCheck); err != nil {
+		return err
 	}
 
 	srv := &http.Server{
@@ -69,12 +73,21 @@ func run(log *slog.Logger) error {
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    32 << 10, // header normal klien jauh lebih kecil; cegah header raksasa
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// Goroutine latar harus selesai sebelum database ditutup (defer berjalan terbalik: Wait dulu, lalu Close).
+	var bg sync.WaitGroup
+	defer bg.Wait()
+	defer stop() // hentikan goroutine latar saat run selesai karena sebab apa pun
 	if cfg.BackupDir != "" && cfg.BackupEvery > 0 {
-		go backupLoop(ctx, log, st, cfg)
+		bg.Add(1)
+		go func() {
+			defer bg.Done()
+			backupLoop(ctx, log, st, cfg)
+		}()
 	}
 
 	errCh := make(chan error, 1)
@@ -125,6 +138,29 @@ func backupLoop(ctx context.Context, log *slog.Logger, st *store.Store, cfg conf
 			timer.Reset(cfg.BackupEvery)
 		}
 	}
+}
+
+// checkDatabase menjalankan PRAGMA quick_check saat menyala. Fail-safe: database yang rusak (atau gagal
+// diperiksa) membuat server menolak menyala supaya tidak terus menulis di atas data rusak; pemilik server
+// memulihkan cadangan dulu (make restore, docs/BACKUP.md). GAME_DB_CHECK=warn menyalakan server walau rusak
+// (hanya untuk penyelamatan data darurat), dengan catatan ERROR.
+func checkDatabase(log *slog.Logger, st *store.Store, mode string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	msg, err := st.QuickCheck(ctx)
+	if err == nil && msg == "" {
+		log.Info("pemeriksaan database: sehat")
+		return nil
+	}
+	log.Error("pemeriksaan database menemukan masalah", "pesan", msg, "err", err, "mode", mode)
+	if mode == "warn" {
+		log.Error("GAME_DB_CHECK=warn: server tetap dinyalakan walau database bermasalah; segera pulihkan cadangan")
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("pemeriksaan database gagal: %w (pulihkan cadangan: make restore, atau GAME_DB_CHECK=warn)", err)
+	}
+	return fmt.Errorf("database rusak: %s (pulihkan cadangan: make restore, atau GAME_DB_CHECK=warn)", msg)
 }
 
 func validateVersions(info version.Info) error {
