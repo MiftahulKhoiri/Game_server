@@ -77,6 +77,15 @@ var _flash: ColorRect
 var _btn_potion: Button
 var _btn_flee: Button
 var _respawn_left: Array[float] = []
+# AI hybrid (v0.78.0, server: internal/game/ai.go): taktik serangan musuh berikutnya dan keadaan FSM-nya.
+var intent := ""            # heavy, quick, area, ranged, ambush, special, retreat ("" = biasa)
+var ai_state := ""
+var _telegraphed := false   # ancang-ancang serangan besar sudah ditampilkan untuk jadwal ini
+## Taktik yang diberi ancang-ancang lebih lama dan lingkaran peringatan merah (serangan besar).
+const BIG_INTENTS := ["heavy", "area", "ranged", "special"]
+const BIG_WARN_MS := 1150
+## Keluarga naga (profil AI "naga"): serangan jarak jauh = semburan api.
+const DRAGON_PREFIXES := ["naga", "aldragor", "ogre_gunung_"]
 
 
 func setup(w: Node) -> void:
@@ -337,6 +346,11 @@ func _apply(res: Dictionary) -> void:
 func _read_view(v: Dictionary, now: int) -> void:
 	_enemy_at = now + int(v.get("enemy_next_ms", 2000))
 	_enemy_iv = maxi(1, int(v.get("enemy_interval_ms", 2000)))
+	var new_intent := str(v.get("enemy_intent", ""))
+	if new_intent != intent:
+		_telegraphed = false
+	intent = new_intent
+	ai_state = str(v.get("ai_state", ""))
 	var party: Array = Session.player.get("state", {}).get("party", [])
 	var has_soldiers := Session.active_soldiers() > 0
 	_ally_at = now + int(v.get("ally_next_ms", 2400)) if (not party.is_empty() or has_soldiers) else 0
@@ -355,7 +369,10 @@ func _process(delta: float) -> void:
 	var now := Time.get_ticks_msec()
 	var until_hit := _enemy_at - now
 	if roamer != null:
-		roamer.warn = until_hit < WARN_MS and until_hit > -LATE_MS * 3
+		var warn_ms := BIG_WARN_MS if BIG_INTENTS.has(intent) else WARN_MS
+		roamer.warn = until_hit < warn_ms and until_hit > -LATE_MS * 3
+		if roamer.warn and not _telegraphed and BIG_INTENTS.has(intent):
+			_telegraph()
 	# Saat musuh jatuh tempo menyerang (atau lama tak ada kabar): tanya server.
 	var ally_due := _ally_at > 0 and now - _ally_at > LATE_MS
 	if not _busy and now >= _next_ask and (until_hit < -LATE_MS or ally_due or now - _last_sync > POLL_MS):
@@ -442,11 +459,36 @@ func _play_event(e: Dictionary) -> void:
 	else:
 		if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_attack"):
 			roamer.model.call("play_attack")
+		var tactic := str(e.get("tactic", ""))
+		if kind == "phase":  # bos berganti fase (v0.78.0)
+			world._show_toast("%s: %s!" % [_enemy_name, str(e.get("skill", "Fase baru"))])
+			HeroFx.ring(world, enemy_at + Vector3(0, 0.1, 0), Color("ff3a3a"), 3.2, 0.7)
+			world._shake = 0.5
+			_update_bar()
+			return
+		if kind == "retreat":  # musuh mundur bertahan
+			if roamer != null:
+				roamer.knock(world._pos, 1.0)
+			HeroFx.ring(world, enemy_at + Vector3(0, 0.6, 0), Color("7fb8ff"), 1.0, 0.6)
+			_float_text(enemy_at + Vector3(0, enemy_top + 1.0, 0), "MUNDUR!", Color("9fd0ff"), 54)
+			_update_bar()
+			return
+		_telegraphed = false
 		if roamer != null:
 			roamer.warn = false
 			roamer.lunge()  # menerjang ke arah pemain saat menyerang (v0.69.0)
-			if roamer.id.begins_with("ogre_gunung_"):  # Naga Lava menyemburkan api tiap menyerang (v0.76.0)
+			if tactic == "heavy" or tactic == "ambush":
+				roamer.lunge()
+			if roamer.id.begins_with("ogre_gunung_") or (tactic == "ranged" and _is_dragon(roamer.id)):  # semburan api
 				HeroFx.fire_breath(world, enemy_at + Vector3(0, enemy_top * 0.62, 0), me_at + Vector3(0, 0.6, 0))
+		match tactic:
+			"area":
+				HeroFx.ring(world, enemy_at + Vector3(0, 0.1, 0), Color("ff8a2a"), 2.8, 0.55)
+				HeroFx.ring(world, enemy_at + Vector3(0, 0.1, 0), Color("ffd27a"), 1.6, 0.4)
+			"ambush":
+				_float_text(enemy_at + Vector3(0, enemy_top + 1.0, 0), "SERGAP!", Color("ffb36b"), 54)
+			"heavy":
+				HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.5, 0), Color("ffb36b"), 10, 3.0)
 		var skill := str(e.get("skill", ""))
 		if skill != "":  # kemampuan khusus musuh (roadmap no. 85-86)
 			_float_text(enemy_at + Vector3(0, enemy_top + 1.0, 0), skill + "!", Color("ff9a3c"), 58)
@@ -455,6 +497,10 @@ func _play_event(e: Dictionary) -> void:
 				_float_text(enemy_at + Vector3(0, enemy_top + 0.5, 0), "+%d" % int(e.get("heal", 0)), Color("7dff8a"), 48)
 		if dmg > 0:
 			world._shake = 0.45 if skill != "" else 0.3
+			if tactic == "heavy" or tactic == "area" or tactic == "ranged":
+				world._shake = 0.6
+			elif tactic == "quick":
+				world._shake = 0.18
 			_flash.color.a = 0.32
 			HeroFx.burst(world, me_at + Vector3(0, 0.9, 0), Color("ff5c5c"), 12, 2.6)
 			_float_text(me_at + Vector3(0, 2.0, 0), "-%d" % dmg, Color("ff6b5c"), 60)
@@ -476,9 +522,28 @@ func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> voi
 	var hero := str(e.get("hero", ""))
 	var kind := str(e.get("kind", "attack"))
 	var comp: Variant = world._companions
+	var role := str(e.get("tactic", ""))
+	if kind == "heal":  # Penyihir menyembuhkan kawan atau pemain (v0.78.0)
+		if comp != null:
+			comp.attack(hero)
+		var who := str(e.get("skill", ""))
+		var at: Vector3 = Vector3(world._pos.x, 0.0, world._pos.y)
+		if who != "" and comp != null:
+			at = comp.position_of(who)
+		HeroFx.magic_circle(world, at, Color("7dff8a"), 0.8, 0.7)
+		_float_text(at + Vector3(0, 1.9, 0), "+%d" % int(e.get("heal", 0)), Color("7dff8a"), 50)
+		return
 	if kind == "attack":
 		if comp != null:
 			comp.attack(hero)
+			var from: Vector3 = comp.position_of(hero) + Vector3(0, 0.9, 0)
+			match role:
+				"ranged":
+					HeroFx.bolt(world, from, enemy_at + Vector3(0, enemy_top * 0.55, 0), Color("e8e0c0"), "panah")
+				"magic":
+					HeroFx.bolt(world, from, enemy_at + Vector3(0, enemy_top * 0.55, 0), Color("b77dff"), "sihir")
+				"heavy":
+					world._shake = maxf(world._shake, 0.15)
 		if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
 			roamer.model.call("play_hurt")
 		var col := Color("9fd8ff")
@@ -497,6 +562,27 @@ func _play_ally_event(e: Dictionary, enemy_at: Vector3, enemy_top: float) -> voi
 			_float_text(at + Vector3(0, 2.5, 0), "GUGUR" if soldier else "TUMBANG", col, 42)
 			if soldier:
 				world._show_toast("Seorang prajurit gugur!")
+
+
+## Ancang-ancang serangan besar (v0.78.0): lingkaran merah mengembang di kaki musuh dan tanda peringatan, supaya
+## pemain sempat bertahan atau menghindar. Hasilnya tetap ditentukan server.
+func _telegraph() -> void:
+	_telegraphed = true
+	if roamer == null or not is_instance_valid(roamer.node):
+		return
+	var at := Vector3(roamer.pos.x, 0.0, roamer.pos.y)
+	var col := Color("ff3a3a") if intent != "ranged" else Color("ff8a2a")
+	var radius := 2.6 if intent == "area" else 1.4
+	HeroFx.ring(world, at + Vector3(0, 0.08, 0), col, radius, float(BIG_WARN_MS) / 1000.0)
+	var text := {"heavy": "Serangan berat!", "area": "Serangan area!", "ranged": "Semburan!", "special": "Jurus khusus!"}
+	_float_text(at + Vector3(0, roamer.top + 1.1, 0), str(text.get(intent, "!")), col, 46)
+
+
+static func _is_dragon(id: String) -> bool:
+	for p: String in DRAGON_PREFIXES:
+		if id.begins_with(p):
+			return true
+	return false
 
 
 ## Percikan saat musuh terkena (bisa dimatikan di Pengaturan): darah, atau serpihan untuk batu/kerangka.

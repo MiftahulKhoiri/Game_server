@@ -214,6 +214,22 @@ func _play_event(e: Dictionary) -> void:
 	var kind := str(e.get("kind", ""))
 	var dmg := int(e.get("dmg", 0))
 	var heal := int(e.get("heal", 0))
+	if str(e.get("who", "")) == "ally" and kind == "heal":  # Penyihir menyembuhkan (v0.78.0)
+		var healer: Node3D = _ally_rigs.get(str(e.get("hero", "")))
+		if healer != null:
+			_play(healer, "play_attack")
+		_burst(_hero_pos(), Color("7be06b"), 12, 2.0)
+		_pop("+%d" % heal, Color("7be06b"), true, 34)
+		return
+	if str(e.get("who", "")) == "enemy" and (kind == "phase" or kind == "retreat"):  # AI hybrid (v0.78.0)
+		if kind == "phase":
+			_screen_flash(Color(1.0, 0.2, 0.2, 0.25))
+			_shake(0.08)
+			_pop("%s!" % str(e.get("skill", "Fase baru")), Color("ff5a5a"), false, 50)
+		else:
+			_lunge(_enemy_rig, ENEMY_X, 0.4)
+			_pop("MUNDUR!", Color("9fd0ff"), false, 44)
+		return
 	if str(e.get("who", "")) == "ally":
 		var rig: Node3D = _ally_rigs.get(str(e.get("hero", "")))
 		if rig != null:
@@ -276,6 +292,11 @@ func _play_event(e: Dictionary) -> void:
 	else:
 		_play(_enemy_rig, "play_attack")
 		_lunge(_enemy_rig, ENEMY_X, -0.55)
+		match str(e.get("tactic", "")):  # taktik AI musuh (v0.78.0)
+			"heavy", "area", "ranged":
+				_after(LUNGE_MS, func() -> void: _shake(0.06))
+			"ambush":
+				_pop("SERGAP!", Color("ffb36b"), false, 44)
 		if str(e.get("skill", "")) != "":  # kemampuan khusus musuh (roadmap no. 85-86)
 			_pop("%s!" % str(e.skill), Color("ff9a3c"), false, 46)
 			if int(e.get("heal", 0)) > 0:
