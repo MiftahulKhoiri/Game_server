@@ -127,12 +127,16 @@ Semua 12 musuh memakai model low-poly CC0 berrangka (v0.19.0). Skrip ini menguba
 (GLB/glTF/FBX) menjadi GLB ringan: membuang mesh sisa, memberi nama ulang klip menjadi `idle-loop`,
 `walk-loop`, `attack`, `hurt`, `die` (opsi lewat JSON, `@berkas.json`), memasang senjata, memutar
 arah hadap (`rotz`, model menghadap -Y Blender) dan memperkecil tekstur (`max_tex`).
-- Kerangka (KayKit Skeletons, CC0): Minion, Warrior, Rogue ->  kelelawar_gua, golem_kerikil, goblin_penjaga.
+- Kerangka (KayKit Skeletons, CC0): Warrior, Rogue -> golem_kerikil, goblin_penjaga. (Minion dulu untuk
+  kelelawar_gua; sejak v0.77.0 Kelelawar Gua = varian kelelawar Quaternius.)
+- OpenGameArt (CC0, v0.77.0): Evil Giant Rat -> tikus_sawah (5 klip), Snake low poly -> ular_sawah (idle, jalan).
+  Sumber `.blend` langsung dibaca `siapkan_musuh.py`. Model panjang-rendah diskalakan menurut panjang
+  (`LENGTHS` di models.gd).
   https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
 - Monster (Quaternius, CC0; dari https://github.com/511action/descent-3d-assets): Orc -> goblin,
   Demon -> golem_lava, BlueDemon -> raja_goblin, CreepCreature -> ogre_batu.
-- Hewan (Quaternius, CC0, OpenGameArt): Chick -> tikus_sawah, Cat -> belalang_raksasa, Red Fox ->
-  ular_sawah, Pig -> babi_hutan, Wolf -> serigala_hutan. Hewan hanya punya klip idle dan jalan;
+- Hewan (Quaternius, CC0, OpenGameArt): Chick -> anak_ayam (dulu tikus_sawah), Cat -> belalang_raksasa,
+  Pig -> babi_hutan, Wolf -> serigala_hutan. (Red Fox dulu dipakai ular_sawah, kini tidak dipakai.) Hewan hanya punya klip idle dan jalan;
   serang/terkena/mati digerakkan `model_rig.gd` (badan maju, terhuyung, roboh).
 Id musuh tidak berubah; yang berubah hanya nama tampilan (mis. `tikus_sawah` = "Ayam Liar").
 - Cerita The Last Dragon (v0.67.0; Quaternius Animated Monster Pack, CC0, OpenGameArt): Dragon -> aldragor

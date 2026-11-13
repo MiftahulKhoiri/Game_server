@@ -42,12 +42,12 @@ const ZoneRetired = "pensiun"
 
 var enemies = []Enemy{
 	// Hutan Perbatasan (sejak v0.32.0 desa aman dari musuh): hewan kecil yang paling mudah dikalahkan.
-	{ID: "tikus_sawah", Zones: []string{MapPerbatasan}, Name: "Ayam Liar", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10, Time: TimeDay},
+	{ID: "tikus_sawah", Zones: []string{MapPerbatasan}, Name: "Tikus Raksasa", HP: 10, Attack: 3, Defense: 0, XP: 6, Gold: 2, MinLevel: 1, DropID: PotionID, DropPercent: 10, Time: TimeDay},
 	// Serbuan Goblin ke Desa Awal (roadmap no. 190): hanya saat kejadian berlangsung.
 	{ID: "goblin_penyerbu", Zones: []string{MapDesaAwal}, Name: "Goblin Penyerbu", HP: 28, Attack: 7, Defense: 2, XP: 22, Gold: 9, MinLevel: 1, DropID: PotionID, DropPercent: 25, Raid: true, Time: TimeNight},
 	{ID: "orc_penyerbu", Zones: []string{MapDesaAwal}, Name: "Orc Penyerbu", HP: 52, Attack: 11, Defense: 4, XP: 40, Gold: 16, MinLevel: 4, DropID: "taring_goblin", DropPercent: 35, Raid: true, Time: TimeNight, Special: SpecialTerkam, SpecialName: "Hantaman Orc"},
 	{ID: "belalang_raksasa", Zones: []string{MapPerbatasan}, Name: "Kucing Liar", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
-	{ID: "ular_sawah", Zones: []string{MapPerbatasan}, Name: "Rubah Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
+	{ID: "ular_sawah", Zones: []string{MapPerbatasan}, Name: "Ular Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
 	{ID: "babi_hutan", Zones: []string{MapPerbatasan}, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25, Special: SpecialTerkam, SpecialName: "Serudukan"},
 	// Perbatasan (hutan): binatang buas.
 	{ID: "ular_hutan", Zones: []string{MapPerbatasan}, Name: "Ular Hutan", HP: 18, Attack: 6, Defense: 1, XP: 11, Gold: 5, MinLevel: 1, DropID: PotionID, DropPercent: 10, Special: SpecialRacun, SpecialName: "Gigitan Racun"},
@@ -124,8 +124,8 @@ var enemies = []Enemy{
 	{ID: "orc_kegelapan", Zones: []string{MapIstana}, Name: "Orc Kegelapan", HP: 170, Attack: 27, Defense: 11, XP: 95, Gold: 34, MinLevel: 11, DropID: "permata_merah", DropPercent: 20, Special: SpecialTerkam, SpecialName: "Amukan Kegelapan"},
 	{ID: "iblis_bayangan", Zones: []string{MapIstana}, Name: "Iblis Bayangan", HP: 210, Attack: 30, Defense: 13, XP: 120, Gold: 42, MinLevel: 12, DropID: "permata_merah", DropPercent: 25, Special: SpecialRacun, SpecialName: "Kabut Bayangan"},
 	// Pensiun (v0.29.0): tidak lagi muncul. Tetap terdaftar agar pertarungan lama yang masih berjalan bisa selesai.
-	// Aktif lagi (v0.53.0, roadmap no. 71): Kerangka Gua di Gua Goblin, Iblis Lava di Gua Batu.
-	{ID: "kelelawar_gua", Zones: []string{MapGuaGoblin}, Name: "Kerangka Gua", HP: 30, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 20, Special: SpecialRacun, SpecialName: "Kutukan Tulang"},
+	// Aktif lagi (v0.53.0, roadmap no. 71): Kelelawar Gua (dulu "Kerangka Gua") di Gua Goblin, Iblis Lava di Gua Batu.
+	{ID: "kelelawar_gua", Zones: []string{MapGuaGoblin}, Name: "Kelelawar Gua", HP: 30, Attack: 9, Defense: 2, XP: 20, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 20, Special: SpecialRacun, SpecialName: "Gigitan Kelelawar"},
 	{ID: "golem_kerikil", Zones: []string{ZoneRetired}, Name: "Kerangka Pejuang", HP: 50, Attack: 10, Defense: 6, XP: 32, Gold: 14, MinLevel: 4, DropID: "koin_kuno", DropPercent: 25},
 	{ID: "goblin_penjaga", Zones: []string{ZoneRetired}, Name: "Kerangka Penjaga", HP: 45, Attack: 11, Defense: 4, XP: 28, Gold: 12, MinLevel: 5, DropID: "taring_goblin", DropPercent: 50},
 	{ID: "golem_lava", Zones: []string{MapGuaBatu}, Name: "Iblis Lava", HP: 62, Attack: 13, Defense: 6, XP: 40, Gold: 18, MinLevel: 6, DropID: "permata_merah", DropPercent: 20, Special: SpecialBatu, SpecialName: "Kobaran Lava"},

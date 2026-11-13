@@ -237,10 +237,10 @@ const WARGA := [
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "peran": "Anak Desa", "baju": Color("a8c8ff"), "kulit": Color("e0c0a0"), "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
 	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Desa", "peran": "Ayah Elara", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3)},
 	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "peran": "Penjaga Gerbang", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
-	{"id": "ayam", "model": "tikus_sawah", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 13.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(39, 11)},
+	{"id": "ayam", "model": "anak_ayam", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
+	{"id": "ayam", "model": "anak_ayam", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
+	{"id": "ayam", "model": "anak_ayam", "name": "Ayam", "map": "desa_awal", "pos": Vector2(36.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(39, 11)},
+	{"id": "ayam", "model": "anak_ayam", "name": "Ayam", "map": "desa_awal", "pos": Vector2(39.5, 13.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(39, 11)},
 	# Penjaga toko: berdiri di belakang meja kasir di dalam ruangannya, siang dan malam (`diam`). Mengajak
 	# bicara penjaga = berbelanja (`toko` = "toko" ramuan, "makan" rumah makan; "peralatan" = toko peralatan, "rawat" = rumah sehat, pulih gratis).
 	# Roadmap no. 22-30, 35-38: warga dengan pekerjaan. `kerja` = gerakan berulang di tempat ("palu" menempa,
@@ -336,9 +336,9 @@ const ZONA := {
 
 const ROAMERS := {
 	"perbatasan": {"n": 16, "tiles": ".fT", "min_y": 3, "kinds": [
-		{"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1, "pemalu": true, "waktu": "siang"},
+		{"id": "tikus_sawah", "name": "Tikus Raksasa", "lv": 1, "pemalu": true, "waktu": "siang"},
 		{"id": "belalang_raksasa", "name": "Kucing Liar", "lv": 1},
-		{"id": "ular_sawah", "name": "Rubah Sawah", "lv": 2},
+		{"id": "ular_sawah", "name": "Ular Sawah", "lv": 2},
 		{"id": "ular_hutan", "name": "Ular Hutan", "lv": 1},
 		{"id": "serigala_hutan", "name": "Serigala Hutan", "lv": 2},
 		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
@@ -360,7 +360,7 @@ const ROAMERS := {
 		{"id": "goblin", "name": "Goblin Gunung", "lv": 2},
 		{"id": "goblin_pemburu", "name": "Goblin Pemburu", "lv": 3},
 		{"id": "goblin_penjaga", "name": "Goblin Penjaga", "lv": 4, "patroli": true},
-		{"id": "kelelawar_gua", "name": "Kerangka Gua", "lv": 3},
+		{"id": "kelelawar_gua", "name": "Kelelawar Gua", "lv": 3},
 		{"id": "rubah_tulang", "name": "Rubah Tulang", "lv": 3},
 		{"id": "ular_tulang", "name": "Ular Tulang", "lv": 4},
 		{"id": "babi_tulang", "name": "Babi Tulang", "lv": 4},

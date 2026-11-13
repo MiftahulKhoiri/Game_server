@@ -15,7 +15,7 @@ const HudBars = preload("res://scripts/hud_bars.gd")
 const Models = preload("res://scripts/models.gd")
 const Heroes = preload("res://scripts/heroes.gd")
 ## Musuh berbadan batu/kerangka: memercik serpihan, bukan darah (roadmap no. 165).
-const STONE_IDS := ["golem_kerikil", "golem_lava", "ogre_batu", "kelelawar_gua", "goblin_penjaga", "prajurit_kutukan", "iblis_bayangan"]
+const STONE_IDS := ["golem_kerikil", "golem_lava", "ogre_batu", "goblin_penjaga", "prajurit_kutukan", "iblis_bayangan"]
 ## Warna lingkaran mantra jurus 2 per gaya senjata (roadmap no. 166).
 const MAGIC_COLOR := {"pedang": Color("ffe27a"), "kapak": Color("ff7a4a"), "busur": Color("9fe6c0"), "tombak": Color("8fd0ff"), "sihir": Color("b77dff")}
 

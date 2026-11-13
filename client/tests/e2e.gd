@@ -731,13 +731,13 @@ func _run() -> void:
 	_check(rk.play_action("ambil"), "aksi ambil barang tersedia")
 	rk.free()
 	# Roadmap no. 61-88: warna hewan, musuh baru, pemalu, takut, wilayah, patroli.
-	var q_ay: Node3D = Models.create("tikus_sawah")
+	var q_ay: Node3D = Models.create("anak_ayam")  # v0.77.0: ayam desa & kancil memakai anak_ayam; tikus_sawah = tikus
 	var q_ay_ok := false
 	for q_mi in q_ay.find_children("*", "MeshInstance3D", true, false):
 		var q_am := (q_mi as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
 		if q_am != null and q_am.albedo_color.b < 0.5 and q_am.albedo_color.r > 0.8:
 			q_ay_ok = true
-	_check(q_ay_ok, "Ayam Liar berwarna kuning, bukan putih polos")
+	_check(q_ay_ok, "anak ayam berwarna kuning, bukan putih polos")
 	q_ay.free()
 	var q_orw: Node3D = Models.create("ogre_rawa")
 	_check(q_orw != null and q_orw.name == "ogre_rawa", "model Ogre Rawa ada")
@@ -751,7 +751,7 @@ func _run() -> void:
 			if q_mspot == Vector2.ZERO and Maps.roam_free(q_pm_map, q_c) and Maps.roam_free(q_pm_map, q_c + Vector2(2, 0)) \
 					and Maps.roam_free(q_pm_map, q_c + Vector2(-2, 0)) and Maps.roam_free(q_pm_map, q_c + Vector2(0, 2)) and Maps.roam_free(q_pm_map, q_c + Vector2(0, -2)):
 				q_mspot = q_c
-	var q_shy_r = q_RoamerC.new({"id": "tikus_sawah", "name": "Ayam Liar", "lv": 1, "pemalu": true}, q_pm_map, q_mspot, 5)
+	var q_shy_r = q_RoamerC.new({"id": "tikus_sawah", "name": "Tikus Raksasa", "lv": 1, "pemalu": true}, q_pm_map, q_mspot, 5)
 	var q_pl := q_mspot + Vector2(1.5, 0.0)
 	var q_d0: float = q_shy_r.pos.distance_to(q_pl)
 	var q_shy_touch := false
@@ -776,7 +776,7 @@ func _run() -> void:
 	var q_d_awal: float = q_ter.pos.distance_to(q_ter.origin)
 	q_ter.step(0.1, q_lane + Vector2(9.0, 0.0), true, 1)
 	_check(not q_ter.chasing and q_ter.returning and q_ter.pos.distance_to(q_ter.origin) < q_d_awal, "musuh berhenti mengejar di luar wilayahnya lalu pulang (no. 82)")
-	for mdl in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_gua"]:
+	for mdl in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "petani", "nenek_penjual", "goblin", "goblin_penjaga", "ogre_batu", "golem_kerikil", "golem_lava", "raja_goblin", "kelelawar_hutan", "tikus_sawah"]:  # v0.77.0: kelelawar_gua = varian kelelawar_hutan
 		var rm: Node3D = Models.create(mdl)
 		var names: Dictionary = rm._anim_names if rm.anim_player != null else {}
 		var lengkap := true
@@ -789,7 +789,7 @@ func _run() -> void:
 		rm.play_die()
 		rm.free()
 	# Hewan (Quaternius): hanya klip idle + jalan; serang/terkena/mati lewat gerak tambahan model_rig.
-	for mdl in ["tikus_sawah", "belalang_raksasa", "ular_sawah", "babi_hutan", "serigala_hutan"]:
+	for mdl in ["tikus_sawah", "anak_ayam", "belalang_raksasa", "ular_sawah", "babi_hutan", "serigala_hutan"]:
 		var am: Node3D = Models.create(mdl)
 		var anames: Dictionary = am._anim_names if am.anim_player != null else {}
 		_check(Models.has_glb(mdl) and anames.has("idle") and anames.has("walk") and am.pivots.has("body"), "hewan '%s' berrangka dengan klip idle dan jalan %s" % [mdl, str(anames.keys())])

@@ -1,6 +1,6 @@
 """Menyiapkan model musuh CC0 (KayKit Skeletons, Quaternius monster/hewan) menjadi GLB ringan.
 
-Hasil: satu GLB berangka dengan klip bernama sesuai aturan game (model_rig.gd):
+Sumber: .glb/.gltf, .fbx, atau .blend. Hasil: satu GLB berangka dengan klip bernama sesuai aturan game (model_rig.gd):
 idle-loop, walk-loop, attack, hurt, die. Klip yang tidak ada di sumber (mis. hewan Quaternius
 hanya punya idle/walk) dilengkapi gerak buatan di model_rig.gd.
 
@@ -28,7 +28,12 @@ src, dst = argv[0], argv[1]
 opt = json.load(open(argv[2][1:])) if argv[2].startswith("@") else json.loads(argv[2])
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
-if src.lower().endswith(".fbx"):
+if src.lower().endswith(".blend"):  # berkas Blender langsung (mis. OpenGameArt): tekstur relatif ikut terbaca
+    bpy.ops.wm.open_mainfile(filepath=src)
+    for im in bpy.data.images:
+        if im.source == "FILE" and im.packed_file is None and im.has_data:
+            im.pack()
+elif src.lower().endswith(".fbx"):
     bpy.ops.import_scene.fbx(filepath=src)
 else:
     bpy.ops.import_scene.gltf(filepath=src)

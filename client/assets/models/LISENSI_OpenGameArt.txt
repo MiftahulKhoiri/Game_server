@@ -1,0 +1,9 @@
+Model dari OpenGameArt.org, lisensi CC0 (domain publik):
+http://creativecommons.org/publicdomain/zero/1.0/
+
+Dipakai di game ini (v0.77.0, roadmap no. 67-68; diubah ke GLB dengan tools/blender/siapkan_musuh.py):
+- "Evil Giant Rat" (CDmir, dibuat untuk Kelgar; berangka + animasi) -> tikus_sawah (Tikus Raksasa).
+  https://opengameart.org/content/evil-giant-rat
+- "Snake low poly animated 3d model" (methodical pixel; berangka + animasi) -> ular_sawah (Ular Sawah,
+  juga Ular Hutan dan Ular Belang sebagai varian warna).
+  https://opengameart.org/content/snake-low-poly-animated-3d-model

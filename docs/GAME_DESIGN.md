@@ -212,13 +212,13 @@ separuh, kembali ke titik awal desa.
 
 | Musuh | Wilayah | HP | Serang | Bertahan | XP | Emas | Min. level | Jatuhan |
 |-------|---------|----|--------|----------|----|------|------------|---------|
-| Ayam Liar (`tikus_sawah`) | Desa | 10 | 3 | 0 | 6 | 2 | 1 | Ramuan 10% |
+| Tikus Raksasa (`tikus_sawah`) | Desa | 10 | 3 | 0 | 6 | 2 | 1 | Ramuan 10% |
 | Kucing Liar (`belalang_raksasa`) | Desa | 14 | 4 | 1 | 8 | 3 | 1 | Ramuan 10% |
-| Rubah Sawah (`ular_sawah`) | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
+| Ular Sawah (`ular_sawah`) | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
 | Babi Hutan | Desa | 34 | 8 | 3 | 22 | 9 | 3 | Ramuan 25% |
 | Orc Ladang (`goblin`) | Perbatasan | 26 | 7 | 2 | 15 | 7 | 1 | Taring Orc 35% |
 | Serigala Hutan | Perbatasan dan Gunung Batu | 32 | 9 | 2 | 20 | 9 | 3 | Ramuan 20% |
-| Kerangka Gua (`kelelawar_gua`) | Gunung Batu | 28 | 8 | 1 | 18 | 8 | 3 | Ramuan 20% |
+| Kelelawar Gua (`kelelawar_gua`) | Gunung Batu | 28 | 8 | 1 | 18 | 8 | 3 | Ramuan 20% |
 | Kerangka Pejuang (`golem_kerikil`) | Gunung Batu | 50 | 10 | 6 | 32 | 14 | 4 | Koin Kuno 25% |
 | Monster Batu (`ogre_batu`) | Gunung Batu | 70 | 12 | 5 | 45 | 25 | 5 | Permata Merah 30% |
 | Kerangka Penjaga (`goblin_penjaga`) | Gua Batu | 45 | 11 | 4 | 28 | 12 | 5 | Taring Orc 50% |
@@ -272,7 +272,7 @@ mengitari pemain, mundur bersiap sebelum menyerang, menerjang saat menyerang, da
 | Peta | Musuh biasa | Bos besar |
 |------|-------------|-----------|
 | Hutan Binatang | binatang hutan | Goblin Level 1-3 |
-| Gua Goblin | goblin + binatang tulang (v0.73.0, pengganti binatang hutan: Rubah, Ular, Babi, Serigala, Beruang Tulang, Kerangka Gua) | Orc Batu Lv 1, Lv 2, Raja Orc Batu |
+| Gua Goblin | goblin + binatang tulang (v0.73.0, pengganti binatang hutan: Rubah, Ular, Babi, Serigala, Beruang Tulang, Kelelawar Gua) | Orc Batu Lv 1, Lv 2, Raja Orc Batu |
 | Gunung Berapi | binatang tengkorak lava (v0.74.0) + goblin + orc batu, semuanya bermodel merah lava; 50 musuh sekaligus (v0.75.0) | Naga Lava Lv 1, Lv 2, Induk Naga Lava |
 | Benteng Orc | binatang batu (v0.74.0) + goblin + orc batu + orc benteng | Panglima Orc Batu (cerita) |
 | Istana Kegelapan | binatang bayangan (v0.74.0) + goblin + orc batu + Naga Bayangan + Naga Api Muda + pasukan terkutuk | Aldragor (cerita), lalu Malzareth di ruang takhta |

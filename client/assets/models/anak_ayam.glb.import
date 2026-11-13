@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://buyurafnkw8xw"
-path="res://.godot/imported/kelelawar_gua.glb-57d884d20ac43513831b5141fdd27945.scn"
+uid="uid://bx8j7ultkyhu6"
+path="res://.godot/imported/anak_ayam.glb-eedd744915ef3b7422c860eea1714317.scn"
 
 [deps]
 
-source_file="res://assets/models/kelelawar_gua.glb"
-dest_files=["res://.godot/imported/kelelawar_gua.glb-57d884d20ac43513831b5141fdd27945.scn"]
+source_file="res://assets/models/anak_ayam.glb"
+dest_files=["res://.godot/imported/anak_ayam.glb-eedd744915ef3b7422c860eea1714317.scn"]
 
 [params]
 
@@ -32,7 +32,7 @@ meshes/force_disable_compression=false
 skins/use_named_skins=true
 animation/import=true
 animation/fps=30
-animation/trimming=true
+animation/trimming=false
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
 import_script/path=""

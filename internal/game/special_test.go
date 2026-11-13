@@ -10,7 +10,7 @@ func TestEnemySpecialEveryFourthHit(t *testing.T) {
 	}
 	plain, _ := EnemyByID("tikus_sawah")
 	if special(plain, 4) != "" {
-		t.Fatal("Ayam Liar tidak punya kemampuan khusus")
+		t.Fatal("Tikus Raksasa tidak punya kemampuan khusus")
 	}
 	boss, _ := EnemyByID("goblin_hutan_1")
 	if special(boss, 3) != SpecialGempa {

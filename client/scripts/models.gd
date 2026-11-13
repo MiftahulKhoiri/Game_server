@@ -12,10 +12,13 @@ const MODEL_DIR := "res://assets/models/"
 
 ## Tinggi akhir (satuan petak) untuk model GLB buatan AI/unduhan selain ksatria. Ukuran asli
 ## GLB tidak dipercaya: model diukur lalu diskalakan ke tinggi ini, kaki di tanah, di tengah.
-const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "warga_ibu": 0.88, "warga_ibu2": 0.86, "warga_bapak": 0.98, "warga_bapak2": 0.96, "anak_desa": 0.62, "babi_hutan": 0.75, "tikus_sawah": 0.5,
-	"serigala_hutan": 0.8, "kelelawar_gua": 0.95, "ular_sawah": 0.6, "belalang_raksasa": 0.55,
+const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "warga_ibu": 0.88, "warga_ibu2": 0.86, "warga_bapak": 0.98, "warga_bapak2": 0.96, "anak_desa": 0.62, "babi_hutan": 0.75, "anak_ayam": 0.5,
+	"serigala_hutan": 0.8, "belalang_raksasa": 0.55,
 	"aldragor": 3.0, "kelelawar_hutan": 0.7, "iblis_biru": 1.65}
 const DEFAULT_HEIGHT := 1.0
+## Model yang memanjang dan rendah (ular, tikus berekor) diukur dari panjangnya, bukan tingginya (satuan petak),
+## supaya ular yang tipis tidak membesar belasan kali lipat. v0.77.0 (roadmap no. 67-68, OpenGameArt CC0).
+const LENGTHS := {"tikus_sawah": 1.1, "ular_sawah": 1.3}
 
 ## Pahlawan yang bisa dipilih pemain (semua dari KayKit, berangka + animasi sendiri). Urutan = urutan di layar profil.
 const HEROES := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "penyihir"]
@@ -35,7 +38,7 @@ const SCALES := {
 	"goblin": 0.58, "goblin_penjaga": 0.68, "raja_goblin": 0.95, "ogre_batu": 1.1,
 	"golem_kerikil": 1.0, "golem_lava": 1.1, 
 	"tikus_sawah": 0.8, "babi_hutan": 0.95, "serigala_hutan": 0.95,
-	"ular_sawah": 1.0, "belalang_raksasa": 0.95, "kelelawar_gua": 1.0,
+	"ular_sawah": 1.0, "belalang_raksasa": 0.95,
 }
 
 
@@ -55,7 +58,9 @@ const VARIANTS := {
 	"ular_hutan": {"base": "ular_sawah", "size": 1.2, "tint": Color("86b890")},
 	"serigala_alfa": {"base": "serigala_hutan", "size": 1.25, "tint": Color("6a6f7c")},
 	# Hutan Lebat (v0.46.0): binatang hutan memakai model hewan yang sudah ada dengan ukuran/warna berbeda.
-	"kancil_hutan": {"base": "tikus_sawah", "size": 1.45, "tint": Color("d9b98a")},
+	"kancil_hutan": {"base": "anak_ayam", "size": 1.45, "tint": Color("d9b98a")},
+	# v0.77.0 (roadmap no. 70): Kelelawar Gua memakai kelelawar Quaternius (dulu kerangka KayKit), lebih besar dan gelap.
+	"kelelawar_gua": {"base": "kelelawar_hutan", "size": 1.3, "tint": Color("8f8a9c")},
 	"rubah_hutan": {"base": "serigala_hutan", "size": 0.85, "tint": Color("f0a060")},
 	"ular_belang": {"base": "ular_sawah", "size": 1.15, "tint": Color("c8b070")},
 	"babi_bertaring": {"base": "babi_hutan", "size": 1.2, "tint": Color("b09078")},
@@ -132,11 +137,10 @@ static func _lava_glow(n: Node) -> void:
 
 
 ## Warna hewan Quaternius per nama bahan (roadmap no. 61-70): warna aslinya hilang saat diubah ke GLB
-## ringan (semua bahan abu-abu 0,8), sehingga Ayam Liar, Kucing Liar, Rubah, dan Serigala tampil putih polos.
+## ringan (semua bahan abu-abu 0,8), sehingga anak ayam, Kucing Liar, dan Serigala tampil putih polos.
 const ANIMAL_COLORS := {
-	"tikus_sawah": {"Material.001": Color("f2c94c"), "Material.002": Color("f08a24")},       # anak ayam: kuning, paruh/kaki oranye
+	"anak_ayam": {"Material.001": Color("f2c94c"), "Material.002": Color("f08a24")},         # anak ayam: kuning, paruh/kaki oranye
 	"belalang_raksasa": {"Grey": Color("8a8f99"), "White": Color("f0ece4"), "Pink": Color("f2a6b4")},  # kucing
-	"ular_sawah": {"Material.001": Color("e07a2c"), "Material.002": Color("f4ede0")},        # rubah: oranye, dada putih
 	"serigala_hutan": {"Wolf": Color("8a8478")},                                             # serigala abu-cokelat
 	# Monster Quaternius (Animated Monsters, CC0): Aldragor merah tua bersayap ungu gelap (dikutuk), kelelawar kelabu ungu.
 	"aldragor": {"Main": Color("8e2f3a"), "Wings": Color("5a2448"), "Belly": Color("e2b45c"), "Claws": Color("f2ead6"), "Eyes": Color("ffd23a")},
@@ -264,7 +268,7 @@ static func _from_glb(id: String, path: String) -> Node3D:
 			_color_by_material(inst, ANIMAL_COLORS[id])
 		if BRIGHT.has(id):
 			_brighten(inst, float(BRIGHT[id]))
-		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)))
+		_normalize(inst, float(HEIGHTS.get(id, DEFAULT_HEIGHT)), float(LENGTHS.get(id, 0.0)))
 	else:
 		_style_hero(inst)
 	var rig := Rig.new()
@@ -648,11 +652,13 @@ static func _aabb_of(n: Node, xf: Transform3D) -> AABB:
 
 
 ## Skala ke tinggi h, kaki di y=0, pusat di x=z=0.
-static func _normalize(inst: Node3D, h: float) -> void:
+static func _normalize(inst: Node3D, h: float, length := 0.0) -> void:
 	var box := _aabb_of(inst, Transform3D.IDENTITY)
 	if box.size.y <= 0.0001:
 		return
 	var k := h / box.size.y
+	if length > 0.0:
+		k = length / maxf(box.size.x, box.size.z)
 	inst.scale = Vector3.ONE * k
 	var c := box.get_center()
 	inst.position = Vector3(-c.x * k, -box.position.y * k, -c.z * k)

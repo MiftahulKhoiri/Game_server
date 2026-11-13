@@ -92,7 +92,7 @@ func TestAlliesStrikeAndWin(t *testing.T) {
 	if b.NextAllyMs != 1000+AllyIntervalMs && res.Status == StatusOngoing {
 		t.Fatalf("jadwal pendamping tidak maju: %d", b.NextAllyMs)
 	}
-	// Ayam Liar HP 10: dua pendamping (tiap ~6) menumbangkannya.
+	// Tikus Raksasa HP 10: dua pendamping (tiap ~6) menumbangkannya.
 	if res.Status != StatusWon || p.State.XP == 0 {
 		t.Fatalf("status=%s xp=%d", res.Status, p.State.XP)
 	}
