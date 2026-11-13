@@ -56,6 +56,8 @@ type State struct {
 	// Bank: emas tabungan; Storage: peti simpan di rumah; Ledger: riwayat transaksi terakhir
 	// (roadmap no. 180-182). Hanya diubah server (economy.go).
 	Bank    int           `json:"bank,omitempty"`
+	BankDay int64         `json:"bank_day,omitempty"`
+	Friends []string      `json:"friends,omitempty"` // daftar teman untuk dagang (no. 176, v0.79.0) // hari (UTC) bunga terakhir dihitung; 0 = belum pernah (v0.79.0)
 	Storage []Item        `json:"storage,omitempty"`
 	Ledger  []LedgerEntry `json:"ledger,omitempty"`
 	// Dunia (roadmap no. 190-199): peta yang pernah dikunjungi, tempat rahasia yang ditemukan,
@@ -205,6 +207,8 @@ func (s State) Validate() error {
 		return errors.New("cap waktu tidak boleh negatif")
 	case !validFormation(s.Formation):
 		return ErrUnknownFormation
+	case !s.validFriends():
+		return errors.New("daftar teman tidak sah")
 	case !s.Adapt.valid():
 		return errors.New("data adaptive difficulty tidak sah")
 	case len(s.Broken) > maxBrokenKept+MaxBreakBatch || len(s.Chests) > len(chests):

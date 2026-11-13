@@ -1435,6 +1435,22 @@ func _run() -> void:
 				if ek_b is Button and (ek_b as Button).text == "Batalkan":
 					ek_batal = true
 	_check(ek._title.text == "Dagang" and ek._to != null and ek._item != null and ek_beli and ek_batal, "layar Dagang: formulir tawaran, Beli/Tolak untuk masuk, Batalkan untuk milik sendiri")
+	# v0.79.0 (no. 176): teman dan pemain aktif sebagai pilihan cepat tujuan dagang.
+	Session.player.state.friends = ["Budi"]
+	ek.recent = ["Citra", "budi"]
+	ek._rebuild()
+	var ek_names: Array = []
+	for ek_c in ek._list.get_children():
+		if ek_c is HFlowContainer:
+			for ek_b in ek_c.get_children():
+				ek_names.append((ek_b as Button).text)
+	_check(ek_names == ["Budi", "x", "Citra"], "Dagang: tombol teman (dengan hapus) dan pemain aktif tanpa kembar (%s)" % [ek_names])
+	ek._pick_to("Citra")
+	ek._rebuild()
+	_check(ek._to.text == "Citra", "Dagang: memilih pemain mengisi tujuan dan tetap ada saat layar digambar ulang")
+	_check(ek._info.text != "" and ek.BANK_INTEREST_PERMIL == 10, "bunga bank klien sama dengan server (1% sehari)")
+	Session.player.state.friends = []
+	ek.recent = []
 	ek.closed.emit()
 	_check(not ek.visible and not wt._locked, "layar ekonomi tertutup dan gerak berlanjut")
 	_check(wt._menu._btn_dagang != null, "menu punya tombol Dagang dengan pemain")

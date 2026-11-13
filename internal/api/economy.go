@@ -45,6 +45,11 @@ func (s *Server) bankAction(deposit bool) http.HandlerFunc {
 	}
 }
 
+// bankInterest mengkreditkan bunga tabungan yang tertunda (no. 181, v0.79.0). Body boleh kosong.
+func (s *Server) bankInterest(w http.ResponseWriter, r *http.Request) {
+	s.applyToState(w, r, func(st *game.State) error { return st.BankClaim() })
+}
+
 func (s *Server) storageAction(put bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req stackRequest

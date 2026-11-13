@@ -60,6 +60,13 @@ memakai 47-bit); CI (`.github/workflows/ci.yml`, Ubuntu x86-64) menjalankannya d
 | Adaptive (Fase 5) | `game/adapt_test.go`: pemain baru/lama netral, butuh 5 pertarungan, sangat kuat (berhenti di 1150), sangat lemah (berhenti di 900), stabil, bergantian, kabur bukan celah, bos/raid/cerita tidak ikut, hadiah tetap, solo = party penuh, validasi data |
 | Tolok ukur | `BenchmarkEnemyAttackAI`, `BenchmarkAdapt` (`internal/game/ai_bench_test.go`) |
 
+## Bunga bank & teman v0.79.0
+
+| Bagian | Tes |
+|--------|-----|
+| Bunga bank (no. 181) | `game/bank_interest_test.go` (sentuhan pertama, harian, batas 20.000 & 7 hari, tabungan penuh, simpan tidak berbunga mundur, ambil setelah bunga masuk, hanya di desa, data lama & validasi), `api/bank_interest_test.go` |
+| Teman (no. 176) | `game/friends_test.go`, `api/friends_test.go` (ejaan asli, kembar/diri sendiri/tidak ada/terlalu panjang, pemain aktif tanpa email, hapus, simpan tidak bisa menulis teman); uji klien "Dagang: tombol teman" |
+
 ## Hasil acuan di Raspberry Pi 5 (v0.63.0)
 
 | Ukuran | Hasil |

@@ -17,6 +17,14 @@ const (
 	MaxTradePrice = 1_000_000  // harga tawaran dagang tertinggi
 	MaxOpenTrades = 10         // tawaran keluar yang belum selesai per pemain
 	BankKeeper    = "pak_saleh"
+
+	// Bunga bank (no. 181, v0.79.0): bunga sederhana per hari nyata, hanya untuk BankInterestCap emas pertama, dan
+	// paling banyak BankInterestMaxDays hari yang tertunda dihitung. Paling banyak 200 emas sehari, jadi tidak
+	// mengalahkan hadiah bertarung; emas yang baru disimpan baru berbunga mulai hari berikutnya.
+	BankInterestPermil  = 10     // 1% sehari
+	BankInterestCap     = 20_000 // emas tabungan yang berbunga
+	BankInterestMaxDays = 7      // hari tertunda yang dihitung (tidak ditabung tanpa batas)
+	realDaySeconds      = 86_400
 )
 
 // Jenis catatan transaksi.
@@ -106,6 +114,41 @@ func (s *State) gainGold(n int) {
 
 // --- bank (no. 181) ---
 
+// today: nomor hari nyata (UTC) dari jam server.
+func today() int64 { return Now() / realDaySeconds }
+
+// BankInterestDue: bunga yang akan dikreditkan bila bank disentuh sekarang (untuk ditampilkan klien).
+func (s State) BankInterestDue() int {
+	if s.BankDay <= 0 || s.Bank <= 0 {
+		return 0
+	}
+	days := min(int64(BankInterestMaxDays), max(0, today()-s.BankDay))
+	return int(days) * min(s.Bank, BankInterestCap) * BankInterestPermil / 1000
+}
+
+// AccrueInterest mengkreditkan bunga hari-hari yang tertunda ke tabungan, lalu mencatat hari ini. Dipanggil
+// sebelum setiap aksi bank, jadi emas yang baru disimpan tidak ikut berbunga untuk hari-hari yang lalu.
+// Mengembalikan bunga yang dikreditkan.
+func (s *State) AccrueInterest() int {
+	now := today()
+	gain := min(s.BankInterestDue(), MaxBank-s.Bank)
+	if gain > 0 {
+		s.Bank += gain
+		s.record(LedgerBank, fmt.Sprintf("Bunga tabungan +%d emas (masuk ke bank)", gain), 0)
+	}
+	s.BankDay = now
+	return gain
+}
+
+// BankClaim mengkreditkan bunga tertunda (saat pemain membuka layar bank).
+func (s *State) BankClaim() error {
+	if !InVillage(s.Map) {
+		return ErrBankFar
+	}
+	s.AccrueInterest()
+	return nil
+}
+
 // BankDeposit menyimpan emas di bank. Emas di bank aman: tidak hilang saat kalah bertarung.
 func (s *State) BankDeposit(amount int) error {
 	switch {
@@ -116,6 +159,10 @@ func (s *State) BankDeposit(amount int) error {
 	case s.Gold < amount:
 		return ErrNoGold
 	case s.Bank > MaxBank-amount:
+		return ErrBankFull
+	}
+	s.AccrueInterest()
+	if s.Bank > MaxBank-amount {
 		return ErrBankFull
 	}
 	s.Gold -= amount
@@ -131,6 +178,9 @@ func (s *State) BankWithdraw(amount int) error {
 		return ErrBadAmount
 	case !InVillage(s.Map):
 		return ErrBankFar
+	}
+	s.AccrueInterest() // bunga masuk dulu (bila aksi gagal, perubahan tidak disimpan)
+	switch {
 	case s.Bank < amount:
 		return ErrBankEmpty
 	case s.Gold > MaxGold-amount:
@@ -307,6 +357,8 @@ func (s State) ValidEconomy() error {
 		return fmt.Errorf("emas harus 0..%d", MaxGold)
 	case s.Bank < 0 || s.Bank > MaxBank:
 		return fmt.Errorf("tabungan harus 0..%d", MaxBank)
+	case s.BankDay < 0 || s.BankDay > today()+1:
+		return errors.New("hari bunga bank tidak sah")
 	case len(s.Storage) > StorageSlots:
 		return fmt.Errorf("peti simpan maksimal %d tumpukan", StorageSlots)
 	case len(s.Ledger) > LedgerKeep:

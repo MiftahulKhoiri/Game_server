@@ -17,6 +17,7 @@ var is_open := false
 var mode := MODE_BANK
 var keeper := "Pak Saleh"
 var trades: Array = []      # dari GET /v1/trades (untuk uji bisa diisi langsung)
+var recent: Array = []      # nama pemain aktif 7 hari terakhir (GET /v1/players/recent, no. 176)
 
 var _title: Label
 var _info: Label
@@ -30,6 +31,7 @@ var _item: OptionButton
 var _qty: SpinBox
 var _price: SpinBox
 var _item_ids: Array[String] = []
+var _to_name := ""          # nama tujuan tetap ada saat layar digambar ulang
 
 
 func _init() -> void:
@@ -99,6 +101,8 @@ func open(p_mode: String) -> void:
 				_catalog[str(d.id)] = d
 	if mode == MODE_DAGANG and not Session.offline:
 		await _load_trades()
+	if mode == MODE_BANK and not Session.offline:
+		await _claim_interest()
 	_rebuild()
 
 
@@ -126,7 +130,8 @@ func _rebuild() -> void:
 	match mode:
 		MODE_BANK:
 			_title.text = "Bank Desa"
-			_info.text = "Dibawa: %d emas     Tabungan: %d emas" % [gold, bank]
+			_info.text = "Dibawa: %d emas     Tabungan: %d emas\nBunga %d%% sehari untuk %d emas pertama" % [
+				gold, bank, BANK_INTEREST_PERMIL / 10, BANK_INTEREST_CAP]
 			_build_bank(gold, bank)
 		MODE_PETI:
 			_title.text = "Peti Simpan"
@@ -180,6 +185,23 @@ func _build_ledger() -> void:
 
 func _tz_offset() -> int:
 	return int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+
+
+## Bunga sama dengan server (internal/game/economy.go); server yang menghitung.
+const BANK_INTEREST_PERMIL := 10
+const BANK_INTEREST_CAP := 20000
+
+
+## Saat layar bank dibuka, bunga yang tertunda dikreditkan server lalu diberitahukan.
+func _claim_interest() -> void:
+	var before := int(_state().get("bank", 0))
+	var res: Dictionary = await Api.bank_interest()
+	if not res.ok:
+		return
+	var gain := int((res.data.get("state", {}) as Dictionary).get("bank", 0)) - before
+	if gain > 0:  # hanya bila bunga benar-benar masuk (tanpa bunga, state di layar sudah sama dengan server)
+		Session.merge_server_player(res.data)
+		_status.text = "%s: Bunga tabunganmu +%d emas sudah masuk ke bank." % [keeper, gain]
 
 
 func _on_bank(deposit: bool, amount: int) -> void:
@@ -257,6 +279,9 @@ func _load_trades() -> void:
 		trades = res.data.get("trades", [])
 	else:
 		_status.text = str(res.error)
+	var rp: Dictionary = await Api.players_recent()
+	if rp.ok:
+		recent = rp.data.get("players", [])
 
 
 func _build_dagang() -> void:
@@ -266,7 +291,18 @@ func _build_dagang() -> void:
 	_to.placeholder_text = "Nama pemain tujuan"
 	_to.custom_minimum_size = Vector2(0, 72)
 	_to.add_theme_font_size_override("font_size", 26)
-	_list.add_child(_to)
+	_to.text = _to_name
+	_to.text_changed.connect(func(t: String) -> void: _to_name = t)
+	var to_row := HBoxContainer.new()
+	to_row.add_theme_constant_override("separation", 8)
+	_to.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	to_row.add_child(_to)
+	var add := _button("+ Teman", _on_friend_add, 72)
+	add.custom_minimum_size.x = 150
+	add.disabled = _busy
+	to_row.add_child(add)
+	_list.add_child(to_row)
+	_build_people()
 	_item = OptionButton.new()
 	_item.custom_minimum_size = Vector2(0, 72)
 	_item.add_theme_font_size_override("font_size", 24)
@@ -320,6 +356,76 @@ func _build_dagang() -> void:
 			_list.add_child(l)
 
 
+## Pilihan cepat tujuan dagang (no. 176): teman tersimpan di server dan pemain yang aktif seminggu terakhir.
+func _build_people() -> void:
+	var friends: Array = _state().get("friends", [])
+	var others: Array = []
+	for n: Variant in recent:
+		if not _has_name(friends, str(n)):
+			others.append(str(n))
+	for group: Array in [["Teman", friends, true], ["Pemain aktif", others, false]]:
+		var names: Array = group[1]
+		if names.is_empty():
+			continue
+		_list.add_child(_label(str(group[0]), 22))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 8)
+		flow.add_theme_constant_override("v_separation", 8)
+		for n: Variant in names:
+			var b := _button(str(n), _pick_to.bind(str(n)), 60)
+			b.disabled = _busy
+			flow.add_child(b)
+			if bool(group[2]):
+				var x := _button("x", _on_friend_remove.bind(str(n)), 60)
+				x.custom_minimum_size.x = 56
+				x.disabled = _busy
+				flow.add_child(x)
+		_list.add_child(flow)
+
+
+static func _has_name(list: Array, name: String) -> bool:
+	for n: Variant in list:
+		if str(n).to_lower() == name.to_lower():
+			return true
+	return false
+
+
+func _pick_to(name: String) -> void:
+	_to_name = name
+	if _to != null:
+		_to.text = name
+
+
+func _on_friend_add() -> void:
+	var name := _to_name.strip_edges()
+	if _busy or name == "":
+		_status.text = "Tulis nama pemain yang mau dijadikan teman."
+		return
+	_busy = true
+	var res: Dictionary = await Api.friend_add(name)
+	_busy = false
+	if res.ok:
+		Session.merge_server_player(res.data)
+		_status.text = "%s masuk daftar teman." % name
+	else:
+		_status.text = str(res.error)
+	_rebuild()
+
+
+func _on_friend_remove(name: String) -> void:
+	if _busy:
+		return
+	_busy = true
+	var res: Dictionary = await Api.friend_remove(name)
+	_busy = false
+	if res.ok:
+		Session.merge_server_player(res.data)
+		_status.text = "%s dihapus dari daftar teman." % name
+	else:
+		_status.text = str(res.error)
+	_rebuild()
+
+
 func _trade_row(t: Dictionary, text: String, actions: Array) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
@@ -338,7 +444,7 @@ func _trade_row(t: Dictionary, text: String, actions: Array) -> HBoxContainer:
 func _on_offer() -> void:
 	if _busy or _item_ids.is_empty():
 		return
-	var to := _to.text.strip_edges()
+	var to := _to_name.strip_edges()
 	if to == "":
 		_status.text = "Tulis nama pemain tujuan."
 		return

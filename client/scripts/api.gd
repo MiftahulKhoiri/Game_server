@@ -116,6 +116,11 @@ func bank(deposit: bool, amount: int) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/bank/deposit" if deposit else "/v1/bank/withdraw", {"amount": amount}, true)
 
 
+## Bunga tabungan yang tertunda masuk ke bank (no. 181, v0.79.0).
+func bank_interest() -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/bank/interest", {}, true)
+
+
 func storage(put: bool, item: String, qty: int) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/storage/put" if put else "/v1/storage/take", {"item": item, "qty": qty}, true)
 
@@ -134,6 +139,19 @@ func raid_claim() -> Dictionary:
 
 func trades_get() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/trades", null, true)
+
+
+## Teman dan pemain aktif (no. 176, v0.79.0).
+func friend_add(name: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/friends", {"name": name}, true)
+
+
+func friend_remove(name: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/friends/remove", {"name": name}, true)
+
+
+func players_recent() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/players/recent", null, true)
 
 
 func trade_offer(to: String, item: String, qty: int, price: int) -> Dictionary:

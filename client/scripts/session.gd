@@ -255,7 +255,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "formation", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "formation", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "friends", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -459,6 +459,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"trials": _trials(s.get("trials", {})),
 		# Ekonomi (roadmap no. 180-182): tabungan bank, peti simpan di rumah, riwayat transaksi.
 		"bank": maxi(0, int(s.get("bank", 0))),
+		"friends": (s.get("friends", []) as Array).duplicate() if s.get("friends", []) is Array else [],  # teman (v0.79.0)
 		"storage": _stacks(s.get("storage", [])),
 		"ledger": _ledger(s.get("ledger", [])),
 		# Dunia (roadmap no. 190-199): wilayah dikunjungi, tempat rahasia, pertahanan desa.

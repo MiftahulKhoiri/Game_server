@@ -397,10 +397,27 @@ Semua hanya diubah server. Setiap perubahan state diperiksa lagi sebelum disimpa
 |----------|------|------|
 | `POST /v1/bank/deposit` | `{"amount": 100}` | Menabung (harus di Desa Awal atau bangunannya). Tabungan **tidak** hilang saat kalah bertarung |
 | `POST /v1/bank/withdraw` | `{"amount": 100}` | Mengambil tabungan |
+| `POST /v1/bank/interest` | kosong | (v0.79.0) Mengkreditkan bunga yang tertunda ke tabungan (harus di Desa Awal) |
 | `POST /v1/storage/put` | `{"item": "roti", "qty": 2}` | Ransel → peti simpan (harus di `rumah_pemain` dan punya rumah; perlengkapan terpakai terakhir ditolak) |
 | `POST /v1/storage/take` | `{"item": "roti", "qty": 2}` | Peti simpan → ransel |
 
 Semua `200` berisi objek pemain; `409` saat bertarung; `422` bila melanggar aturan.
+
+**Bunga bank (v0.79.0, no. 181).** 1% sehari (hari UTC jam server) untuk 20.000 emas tabungan pertama, paling banyak 7
+hari tertunda yang dihitung (maks 200 emas sehari). Bunga dikreditkan sebelum setiap aksi bank dan lewat
+`POST /v1/bank/interest`, jadi emas yang baru disimpan baru berbunga mulai hari berikutnya. Hari terakhir dicatat di
+`state.bank_day` (opsional; kosong = belum pernah, sentuhan pertama hanya memulai hitungan). Riwayat mencatat
+"Bunga tabungan +N emas" dengan `gold: 0` (emas dibawa tidak berubah).
+
+### Teman dan pemain aktif (v0.79.0, no. 176)
+
+| Endpoint | Body | Efek |
+|----------|------|------|
+| `POST /v1/friends` | `{"name": "budi"}` | Tambah teman (nama harus pemain yang ada; disimpan dengan ejaan aslinya di `state.friends`, maks 30). `404` tidak ada, `422` diri sendiri/kembar/penuh |
+| `POST /v1/friends/remove` | `{"name": "Budi"}` | Hapus teman. `422` bila bukan teman |
+| `GET /v1/players/recent` | — | `{"players": ["Budi", ...]}`: nama pemain lain yang bermain 7 hari terakhir (maks 20). Hanya nama; email/id tidak |
+
+Daftar teman hanya diubah lewat endpoint ini (simpan dari klien tidak mengubahnya).
 
 ### Perdagangan antarpemain
 

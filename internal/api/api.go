@@ -161,12 +161,16 @@ func newServer(st *store.Store, log *slog.Logger, info version.Info, rng game.Ra
 	mux.Handle("POST /v1/world/raid/claim", s.auth(http.HandlerFunc(s.claimRaid)))
 	mux.Handle("POST /v1/bank/deposit", s.auth(s.bankAction(true)))
 	mux.Handle("POST /v1/bank/withdraw", s.auth(s.bankAction(false)))
+	mux.Handle("POST /v1/bank/interest", s.auth(http.HandlerFunc(s.bankInterest)))
 	mux.Handle("POST /v1/storage/put", s.auth(s.storageAction(true)))
 	mux.Handle("POST /v1/storage/take", s.auth(s.storageAction(false)))
 	mux.Handle("GET /v1/trades", s.auth(http.HandlerFunc(s.listTrades)))
 	mux.Handle("POST /v1/trades", s.auth(http.HandlerFunc(s.createTrade)))
 	mux.Handle("POST /v1/trades/accept", s.auth(s.finishTrade(true)))
 	mux.Handle("POST /v1/trades/cancel", s.auth(s.finishTrade(false)))
+	mux.Handle("POST /v1/friends", s.auth(http.HandlerFunc(s.addFriend)))
+	mux.Handle("POST /v1/friends/remove", s.auth(http.HandlerFunc(s.removeFriend)))
+	mux.Handle("GET /v1/players/recent", s.auth(http.HandlerFunc(s.recentPlayers)))
 	mux.Handle("GET /v1/shop", s.auth(http.HandlerFunc(s.getShop)))
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
 	mux.Handle("POST /v1/shop/barter", s.auth(http.HandlerFunc(s.shopTrade(game.BarterAt))))
@@ -724,6 +728,7 @@ func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*g
 // isRuleError: pelanggaran aturan game (bukan kesalahan server).
 func isRuleError(err error) bool {
 	for _, e := range []error{
+		game.ErrFriendSelf, game.ErrFriendsFull, game.ErrFriendDup, game.ErrNotFriend,
 		game.ErrNotEquippable, game.ErrNotEnough, game.ErrNothingWorn, game.ErrBadSlot,
 		game.ErrNotUsable, game.ErrNoPotion, game.ErrFullHP, game.ErrCannotRest, game.ErrUnknownHero, game.ErrUnknownOutfit, game.ErrUnknownWarga, game.ErrHouseOwned, game.ErrHouseLocked, game.ErrHouseFar,
 		game.ErrUnknownRecipe, game.ErrCraftFar, game.ErrUnknownTalent, game.ErrTalentMax, game.ErrTalentLocked, game.ErrNoTalentPoints, game.ErrBadQty,
