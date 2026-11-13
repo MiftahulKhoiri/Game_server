@@ -195,6 +195,11 @@ func server_time() -> Dictionary:
 	return await _call(HTTPClient.METHOD_GET, "/v1/time", null, false)
 
 
+## Pilih formasi prajurit (v0.78.0): "" barisan, perisai, tombak, pemanah, lingkaran, serbu.
+func set_formation(formation: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/soldiers/formation", {"formation": formation}, true)
+
+
 ## Tetapkan pendamping yang dipasang (urutan = urutan berbaris di belakang pemain).
 func set_party(party: Array) -> Dictionary:
 	return await _call(HTTPClient.METHOD_POST, "/v1/party", {"party": party}, true)

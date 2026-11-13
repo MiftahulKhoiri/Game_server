@@ -81,6 +81,8 @@ type State struct {
 	// SoldiersRest: prajurit yang disimpan di kem dan tidak ikut bertarung (0..Soldiers). Yang ikut = Soldiers - SoldiersRest;
 	// kosong (0) berarti semua ikut, jadi data lama tetap sama.
 	SoldiersRest int `json:"soldiers_rest,omitempty"`
+	// Formation: formasi prajurit (party.go, v0.78.0); "" = barisan (perilaku lama).
+	Formation string `json:"formation,omitempty"`
 	// HeroLevels: level latihan tiap pahlawan pembantu (kosong = level 1); SoldierLevel: level seluruh prajurit;
 	// Training: latihan yang sedang berjalan di Aula Pelatihan. Hanya diubah server (lihat train.go).
 	HeroLevels   map[string]int `json:"hero_levels,omitempty"`
@@ -199,6 +201,8 @@ func (s State) Validate() error {
 		return errors.New("posisi halus harus bilangan biasa")
 	case s.PoseMs < 0 || s.LastWorldMs < 0:
 		return errors.New("cap waktu tidak boleh negatif")
+	case !validFormation(s.Formation):
+		return ErrUnknownFormation
 	case len(s.Broken) > maxBrokenKept+MaxBreakBatch || len(s.Chests) > len(chests):
 		return errors.New("catatan dunia terlalu banyak")
 	case s.EnergyUsed < 0 || s.EnergyUsed > MaxEnergy:

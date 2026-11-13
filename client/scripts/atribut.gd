@@ -25,6 +25,17 @@ var _hero_detail: Label
 var _party_label: Label
 var _ally_btn: Button
 var _sol_row: HBoxContainer      # pengatur jumlah prajurit yang dipasang: [-] n / total [+]
+var _form_pick: OptionButton     # formasi prajurit (v0.78.0)
+var _form_desc: Label
+## Formasi prajurit (sama dengan game.Formations di server, internal/game/party.go): [id, nama, keterangan].
+const FORMATIONS := [
+	["", "Barisan", "Seimbang: prajurit menahan 2 dari 3 serangan."],
+	["perisai", "Dinding Perisai", "Kerusakan diterima -30%, serangan -20%."],
+	["tombak", "Formasi Tombak", "Serangan +25%, kerusakan diterima +15%."],
+	["pemanah", "Formasi Pemanah", "Jarang diincar (1 dari 3 serangan), serangan -10%."],
+	["lingkaran", "Lingkaran", "Mengepung pemain: menahan semua serangan, kerusakan -10%, serangan -20%."],
+	["serbu", "Serbuan", "Serbuan pembuka x2, kerusakan diterima +15%."],
+]
 var _sol_minus: Button
 var _sol_plus: Button
 var _sol_count: Label
@@ -148,6 +159,13 @@ func _on_sol_step(delta: int) -> void:
 func _on_sol_deploy() -> void:
 	var n := _sol_pick
 	await _act(Api.deploy_soldiers.bind(n), "%d prajurit dipasang di belakangmu." % n if n > 0 else "Semua prajurit menunggu di kem.")
+
+
+func _on_formation(i: int) -> void:
+	var f: Array = FORMATIONS[i]
+	if str(_state().get("formation", "")) == str(f[0]):
+		return
+	await _act(Api.set_formation.bind(str(f[0])), "Formasi prajurit: %s." % str(f[1]))
 
 
 func _on_back() -> void:
@@ -276,6 +294,16 @@ func _refresh_ally() -> void:
 	_sol_plus.disabled = _sol_pick >= total or _busy
 	_sol_btn.text = "Prajurit terpasang: %d" % active if _sol_pick == active else "Pasang %d prajurit" % _sol_pick
 	_sol_btn.disabled = _sol_pick == active or _busy
+	var form := str(st.get("formation", ""))
+	var fi := 0
+	for k in FORMATIONS.size():
+		if str(FORMATIONS[k][0]) == form:
+			fi = k
+	_form_pick.visible = total > 0
+	_form_desc.visible = total > 0
+	_form_pick.select(fi)
+	_form_pick.disabled = _busy
+	_form_desc.text = str(FORMATIONS[fi][2])
 	if not allies.has(hid):
 		_ally_btn.text = "Rekrut di Basecamp (%d emas)" % int(hero.price)
 		_ally_btn.disabled = true
@@ -422,6 +450,16 @@ func _build_ui() -> void:
 	_sol_row.add_child(_sol_plus)
 	_sol_btn = _button("", _on_sol_deploy, 0, 68)
 	ally_box.add_child(_sol_btn)
+	_form_pick = OptionButton.new()
+	_form_pick.custom_minimum_size = Vector2(0, 68)
+	_form_pick.add_theme_font_size_override("font_size", 26)
+	for f: Array in FORMATIONS:
+		_form_pick.add_item("Formasi: %s" % str(f[1]))
+	_form_pick.item_selected.connect(_on_formation)
+	ally_box.add_child(_form_pick)
+	_form_desc = _label("", 22)
+	_form_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ally_box.add_child(_form_desc)
 
 	box.add_child(_button("Kembali", _on_back, 0, 68))
 

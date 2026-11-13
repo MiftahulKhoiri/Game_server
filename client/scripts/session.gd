@@ -255,7 +255,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "formation", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -450,6 +450,7 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		"ally_hp": _hp_map(s.get("ally_hp", {})),
 		"soldiers": clampi(int(s.get("soldiers", 0)), 0, MAX_SOLDIERS),
 		"soldiers_rest": clampi(int(s.get("soldiers_rest", 0)), 0, MAX_SOLDIERS),
+		"formation": str(s.get("formation", "")),  # formasi prajurit (v0.78.0, server: state.formation)
 		"hero_levels": _levels(s.get("hero_levels", {})),
 		"soldier_level": clampi(int(s.get("soldier_level", 0)), 0, MAX_TRAIN_LEVEL),
 		"training": _jobs(s.get("training", [])),

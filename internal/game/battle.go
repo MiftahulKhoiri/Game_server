@@ -106,6 +106,10 @@ type Battle struct {
 	Intent          string `json:"intent,omitempty"`
 	Retreated       bool   `json:"retreated,omitempty"`
 	EnemyGuardUntil int64  `json:"enemy_guard_until,omitempty"`
+	// Fase 2 (party.go): dorongan Pendekar Tombak pada jadwal serangan musuh saat ini (ms) dan serbuan pembuka
+	// pasukan yang sudah dipakai.
+	Pushed  int64 `json:"pushed,omitempty"`
+	Charged bool  `json:"charged,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -538,6 +542,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		}
 		b.Round++
 		b.NextEnemyMs = next
+		b.Pushed = 0
 		b.AIState = AIWindup
 		if plan.tactic == TacticHeavy || plan.tactic == TacticArea || plan.tactic == TacticRanged {
 			b.AIState = AIRecover
@@ -551,18 +556,23 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		}
 		// Setiap serangan musuh ketiga diarahkan ke pendamping sehat pertama.
 		// Ini deterministik, tidak mengubah urutan RNG atau perilaku akun tanpa pendamping.
+		// Ksatria sehat (tank) menarik perhatian: tiap serangan ke-2 ke arahnya; Pemanah menjaga jarak (party.go).
 		targetAlly := ""
-		if kind != "perfect" && kind != "miss" && !plan.area && ((b.Round-1)%3 == 0 || plan.allyFirst) {
-			for _, id := range st.Party {
-				if hp, _, ok := st.AllyHealth(id); ok && hp > 0 {
-					targetAlly = id
-					break
-				}
-			}
+		allyTurnDue := (b.Round-1)%3 == 0
+		if st.tankUp() {
+			allyTurnDue = (b.Round-1)%2 == 0
+		}
+		if kind != "perfect" && kind != "miss" && !plan.area && (allyTurnDue || plan.allyFirst) {
+			targetAlly = st.tauntTarget()
 		}
 		// Prajurit (v0.66.0): serangan yang tidak mengenai pahlawan pendamping, dua dari tiga, mengenai
 		// prajurit terdepan bila pasukan ikut bertarung.
-		if targetAlly == "" && kind != "perfect" && kind != "miss" && !plan.area && len(b.SoldierHP) > 0 && ((b.Round-1)%3 != 2 || plan.allyFirst) {
+		form := st.formation()
+		if targetAlly == "" && kind != "perfect" && kind != "miss" && !plan.area && len(b.SoldierHP) > 0 && (int((b.Round-1)%3) < form.Share || plan.allyFirst) {
+			dmg = max(1, dmg*form.TakenPct/100)
+			if st.tankUp() {
+				dmg = max(1, dmg*TankGuardPct/100) // Ksatria melindungi barisan
+			}
 			b.SoldierHP[0] -= dmg
 			if b.SoldierHP[0] <= 0 {
 				b.SoldierHP = b.SoldierHP[1:]
@@ -634,18 +644,45 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 	b.NextAllyMs += AllyIntervalMs
 	for _, id := range st.Party {
 		if hp, _, ok := st.AllyHealth(id); ok && hp <= 0 {
-			continue
+			continue // pendamping yang tumbang tidak menyerang
 		}
-		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, 0)
-		if b.NextAllyMs-AllyIntervalMs < b.EnemyGuardUntil {
-			dmg = max(1, dmg/2)
-		}
-		b.EnemyHP -= dmg
-		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
+		def, pct := allyTurn(id, e)
+		dmg, _ := rollDamage(st.heroPower(id)*pct/100, def, rng, 0)
 		name := id
 		if h, ok := HeroByID(id); ok {
 			name = h.Name
 		}
+		role := HeroRole[id]
+		if role == RoleMagic {
+			if who, ok := st.healTarget(); ok { // Penyihir: dukungan lebih penting daripada menyerang
+				heal := max(1, dmg*MageHealPct/100)
+				target := "kamu"
+				if who == "" {
+					heal = min(heal, st.MaxHP-st.HP)
+					st.HP += heal
+				} else {
+					before, _, _ := st.AllyHealth(who)
+					after, _ := st.HealAlly(who, heal)
+					heal = max(0, after-before)
+					if h, ok := HeroByID(who); ok {
+						target = h.Name
+					}
+				}
+				res.Events = append(res.Events, Event{Who: "ally", Kind: "heal", Heal: heal, Hero: id, Tactic: RoleHeal, Skill: who})
+				res.Log = append(res.Log, fmt.Sprintf("%s menyembuhkan %s: +%d HP.", name, target, heal))
+				continue
+			}
+		}
+		if b.NextAllyMs-AllyIntervalMs < b.EnemyGuardUntil {
+			dmg = max(1, dmg/2)
+		}
+		b.EnemyHP -= dmg
+		if role == RoleQuick && b.Pushed < QuickPushMaxMs { // tusukan cepat menekan musuh: serangannya tertunda
+			push := min(QuickPushMs, QuickPushMaxMs-b.Pushed)
+			b.NextEnemyMs += push
+			b.Pushed += push
+		}
+		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id, Tactic: role})
 		res.Log = append(res.Log, fmt.Sprintf("%s membantu: %s -%d HP.", name, b.EnemyName, dmg))
 		if b.EnemyHP <= 0 {
 			b.EnemyHP = 0
@@ -654,8 +691,17 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 		}
 	}
 	total := 0
+	form := st.formation()
+	power := st.soldierPower() * form.AtkPct / 100
+	if form.FirstPct > 0 && !b.Charged && len(b.SoldierHP) > 0 {
+		power = power * form.FirstPct / 100 // serbuan pembuka
+		res.Log = append(res.Log, "Pasukan menyerbu!")
+	}
+	if len(b.SoldierHP) > 0 {
+		b.Charged = true
+	}
 	for n := 1; n <= len(b.SoldierHP); n++ {
-		dmg, _ := rollDamage(st.soldierPower(), e.Defense, rng, 0)
+		dmg, _ := rollDamage(max(1, power), e.Defense, rng, 0)
 		b.EnemyHP -= dmg
 		total += dmg
 		if n <= maxSoldierEvents { // klien menggerakkan beberapa prajurit saja

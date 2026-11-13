@@ -229,11 +229,30 @@ func _slot(i: int) -> Vector2:
 	var k := mini(i, BACK.size() - 1)
 	var back := float(BACK[k])
 	var side := float(SIDE[k])
-	if i >= BACK.size():  # lapis berikutnya: tiga prajurit sebaris, makin jauh ke belakang
+	if i >= BACK.size():  # prajurit: susunan menurut formasi (v0.78.0, server: state.formation)
 		var j := i - BACK.size()
-		back = 2.9 + 0.8 * float(j / 3)
-		side = float([0.0, 1.1, -1.1][j % 3])
+		var off := formation_offset(str(Session.player.get("state", {}).get("formation", "")), j)
+		back = off.x
+		side = off.y
 	return world._pos - fwd * back + right * side
+
+
+## Posisi prajurit ke-j menurut formasi: (jarak ke belakang, geser ke kanan) dari pemain, satuan petak.
+## Negatif = di depan pemain. Hanya tampilan; aturan formasi dihitung server.
+static func formation_offset(formation: String, j: int) -> Vector2:
+	match formation:
+		"perisai":  # dinding perisai: satu baris rapat di depan
+			return Vector2(-1.2, (float(j) - 2.5) * 0.7)
+		"tombak":  # dua baris di depan, ujung tombak ke depan
+			return Vector2(-1.0 - 0.8 * float(j / 3), float([0.0, 0.9, -0.9][j % 3]))
+		"pemanah":  # jauh di belakang, menyebar
+			return Vector2(3.6 + 0.9 * float(j / 3), float([0.0, 1.6, -1.6][j % 3]))
+		"lingkaran":  # mengelilingi pemain
+			var a := TAU * float(j) / 6.0
+			return Vector2(cos(a) * 1.7, sin(a) * 1.7)
+		"serbu":  # baji ke depan
+			return Vector2(-1.4 + 0.6 * float((j + 1) / 2), float([0.0, 0.8, -0.8, 1.6, -1.6, 2.4][j % 6]))
+	return Vector2(2.9 + 0.8 * float(j / 3), float([0.0, 1.1, -1.1][j % 3]))  # barisan (lama)
 
 
 func _process(delta: float) -> void:

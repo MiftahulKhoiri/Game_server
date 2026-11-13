@@ -145,6 +145,7 @@ func newServer(st *store.Store, log *slog.Logger, info version.Info, rng game.Ra
 	mux.Handle("POST /v1/allies/heal", s.auth(http.HandlerFunc(s.healAlly)))
 	mux.Handle("POST /v1/soldiers/buy", s.auth(http.HandlerFunc(s.buySoldier)))
 	mux.Handle("POST /v1/soldiers/deploy", s.auth(http.HandlerFunc(s.deploySoldiers)))
+	mux.Handle("POST /v1/soldiers/formation", s.auth(http.HandlerFunc(s.setFormation)))
 	mux.HandleFunc("GET /v1/time", s.serverTime)
 	mux.Handle("POST /v1/train/start", s.auth(http.HandlerFunc(s.trainStart)))
 	mux.Handle("POST /v1/train/claim", s.auth(http.HandlerFunc(s.trainClaim)))
@@ -732,7 +733,7 @@ func isRuleError(err error) bool {
 		game.ErrBankFar, game.ErrBankEmpty, game.ErrBankFull, game.ErrGoldMax, game.ErrBadAmount, game.ErrStorageFar, game.ErrStorageFull,
 		game.ErrNotStored, game.ErrBadPrice, game.ErrNotTradable, game.ErrEquipped, store.ErrInvalidState,
 		game.ErrUnknownSecret, game.ErrSecretFar, game.ErrSecretFound, game.ErrNoRaid, game.ErrRaidGoal, game.ErrRaidClaimed,
-		game.ErrStoryNotHere, game.ErrStoryFar, game.ErrStoryBoss, game.ErrStoryFreed,
+		game.ErrStoryNotHere, game.ErrStoryFar, game.ErrStoryBoss, game.ErrStoryFreed, game.ErrUnknownFormation,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -836,6 +837,7 @@ func (s *Server) wargaTalk(w http.ResponseWriter, r *http.Request) {
 func (s *Server) progressInfo(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"recipes": game.Recipes, "talents": game.Talents, "achievements": game.Achievements,
+		"formations": game.Formations, "roles": game.HeroRole,
 	})
 }
 
@@ -944,6 +946,19 @@ func (s *Server) deploySoldiers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.applyToState(w, r, func(st *game.State) error { return st.SetActiveSoldiers(req.Count) })
+}
+
+type formationRequest struct {
+	Formation string `json:"formation"`
+}
+
+// setFormation memilih formasi prajurit (v0.78.0): "" barisan, perisai, tombak, pemanah, lingkaran, serbu.
+func (s *Server) setFormation(w http.ResponseWriter, r *http.Request) {
+	var req formationRequest
+	if !decode(w, r, &req) {
+		return
+	}
+	s.applyToState(w, r, func(st *game.State) error { return st.SetFormation(req.Formation) })
 }
 
 // serverTime: jam server (detik Unix) untuk menghitung sisa waktu latihan di klien.
