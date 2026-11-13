@@ -1,0 +1,7 @@
+Model "Grasshopper" oleh Poly by Google, lisensi CC-BY 3.0 (WAJIB mencantumkan pembuat):
+https://creativecommons.org/licenses/by/3.0/
+Sumber: https://poly.pizza/m/e3HTaUWGeWs
+
+Dipakai di game ini (v0.80.0, roadmap no. 69) sebagai belalang_raksasa (Belalang Raksasa). Diubah: diputar
+menghadap +Z dan dipindah ke titik nol dengan tools/glbtrim/glbbake.py; bentuk dan warna tidak diubah.
+Kredit juga tercantum di README (bagian Aset).

@@ -13,7 +13,7 @@ Server adalah sumber kebenaran: level, emas, barang, pertarungan, misi, dan daga
 | Server (Go) | Akun (nama/email + kata sandi, sesi berbatas waktu), simpan posisi, pertarungan langsung, 5 pahlawan dengan gaya senjata, pendamping, toko, tempa, bank, peti simpan, dagang antarpemain, misi, pencapaian, jam dunia bersama, serbuan desa, tempat rahasia, cadangan otomatis |
 | Klien Android | Dunia 3D (Desa Awal, Perbatasan, Hutan Lebat, Gunung Batu, Gua Batu, Gua Goblin, toko & ruangan), NPC berjadwal, musuh berkeliaran, bos, HUD, Jurnal (Misi/Peta/Kabar), pengaturan grafis/kontrol/suara, pembaruan & patch dalam aplikasi |
 | APK | Dibangun otomatis oleh GitHub Actions; unduh dari [Releases](https://github.com/MiftahulKhoiri/Game_server/releases/latest) |
-| Aset 3D | Model CC0 KayKit & Quaternius (lihat lisensi di `client/assets/models/`) |
+| Aset 3D | Model CC0 KayKit, Quaternius & OpenGameArt; "Grasshopper" oleh Poly by Google (CC-BY 3.0). Lisensi di `client/assets/models/LISENSI_*.txt` |
 
 ## Mulai cepat
 

@@ -31,3 +31,6 @@
 
 	Follow on Twitter for updates:
 	http://twitter.com/KayLousberg
+	Dipakai juga (v0.80.0, roadmap no. 158): Rogue_Hooded -> penyihir.glb (Penyihir), dipangkas dengan
+	tools/glbtrim/glbtrim.py (tanpa senjata bawaan, 5 klip: Spellcast_Shoot, Death_A, Hit_A, Idle, Walking_A)
+	dan tekstur hijau diganti ungu.

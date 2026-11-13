@@ -40,7 +40,7 @@ const BANGUNAN_MODEL := {
 	"kepala_suku": "building_castle_red",
 	# v0.55.0 (roadmap no. 112-119, 127)
 	"pandai_besi": "building_blacksmith_red",
-	"kuil": "building_church_red",
+	"kuil": "kuil_quaternius",  # v0.80.0 (no. 119): kuil sendiri (Quaternius CC0), dulu gereja Rumah Sehat
 	"bangsawan": "building_tower_A_red",
 	"lumbung": "building_windmill_red",
 	"markas": "building_barracks_red",
@@ -195,6 +195,8 @@ static func _dekor_mesh(id: String) -> Mesh:
 		return _dekor_cache[id]
 	var mesh: Mesh = null
 	var path := ALAM_DIR + id + ".gltf"
+	if not ResourceLoader.exists(path):
+		path = ALAM_DIR + id + ".glb"  # model unduhan yang sudah dipanggang (tools/glbtrim/glbbake.py)
 	if ResourceLoader.exists(path):
 		var scene := load(path) as PackedScene
 		if scene != null:

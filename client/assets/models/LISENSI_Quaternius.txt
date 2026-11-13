@@ -5,7 +5,10 @@ Bebas dipakai untuk proyek pribadi, pendidikan, dan komersial; mencantumkan Quat
 
 Dipakai di game ini (diubah ke GLB ringan dengan tools/blender/siapkan_musuh.py):
 - Farm Animals / Animal Pack Vol.2 / Animals Pack by @Quaternius: Anak Ayam (anak_ayam: ayam desa dan
-  Kancil Hutan; dulu tikus_sawah), Kucing (belalang_raksasa), Babi (babi_hutan), Serigala (serigala_hutan).
+  Kancil Hutan; dulu tikus_sawah), Babi (babi_hutan), Serigala (serigala_hutan). (Kucing dulu dipakai belalang_raksasa
+  sampai v0.79.0.)
 - Ultimate Monsters: Orc (goblin), Iblis (golem_lava), Iblis Biru (raja_goblin), Creep (ogre_batu).
 - Animated Monster Pack by @Quaternius (OpenGameArt, CC0; v0.67.0, cerita The Last Dragon): Naga (aldragor),
   Kelelawar (kelelawar_hutan; juga Kelelawar Gua sebagai varian, v0.77.0). https://opengameart.org/content/lowpoly-animated-monsters
+- Temple (Quaternius, Ultimate Fantasy RTS; CC0, lewat poly.pizza https://poly.pizza/m/CE2Mn7lh6A) -> alam/kuil_quaternius.glb
+  (Kuil Desa, v0.80.0, roadmap no. 119; transformasi dipanggang dengan tools/glbtrim/glbbake.py).

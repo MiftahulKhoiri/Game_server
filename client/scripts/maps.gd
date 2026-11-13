@@ -337,7 +337,7 @@ const ZONA := {
 const ROAMERS := {
 	"perbatasan": {"n": 16, "tiles": ".fT", "min_y": 3, "kinds": [
 		{"id": "tikus_sawah", "name": "Tikus Raksasa", "lv": 1, "pemalu": true, "waktu": "siang"},
-		{"id": "belalang_raksasa", "name": "Kucing Liar", "lv": 1},
+		{"id": "belalang_raksasa", "name": "Belalang Raksasa", "lv": 1},
 		{"id": "ular_sawah", "name": "Ular Sawah", "lv": 2},
 		{"id": "ular_hutan", "name": "Ular Hutan", "lv": 1},
 		{"id": "serigala_hutan", "name": "Serigala Hutan", "lv": 2},

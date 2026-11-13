@@ -13,18 +13,18 @@ const MODEL_DIR := "res://assets/models/"
 ## Tinggi akhir (satuan petak) untuk model GLB buatan AI/unduhan selain ksatria. Ukuran asli
 ## GLB tidak dipercaya: model diukur lalu diskalakan ke tinggi ini, kaki di tanah, di tengah.
 const HEIGHTS := {"golem_lava": 1.4, "golem_kerikil": 1.15, "ogre_batu": 1.3, "raja_goblin": 1.65, "goblin": 1.05, "goblin_penjaga": 1.15, "nenek_penjual": 0.85, "petani": 0.95, "warga_ibu": 0.88, "warga_ibu2": 0.86, "warga_bapak": 0.98, "warga_bapak2": 0.96, "anak_desa": 0.62, "babi_hutan": 0.75, "anak_ayam": 0.5,
-	"serigala_hutan": 0.8, "belalang_raksasa": 0.55,
+	"serigala_hutan": 0.8,
 	"aldragor": 3.0, "kelelawar_hutan": 0.7, "iblis_biru": 1.65}
 const DEFAULT_HEIGHT := 1.0
 ## Model yang memanjang dan rendah (ular, tikus berekor) diukur dari panjangnya, bukan tingginya (satuan petak),
 ## supaya ular yang tipis tidak membesar belasan kali lipat. v0.77.0 (roadmap no. 67-68, OpenGameArt CC0).
-const LENGTHS := {"tikus_sawah": 1.1, "ular_sawah": 1.3}
+const LENGTHS := {"tikus_sawah": 1.1, "ular_sawah": 1.3, "belalang_raksasa": 1.15}  # belalang: v0.80.0 (no. 69)
 
 ## Pahlawan yang bisa dipilih pemain (semua dari KayKit, berangka + animasi sendiri). Urutan = urutan di layar profil.
 const HEROES := ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "penyihir"]
-## Pahlawan yang memakai berkas GLB lain (roadmap no. 158): Penyihir = model Mage KayKit (sama dengan
-## berkas Nenek Penjual), diberi tongkat sihir buatan sendiri, jadi tidak perlu berkas/APK baru.
-const HERO_GLB := {"penyihir": "nenek_penjual", "iblis_biru": "raja_goblin"}
+## Pahlawan/model yang memakai berkas GLB lain. Penyihir punya model sendiri sejak v0.80.0 (roadmap no. 158):
+## KayKit Rogue berkerudung (CC0, rangka sama dengan pahlawan lain) berjubah ungu, dulu meminjam Mage Nenek Penjual.
+const HERO_GLB := {"iblis_biru": "raja_goblin"}
 ## (iblis_biru: model Iblis Biru untuk layar judul; id musuh raja_goblin kini Panglima Orc Batu, lihat VARIANTS.)
 
 
@@ -140,7 +140,6 @@ static func _lava_glow(n: Node) -> void:
 ## ringan (semua bahan abu-abu 0,8), sehingga anak ayam, Kucing Liar, dan Serigala tampil putih polos.
 const ANIMAL_COLORS := {
 	"anak_ayam": {"Material.001": Color("f2c94c"), "Material.002": Color("f08a24")},         # anak ayam: kuning, paruh/kaki oranye
-	"belalang_raksasa": {"Grey": Color("8a8f99"), "White": Color("f0ece4"), "Pink": Color("f2a6b4")},  # kucing
 	"serigala_hutan": {"Wolf": Color("8a8478")},                                             # serigala abu-cokelat
 	# Monster Quaternius (Animated Monsters, CC0): Aldragor merah tua bersayap ungu gelap (dikutuk), kelelawar kelabu ungu.
 	"aldragor": {"Main": Color("8e2f3a"), "Wings": Color("5a2448"), "Belly": Color("e2b45c"), "Claws": Color("f2ead6"), "Eyes": Color("ffd23a")},
@@ -453,9 +452,9 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 			mi.visible = helmet.is_empty()  # helm yang dipakai menggantikan topi/helm bawaan
 		if _ends_with_any(nm, WEAPON_PARTS):
 			has_weapon = true
-		if nm.begins_with("Mage_"):
+		if nm.begins_with("Mage_") or nm.ends_with("_Head_Hooded"):  # Penyihir berkerudung (v0.80.0)
 			is_mage = true
-		if nm.ends_with("_Head"):
+		if nm.ends_with("_Head") or nm.ends_with("_Head_Hooded"):
 			head_box = (pair[1] as Transform3D) * mi.get_aabb()
 		if nm.ends_with("_Body"):
 			var bb := (pair[1] as Transform3D) * mi.get_aabb()
@@ -468,6 +467,98 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 	if is_mage and not has_weapon:
 		var w_tint: Color = weapon.get("tint", Color(1, 1, 1))
 		_attach(sk, "handslot.r", _staff_mesh(weapon.get("glow", Color("b77dff")) as Color, w_tint))
+	if head_box.size != Vector3.ZERO:
+		_face(sk, str(rig.name), head_box, not helmet.is_empty())
+
+
+## Wajah khas tiap pahlawan (roadmap no. 5, v0.80.0). Model KayKit memakai kepala yang sama per jenis, jadi
+## ciri wajah dibuat dari bentuk sederhana yang ditempel di tulang kepala: alis, kumis, janggut, pipi merona.
+## Ukuran mengikuti kotak kepala, jadi tetap pas bila skala model berubah.
+const FACES := {
+	"ksatria": {"brow": Color("3a2414"), "brow_tilt": 0.18, "stubble": Color("5a3a24")},
+	"pendekar_kapak": {"brow": Color("7a3a1c"), "brow_tilt": 0.32, "beard": Color("9a4a22")},
+	"pemanah": {"brow": Color("6a3a20"), "brow_tilt": -0.08, "blush": Color("f29a8a")},
+	"pendekar_tombak": {"brow": Color("2a1c12"), "brow_tilt": 0.1, "mustache": Color("2a1c12")},
+	"penyihir": {"brow": Color("e8e8f0"), "brow_tilt": -0.2, "wizard_beard": Color("eeeef4")},
+}
+
+static func _face(sk: Skeleton3D, id: String, head: AABB, helmet: bool) -> void:
+	var f: Dictionary = FACES.get(id, {})
+	if f.is_empty():
+		return
+	var root := Node3D.new()
+	root.name = "wajah"
+	var w := head.size.x
+	var h := head.size.y
+	var cx := head.position.x + w / 2.0
+	var front := head.end.z
+	var eye_y := head.position.y + h * FACE_EYE_Y
+	root.set_meta("rig_pos", Vector3(cx, eye_y, front))
+	if f.has("brow") and not helmet:
+		for sx: float in [-1.0, 1.0]:
+			var b := _face_part(BoxMesh.new(), f.brow as Color)
+			(b.mesh as BoxMesh).size = Vector3(w * 0.17, h * 0.035, w * 0.04)
+			b.position = Vector3(sx * w * 0.17, h * 0.1, -w * 0.02)
+			b.rotation.z = sx * float(f.brow_tilt)
+			root.add_child(b)
+	if f.has("blush"):
+		for sx: float in [-1.0, 1.0]:
+			var c := _face_part(SphereMesh.new(), f.blush as Color)
+			(c.mesh as SphereMesh).radius = w * 0.07
+			(c.mesh as SphereMesh).height = w * 0.05
+			c.position = Vector3(sx * w * 0.27, -h * 0.09, -w * 0.05)
+			root.add_child(c)
+	if f.has("mustache"):
+		for sx: float in [-1.0, 1.0]:
+			var m := _face_part(CapsuleMesh.new(), f.mustache as Color)
+			(m.mesh as CapsuleMesh).radius = w * 0.035
+			(m.mesh as CapsuleMesh).height = w * 0.22
+			m.position = Vector3(sx * w * 0.08, -h * 0.17, -w * 0.01)
+			m.rotation.z = sx * 1.25
+			root.add_child(m)
+	if f.has("stubble"):
+		var s := _face_part(SphereMesh.new(), f.stubble as Color)
+		(s.mesh as SphereMesh).radius = w * 0.2
+		(s.mesh as SphereMesh).height = w * 0.18
+		s.position = Vector3(0, -h * 0.3, -w * 0.12)
+		s.scale = Vector3(1.0, 0.7, 0.55)
+		root.add_child(s)
+	if f.has("beard"):
+		var bd := _face_part(SphereMesh.new(), f.beard as Color)
+		(bd.mesh as SphereMesh).radius = w * 0.3
+		(bd.mesh as SphereMesh).height = w * 0.6
+		bd.position = Vector3(0, -h * 0.34, -w * 0.12)
+		bd.scale = Vector3(1.0, 1.05, 0.6)
+		root.add_child(bd)
+	if f.has("wizard_beard"):
+		var wb := _face_part(CylinderMesh.new(), f.wizard_beard as Color)
+		var cm := wb.mesh as CylinderMesh
+		cm.top_radius = w * 0.26
+		cm.bottom_radius = w * 0.02
+		cm.height = h * 0.75
+		cm.radial_segments = 8
+		wb.position = Vector3(0, -h * 0.25 - cm.height / 2.0, -w * 0.1)
+		wb.scale = Vector3(1.0, 1.0, 0.55)
+		root.add_child(wb)
+		var mo := _face_part(CapsuleMesh.new(), f.wizard_beard as Color)
+		(mo.mesh as CapsuleMesh).radius = w * 0.04
+		(mo.mesh as CapsuleMesh).height = w * 0.42
+		mo.position = Vector3(0, -h * 0.18, -w * 0.0)
+		mo.rotation.z = PI / 2.0
+		root.add_child(mo)
+	_attach(sk, "head", root)
+
+
+## Tinggi garis mata di kotak kepala (0 = dagu/bawah, 1 = puncak rambut/topi).
+const FACE_EYE_Y := 0.42
+
+static func _face_part(mesh: Mesh, color: Color) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	var m := _mat(color)
+	m.rim_enabled = false
+	mi.material_override = m
+	return mi
 
 
 ## Tongkat sihir Penyihir (roadmap no. 158): batang kayu, cincin logam, dan bola kristal berpendar.

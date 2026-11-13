@@ -188,6 +188,8 @@ func _ready() -> void:
 	Session.player.state.y = int(z)
 	Session.player.state.fx = x
 	Session.player.state.fz = z
+	if OS.get_environment("SHOT_YAW") != "":  # pahlawan menghadap arah kamera (kamera kembali ke belakangnya)
+		Session.player.state.yaw = deg_to_rad(float(OS.get_environment("SHOT_YAW")))
 	var scene: Node = load("res://scenes/world3d.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(0.3).timeout

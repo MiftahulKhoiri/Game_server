@@ -46,7 +46,7 @@ var enemies = []Enemy{
 	// Serbuan Goblin ke Desa Awal (roadmap no. 190): hanya saat kejadian berlangsung.
 	{ID: "goblin_penyerbu", Zones: []string{MapDesaAwal}, Name: "Goblin Penyerbu", HP: 28, Attack: 7, Defense: 2, XP: 22, Gold: 9, MinLevel: 1, DropID: PotionID, DropPercent: 25, Raid: true, Time: TimeNight},
 	{ID: "orc_penyerbu", Zones: []string{MapDesaAwal}, Name: "Orc Penyerbu", HP: 52, Attack: 11, Defense: 4, XP: 40, Gold: 16, MinLevel: 4, DropID: "taring_goblin", DropPercent: 35, Raid: true, Time: TimeNight, Special: SpecialTerkam, SpecialName: "Hantaman Orc"},
-	{ID: "belalang_raksasa", Zones: []string{MapPerbatasan}, Name: "Kucing Liar", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
+	{ID: "belalang_raksasa", Zones: []string{MapPerbatasan}, Name: "Belalang Raksasa", HP: 14, Attack: 4, Defense: 1, XP: 8, Gold: 3, MinLevel: 1, DropID: PotionID, DropPercent: 10},
 	{ID: "ular_sawah", Zones: []string{MapPerbatasan}, Name: "Ular Sawah", HP: 20, Attack: 6, Defense: 1, XP: 12, Gold: 5, MinLevel: 2, DropID: PotionID, DropPercent: 15},
 	{ID: "babi_hutan", Zones: []string{MapPerbatasan}, Name: "Babi Hutan", HP: 34, Attack: 8, Defense: 3, XP: 22, Gold: 9, MinLevel: 3, DropID: PotionID, DropPercent: 25, Special: SpecialTerkam, SpecialName: "Serudukan"},
 	// Perbatasan (hutan): binatang buas.

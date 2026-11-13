@@ -789,7 +789,11 @@ func _run() -> void:
 		rm.play_die()
 		rm.free()
 	# Hewan (Quaternius): hanya klip idle + jalan; serang/terkena/mati lewat gerak tambahan model_rig.
-	for mdl in ["tikus_sawah", "anak_ayam", "belalang_raksasa", "ular_sawah", "babi_hutan", "serigala_hutan"]:
+	# v0.80.0: belalang_raksasa kini model belalang tanpa rangka (diperiksa di bawah, bergerak lewat model_rig "static").
+	var bel: Node3D = Models.create("belalang_raksasa")
+	_check(Models.has_glb("belalang_raksasa") and bel.kind == "static" and bel.pivots.has("body"), "belalang memakai model GLB tanpa rangka, badan digerakkan model_rig")
+	bel.free()
+	for mdl in ["tikus_sawah", "anak_ayam", "ular_sawah", "babi_hutan", "serigala_hutan"]:
 		var am: Node3D = Models.create(mdl)
 		var anames: Dictionary = am._anim_names if am.anim_player != null else {}
 		_check(Models.has_glb(mdl) and anames.has("idle") and anames.has("walk") and am.pivots.has("body"), "hewan '%s' berrangka dengan klip idle dan jalan %s" % [mdl, str(anames.keys())])
@@ -1383,9 +1387,24 @@ func _run() -> void:
 	var mage: Node3D = SModels.create("penyihir")
 	get_root().add_child(mage)
 	SModels.dress(mage, 0, {})
-	_check(mage.find_children("tongkat", "", true, false).size() == 1, "Penyihir memegang tongkat sihir (model Mage tanpa berkas baru)")
+	_check(mage.find_children("tongkat", "", true, false).size() == 1, "Penyihir (model sendiri, v0.80.0) memegang tongkat sihir")
 	SModels.dress(mage, 0, {"weapon": "pedang_rune"})
 	_check(mage.find_children("tongkat", "", true, false).size() == 1, "ganti senjata tidak menumpuk tongkat")
+	# v0.80.0 (roadmap no. 5, 69, 119, 158): model penyihir sendiri, wajah khas pahlawan, belalang, kuil.
+	_check(not SModels.HERO_GLB.has("penyihir") and SModels.has_glb("penyihir") and mage.find_children("Rogue_Head_Hooded", "", true, false).size() == 1, "Penyihir memakai model sendiri (kerudung ungu), bukan Mage Nenek Penjual")
+	_check(mage.find_children("wajah", "", true, false).size() == 1, "Penyihir punya janggut panjang (wajah khas)")
+	var face_ok := true
+	for fid: String in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak"]:
+		var fm: Node3D = SModels.create(fid)
+		get_root().add_child(fm)
+		SModels.dress(fm, 0, {})
+		face_ok = face_ok and fm.find_children("wajah", "", true, false).size() == 1
+		SModels.dress(fm, 0, {"helmet": "helm_besi"})
+		face_ok = face_ok and fm.find_children("wajah", "", true, false).size() == 1
+		fm.queue_free()
+	_check(face_ok, "tiap pahlawan punya ciri wajah sendiri, tidak menumpuk saat ganti perlengkapan")
+	_check(SModels.has_glb("belalang_raksasa"), "Belalang Raksasa punya model belalang")
+	_check(ResourceLoader.exists("res://assets/models/alam/kuil_quaternius.glb") and str((load("res://scripts/world_build.gd") as GDScript).get_script_constant_map().BANGUNAN_MODEL.kuil) == "kuil_quaternius", "kuil desa memakai model kuil sendiri (bukan gereja Rumah Sehat)")
 	mage.queue_free()
 	var bl0: int = wt.get_child_count()
 	SHeroFx.blood(wt, Vector3(0, 1, 0), 6)

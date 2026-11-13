@@ -213,7 +213,7 @@ separuh, kembali ke titik awal desa.
 | Musuh | Wilayah | HP | Serang | Bertahan | XP | Emas | Min. level | Jatuhan |
 |-------|---------|----|--------|----------|----|------|------------|---------|
 | Tikus Raksasa (`tikus_sawah`) | Desa | 10 | 3 | 0 | 6 | 2 | 1 | Ramuan 10% |
-| Kucing Liar (`belalang_raksasa`) | Desa | 14 | 4 | 1 | 8 | 3 | 1 | Ramuan 10% |
+| Belalang Raksasa (`belalang_raksasa`, model sejak v0.80.0) | Desa | 14 | 4 | 1 | 8 | 3 | 1 | Ramuan 10% |
 | Ular Sawah (`ular_sawah`) | Desa | 20 | 6 | 1 | 12 | 5 | 2 | Ramuan 15% |
 | Babi Hutan | Desa | 34 | 8 | 3 | 22 | 9 | 3 | Ramuan 25% |
 | Orc Ladang (`goblin`) | Perbatasan | 26 | 7 | 2 | 15 | 7 | 1 | Taring Orc 35% |
