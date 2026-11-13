@@ -9,9 +9,9 @@ server yang berjalan di Pi belum di-restart.
 |---|---|
 | File dibaca langsung | ±32 (semua handler API, store, auth, config, version, main, aturan gerak/peti/rumah/ujian/cerita di `game`, `maps.gd`/`world3d.gd`/`session.gd`/`api.gd` klien, skrip cadangan/pulih, CI) + 66 file Go disisir dengan pencarian |
 | File diubah | 26 diubah + 7 baru (33 file, +2.311 / −215 baris) |
-| Masalah ditemukan | 21 (1 Critical, 4 High, 9 Medium, 7 Low) |
-| Masalah diperbaiki | 15 |
-| Belum diperbaiki | 6 (lihat bagian G) |
+| Masalah ditemukan | 21 (1 Critical, 4 High, 10 Medium, 6 Low) |
+| Masalah diperbaiki | 19 |
+| Belum diperbaiki | 2 temuan (no. 20-21) + 4 batasan desain yang tersisa (lihat bagian G) |
 
 ### Daftar temuan
 
