@@ -100,6 +100,8 @@ type Battle struct {
 	Tahap     int `json:"tahap,omitempty"`
 	AtkPct    int `json:"atk_pct,omitempty"`
 	RewardPct int `json:"reward_pct,omitempty"`
+	// Adapt: faktor adaptive difficulty yang dipakai pertarungan ini (permil, adapt.go); 0 = netral.
+	Adapt int `json:"adapt,omitempty"`
 	// AI hybrid (ai.go, v0.78.0): keadaan FSM, taktik serangan berikutnya (untuk ancang-ancang di klien), mundur
 	// yang sudah dipakai, dan jendela bertahan musuh (kerusakan yang diterimanya separuh).
 	AIState         string `json:"ai_state,omitempty"`
@@ -140,6 +142,7 @@ type BattleView struct {
 	AIState      string `json:"ai_state,omitempty"`
 	EnemyIntent  string `json:"enemy_intent,omitempty"`
 	EnemyGuardMs int64  `json:"enemy_guard_ms,omitempty"`
+	Adapt        int    `json:"adapt,omitempty"` // faktor adaptive difficulty (permil); 0/kosong = netral
 }
 
 // Event adalah satu kejadian untuk dianimasikan klien.
@@ -180,6 +183,7 @@ func StartBattle(p *Player, rng Rand, now int64) Battle {
 	e := PickEnemy(p.State.Level, p.State.Map, rng)
 	b := styled(p, newBattle(e, now))
 	b.strengthen(p.State, e)
+	b.adapt(p.State, e)
 	return b
 }
 
@@ -196,6 +200,7 @@ func StartBattleWith(p *Player, want string, rng Rand, now int64) Battle {
 	e := PickEnemyFor(p.State.Level, p.State.Map, want, rng)
 	b := styled(p, newBattle(e, now))
 	b.strengthen(p.State, e)
+	b.adapt(p.State, e)
 	return b
 }
 
@@ -275,6 +280,7 @@ func (b *Battle) View(now int64) BattleView {
 		}
 	}
 	v.AIState, v.EnemyIntent, v.EnemyGuardMs = b.AIState, b.Intent, left(b.EnemyGuardUntil)
+	v.Adapt = b.Adapt
 	for a, cd := range CooldownMs {
 		if a == ActionAttack && b.AttackMs > 0 {
 			cd = b.AttackMs
@@ -430,6 +436,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		if rng.Intn(100) < FleeChance {
 			res.Status = StatusFled
 			p.State.endBattleBuffs()
+			p.State.recordAdapt(e, OutcomeFlee)
 			logf("Kamu berhasil kabur.")
 			return res, nil
 		}
@@ -638,6 +645,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			res.Log = append(res.Log, fmt.Sprintf("%s menyerang: -%d HP.", b.EnemyName, dmg))
 		}
 		if st.HP <= 0 {
+			st.recordAdapt(e, OutcomeLose)
 			b.lose(p, res)
 			return true
 		}
@@ -750,6 +758,7 @@ func (b *Battle) ensureSoldiers(st *State) {
 
 func (b *Battle) win(p *Player, e Enemy, rng Rand, res *Result) {
 	st := &p.State
+	st.recordAdapt(e, winOutcome(st))
 	xp := b.reward(e.XP)
 	gold := b.reward(e.Gold)
 	if b.Night {

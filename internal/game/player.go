@@ -83,6 +83,8 @@ type State struct {
 	SoldiersRest int `json:"soldiers_rest,omitempty"`
 	// Formation: formasi prajurit (party.go, v0.78.0); "" = barisan (perilaku lama).
 	Formation string `json:"formation,omitempty"`
+	// Adapt: adaptive difficulty (adapt.go, v0.78.0). Opsional: nil = netral.
+	Adapt *Adapt `json:"adapt,omitempty"`
 	// HeroLevels: level latihan tiap pahlawan pembantu (kosong = level 1); SoldierLevel: level seluruh prajurit;
 	// Training: latihan yang sedang berjalan di Aula Pelatihan. Hanya diubah server (lihat train.go).
 	HeroLevels   map[string]int `json:"hero_levels,omitempty"`
@@ -203,6 +205,8 @@ func (s State) Validate() error {
 		return errors.New("cap waktu tidak boleh negatif")
 	case !validFormation(s.Formation):
 		return ErrUnknownFormation
+	case !s.Adapt.valid():
+		return errors.New("data adaptive difficulty tidak sah")
 	case len(s.Broken) > maxBrokenKept+MaxBreakBatch || len(s.Chests) > len(chests):
 		return errors.New("catatan dunia terlalu banyak")
 	case s.EnergyUsed < 0 || s.EnergyUsed > MaxEnergy:
