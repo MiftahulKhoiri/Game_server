@@ -5,9 +5,12 @@ import (
 	"errors"
 	"math"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"testing"
+
+	"github.com/MiftahulKhoiri/Game_server/internal/mapsrc"
 )
 
 func posed(mapID string, x, y int, poseMs int64) State {
@@ -16,6 +19,15 @@ func posed(mapID string, x, y int, poseMs int64) State {
 	st.PlaceAtTileCenter()
 	st.PoseMs = poseMs
 	return st
+}
+
+// near: pose di tengah petak yang bisa diinjak terdekat ke (x, y).
+func near(mapID string, x, y int) Pose {
+	nx, ny, ok := nearestWalkable(mapID, x, y, 40)
+	if !ok {
+		panic("tidak ada petak yang bisa diinjak di dekat sana")
+	}
+	return Pose{Map: mapID, X: nx, Y: ny, FX: float64(nx) + 0.5, FZ: float64(ny) + 0.5}
 }
 
 func pose(t *testing.T, mapID string, fx, fz float64) Pose {
@@ -35,12 +47,12 @@ func TestMoveToSpeedLimit(t *testing.T) {
 		afterMs int64
 		want    error
 	}{
-		{"diam di tempat", Pose{Map: MapDesaAwal, X: 5, Y: 5, FX: 5.5, FZ: 5.5}, 0, nil},
-		{"langkah kecil tanpa jeda (dalam kelonggaran)", Pose{Map: MapDesaAwal, X: 10, Y: 5, FX: 10.5, FZ: 5.5}, 0, nil},
-		{"berjalan 4,5 petak/detik selama 10 detik", Pose{Map: MapDesaAwal, X: 50, Y: 5, FX: 50.5, FZ: 5.5}, 10_000, nil},
-		{"teleport 70 petak dalam 1 detik", Pose{Map: MapDesaAwal, X: 75, Y: 5, FX: 75.5, FZ: 5.5}, 1_000, ErrMoveTooFar},
-		{"teleport ke ujung peta tanpa jeda", Pose{Map: MapDesaAwal, X: 84, Y: 49, FX: 84.5, FZ: 49.5}, 0, ErrMoveTooFar},
-		{"jam mundur dianggap tanpa jeda", Pose{Map: MapDesaAwal, X: 40, Y: 5, FX: 40.5, FZ: 5.5}, -5_000, ErrMoveTooFar},
+		{"diam di tempat", near(MapDesaAwal, 5, 5), 0, nil},
+		{"langkah kecil tanpa jeda (dalam kelonggaran)", near(MapDesaAwal, 10, 5), 0, nil},
+		{"berjalan 4,5 petak/detik selama 10 detik", near(MapDesaAwal, 50, 5), 10_000, nil},
+		{"teleport 70 petak dalam 1 detik", near(MapDesaAwal, 75, 5), 1_000, ErrMoveTooFar},
+		{"teleport ke ujung peta tanpa jeda", near(MapDesaAwal, 84, 49), 0, ErrMoveTooFar},
+		{"jam mundur dianggap tanpa jeda", near(MapDesaAwal, 40, 5), -5_000, ErrMoveTooFar},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -159,7 +171,12 @@ func TestDoorsInsideMaps(t *testing.T) {
 		st.setTrial(tr.Map, HutanProgress{Wave: HutanWaves})
 	}
 	for id, m := range worldMaps {
-		c := st.TravelCost(MapDesaAwal, 5.5, 5.5, id, float64(m.Width)/2, float64(m.Height)/2)
+		x, y, ok := nearestWalkable(id, m.Width/2, m.Height/2, 60)
+		if !ok {
+			t.Errorf("peta %s tanpa petak yang bisa diinjak", id)
+			continue
+		}
+		c := st.TravelCost(MapDesaAwal, 5.5, 5.5, id, float64(x)+0.5, float64(y)+0.5)
 		if math.IsInf(c, 1) {
 			t.Errorf("peta %s tidak terjangkau dari desa", id)
 		}
@@ -205,6 +222,100 @@ func TestDoorsMatchClient(t *testing.T) {
 	for i := range client {
 		if client[i] != Doors[i] {
 			t.Errorf("pintu ke-%d beda: klien %+v, server %+v", i, client[i], Doors[i])
+		}
+	}
+}
+
+// Celah tembus tembok (audit G-2): dua petak yang berdekatan secara garis lurus tetapi terpisah tembok/lava
+// tidak bisa dilompati, padahal jarak lurusnya masih di bawah batas waktu.
+func TestMoveToRespectsWalls(t *testing.T) {
+	m := MapGunungBatu // banyak lorong buntu dan aliran lava
+	rows := mapRows[m]
+	var from, to Pose
+	found := false
+	for y := 0; y < len(rows) && !found; y++ {
+		for x := 0; x < len(rows[0]) && !found; x++ {
+			if !Walkable(m, x, y) {
+				continue
+			}
+			f := distField(m, x, y)
+			for dy := -4; dy <= 4 && !found; dy++ {
+				for dx := -4; dx <= 4 && !found; dx++ {
+					tx, ty := x+dx, y+dy
+					if Walkable(m, tx, ty) && pathLen(m, f, tx, ty) > 60 {
+						from, to = near(m, x, y), near(m, tx, ty)
+						found = true
+					}
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("tidak ada pasangan petak bertembok di peta uji")
+	}
+	st := posed(m, from.X, from.Y, 1_000_000)
+	st.Hutan.Wave = HutanWaves
+	// 3 detik: garis lurus (< 6 petak) jauh di bawah batas 35 petak, tetapi jalan memutar > 60 petak.
+	if err := st.MoveTo(to, 1_003_000); !errors.Is(err, ErrMoveTooFar) {
+		t.Fatalf("melompati tembok dari %v ke %v: %v", from, to, err)
+	}
+	// Berdiri di dalam tembok/air/lava ditolak.
+	for y := range rows {
+		for x := range rows[0] {
+			if !Walkable(m, x, y) {
+				st := posed(m, from.X, from.Y, 1_000_000)
+				if err := st.MoveTo(Pose{Map: m, X: x, Y: y, FX: float64(x) + 0.5, FZ: float64(y) + 0.5}, 9_000_000); !errors.Is(err, ErrMoveBlocked) {
+					t.Fatalf("petak terhalang (%d,%d): %v", x, y, err)
+				}
+				return
+			}
+		}
+	}
+}
+
+// Setiap pintu bisa diinjak dan petak tujuannya punya tempat berdiri di dekatnya (data peta & pintu konsisten).
+func TestDoorTilesWalkable(t *testing.T) {
+	for _, d := range Doors {
+		if !Walkable(d.Map, d.X, d.Y) {
+			t.Errorf("petak pintu tidak bisa diinjak: %+v", d)
+		}
+		if _, _, ok := nearestWalkable(d.To, d.AtX, d.AtY, int(arriveSlack)); !ok {
+			t.Errorf("tujuan pintu tanpa tempat berdiri: %+v", d)
+		}
+	}
+	// Semua peta yang dikenal server punya data petak dengan ukuran yang sama.
+	for id, info := range worldMaps {
+		rows, ok := mapRows[id]
+		if !ok || len(rows) != info.Height || len(rows[0]) != info.Width {
+			t.Errorf("data petak %s tidak cocok dengan ukuran %dx%d", id, info.Width, info.Height)
+		}
+	}
+}
+
+// Data petak server (tiles_gen.go) harus sama dengan maps.gd; jalankan `make maps` setelah mengubah peta.
+func TestTilesMatchClient(t *testing.T) {
+	f, err := os.Open("../../client/scripts/maps.gd")
+	if err != nil {
+		t.Skip("klien tidak ada:", err)
+	}
+	defer f.Close()
+	m, err := mapsrc.Parse(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Walkable != walkableTiles || !reflect.DeepEqual(m.Rows, mapRows) {
+		t.Fatal("internal/game/tiles_gen.go tidak sama dengan client/scripts/maps.gd: jalankan `make maps`")
+	}
+}
+
+func BenchmarkMoveToLongTrip(b *testing.B) {
+	st := posed(MapDesaAwal, 22, 47, 1)
+	st.Hutan.Wave = HutanWaves
+	to := near(MapGuaGoblin, 30, 60)
+	for range b.N {
+		s := st
+		if err := s.MoveTo(to, 3_600_000); err != nil {
+			b.Fatal(err)
 		}
 	}
 }

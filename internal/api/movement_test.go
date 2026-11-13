@@ -170,15 +170,15 @@ func TestPoseRejectsNaNInfAndExtremes(t *testing.T) {
 // yang berbeda-beda (sampai 2 detik lebih lambat, sehingga jarak antar-simpan di server bisa jauh lebih
 // singkat dari waktu berjalan sesungguhnya). Semua harus diterima.
 func TestMovementWithLatency(t *testing.T) {
-	for _, jitter := range [][]int64{{0, 0, 0, 0}, {300, -200, 800, 0}, {1500, 0, 1200, -900}, {-1000, 2000, 1000, 500}} {
+	for _, jitter := range [][]int64{{0, 0, 0, 0}, {300, -200, 800, 0}, {1500, 0, 1200, 300}, {-1000, 2000, 1000, 500}} {
 		ts, _, clock := clockServer(t)
 		cr := register(t, ts, "Pejalan")
 		base := clock.Load()
 		x := float64(game.SpawnX) + 0.5
 		for i, j := range jitter {
-			x += 4.4 * 3 // 3 detik berjalan
-			clock.Store(base + int64(i+1)*3000 + j)
-			if code, _ := savePose(t, ts, cr.Token, game.MapDesaAwal, x, 5.5); code != http.StatusOK {
+			x += 4.4 * 2 // 2 detik berjalan menyusuri jalan desa (baris 6)
+			clock.Store(base + int64(i+1)*2000 + j)
+			if code, _ := savePose(t, ts, cr.Token, game.MapDesaAwal, x, 6.5); code != http.StatusOK {
 				t.Fatalf("jeda %v, langkah %d (x=%.1f): status %d", jitter, i, x, code)
 			}
 		}

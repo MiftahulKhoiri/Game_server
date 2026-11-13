@@ -9,8 +9,8 @@ import (
 // Gerakan pemain yang dikendalikan server (audit keamanan v0.77.0).
 //
 // Klien melaporkan posisinya (simpan posisi dan aksi hadiah dunia), tetapi server hanya menerimanya bila
-// posisi itu bisa dicapai dari posisi tersimpan terakhir dalam waktu yang sudah berlalu: jarak lurus
-// (lewat pintu antarpeta bila pindah peta) tidak boleh melebihi MaxMoveSpeed x waktu + MoveGrace. Pintu
+// posisi itu bisa dicapai dari posisi tersimpan terakhir dalam waktu yang sudah berlalu: jarak jalan menyusuri
+// petak yang bisa diinjak (pathing.go; lewat pintu antarpeta bila pindah peta) tidak boleh melebihi MaxMoveSpeed x waktu + MoveGrace. Pintu
 // yang masih terkunci (gerbang wilayah ujian, gerbang cerita, rumah milik orang lain) tidak bisa dilewati.
 // Semua pemeriksaan jarak untuk hadiah (peti, benda, rahasia, NPC) memakai posisi yang sudah lolos di sini.
 
@@ -25,8 +25,9 @@ const (
 
 // Kesalahan gerakan.
 var (
-	ErrMoveTooFar = errors.New("posisi tidak sah: perpindahan terlalu jauh untuk waktu sesingkat itu")
-	ErrMapLocked  = errors.New("posisi tidak sah: wilayah itu belum bisa dimasuki")
+	ErrMoveTooFar  = errors.New("posisi tidak sah: perpindahan terlalu jauh untuk waktu sesingkat itu")
+	ErrMapLocked   = errors.New("posisi tidak sah: wilayah itu belum bisa dimasuki")
+	ErrMoveBlocked = errors.New("posisi tidak sah: petak itu tidak bisa diinjak")
 )
 
 // Door adalah satu petak pintu: menginjak (X, Y) di Map memindahkan pemain ke To di petak (AtX, AtY).
@@ -111,15 +112,76 @@ func (s State) DoorOpen(d Door) bool {
 	return true
 }
 
-// TravelCost: jarak lurus terpendek (petak) dari posisi (fromMap, fx, fz) ke (toMap, tx, tz), lewat pintu
-// yang terbuka bagi pemain ini. +Inf bila tidak bisa dicapai. Jarak lurus mengabaikan tembok, jadi selalu
-// lebih kecil atau sama dengan jarak jalan sesungguhnya (aman untuk pemain jujur).
+// TravelCost: jarak jalan terpendek (petak) dari posisi (fromMap, fx, fz) ke (toMap, tx, tz), menyusuri petak yang
+// bisa diinjak dan lewat pintu yang terbuka bagi pemain ini. +Inf bila tidak bisa dicapai. Peta tanpa data
+// petak memakai jarak garis lurus (straightCost).
 func (s State) TravelCost(fromMap string, fx, fz float64, toMap string, tx, tz float64) float64 {
+	_, fromTiles := mapRows[fromMap]
+	_, toTiles := mapRows[toMap]
+	if !fromTiles || !toTiles {
+		return s.straightCost(fromMap, fx, fz, toMap, tx, tz)
+	}
+	sx, sy := int(math.Floor(fx)), int(math.Floor(fz))
+	gx, gy := int(math.Floor(tx)), int(math.Floor(tz))
+	var start []float32
+	if x, y, ok := nearestWalkable(fromMap, sx, sy, 3); ok { // posisi lama bisa berada di petak terhalang
+		start = distField(fromMap, x, y)
+	}
+	if start == nil {
+		return s.straightCost(fromMap, fx, fz, toMap, tx, tz)
+	}
+	best := math.Inf(1)
+	if fromMap == toMap {
+		best = pathLen(fromMap, start, gx, gy)
+	}
+	n := len(Doors)
+	cost := make([]float64, n)
+	done := make([]bool, n)
+	for i, d := range Doors {
+		cost[i] = math.Inf(1)
+		if d.Map == fromMap && s.DoorOpen(d) {
+			cost[i] = pathLen(fromMap, start, d.X, d.Y)
+		}
+	}
+	for {
+		u := -1
+		for i := range Doors {
+			if !done[i] && !math.IsInf(cost[i], 1) && (u < 0 || cost[i] < cost[u]) {
+				u = i
+			}
+		}
+		if u < 0 || cost[u] >= best {
+			break
+		}
+		done[u] = true
+		du := Doors[u]
+		ax, ay, ok := nearestWalkable(du.To, du.AtX, du.AtY, int(arriveSlack))
+		if !ok {
+			continue
+		}
+		arrive := cachedField(du.To, ax, ay)
+		if du.To == toMap {
+			best = min(best, cost[u]+max(0, pathLen(toMap, arrive, gx, gy)-arriveSlack))
+		}
+		for j, dj := range Doors {
+			if done[j] || dj.Map != du.To || !s.DoorOpen(dj) {
+				continue
+			}
+			if c := cost[u] + pathLen(du.To, arrive, dj.X, dj.Y); c < cost[j] {
+				cost[j] = c
+			}
+		}
+	}
+	return best
+}
+
+// straightCost: seperti TravelCost tetapi dengan jarak garis lurus (mengabaikan tembok). Hanya untuk peta tanpa
+// data petak.
+func (s State) straightCost(fromMap string, fx, fz float64, toMap string, tx, tz float64) float64 {
 	best := math.Inf(1)
 	if fromMap == toMap {
 		best = math.Hypot(tx-fx, tz-fz)
 	}
-	// Dijkstra kecil atas "baru saja melewati pintu i" (beberapa puluh pintu saja).
 	n := len(Doors)
 	cost := make([]float64, n)
 	done := make([]bool, n)
@@ -163,6 +225,9 @@ func (s State) TravelCost(fromMap string, fx, fz float64, toMap string, tx, tz f
 func (s *State) MoveTo(p Pose, nowMs int64) error {
 	if !s.CanEnter(p.Map) {
 		return ErrHouseLocked
+	}
+	if _, known := mapRows[p.Map]; known && !Walkable(p.Map, p.X, p.Y) {
+		return ErrMoveBlocked // berdiri di dalam tembok, air, atau lava
 	}
 	fromMap, fx, fz := s.Map, s.FX, s.FZ
 	if !ValidPosition(fromMap, s.X, s.Y) || !finite(fx) || !finite(fz) {

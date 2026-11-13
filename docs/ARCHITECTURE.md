@@ -62,7 +62,8 @@ satu transaksi untuk dua pemain (`store/trades.go`).
 **Server sumber kebenaran.** Klien hanya mengirim *permintaan* (serang, beli, simpan posisi, ...). Semua angka
 (HP, XP, emas, barang, kemenangan, hadiah, jam dunia) dihitung server. `PUT /v1/players/me/save` hanya
 menerima posisi (peta harus dikenal, petak di dalam peta). Sejak v0.77.0 posisi juga harus bisa dicapai dari
-posisi tersimpan (`game.State.MoveTo`: batas kecepatan longgar + pintu antarpeta `game.Doors` + gerbang yang
+posisi tersimpan (`game.State.MoveTo`: batas kecepatan longgar, jarak jalan menyusuri petak `game/pathing.go`
+dengan bentuk peta `tiles_gen.go` yang dibuat `make maps` dari `maps.gd`, pintu antarpeta `game.Doors`, gerbang yang
 terkunci); yang mustahil ditolak `422` dan dicatat `posisi ditolak`. `POST /v1/world/break` dan
 `/v1/world/chest` memakai pemeriksaan yang sama sebelum menghitung jarak ke benda/peti, jadi hadiah selalu
 diukur dari posisi server yang sah. Setiap state yang akan disimpan diperiksa `ValidEconomy`.

@@ -125,8 +125,8 @@ Dokumen: `docs/{API, ARCHITECTURE, BACKUP, TESTING, VERSIONING}.md`, laporan ini
 
 1. **Spam/DoS (Low, sisa)**: batas laju umum sudah ada, tetapi penyerang dengan sangat banyak IP tetap bisa
    membebani satu koneksi SQLite; pertahanan lebih jauh ada di Cloudflare/proxy.
-2. **Tembok (Low-Medium)**: bentuk petak hanya ada di klien, jadi server memakai jarak lurus. Dalam batas waktu,
-   pemain curang bisa "menembus" tembok atau memotong lorong; tidak bisa melewati gerbang terkunci.
+2. ~~Tembok~~: sejak commit berikutnya server mengenal bentuk petak (`make maps`) dan menghitung jarak jalan
+   menyusuri petak; berdiri di tembok/air/lava ditolak. Sisa: NPC dan peti tidak dihitung sebagai penghalang.
 3. **Waktu menganggur (Low)**: waktu sejak gerakan terakhir (termasuk saat offline) menambah jatah jarak; setelah
    lama tidak bermain pemain bisa langsung muncul jauh di wilayah yang sudah terbuka.
 4. **HTTP biasa (Low/operasional)**: tanpa TLS kecuali lewat Cloudflare; token terlihat di jaringan lokal (catatan no. 239).

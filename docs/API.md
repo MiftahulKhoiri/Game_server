@@ -144,8 +144,9 @@ nilai bukan angka (NaN/Inf) ditolak `422`. Kalah bertarung memulangkan pemain ke
 tengah petak awal.
 
 **Gerakan diperiksa server (v0.77.0).** Posisi baru hanya diterima bila bisa dicapai dari posisi tersimpan
-terakhir dalam waktu sejak posisi itu diterima: jarak lurus (lewat pintu antarpeta bila pindah peta, sama
-dengan `EXITS` di `client/scripts/maps.gd`) paling jauh `9 petak/detik x waktu + 8 petak`. Pintu yang masih
+terakhir dalam waktu sejak posisi itu diterima: jarak jalan menyusuri petak yang bisa diinjak (tembok, air, dan
+lava tidak bisa dilewati; lewat pintu antarpeta bila pindah peta, sama dengan `EXITS` di `client/scripts/maps.gd`)
+paling jauh `9 petak/detik x waktu + 8 petak`. Posisi di petak yang tidak bisa diinjak ditolak. Pintu yang masih
 terkunci (gerbang wilayah ujian sebelum ketiga bosnya kalah, gerbang cerita, rumah milik orang lain) tidak bisa
 dilewati. Posisi yang ditolak tidak mengubah apa pun dan menjawab `422` (`posisi tidak sah: ...`); penolakan
 dicatat di log server sebagai `posisi ditolak`. Server mencatat waktu gerakan terakhir di `state.pose_ms`

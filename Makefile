@@ -1,4 +1,4 @@
-.PHONY: build run test vet fmt check client-test patch install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
+.PHONY: maps build run test vet fmt check client-test patch install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -13,6 +13,11 @@ run: build
 
 test:
 	go test ./...
+
+# Bentuk petak peta untuk server (internal/game/tiles_gen.go) dari client/scripts/maps.gd. Jalankan setiap kali
+# peta di maps.gd berubah; TestTilesMatchClient gagal bila lupa.
+maps:
+	go run ./tools/genmaps
 
 vet:
 	go vet ./...

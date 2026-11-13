@@ -90,7 +90,8 @@ func (s *Server) worldAction(w http.ResponseWriter, r *http.Request, wp worldPos
 
 // isMoveError: posisi baru ditolak aturan gerakan server.
 func isMoveError(err error) bool {
-	return errors.Is(err, game.ErrMoveTooFar) || errors.Is(err, game.ErrMapLocked) || errors.Is(err, game.ErrHouseLocked)
+	return errors.Is(err, game.ErrMoveTooFar) || errors.Is(err, game.ErrMapLocked) || errors.Is(err, game.ErrMoveBlocked) ||
+		errors.Is(err, game.ErrHouseLocked)
 }
 
 // logMoveReject mencatat penolakan posisi untuk diperiksa pemilik server (tanpa token/data rahasia).

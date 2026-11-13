@@ -39,7 +39,7 @@ di Pi, CI menjalankannya dengan `-race`.
 
 | Bagian | Tes |
 |--------|-----|
-| Gerakan & peta | `game/movement_test.go` (batas kecepatan, pintu, gerbang ujian/cerita/rumah, data lama, `TestDoorsMatchClient` = pintu server sama dengan `EXITS` klien), `api/movement_test.go` (teleport, peta terkunci, peti/benda dari jauh, NaN/Inf/ekstrem, jeda jaringan, tersambung lagi) |
+| Gerakan & peta | `game/movement_test.go` (batas kecepatan, pintu, gerbang ujian/cerita/rumah, data lama, `TestDoorsMatchClient` = pintu server sama dengan `EXITS` klien, `TestMoveToRespectsWalls`, `TestTilesMatchClient` = petak server sama dengan `maps.gd`), `api/movement_test.go` (teleport, peta terkunci, peti/benda dari jauh, NaN/Inf/ekstrem, jeda jaringan, tersambung lagi) |
 | Dagang | `store/trades_test.go` (bertarung: penjual/pembeli/keduanya × buat/terima/batal/tolak; alur normal; kepemilikan & IDOR; rollback; 16 permintaan bersamaan tanpa duplikasi) |
 | Versi klien & JSON | `api/hardening_test.go` (`TestClientVersionGate`, `TestDecodeStrictJSON`, `TestTrailingJSONRejectedEndToEnd`) |
 | Pembatas & IP | `auth/limiter_test.go` (riwayat terbatas, pulih, banyak identitas, pembersihan, bersamaan, tolok ukur), `TestLoginLimitPerAccountAcrossNameAndEmail`, `TestClientIPTrustedProxies`, `config.TestParseProxies` |

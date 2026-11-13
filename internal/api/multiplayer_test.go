@@ -51,7 +51,7 @@ func playSession(ts *httptest.Server, cr createResponse, moves int) (game.Player
 	ver := cr.Player.Version
 	st := cr.Player.State
 	for i := 0; i < moves; i++ {
-		st.X, st.Y = 6+i%5, 6+i%4
+		st.X, st.Y = 6+i%5, 6+i%2 // jalan desa (petak yang bisa diinjak)
 		var saved game.Player
 		code, err := call("PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: ver, State: st}, &saved)
 		if err != nil || code != http.StatusOK {

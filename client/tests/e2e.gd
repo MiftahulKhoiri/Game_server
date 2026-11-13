@@ -485,10 +485,10 @@ func _run() -> void:
 	var me_story: Dictionary = (await Api.get_me()).data
 	Session.set_player(me_story)
 	var at_chief: Dictionary = Session.player.state.duplicate(true)
-	at_chief.x = 40
-	at_chief.y = 9
+	at_chief.x = 40  # v0.77.0: (40, 9) adalah pagar; server kini menolak petak yang tidak bisa diinjak
+	at_chief.y = 8
 	at_chief.fx = 40.5
-	at_chief.fz = 9.5
+	at_chief.fz = 8.5
 	await create_timer(LEGAL_MOVE_WAIT).timeout  # v0.77.0: server membatasi kecepatan gerak
 	var sv_chief: Dictionary = await Api.save(Session.player.version, at_chief)
 	_check(sv_chief.ok, "simpan posisi di dekat Kepala Desa")
@@ -591,6 +591,7 @@ func _run() -> void:
 	var world2: Node2D = load("res://scenes/world.tscn").instantiate()
 	root.add_child(world2)
 	await process_frame
+	await create_timer(LEGAL_MOVE_WAIT).timeout  # posisi (22,48) dipasang lokal: beri waktu "berjalan" ke sana
 	world2._try_move(Vector2i.DOWN)  # (22,48) -> (22,49) = pintu ke perbatasan
 	await create_timer(0.5).timeout
 	_check(Session.player.state.map == Maps.PERBATASAN and Session.player.state.y == 1, "melewati gerbang selatan masuk Perbatasan (22,1)")
