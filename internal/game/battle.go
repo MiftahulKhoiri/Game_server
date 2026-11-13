@@ -100,6 +100,12 @@ type Battle struct {
 	Tahap     int `json:"tahap,omitempty"`
 	AtkPct    int `json:"atk_pct,omitempty"`
 	RewardPct int `json:"reward_pct,omitempty"`
+	// AI hybrid (ai.go, v0.78.0): keadaan FSM, taktik serangan berikutnya (untuk ancang-ancang di klien), mundur
+	// yang sudah dipakai, dan jendela bertahan musuh (kerusakan yang diterimanya separuh).
+	AIState         string `json:"ai_state,omitempty"`
+	Intent          string `json:"intent,omitempty"`
+	Retreated       bool   `json:"retreated,omitempty"`
+	EnemyGuardUntil int64  `json:"enemy_guard_until,omitempty"`
 }
 
 // BattleView adalah tampilan pertarungan untuk klien: semua waktu relatif terhadap
@@ -124,6 +130,12 @@ type BattleView struct {
 	SoldierHP       []int            `json:"soldier_hp,omitempty"` // HP tiap prajurit yang masih bertarung
 	Phase           int              `json:"phase,omitempty"`      // fase bos bertahap (Malzareth 1..3)
 	Tahap           int              `json:"tahap,omitempty"`      // musuh wilayah ujian diperkuat: Lv 1..3
+	// AI hybrid (v0.78.0): profil perilaku musuh, keadaan FSM, taktik serangan berikutnya (heavy, quick, area,
+	// ranged, ambush, retreat; kosong = biasa) untuk ancang-ancang, dan sisa waktu musuh bertahan.
+	AIProfile    string `json:"ai_profile,omitempty"`
+	AIState      string `json:"ai_state,omitempty"`
+	EnemyIntent  string `json:"enemy_intent,omitempty"`
+	EnemyGuardMs int64  `json:"enemy_guard_ms,omitempty"`
 }
 
 // Event adalah satu kejadian untuk dianimasikan klien.
@@ -136,6 +148,9 @@ type Event struct {
 	// Skill: nama kemampuan khusus musuh pada serangan ini (roadmap no. 85-86); Heal pada kejadian musuh =
 	// HP yang dipulihkan musuh sendiri.
 	Skill string `json:"skill,omitempty"`
+	// Tactic (v0.78.0): taktik serangan musuh (heavy, quick, area, ranged, ambush, retreat) atau peran pendamping
+	// (tank, heavy, ranged, quick, magic, heal); kosong = biasa. Klien lama mengabaikannya.
+	Tactic string `json:"tactic,omitempty"`
 }
 
 // Rewards adalah hadiah setelah menang.
@@ -251,7 +266,11 @@ func (b *Battle) View(now int64) BattleView {
 	}
 	if e, ok := EnemyByID(b.EnemyID); ok {
 		v.EnemyIntervalMs = enemyInterval(e)
+		if prof := ProfileFor(e); prof.ID != "biasa" {
+			v.AIProfile = prof.ID
+		}
 	}
+	v.AIState, v.EnemyIntent, v.EnemyGuardMs = b.AIState, b.Intent, left(b.EnemyGuardUntil)
 	for a, cd := range CooldownMs {
 		if a == ActionAttack && b.AttackMs > 0 {
 			cd = b.AttackMs
@@ -309,6 +328,13 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		dmg, crit := rollDamage(power, style.styleDefense(e.Defense), rng, st.CritPercent()+style.CritBonus)
 		if kind == "combo" {
 			dmg = dmg * ComboPct / 100
+		}
+		if kind == "skill1" && ProfileFor(e).Evasive { // musuh lincah menghindari jurus berat (ai.go)
+			dmg = max(1, dmg*EvadePct/100)
+			logf("%s melompat menghindar sebagian!", b.EnemyName)
+		}
+		if now < b.EnemyGuardUntil { // musuh sedang mundur bertahan
+			dmg = max(1, dmg/2)
 		}
 		b.EnemyHP -= dmg
 		if crit && (kind == "attack" || kind == "combo") {
@@ -425,6 +451,10 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 	}
 	st.ensureAllyHealth()
 	b.ensureSoldiers(st)
+	prof := ProfileFor(e)
+	if b.AIState == "" && b.Round == 1 {
+		b.AIState = AIApproach
+	}
 	allyOn := st.hasHealthyAlly() || len(b.SoldierHP) > 0
 	if allyOn {
 		if b.NextAllyMs == 0 {
@@ -447,6 +477,8 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			continue
 		}
 		t := b.NextEnemyMs
+		// ASSESS + SELECT_TARGET + SELECT_TACTIC (ai.go; tanpa angka acak tambahan).
+		plan := b.assess(e, prof, hpPct(st), b.helpers(st))
 		attack := b.enemyAttack(e)
 		if b.Night {
 			attack = max(attack+1, attack*NightAttack/100) // minimal +1 supaya musuh lemah pun terasa
@@ -454,12 +486,28 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		dmg, _ := rollDamage(attack, st.Defense(), rng, 0)
 		kind := "hit"
 		iv = b.interval(e)
-		next := t + iv
+		if plan.tactic == TacticRetreat {
+			b.Retreated, b.AIState = true, AIRetreat
+			b.EnemyGuardUntil = t + RetreatGuardMs
+			b.Round++
+			b.NextEnemyMs = t + iv*int64(plan.ivPct)/100
+			b.Intent = b.nextIntent(e, st)
+			res.Events = append(res.Events, Event{Who: "enemy", Kind: "retreat", Tactic: TacticRetreat})
+			res.Log = append(res.Log, fmt.Sprintf("%s mundur dan bertahan!", b.EnemyName))
+			continue
+		}
+		next := t + iv*int64(plan.ivPct)/100 + plan.extraMs
 		// Kemampuan khusus (tanpa memakai angka acak tambahan, jadi urutan acak tetap sama).
 		sp := special(e, b.Round)
 		spName := e.SpecialName
 		if e.ID == MalzarethID {
 			sp, spName = b.malzarethPhase(e, res)
+		}
+		if sp != "" {
+			plan.dmgPct = 100 // kemampuan khusus sudah kuat: tidak ditumpuk dengan serangan berat
+		}
+		if plan.dmgPct != 100 {
+			dmg = max(1, dmg*plan.dmgPct/100)
 		}
 		healed := 0
 		switch sp {
@@ -480,7 +528,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		switch {
 		case dodged:
 			dmg, kind = 0, "miss"
-		case guarded && t-b.GuardPress <= PerfectMs:
+		case guarded && t-b.GuardPress <= PerfectMs && !plan.noPerfect: // napas api tidak bisa ditangkis sempurna
 			dmg, kind = 0, "perfect"
 			next += PerfectDelayMs
 		case t < b.ShieldUntil:
@@ -490,10 +538,21 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		}
 		b.Round++
 		b.NextEnemyMs = next
+		b.AIState = AIWindup
+		if plan.tactic == TacticHeavy || plan.tactic == TacticArea || plan.tactic == TacticRanged {
+			b.AIState = AIRecover
+		}
+		tactic := plan.tactic
+		if tactic == TacticNormal {
+			tactic = ""
+		}
+		if plan.area && kind != "miss" && kind != "perfect" {
+			b.areaSplash(st, dmg, res)
+		}
 		// Setiap serangan musuh ketiga diarahkan ke pendamping sehat pertama.
 		// Ini deterministik, tidak mengubah urutan RNG atau perilaku akun tanpa pendamping.
 		targetAlly := ""
-		if kind != "perfect" && kind != "miss" && (b.Round-1)%3 == 0 {
+		if kind != "perfect" && kind != "miss" && !plan.area && ((b.Round-1)%3 == 0 || plan.allyFirst) {
 			for _, id := range st.Party {
 				if hp, _, ok := st.AllyHealth(id); ok && hp > 0 {
 					targetAlly = id
@@ -503,18 +562,19 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		}
 		// Prajurit (v0.66.0): serangan yang tidak mengenai pahlawan pendamping, dua dari tiga, mengenai
 		// prajurit terdepan bila pasukan ikut bertarung.
-		if targetAlly == "" && kind != "perfect" && kind != "miss" && len(b.SoldierHP) > 0 && (b.Round-1)%3 != 2 {
+		if targetAlly == "" && kind != "perfect" && kind != "miss" && !plan.area && len(b.SoldierHP) > 0 && ((b.Round-1)%3 != 2 || plan.allyFirst) {
 			b.SoldierHP[0] -= dmg
 			if b.SoldierHP[0] <= 0 {
 				b.SoldierHP = b.SoldierHP[1:]
 				st.Soldiers = max(0, st.Soldiers-1)
 				st.SoldiersRest = min(st.SoldiersRest, st.Soldiers)
-				res.Events = append(res.Events, Event{Who: "ally", Kind: "down", Dmg: dmg, Hero: SoldierID(1)})
+				res.Events = append(res.Events, Event{Who: "ally", Kind: "down", Dmg: dmg, Hero: SoldierID(1), Tactic: tactic})
 				res.Log = append(res.Log, fmt.Sprintf("Seorang prajurit gugur! Tersisa %d prajurit.", st.Soldiers))
 			} else {
-				res.Events = append(res.Events, Event{Who: "ally", Kind: "hit", Dmg: dmg, Hero: SoldierID(1)})
+				res.Events = append(res.Events, Event{Who: "ally", Kind: "hit", Dmg: dmg, Hero: SoldierID(1), Tactic: tactic})
 				res.Log = append(res.Log, fmt.Sprintf("Prajurit terdepan terkena serangan: -%d HP (tersisa %d).", dmg, b.SoldierHP[0]))
 			}
+			b.Intent = b.nextIntent(e, st)
 			continue
 		}
 		if targetAlly != "" {
@@ -523,7 +583,7 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			if down {
 				allyKind = "down"
 			}
-			res.Events = append(res.Events, Event{Who: "ally", Kind: allyKind, Dmg: dmg, Hero: targetAlly})
+			res.Events = append(res.Events, Event{Who: "ally", Kind: allyKind, Dmg: dmg, Hero: targetAlly, Tactic: tactic})
 			name := targetAlly
 			if h, ok := HeroByID(targetAlly); ok {
 				name = h.Name
@@ -533,13 +593,15 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			} else {
 				res.Log = append(res.Log, fmt.Sprintf("%s terkena serangan: -%d HP (tersisa %d).", name, dmg, remaining))
 			}
+			b.Intent = b.nextIntent(e, st)
 			continue
 		}
 		st.HP -= dmg
 		if dmg > 0 && kind != "guard" && kind != "shield" {
 			b.ComboN = 0 // terkena serangan telak memutus kombo
 		}
-		ev := Event{Who: "enemy", Kind: kind, Dmg: dmg}
+		b.Intent = b.nextIntent(e, st)
+		ev := Event{Who: "enemy", Kind: kind, Dmg: dmg, Tactic: tactic}
 		if sp != "" {
 			ev.Skill, ev.Heal = spName, healed
 		}
@@ -553,6 +615,8 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s: -%d HP, ia pulih %d HP.", b.EnemyName, spName, dmg, healed))
 		case sp != "":
 			res.Log = append(res.Log, fmt.Sprintf("%s memakai %s! -%d HP.", b.EnemyName, spName, dmg))
+		case tactic != "":
+			res.Log = append(res.Log, fmt.Sprintf("%s %s: -%d HP.", b.EnemyName, tacticVerb[tactic], dmg))
 		default:
 			res.Log = append(res.Log, fmt.Sprintf("%s menyerang: -%d HP.", b.EnemyName, dmg))
 		}
@@ -573,6 +637,9 @@ func (b *Battle) allyStrike(p *Player, e Enemy, rng Rand, res *Result) bool {
 			continue
 		}
 		dmg, _ := rollDamage(st.heroPower(id), e.Defense, rng, 0)
+		if b.NextAllyMs-AllyIntervalMs < b.EnemyGuardUntil {
+			dmg = max(1, dmg/2)
+		}
 		b.EnemyHP -= dmg
 		res.Events = append(res.Events, Event{Who: "ally", Kind: "attack", Dmg: dmg, Hero: id})
 		name := id
@@ -709,4 +776,54 @@ func rollDamage(attack, defense int, rng Rand, critPct int) (dmg int, crit bool)
 		crit = true
 	}
 	return dmg, crit
+}
+
+// Aturan AI tambahan (ai.go).
+const (
+	EvadePct       = 60   // jurus berat pemain hanya mengenai sekian persen musuh lincah
+	RetreatGuardMs = 2500 // lama musuh bertahan setelah mundur (kerusakan diterima separuh)
+	AreaPct        = 50   // serangan area: pendamping dan prajurit depan menerima sekian persen kerusakan
+	areaSoldiers   = 3    // prajurit depan yang ikut terkena serangan area
+)
+
+// tacticVerb: kata kerja catatan pertarungan per taktik.
+var tacticVerb = map[string]string{
+	TacticHeavy: "menyerang sekuat tenaga", TacticQuick: "menyerang cepat", TacticAmbush: "menyergap",
+	TacticArea: "menghantam ke segala arah", TacticRanged: "menyembur dari jauh",
+}
+
+// areaSplash: serangan area juga mengenai pendamping sehat dan beberapa prajurit terdepan (AreaPct kerusakan).
+func (b *Battle) areaSplash(st *State, dmg int, res *Result) {
+	splash := max(1, dmg*AreaPct/100)
+	for _, id := range st.Party {
+		if hp, _, ok := st.AllyHealth(id); !ok || hp <= 0 {
+			continue
+		}
+		_, down := st.damageAlly(id, splash)
+		kind := "hit"
+		if down {
+			kind = "down"
+		}
+		res.Events = append(res.Events, Event{Who: "ally", Kind: kind, Dmg: splash, Hero: id, Tactic: TacticArea})
+	}
+	fell := 0
+	for i, hit := 0, 0; i < len(b.SoldierHP) && hit < areaSoldiers; hit++ {
+		b.SoldierHP[i] -= splash
+		if b.SoldierHP[i] <= 0 {
+			b.SoldierHP = append(b.SoldierHP[:i], b.SoldierHP[i+1:]...)
+			st.Soldiers = max(0, st.Soldiers-1)
+			st.SoldiersRest = min(st.SoldiersRest, st.Soldiers)
+			fell++
+			res.Events = append(res.Events, Event{Who: "ally", Kind: "down", Dmg: splash, Hero: SoldierID(1), Tactic: TacticArea})
+			continue
+		}
+		res.Events = append(res.Events, Event{Who: "ally", Kind: "hit", Dmg: splash, Hero: SoldierID(i + 1), Tactic: TacticArea})
+		i++
+	}
+	if len(b.SoldierHP) == 0 {
+		b.SoldierHP = nil
+	}
+	if fell > 0 {
+		res.Log = append(res.Log, fmt.Sprintf("Serangan area menumbangkan %d prajurit! Tersisa %d prajurit.", fell, st.Soldiers))
+	}
 }

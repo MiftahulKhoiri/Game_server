@@ -132,10 +132,11 @@ func TestPerfectGuardBlocksAndDelays(t *testing.T) {
 	if want := int64(1000 + EnemyIntervalMs + PerfectDelayMs); b.NextEnemyMs != want {
 		t.Errorf("serangan berikutnya harus tertunda: %d; mau %d", b.NextEnemyMs, want)
 	}
-	// Setelah jendela habis, serangan berikutnya kena penuh.
+	// Setelah jendela habis, serangan berikutnya kena penuh. Babi hutan (AI v0.78.0) menyeruduk tiap serangan
+	// ke-2: kerusakan x1,5.
 	b.GuardUntil = 0
 	b.Sync(p, b.NextEnemyMs, seq(20))
-	if p.State.HP != 30-6 {
+	if p.State.HP != 30-6*150/100 {
 		t.Errorf("serangan tanpa bertahan: hp=%d", p.State.HP)
 	}
 }
