@@ -148,7 +148,7 @@ jobs:
           # Sejak v0.77.1 alamat bawaan server memakai HTTPS (Tailscale Funnel), jadi APK rilis cukup.
           # Bila alamat bawaan masih http:// (no. 242), APK rilis wajib mengizinkan lalu lintas tanpa TLS;
           # kalau tidak, pakai ekspor debug (perilaku lama).
-          if grep -qE '^var base_url: String = "https://' client/scripts/api.gd; then
+          if grep -qE '^const DEFAULT_URL := "https://' client/scripts/api.gd; then
             echo "Alamat bawaan server HTTPS: APK rilis dipakai"
           elif [ "$status" = 0 ] && [ -f "$out" ]; then
             ct="$("$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}/aapt2" dump xmltree --file AndroidManifest.xml "$out" | grep -i usesCleartextTraffic || true)"
