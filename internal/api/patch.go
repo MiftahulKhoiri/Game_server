@@ -37,15 +37,24 @@ type PatchInfo struct {
 }
 
 // WithPatches menambahkan endpoint patch di depan handler utama. dir kosong = fitur mati (selalu "tidak ada patch").
+// Server produksi memakai opsi PatchDir di New supaya endpoint patch ikut middleware log, recover, dan
+// pembatas laju; fungsi ini dipertahankan untuk pemakai lama.
 func WithPatches(dir string, next http.Handler) http.Handler {
 	mux := http.NewServeMux()
+	registerPatches(mux, dir)
+	mux.Handle("/", next)
+	return mux
+}
+
+// registerPatches memasang GET /v1/patch dan GET /v1/patch/{name} pada mux.
+func registerPatches(mux *http.ServeMux, dir string) {
 	mux.HandleFunc("GET /v1/patch", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, patchFor(dir, r.URL.Query().Get("apk")))
 	})
 	mux.HandleFunc("GET /v1/patch/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
 		if dir == "" || !patchFileRe.MatchString(name) {
-			http.NotFound(w, r)
+			writeError(w, http.StatusNotFound, "patch tidak ditemukan")
 			return
 		}
 		// Unduhan bisa lebih lama dari batas tulis umum server (15 d), terutama lewat data seluler.
@@ -54,8 +63,6 @@ func WithPatches(dir string, next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		http.ServeFile(w, r, filepath.Join(dir, name))
 	})
-	mux.Handle("/", next)
-	return mux
 }
 
 // patchFor memilih patch untuk APK `apk` (kosong = tanpa pemeriksaan versi).

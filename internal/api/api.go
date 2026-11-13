@@ -53,11 +53,38 @@ type Server struct {
 	loginByName *auth.Limiter
 	loginByIP   *auth.Limiter
 	signupByIP  *auth.Limiter
+
+	// Pembatas laju umum (audit no. 20): per IP untuk semua permintaan, per pemain setelah login.
+	reqByIP     *auth.Bucket
+	reqByPlayer *auth.Bucket
+}
+
+// Batas laju umum. Klien normal mengirim ±1-3 permintaan/detik (pertarungan bertanya paling sering tiap
+// beberapa ratus ms, dan tidak pernah dua permintaan bersamaan), jadi batas ini hanya mengenai spam.
+// Per IP lebih longgar karena beberapa pemain bisa berbagi satu IP (wifi rumah, NAT operator).
+// Diubah hanya sebelum server dibuat (tes).
+var (
+	IPRate, IPBurst         = 60.0, 120
+	PlayerRate, PlayerBurst = 20.0, 60
+)
+
+// Option mengatur server yang dibuat New.
+type Option func(*options)
+
+type options struct {
+	patchDir string
+	patches  bool
+}
+
+// PatchDir memasang endpoint patch konten klien (lihat patch.go) di dalam server, sehingga ikut middleware
+// log, recover, dan pembatas laju. dir kosong = endpoint ada tetapi selalu "tidak ada patch".
+func PatchDir(dir string) Option {
+	return func(o *options) { o.patchDir, o.patches = dir, true }
 }
 
 // New membuat http.Handler lengkap dengan routing.
-func New(st *store.Store, log *slog.Logger, info version.Info) http.Handler {
-	return NewWithRand(st, log, info, game.RandomSource{})
+func New(st *store.Store, log *slog.Logger, info version.Info, opts ...Option) http.Handler {
+	return newServer(st, log, info, game.RandomSource{}, time.Now, opts...)
 }
 
 // NewWithRand sama seperti New tetapi dengan sumber acak buatan sendiri (untuk tes).
@@ -68,11 +95,21 @@ func NewWithRand(st *store.Store, log *slog.Logger, info version.Info, rng game.
 // NewWithClock sama seperti NewWithRand tetapi dengan jam buatan sendiri (untuk tes
 // pertarungan real-time).
 func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game.Rand, clock func() time.Time) http.Handler {
+	return newServer(st, log, info, rng, clock)
+}
+
+func newServer(st *store.Store, log *slog.Logger, info version.Info, rng game.Rand, clock func() time.Time, opts ...Option) http.Handler {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
 	s := &Server{
 		store: st, log: log, info: info, rng: rng, clock: clock,
 		loginByName: auth.NewLimiter(5, 15*time.Minute),
 		loginByIP:   auth.NewLimiter(30, 15*time.Minute),
 		signupByIP:  auth.NewLimiter(20, time.Hour),
+		reqByIP:     auth.NewBucket(IPRate, IPBurst),
+		reqByPlayer: auth.NewBucket(PlayerRate, PlayerBurst),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.health)
@@ -133,11 +170,35 @@ func NewWithClock(st *store.Store, log *slog.Logger, info version.Info, rng game
 	mux.Handle("POST /v1/shop/buy", s.auth(http.HandlerFunc(s.shopTrade(game.BuyAt))))
 	mux.Handle("POST /v1/shop/barter", s.auth(http.HandlerFunc(s.shopTrade(game.BarterAt))))
 	mux.Handle("POST /v1/shop/sell", s.auth(http.HandlerFunc(s.shopTrade(game.SellAt))))
+	if o.patches {
+		registerPatches(mux, o.patchDir)
+	}
 	// Jalur yang tidak dikenal dijawab JSON (bukan teks bawaan Go) supaya klien selalu bisa membacanya.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "jalur tidak dikenal: "+r.Method+" "+r.URL.Path)
 	})
-	return s.logRequests(s.recoverPanic(s.clientGate(mux)))
+	return s.logRequests(s.recoverPanic(s.rateLimitIP(s.clientGate(mux))))
+}
+
+// rateLimitIP menolak permintaan yang datang terlalu rapat dari satu IP (429 + Retry-After). /healthz
+// dikecualikan supaya pemantauan tetap jalan.
+func (s *Server) rateLimitIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/healthz" {
+			if wait, ok := s.reqByIP.Allow(clientIP(r)); !ok {
+				s.slowDown(w, wait)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// slowDown menjawab 429 dengan Retry-After (detik, dibulatkan ke atas).
+func (s *Server) slowDown(w http.ResponseWriter, wait time.Duration) {
+	secs := int(wait/time.Second) + 1
+	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	writeError(w, http.StatusTooManyRequests, "terlalu banyak permintaan; coba lagi sebentar lagi")
 }
 
 // --- handler ---
@@ -1027,6 +1088,10 @@ func (s *Server) auth(next http.Handler) http.Handler {
 			if info, ok := r.Context().Value(reqInfoKey{}).(*reqInfo); ok {
 				info.player = p.ID
 			}
+			if wait, ok := s.reqByPlayer.Allow(p.ID); !ok { // satu akun dari banyak IP juga dibatasi
+				s.slowDown(w, wait)
+				return
+			}
 			ctx := context.WithValue(context.WithValue(r.Context(), ctxKey{}, p), tokenKey{}, h)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
@@ -1040,11 +1105,12 @@ func (s *Server) auth(next http.Handler) http.Handler {
 //   - di bawah MinClient: 426 Upgrade Required beserta alamat unduh.
 //   - selain itu diteruskan.
 //
-// /healthz dan /v1/version selalu boleh (untuk pemantauan dan supaya klien tetap bisa membaca min_client).
+// /healthz, /v1/version, dan /v1/patch selalu boleh (pemantauan, membaca min_client, dan patch memeriksa
+// versi APK sendiri).
 func (s *Server) clientGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		v := r.Header.Get("X-Client-Version")
-		exempt := r.URL.Path == "/healthz" || r.URL.Path == "/v1/version"
+		exempt := r.URL.Path == "/healthz" || r.URL.Path == "/v1/version" || strings.HasPrefix(r.URL.Path, "/v1/patch")
 		if v != "" && !exempt {
 			c, err := version.Compare(v, s.info.MinClient)
 			if len(v) > 32 || err != nil {

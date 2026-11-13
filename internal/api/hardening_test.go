@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MiftahulKhoiri/Game_server/internal/store"
 )
 
 // Pengujian audit keamanan v0.77.0: gerbang versi klien dan pembaca JSON.
@@ -184,5 +188,79 @@ func TestClientIPTrustedProxies(t *testing.T) {
 	TrustedProxies = nil
 	if got := clientIP(req("127.0.0.1:5000", map[string]string{"X-Forwarded-For": "1.2.3.4"})); got != "127.0.0.1" {
 		t.Errorf("tanpa proxy tepercaya: %s", got)
+	}
+}
+
+// Batas laju umum (audit no. 20) dengan nilai produksi: spam dari satu IP atau satu akun dihentikan 429
+// (dengan Retry-After), pemakaian normal tidak.
+func TestRateLimitPerIPAndPlayer(t *testing.T) {
+	old := [4]float64{IPRate, float64(IPBurst), PlayerRate, float64(PlayerBurst)}
+	t.Cleanup(func() {
+		IPRate, IPBurst, PlayerRate, PlayerBurst = old[0], int(old[1]), old[2], int(old[3])
+	})
+	IPRate, IPBurst, PlayerRate, PlayerBurst = 60, 120, 20, 60
+
+	// Satu akun: lebih dari 60 permintaan sekaligus -> 429, pemain lain tetap dilayani.
+	ts := newTestServer(t)
+	a, b := register(t, ts, "Pemborong"), register(t, ts, "Tetangga")
+	limited := 0
+	for range 70 {
+		resp, _ := do(t, "GET", ts.URL+"/v1/players/me", a.Token, nil)
+		if resp.StatusCode == http.StatusTooManyRequests {
+			limited++
+			if resp.Header.Get("Retry-After") == "" {
+				t.Fatal("429 tanpa Retry-After")
+			}
+		}
+	}
+	if limited == 0 {
+		t.Fatal("spam satu akun harus terkena 429")
+	}
+	if resp, _ := do(t, "GET", ts.URL+"/v1/players/me", b.Token, nil); resp.StatusCode != http.StatusOK {
+		t.Fatalf("pemain lain tidak boleh ikut terhenti: %d", resp.StatusCode)
+	}
+
+	// Satu IP (tanpa login): lebih dari 120 permintaan sekaligus -> 429; /healthz tetap terbuka.
+	ts2 := newTestServer(t)
+	limited = 0
+	for range 130 {
+		if resp, _ := do(t, "GET", ts2.URL+"/v1/time", "", nil); resp.StatusCode == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited == 0 {
+		t.Fatal("spam satu IP harus terkena 429")
+	}
+	if resp, _ := do(t, "GET", ts2.URL+"/healthz", "", nil); resp.StatusCode != http.StatusOK {
+		t.Fatalf("/healthz harus tetap terbuka: %d", resp.StatusCode)
+	}
+}
+
+// Endpoint patch kini di dalam server: ikut log, recover, dan pembatas laju (audit no. 21).
+func TestPatchEndpointsInsideServer(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "p.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	var buf bytes.Buffer
+	h := New(st, slog.New(slog.NewTextHandler(&buf, nil)), testInfo, PatchDir(t.TempDir()))
+	ts := httptest.NewServer(h)
+	t.Cleanup(ts.Close)
+	req, _ := http.NewRequest("GET", ts.URL+"/v1/patch?apk=0.1.0", nil)
+	req.Header.Set("X-Client-Version", "0.0.1") // di bawah minimum: patch tetap boleh ditanyakan
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("manifes patch: %d", resp.StatusCode)
+	}
+	if resp, _ := do(t, "GET", ts.URL+"/v1/patch/../../etc/passwd.pck", "", nil); resp.StatusCode == http.StatusOK {
+		t.Fatal("jalur keluar folder patch tidak boleh terbaca")
+	}
+	if !strings.Contains(buf.String(), "path=/v1/patch") {
+		t.Errorf("permintaan patch harus tercatat di log: %s", buf.String())
 	}
 }

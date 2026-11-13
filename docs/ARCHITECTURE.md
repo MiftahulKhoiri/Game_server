@@ -73,6 +73,10 @@ pembersihan kunci kedaluwarsa paling sering sekali per seperempat jendela, jumla
 Header IP asli (`CF-Connecting-IP`, `X-Forwarded-For`) hanya dipercaya dari proxy di
 `GAME_TRUSTED_PROXIES` (bawaan: mesin ini sendiri).
 
+**Batas laju umum** (`auth.Bucket`, ember token): per IP 60/detik (burst 120) untuk semua jalur kecuali
+`/healthz`, dan per pemain 20/detik (burst 60) setelah login; lebih dari itu `429` + `Retry-After`. Endpoint
+patch (`/v1/patch`) kini dipasang di dalam server (`api.PatchDir`), jadi ikut log, recover, dan batas laju.
+
 **Database (SQLite, `modernc.org/sqlite`, satu koneksi).** Skema versi 4 (`PRAGMA user_version`), migrasi
 bertahap tanpa kehilangan data (v1 -> v2 akun, v2 -> v3 `trades`, v3 -> v4 `sessions.last_used`). Setiap
 langkah migrasi dan kenaikan `user_version`-nya berada dalam satu transaksi (mati di tengah = versi lama utuh,

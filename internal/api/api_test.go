@@ -24,6 +24,9 @@ import (
 func TestMain(m *testing.M) {
 	auth.Iterations = 1000                                                       // hash cepat untuk tes
 	game.Now = func() int64 { return 3*game.DaySeconds + game.DaySeconds*10/24 } // siang biasa (bukan serbuan/pasar)
+	// Tes beban menjalankan belasan "pemain" dari satu IP secepat mesin; batas laju umum diuji tersendiri
+	// (TestRateLimitPerIPAndPlayer) dengan nilai produksi.
+	IPRate, IPBurst, PlayerRate, PlayerBurst = 1e6, 1_000_000, 1e6, 1_000_000
 	os.Exit(m.Run())
 }
 
