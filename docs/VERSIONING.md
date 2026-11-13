@@ -46,7 +46,11 @@ Server dan klien tidak harus selalu sama nomornya; yang menentukan adalah
    menampilkan pesan update. Jadi aplikasi lama tidak bisa merusak data.
 
 Aplikasi sangat lama (sebelum 0.2.0) belum mengirim versi, jadi tidak bisa
-dipaksa update; mereka tetap dilayani.
+dipaksa update; mereka tetap dilayani (header kosong = diteruskan).
+
+Sejak server v0.77.0 header yang ada tetapi formatnya salah (bukan `MAJOR.MINOR.PATCH`,
+boleh berawalan `v`; lebih dari 32 karakter; angka meluap) ditolak `400`. Sebelumnya
+header rusak ikut diteruskan karena galat pembandingan versi diabaikan.
 
 ## Update dalam aplikasi (v0.12.0)
 

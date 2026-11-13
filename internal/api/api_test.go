@@ -557,7 +557,7 @@ func TestQuestEndToEnd(t *testing.T) {
 }
 
 func TestSaveRejectsUnknownMapAndOutOfBounds(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "Penjelajah")
 	save := func(version int, mapID string, x, y int) int {
 		st := cr.Player.State
@@ -574,19 +574,16 @@ func TestSaveRejectsUnknownMapAndOutOfBounds(t *testing.T) {
 	if code := save(1, game.MapGunungBatu, 180, 1); code != http.StatusUnprocessableEntity {
 		t.Errorf("di luar peta gunung harus 422, dapat %d", code)
 	}
-	if code := save(1, game.MapPerbatasan, 7, 1); code != http.StatusOK {
+	place(t, db, cr.Player.ID, game.MapDesaAwal, 22, 48) // di depan gerbang selatan
+	if code := save(2, game.MapPerbatasan, 22, 2); code != http.StatusOK {
 		t.Errorf("pindah ke perbatasan harus 200, dapat %d", code)
 	}
 }
 
 func TestBattleEnemyDependsOnMap(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "Pemburu")
-	st := cr.Player.State
-	st.Map, st.X, st.Y = game.MapPerbatasan, 7, 2
-	if resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st}); resp.StatusCode != http.StatusOK {
-		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
-	}
+	place(t, db, cr.Player.ID, game.MapPerbatasan, 7, 2)
 	_, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", nil)
 	if start.Battle == nil || (start.Battle.EnemyID != "ular_hutan" && start.Battle.EnemyID != "tikus_sawah" && start.Battle.EnemyID != "belalang_raksasa") {
 		t.Errorf("level 1 di perbatasan harus bertemu musuh kecil hutan: %s", d)
@@ -594,16 +591,12 @@ func TestBattleEnemyDependsOnMap(t *testing.T) {
 }
 
 func TestBossBattleOnlyAtBossSpot(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "Penantang")
 	if code, _, _ := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]bool{"boss": true}); code != http.StatusUnprocessableEntity {
 		t.Errorf("minta bos jauh dari singgasana harus 422, dapat %d", code)
 	}
-	st := cr.Player.State
-	st.Map, st.X, st.Y = game.MapGuaBatu, 7, 14
-	if resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st}); resp.StatusCode != http.StatusOK {
-		t.Fatalf("simpan: %d %s", resp.StatusCode, d)
-	}
+	place(t, db, cr.Player.ID, game.MapGuaBatu, 7, 14)
 	code, start, d := battleCall(t, ts, cr.Token, "POST", "/v1/battle/start", map[string]bool{"boss": true})
 	if code != http.StatusCreated || start.Battle == nil || start.Battle.EnemyID != "raja_goblin" {
 		t.Fatalf("bos: %d %s", code, d)
@@ -678,25 +671,24 @@ func TestInventoryEquipUseRest(t *testing.T) {
 }
 
 func TestRestRefusedOutsideVillage(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "Pengembara")
-	st := cr.Player.State
-	st.Map, st.X, st.Y = game.MapPerbatasan, 7, 1
-	do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st})
+	place(t, db, cr.Player.ID, game.MapPerbatasan, 7, 1)
 	if resp, _ := do(t, "POST", ts.URL+"/v1/rest", cr.Token, nil); resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Errorf("istirahat di perbatasan harus 422, dapat %d", resp.StatusCode)
 	}
 }
 
 func TestSaveFinePosition(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "Pejalan3D")
 	if cr.Player.State.FX != float64(game.SpawnX)+0.5 || cr.Player.State.FZ != float64(game.SpawnY)+0.5 {
 		t.Fatalf("pemain baru harus di tengah petak awal: %+v", cr.Player.State)
 	}
+	place(t, db, cr.Player.ID, game.MapPerbatasan, 7, 2)
 	st := cr.Player.State
 	st.Map, st.X, st.Y, st.FX, st.FZ, st.Yaw = game.MapPerbatasan, 7, 2, 7.3, 2.8, 1.2
-	resp, data := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 1, State: st})
+	resp, data := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 2, State: st})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("simpan pose: %d %s", resp.StatusCode, data)
 	}
@@ -709,7 +701,7 @@ func TestSaveFinePosition(t *testing.T) {
 	}
 	// Posisi halus yang tidak cocok dengan petak diperbaiki ke tengah petak.
 	st.FX, st.FZ = 1.1, 1.1
-	_, data = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 2, State: st})
+	_, data = do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: 3, State: st})
 	var fixed game.Player
 	if err := json.Unmarshal(data, &fixed); err != nil {
 		t.Fatal(err)
@@ -851,22 +843,11 @@ func TestShopPerShop(t *testing.T) {
 }
 
 func TestHutanBossStartFromWorld(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "PenjelajahHutan")
-	st := cr.Player.State
-	version := cr.Player.Version
 	pindah := func(m string, x, y int) {
 		t.Helper()
-		st.Map, st.X, st.Y = m, x, y
-		resp, d := do(t, "PUT", ts.URL+"/v1/players/me/save", cr.Token, saveRequest{Version: version, State: st})
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("simpan: %d %s", resp.StatusCode, d)
-		}
-		var p game.Player
-		if err := json.Unmarshal(d, &p); err != nil {
-			t.Fatal(err)
-		}
-		version = p.Version
+		place(t, db, cr.Player.ID, m, x, y)
 	}
 	pindah(game.MapHutanLebat, 80, 22)
 	body := map[string]string{"enemy": "goblin_hutan_1"}
@@ -892,7 +873,6 @@ func TestHutanBossStartFromWorld(t *testing.T) {
 		if err := json.Unmarshal(d, &p); err != nil {
 			t.Fatal(err)
 		}
-		version = p.Version
 		radar := 0
 		for _, it := range p.State.Inventory {
 			if it.ID == game.RadarID {

@@ -22,6 +22,16 @@ func setState(t *testing.T, st *store.Store, id string, fn func(*game.State)) {
 	}
 }
 
+// place menaruh pemain langsung lewat store di tengah petak (x, y). Hanya untuk menyiapkan tes: klien
+// tidak bisa berpindah seperti ini karena gerakan diperiksa server (game.State.MoveTo).
+func place(t *testing.T, st *store.Store, id, mapID string, x, y int) {
+	t.Helper()
+	setState(t, st, id, func(s *game.State) {
+		s.Map, s.X, s.Y = mapID, x, y
+		s.PlaceAtTileCenter()
+	})
+}
+
 func playerOf(t *testing.T, data []byte) game.Player {
 	t.Helper()
 	var p game.Player
@@ -211,7 +221,8 @@ func TestWorldEventsAndSecret(t *testing.T) {
 	if resp, _ := do(t, "POST", ts.URL+"/v1/world/raid/claim", cr.Token, nil); resp.StatusCode != http.StatusUnprocessableEntity {
 		t.Fatalf("tanpa serbuan harus 422: %d", resp.StatusCode)
 	}
-	// Penjelajahan dicatat server saat posisi disimpan.
+	// Penjelajahan dicatat server saat posisi disimpan (lewat gerbang selatan desa ke Perbatasan).
+	place(t, st, cr.Player.ID, game.MapDesaAwal, 22, 48)
 	_, data = do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
 	me := playerOf(t, data)
 	body := map[string]any{"version": me.Version, "state": map[string]any{"map": "perbatasan", "x": 22, "y": 2, "level": 1, "hp": 30, "max_hp": 30}}

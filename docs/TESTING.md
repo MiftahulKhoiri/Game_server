@@ -35,6 +35,19 @@ di Pi, CI menjalankannya dengan `-race`.
 | 269 | Performa | `TestServerLatencyUnderLoad` (8 pemain × 25 simpan, p95 < 250 ms), `make bench` | "v0.62: Android dan performa" (profil kualitas, uji ketahanan 8× pindah peta) |
 | 270 | Kompatibilitas Android | — | CI "Periksa APK": arm64-v8a, API minimum/target, tanda tangan sama, izin, HTTP |
 
+## Audit keamanan v0.77.0
+
+| Bagian | Tes |
+|--------|-----|
+| Gerakan & peta | `game/movement_test.go` (batas kecepatan, pintu, gerbang ujian/cerita/rumah, data lama, `TestDoorsMatchClient` = pintu server sama dengan `EXITS` klien), `api/movement_test.go` (teleport, peta terkunci, peti/benda dari jauh, NaN/Inf/ekstrem, jeda jaringan, tersambung lagi) |
+| Dagang | `store/trades_test.go` (bertarung: penjual/pembeli/keduanya × buat/terima/batal/tolak; alur normal; kepemilikan & IDOR; rollback; 16 permintaan bersamaan tanpa duplikasi) |
+| Versi klien & JSON | `api/hardening_test.go` (`TestClientVersionGate`, `TestDecodeStrictJSON`, `TestTrailingJSONRejectedEndToEnd`) |
+| Pembatas & IP | `auth/limiter_test.go` (riwayat terbatas, pulih, banyak identitas, pembersihan, bersamaan, tolok ukur), `TestLoginLimitPerAccountAcrossNameAndEmail`, `TestClientIPTrustedProxies`, `config.TestParseProxies` |
+| Sesi, migrasi, cadangan | `store/hardening_test.go` (sesi sah/kedaluwarsa/dicabut/rusak, gagal last_used, database mati, bersamaan; skema baru/sama/lebih baru/gagal di tengah; kerusakan terdeteksi, cadangan saat ramai, cadangan gagal, pemulihan), `cmd/gameserver.TestCheckDatabaseFailSafe` |
+
+`go test -race` tidak bisa dijalankan di Pi 5 (ThreadSanitizer Go di arm64 butuh ruang alamat 48-bit, kernel Pi
+memakai 47-bit); CI (`.github/workflows/ci.yml`, Ubuntu x86-64) menjalankannya di setiap push/PR.
+
 ## Hasil acuan di Raspberry Pi 5 (v0.63.0)
 
 | Ukuran | Hasil |

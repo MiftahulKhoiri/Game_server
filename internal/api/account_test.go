@@ -98,7 +98,7 @@ func TestLoginProgressSurvivesRelogin(t *testing.T) {
 	ts := newTestServer(t)
 	reg := register(t, ts, "Pejuang")
 	resp, data := do(t, "PUT", ts.URL+"/v1/players/me/save", reg.Token, map[string]any{
-		"version": 1, "state": map[string]any{"map": "perbatasan", "x": 3, "y": 4, "level": 1, "hp": 30, "max_hp": 30},
+		"version": 1, "state": map[string]any{"map": "desa_awal", "x": 3, "y": 4, "level": 1, "hp": 30, "max_hp": 30},
 	})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("simpan: %d %s", resp.StatusCode, data)
@@ -107,7 +107,7 @@ func TestLoginProgressSurvivesRelogin(t *testing.T) {
 	_, data = postJSON(t, ts.URL+"/v1/login", map[string]string{"login": "Pejuang", "password": testPassword}, nil)
 	var cr createResponse
 	_ = json.Unmarshal(data, &cr)
-	if cr.Player.State.Map != "perbatasan" || cr.Player.State.X != 3 || cr.Player.Version != 2 {
+	if cr.Player.State.Map != "desa_awal" || cr.Player.State.X != 3 || cr.Player.Version != 2 {
 		t.Errorf("progress harus utuh setelah login ulang: %+v", cr.Player)
 	}
 }

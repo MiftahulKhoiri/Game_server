@@ -5,6 +5,9 @@ extends SceneTree
 const Maps = preload("res://scripts/maps.gd")
 const Movement = preload("res://scripts/movement.gd")
 const Version = preload("res://scripts/version.gd")
+## v0.77.0: server menolak posisi yang tidak bisa dicapai secepat itu (9 petak/detik + 8 petak). Uji yang
+## memindahkan pemain lewat simpan posisi menunggu sebanyak ini dulu (cukup untuk ±100 petak / 2-3 peta).
+const LEGAL_MOVE_WAIT := 11.0
 
 var _failed := false
 var Api: Node  # autoload tidak dikenal saat skrip utama dikompilasi; ambil dari pohon
@@ -486,6 +489,7 @@ func _run() -> void:
 	at_chief.y = 9
 	at_chief.fx = 40.5
 	at_chief.fz = 9.5
+	await create_timer(LEGAL_MOVE_WAIT).timeout  # v0.77.0: server membatasi kecepatan gerak
 	var sv_chief: Dictionary = await Api.save(Session.player.version, at_chief)
 	_check(sv_chief.ok, "simpan posisi di dekat Kepala Desa")
 	if sv_chief.ok:
@@ -613,10 +617,12 @@ func _run() -> void:
 	at_throne.map = Maps.GUA
 	at_throne.x = 7
 	at_throne.y = 14
+	# v0.77.0: gerakan diperiksa server. Melompat dari Perbatasan ke Benteng Orc (gerbang wilayah ujian masih
+	# terkunci) ditolak; pertarungan bos di singgasana diuji di server (TestBossBattleOnlyAtBossSpot).
 	var sv: Dictionary = await Api.save(Session.player.version, at_throne)
-	_check(sv.ok, "simpan posisi di singgasana")
+	_check(not sv.ok and sv.status == 422, "lompat ke singgasana Benteng Orc (gerbang terkunci) ditolak server 422")
 	var boss: Dictionary = await Api.battle_start(true)
-	_check(boss.ok and boss.data.battle.enemy_id == "raja_goblin", "singgasana memanggil Raja Goblin")
+	_check(not boss.ok and boss.status == 422, "bos tetap tidak bisa dipanggil setelah lompatan ditolak")
 	if boss.ok:
 		var bscene: Control = load("res://scenes/battle.tscn").instantiate()
 		Session.merge_server_player(boss.data.player)
@@ -1121,6 +1127,7 @@ func _run() -> void:
 		_check(ws.ok and (ws.data.items as Array).is_empty(), "GET /v1/world awalnya kosong")
 		var far_chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(5.5, 5.5), 0.0)
 		_check(not far_chest.ok and far_chest.status == 422, "peti dari jauh ditolak 422")
+		await create_timer(LEGAL_MOVE_WAIT).timeout  # berjalan ke peti dulu (server membatasi kecepatan gerak)
 		var chest: Dictionary = await Api.world_chest("desa_1", "desa_awal", Vector2(43.5, 9.0), 0.0)
 		var kinds_v44: int = (1 if int(chest.data.loot.get("gold", 0)) > 0 else 0) + (chest.data.loot.get("items", []) as Array).size()
 		_check(chest.ok and kinds_v44 == 3, "membuka peti memberi 3 hadiah acak yang berbeda (%d)" % kinds_v44)
@@ -1963,6 +1970,7 @@ func _run() -> void:
 	fst.y = 5
 	fst.fx = 22.5
 	fst.fz = 5.5
+	await create_timer(LEGAL_MOVE_WAIT).timeout
 	var saved_f: Dictionary = await Api.save(Session.player.version, fst)
 	_check(saved_f.ok, "posisi di hutan Perbatasan tersimpan")
 	if saved_f.ok:
@@ -2669,6 +2677,7 @@ func _run() -> void:
 	s49.map = Maps.PERBATASAN
 	s49.x = 35
 	s49.y = 40
+	await create_timer(LEGAL_MOVE_WAIT).timeout
 	var sv1_v49: Dictionary = await Api.save(Session.player.version, s49)
 	_check(sv1_v49.ok, "simpan posisi jauh dari kem")
 	Session.player.version = int(sv1_v49.data.version)
@@ -2677,6 +2686,7 @@ func _run() -> void:
 	s49.map = Maps.HUTAN
 	s49.x = 60
 	s49.y = 12
+	await create_timer(LEGAL_MOVE_WAIT).timeout
 	var sv2_v49: Dictionary = await Api.save(Session.player.version, s49)
 	Session.player.version = int(sv2_v49.data.version)
 	var early_v49: Dictionary = await Api.battle_start(false, "kancil_hutan")
@@ -2684,6 +2694,7 @@ func _run() -> void:
 	s49.map = Maps.PERBATASAN
 	s49.x = 23
 	s49.y = 5
+	await create_timer(LEGAL_MOVE_WAIT).timeout
 	var sv3_v49: Dictionary = await Api.save(Session.player.version, s49)
 	Session.player.version = int(sv3_v49.data.version)
 	var brief_v49: Dictionary = await Api.hutan_brief()

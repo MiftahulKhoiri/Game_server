@@ -1,13 +1,10 @@
 package api
 
 import (
-	"errors"
-	"math"
 	"net/http"
 	"time"
 
 	"github.com/MiftahulKhoiri/Game_server/internal/auth"
-	"github.com/MiftahulKhoiri/Game_server/internal/game"
 	"github.com/MiftahulKhoiri/Game_server/internal/store"
 )
 
@@ -82,35 +79,6 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	s.loginByName.Reset("id:" + p.ID)
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// --- pemantauan gerakan (roadmap no. 228) ---
-
-// Kecepatan tercepat yang masuk akal (petak/detik, termasuk lari + Boost + menghindar) dan kelonggaran.
-const (
-	maxTilesPerSec = 12.0
-	moveGrace      = 25.0
-)
-
-// errSuspicious hanya dipakai untuk log: posisi baru terlalu jauh dari posisi lama dalam waktu sesingkat itu.
-var errSuspicious = errors.New("gerakan mencurigakan")
-
-// watchMovement mencatat (tidak menolak) lompatan posisi yang mustahil di peta yang sama. Pindah peta
-// lewat pintu dan pemulangan setelah kalah tidak dihitung. Ditolak langsung bisa membuat pemain yang
-// sinyalnya putus-sambung tidak bisa menyimpan; jadi server mencatat untuk diperiksa pemilik server.
-func (s *Server) watchMovement(p game.Player, pose game.Pose) {
-	old := p.State
-	if old.Map != pose.Map || (old.FX == 0 && old.FZ == 0) {
-		return
-	}
-	dist := math.Hypot(pose.FX-old.FX, pose.FZ-old.FZ)
-	elapsed := s.clock().Sub(p.UpdatedAt).Seconds()
-	if elapsed < 0 {
-		elapsed = 0
-	}
-	if dist > maxTilesPerSec*elapsed+moveGrace {
-		s.log.Warn(errSuspicious.Error(), "player", p.ID, "map", pose.Map, "jarak", math.Round(dist), "detik", math.Round(elapsed))
-	}
 }
 
 func storeIdleDays() float64 { return storeSessionIdle().Hours() / 24 }

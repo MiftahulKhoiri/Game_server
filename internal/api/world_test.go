@@ -9,7 +9,7 @@ import (
 )
 
 func TestWorldChestAndBreak(t *testing.T) {
-	ts := newTestServer(t)
+	ts, db := newTestServerWithStore(t)
 	cr := register(t, ts, "Pemburu")
 	tok := cr.Token
 
@@ -31,6 +31,7 @@ func TestWorldChestAndBreak(t *testing.T) {
 		t.Errorf("peti dari jauh: status %d, mau 422", resp.StatusCode)
 	}
 
+	place(t, db, cr.Player.ID, game.MapDesaAwal, 43, 9) // berjalan ke dekat peti (disiapkan lewat store)
 	near := map[string]any{"map": "desa_awal", "fx": 43.5, "fz": 9.2, "yaw": 0, "id": "desa_1"}
 	resp, data = do(t, "POST", ts.URL+"/v1/world/chest", tok, near)
 	if resp.StatusCode != http.StatusOK {

@@ -4,7 +4,7 @@
 #   bash scripts/restore-db.sh                 # daftar cadangan yang ada
 #   bash scripts/restore-db.sh data/backup/game-20261110-090000.db
 #
-# Langkah: periksa cadangan (quick_check) -> hentikan server -> simpan database sekarang sebagai
+# Langkah: periksa cadangan (integrity_check) -> hentikan server -> simpan database sekarang sebagai
 # data/game.db.sebelum-pulih-WAKTU -> salin cadangan -> nyalakan server -> periksa /healthz.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -20,17 +20,24 @@ SRC=$1
 python3 - "$SRC" <<'PY'
 import sqlite3, sys
 c = sqlite3.connect("file:" + sys.argv[1] + "?mode=ro", uri=True)
-r = c.execute("PRAGMA quick_check").fetchone()[0]
+r = c.execute("PRAGMA integrity_check").fetchone()[0]
 n = c.execute("SELECT COUNT(*) FROM players").fetchone()[0]
-print(f"Cadangan: quick_check={r}, pemain={n}")
+print(f"Cadangan: integrity_check={r}, pemain={n}")
 sys.exit(0 if r == "ok" else 1)
 PY
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 systemctl --user stop gameserver || true
 STAMP=$(date +%Y%m%d-%H%M%S)
-[ -f "$DB" ] && cp "$DB" "$DB.sebelum-pulih-$STAMP"
+# Simpan database sekarang BESERTA berkas -wal/-shm-nya: setelah server mati mendadak, transaksi terakhir
+# bisa masih berada di -wal, jadi menyalin game.db saja bisa kehilangan data.
+for ext in "" "-wal" "-shm"; do
+	[ -f "$DB$ext" ] && cp "$DB$ext" "$DB.sebelum-pulih-$STAMP$ext"
+done
+# Salin ke berkas sementara dulu, baru ganti nama (atomik): tidak ada game.db setengah jadi bila terputus.
+cp "$SRC" "$DB.pulih-tmp"
+sync "$DB.pulih-tmp" 2>/dev/null || sync
 rm -f "$DB-wal" "$DB-shm"
-cp "$SRC" "$DB"
+mv -f "$DB.pulih-tmp" "$DB"
 systemctl --user start gameserver
 for i in $(seq 1 20); do
 	if curl -fsS localhost:8090/healthz >/dev/null 2>&1; then

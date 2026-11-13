@@ -2,8 +2,11 @@
 package config
 
 import (
+	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MiftahulKhoiri/Game_server/internal/version"
@@ -27,6 +30,11 @@ type Config struct {
 	BackupDir   string
 	BackupEvery time.Duration
 	BackupKeep  int
+	// TrustedProxies: isi GAME_TRUSTED_PROXIES apa adanya (lihat ParseProxies).
+	TrustedProxies string
+	// DBCheck: "strict" (bawaan) = server menolak menyala bila quick_check menemukan kerusakan; "warn" = tetap
+	// menyala dengan catatan ERROR (penyelamatan darurat).
+	DBCheck string
 }
 
 // Load membaca konfigurasi. Nilai bawaan cocok untuk pengembangan di Pi.
@@ -40,6 +48,9 @@ type Config struct {
 //	GAME_BACKUP_DIR     folder cadangan database  (bawaan "data/backup"; "off" = mati)
 //	GAME_BACKUP_HOURS   jarak antar cadangan, jam (bawaan 24)
 //	GAME_BACKUP_KEEP    jumlah cadangan disimpan  (bawaan 7)
+//	GAME_TRUSTED_PROXIES proxy tepercaya untuk header IP asli, dipisah koma (IP atau CIDR;
+//	                    bawaan "127.0.0.0/8,::1" = proxy lokal saja; "none" = tidak ada)
+//	GAME_DB_CHECK       "strict" (bawaan) atau "warn": sikap bila database rusak saat menyala
 //
 // Dengan GAME_MIN_CLIENT dan GAME_LATEST_CLIENT, pemilik server bisa
 // mewajibkan update tanpa membangun ulang server.
@@ -54,7 +65,35 @@ func Load() Config {
 		BackupDir:    backupDir(env("GAME_BACKUP_DIR", "data/backup")),
 		BackupEvery:  time.Duration(envInt("GAME_BACKUP_HOURS", 24)) * time.Hour,
 		BackupKeep:   envInt("GAME_BACKUP_KEEP", 7),
+
+		TrustedProxies: env("GAME_TRUSTED_PROXIES", DefaultTrustedProxies),
+		DBCheck:        env("GAME_DB_CHECK", "strict"),
 	}
+}
+
+// DefaultTrustedProxies: hanya proxy di mesin ini sendiri (mis. cloudflared/nginx di Pi).
+const DefaultTrustedProxies = "127.0.0.0/8,::1"
+
+// ParseProxies membaca daftar IP/CIDR dipisah koma. "none" atau kosong = tidak ada proxy tepercaya.
+func ParseProxies(v string) ([]netip.Prefix, error) {
+	v = strings.TrimSpace(v)
+	if v == "" || v == "none" {
+		return nil, nil
+	}
+	var out []netip.Prefix
+	for _, part := range strings.Split(v, ",") {
+		part = strings.TrimSpace(part)
+		if p, err := netip.ParsePrefix(part); err == nil {
+			out = append(out, p.Masked())
+			continue
+		}
+		a, err := netip.ParseAddr(part)
+		if err != nil {
+			return nil, fmt.Errorf("GAME_TRUSTED_PROXIES: %q bukan IP/CIDR", part)
+		}
+		out = append(out, netip.PrefixFrom(a, a.BitLen()))
+	}
+	return out, nil
 }
 
 func backupDir(v string) string {

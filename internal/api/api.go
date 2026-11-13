@@ -10,9 +10,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"regexp"
 	"runtime/debug"
 	"strconv"
@@ -241,18 +243,28 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "isi nama (atau email) dan kata sandi")
 		return
 	}
-	key, ip := strings.ToLower(req.Login), clientIP(r)
-	if s.tooMany(w, s.loginByName, key) || s.tooMany(w, s.loginByIP, ip) {
+	ip := clientIP(r)
+	if s.tooMany(w, s.loginByIP, ip) {
 		return
 	}
-	reject := func() {
-		s.loginByName.Fail(key)
+	// Isian kelewat panjang tidak pernah sah: dihitung untuk IP saja, supaya kunci pembatas tidak bisa
+	// dipakai untuk mengisi memori dengan string raksasa.
+	if len(req.Password) > auth.MaxPassword || len(req.Login) > 254 {
 		s.loginByIP.Fail(ip)
 		writeError(w, http.StatusUnauthorized, badLogin)
-	}
-	if len(req.Password) > auth.MaxPassword || len(req.Login) > 254 {
-		reject()
 		return
+	}
+	key := strings.ToLower(req.Login)
+	if s.tooMany(w, s.loginByName, key) {
+		return
+	}
+	reject := func(extra ...string) {
+		s.loginByName.Fail(key)
+		s.loginByIP.Fail(ip)
+		for _, k := range extra {
+			s.loginByName.Fail(k)
+		}
+		writeError(w, http.StatusUnauthorized, badLogin)
 	}
 	p, hash, err := s.store.PlayerByLogin(r.Context(), req.Login)
 	switch {
@@ -263,8 +275,15 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, r, err)
 		return
-	case !auth.Verify(req.Password, hash):
-		reject()
+	}
+	// Satu akun bisa dimasuki lewat nama ATAU email: kegagalan juga dihitung per akun ("id:..."), jadi
+	// berganti bentuk isian (nama/email, huruf besar/kecil) tidak menambah jatah tebakan.
+	acct := "id:" + p.ID
+	if s.tooMany(w, s.loginByName, acct) {
+		return
+	}
+	if !auth.Verify(req.Password, hash) {
+		reject(acct)
 		return
 	}
 	token, err := randomHex(32)
@@ -277,6 +296,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.loginByName.Reset(key)
+	s.loginByName.Reset(acct)
 	// Hash lama (putaran PBKDF2 lebih sedikit) diperbarui diam-diam saat kata sandinya terbukti benar.
 	if auth.NeedsRehash(hash) {
 		if nh, err := auth.Hash(req.Password); err == nil {
@@ -310,19 +330,44 @@ func (s *Server) tooMany(w http.ResponseWriter, l *auth.Limiter, key string) boo
 	return true
 }
 
-// clientIP mengambil alamat peminta. Header proxy (Cloudflare / X-Forwarded-For) hanya dipercaya
-// bila sambungan datang dari mesin ini sendiri (proxy lokal), supaya tidak bisa dipalsukan dari luar.
+// TrustedProxies: alamat proxy yang header-nya (CF-Connecting-IP / X-Forwarded-For) dipercaya untuk
+// menentukan IP asli peminta. Bawaan: hanya mesin ini sendiri (cloudflared/nginx lokal). Diatur sekali saat
+// server menyala lewat GAME_TRUSTED_PROXIES (lihat internal/config); "none" = tidak ada proxy dipercaya.
+var TrustedProxies = []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128")}
+
+func trustedProxy(a netip.Addr) bool {
+	a = a.Unmap()
+	for _, p := range TrustedProxies {
+		if p.Contains(a) {
+			return true
+		}
+	}
+	return false
+}
+
+// clientIP mengambil alamat peminta. Header proxy hanya dipercaya bila sambungan datang dari proxy yang
+// dikonfigurasi (TrustedProxies), supaya tidak bisa dipalsukan dari luar. Dari X-Forwarded-For dipakai alamat
+// paling kanan yang bukan proxy tepercaya (yang paling kiri bisa diisi sendiri oleh peminta).
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
-		for _, h := range []string{"CF-Connecting-IP", "X-Forwarded-For"} {
-			first := strings.TrimSpace(strings.Split(r.Header.Get(h), ",")[0])
-			if net.ParseIP(first) != nil {
-				return first
-			}
+	remote, err := netip.ParseAddr(host)
+	if err != nil || !trustedProxy(remote) {
+		return host
+	}
+	if ip, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get("CF-Connecting-IP"))); err == nil {
+		return ip.Unmap().String()
+	}
+	parts := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		ip, err := netip.ParseAddr(strings.TrimSpace(parts[i]))
+		if err != nil {
+			break // isian rusak: jangan percaya apa pun di sebelah kirinya
+		}
+		if !trustedProxy(ip) || i == 0 {
+			return ip.Unmap().String()
 		}
 	}
 	return host
@@ -347,21 +392,22 @@ func (s *Server) saveMe(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	// Server otoritatif: hanya posisi yang diterima dari klien, dan harus di dalam peta yang dikenal.
+	// Server otoritatif: hanya posisi yang diterima dari klien, harus di dalam peta yang dikenal, dan harus
+	// bisa dicapai dari posisi tersimpan (batas kecepatan, pintu antarpeta, gerbang yang terkunci).
 	st := req.State
 	pose, ok := game.NormalizePose(game.Pose{Map: st.Map, X: st.X, Y: st.Y, FX: st.FX, FZ: st.FZ, Yaw: st.Yaw})
 	if !ok {
 		writeError(w, http.StatusUnprocessableEntity, "posisi di luar peta atau peta tidak dikenal")
 		return
 	}
-	s.watchMovement(playerFrom(r), pose)
-	p, err := s.store.SavePosition(r.Context(), playerFrom(r).ID, pose, req.Version)
+	p, err := s.store.SavePosition(r.Context(), playerFrom(r).ID, pose, req.Version, s.clock())
 	switch {
 	case errors.Is(err, store.ErrConflict):
 		writeError(w, http.StatusConflict, "versi data tidak cocok; ambil data terbaru dulu")
 	case errors.Is(err, store.ErrNotFound):
 		writeError(w, http.StatusNotFound, "pemain tidak ditemukan")
-	case errors.Is(err, game.ErrHouseLocked):
+	case isMoveError(err):
+		s.logMoveReject(r, pose, err)
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 	case err != nil:
 		s.fail(w, r, err)
@@ -962,8 +1008,16 @@ func (s *Server) auth(next http.Handler) http.Handler {
 		}
 		h := hashToken(token)
 		p, err := s.store.AuthSession(r.Context(), h, s.clock())
+		if errors.Is(err, store.ErrSessionTouch) {
+			// Sesi sah; hanya catatan waktu pakai yang gagal ditulis. Permintaan diteruskan, masalahnya dicatat.
+			s.log.Warn("gagal memperbarui waktu pakai sesi", "player", p.ID, "err", err)
+			err = nil
+		}
 		switch {
 		case errors.Is(err, store.ErrSessionExpired):
+			if err != store.ErrSessionExpired { // dibungkus = sesi kedaluwarsa tetapi penghapusannya gagal
+				s.log.Warn("sesi kedaluwarsa gagal dihapus", "err", err)
+			}
 			writeError(w, http.StatusUnauthorized, "sesi kedaluwarsa; silakan masuk lagi")
 		case errors.Is(err, store.ErrNotFound):
 			writeError(w, http.StatusUnauthorized, "token tidak valid")
@@ -979,15 +1033,29 @@ func (s *Server) auth(next http.Handler) http.Handler {
 	})
 }
 
-// clientGate menolak klien yang versinya di bawah MinClient (426 Upgrade Required).
-// Klien mengirim versinya lewat header X-Client-Version. Klien lama yang belum
-// mengirim header tidak dapat dipaksa update.
+// clientGate memeriksa header X-Client-Version (versi aplikasi):
+//   - kosong: diteruskan. Klien lama (sebelum header ini ada) tidak bisa dipaksa update lewat header; mereka
+//     dihentikan oleh perubahan API lain bila perlu. Lihat docs/VERSIONING.md.
+//   - format tidak sah (bukan MAJOR.MINOR.PATCH, terlalu panjang, angka meluap): 400.
+//   - di bawah MinClient: 426 Upgrade Required beserta alamat unduh.
+//   - selain itu diteruskan.
+//
+// /healthz dan /v1/version selalu boleh (untuk pemantauan dan supaya klien tetap bisa membaca min_client).
 func (s *Server) clientGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		v := r.Header.Get("X-Client-Version")
 		exempt := r.URL.Path == "/healthz" || r.URL.Path == "/v1/version"
 		if v != "" && !exempt {
-			if c, err := version.Compare(v, s.info.MinClient); err == nil && c < 0 {
+			c, err := version.Compare(v, s.info.MinClient)
+			if len(v) > 32 || err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]any{
+					"error":      "versi aplikasi tidak valid (harus MAJOR.MINOR.PATCH)",
+					"min_client": s.info.MinClient,
+					"update_url": s.info.UpdateURL,
+				})
+				return
+			}
+			if c < 0 {
 				writeJSON(w, http.StatusUpgradeRequired, map[string]any{
 					"error":      "Versi aplikasi " + v + " sudah terlalu lama (minimal " + s.info.MinClient + "). Silakan update.",
 					"min_client": s.info.MinClient,
@@ -1065,15 +1133,38 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	writeError(w, http.StatusInternalServerError, "kesalahan internal server")
 }
 
+// decode membaca SATU objek JSON dari badan permintaan ke dst. Ditolak (dan sudah dijawab, false):
+// badan > maxBodyBytes (413), JSON rusak/terpotong/kosong, kolom yang tidak dikenal, atau data apa pun
+// setelah objek pertama (objek kedua, karakter sisa) — 400.
 func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(dst); err != nil {
-		writeError(w, http.StatusBadRequest, "JSON tidak valid: "+err.Error())
+	err := dec.Decode(dst)
+	if err == nil {
+		// Harus berakhir tepat setelah objek pertama (spasi di belakangnya boleh).
+		var extra json.RawMessage
+		switch e := dec.Decode(&extra); {
+		case errors.Is(e, io.EOF):
+		case e == nil:
+			err = errors.New("ada data JSON tambahan setelah objek pertama")
+		default:
+			err = e
+		}
+	}
+	if err == nil {
+		return true
+	}
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		writeError(w, http.StatusRequestEntityTooLarge, "badan permintaan terlalu besar")
 		return false
 	}
-	return true
+	if errors.Is(err, io.EOF) {
+		err = errors.New("badan permintaan kosong")
+	}
+	writeError(w, http.StatusBadRequest, "JSON tidak valid: "+err.Error())
+	return false
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

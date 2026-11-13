@@ -50,7 +50,7 @@ make check        # format + vet + tes (sama dengan CI)
 ```
 
 Pengaturan: `GAME_ADDR` (bawaan `:8090`), `GAME_DB` (bawaan `data/game.db`), cadangan otomatis
-`GAME_BACKUP_DIR` (bawaan `data/backup`, `off` = mati), `GAME_BACKUP_HOURS` (24), `GAME_BACKUP_KEEP` (7).
+`GAME_BACKUP_DIR` (bawaan `data/backup`, `off` = mati), `GAME_BACKUP_HOURS` (24), `GAME_BACKUP_KEEP` (7), `GAME_TRUSTED_PROXIES` (proxy tepercaya untuk header IP asli, bawaan `127.0.0.0/8,::1`; `none` = tidak ada), `GAME_DB_CHECK` (`strict` bawaan = tidak menyala bila database rusak; `warn`).
 
 ## Audit server dan database (v0.61.0, roadmap no. 219-238)
 
@@ -61,12 +61,22 @@ satu transaksi untuk dua pemain (`store/trades.go`).
 
 **Server sumber kebenaran.** Klien hanya mengirim *permintaan* (serang, beli, simpan posisi, ...). Semua angka
 (HP, XP, emas, barang, kemenangan, hadiah, jam dunia) dihitung server. `PUT /v1/players/me/save` hanya
-menerima posisi (peta harus dikenal, petak di dalam peta, rumah hanya pemiliknya); lompatan posisi yang
-mustahil dicatat di log sebagai `gerakan mencurigakan` (tidak ditolak, supaya sinyal putus-sambung tidak
-membuat pemain gagal menyimpan). Setiap state yang akan disimpan diperiksa `ValidEconomy`.
+menerima posisi (peta harus dikenal, petak di dalam peta). Sejak v0.77.0 posisi juga harus bisa dicapai dari
+posisi tersimpan (`game.State.MoveTo`: batas kecepatan longgar + pintu antarpeta `game.Doors` + gerbang yang
+terkunci); yang mustahil ditolak `422` dan dicatat `posisi ditolak`. `POST /v1/world/break` dan
+`/v1/world/chest` memakai pemeriksaan yang sama sebelum menghitung jarak ke benda/peti, jadi hadiah selalu
+diukur dari posisi server yang sah. Setiap state yang akan disimpan diperiksa `ValidEconomy`.
+
+**Pembatas percobaan** (`auth.Limiter`): login gagal dihitung per isian, per akun (`id:<pemain>`, jadi nama
+dan email akun yang sama berbagi jatah) dan per IP. Biaya terkendali: riwayat per kunci paling banyak `max`,
+pembersihan kunci kedaluwarsa paling sering sekali per seperempat jendela, jumlah kunci dibatasi 20.000.
+Header IP asli (`CF-Connecting-IP`, `X-Forwarded-For`) hanya dipercaya dari proxy di
+`GAME_TRUSTED_PROXIES` (bawaan: mesin ini sendiri).
 
 **Database (SQLite, `modernc.org/sqlite`, satu koneksi).** Skema versi 4 (`PRAGMA user_version`), migrasi
-bertahap tanpa kehilangan data (v1 -> v2 akun, v2 -> v3 `trades`, v3 -> v4 `sessions.last_used`).
+bertahap tanpa kehilangan data (v1 -> v2 akun, v2 -> v3 `trades`, v3 -> v4 `sessions.last_used`). Setiap
+langkah migrasi dan kenaikan `user_version`-nya berada dalam satu transaksi (mati di tengah = versi lama utuh,
+diulang saat menyala). Database dengan versi skema lebih baru dari server ditolak (server tidak menyala).
 
 | Tabel | Isi | Indeks |
 |-------|-----|--------|
@@ -77,7 +87,8 @@ bertahap tanpa kehilangan data (v1 -> v2 akun, v2 -> v3 `trades`, v3 -> v4 `sess
 
 PRAGMA: WAL, `synchronous=NORMAL` (aman dari listrik padam, paling banyak transaksi terakhir hilang),
 `foreign_keys=ON`, `busy_timeout=5000`, `temp_store=MEMORY`, cache 8 MB. Saat menyala server menjalankan
-`PRAGMA quick_check`. Uji `TestQueriesUseIndexes` memastikan kueri utama tidak memindai tabel. Tolok ukur di
+`PRAGMA quick_check`; bila rusak (atau gagal diperiksa) server **tidak menyala** (pulihkan cadangan dulu;
+`GAME_DB_CHECK=warn` untuk penyelamatan darurat). Uji `TestQueriesUseIndexes` memastikan kueri utama tidak memindai tabel. Tolok ukur di
 Pi 5 (`go test -bench . ./internal/store/`): cek token ±0,07 ms, simpan state ±0,13 ms, daftar dagang ±0,12 ms.
 
 **Cadangan.** Server membuat `data/backup/game-YYYYMMDD-HHMMSS.db` (VACUUM INTO, salinan konsisten walau

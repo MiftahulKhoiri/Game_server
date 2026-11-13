@@ -21,7 +21,7 @@ var (
 	ErrTradeNoPlayer = errors.New("pemain tujuan tidak ditemukan")
 	ErrTradeNotFound = errors.New("tawaran tidak ditemukan atau sudah selesai")
 	ErrTradeTooMany  = fmt.Errorf("maksimal %d tawaran yang belum selesai", game.MaxOpenTrades)
-	ErrTradeBattle   = errors.New("tidak bisa berdagang saat bertarung")
+	ErrTradeBattle   = errors.New("tidak bisa berdagang saat kamu atau pemain lain dalam tawaran ini sedang bertarung")
 )
 
 const tradeCols = `t.id, t.from_id, t.to_id, f.name, o.name, t.item, t.qty, t.price, t.status, t.created_at`
@@ -58,8 +58,10 @@ func (s *Store) Trades(ctx context.Context, playerID string) ([]game.Trade, erro
 	return out, rows.Err()
 }
 
-// pair memuat dua pemain di dalam tx, menjalankan fn, memeriksa batas ekonomi keduanya, lalu menyimpan.
-func pairUpdate(ctx context.Context, tx *sql.Tx, aID, bID string, fn func(a, b *game.Player) error) (game.Player, error) {
+// pairUpdate memuat dua pemain di dalam tx, menjalankan fn, memeriksa batas ekonomi keduanya, lalu menyimpan
+// keduanya. Pemain yang tidak diubah fn (save[i] = false) tidak ditulis ulang supaya versinya tidak naik
+// (klien pemain itu tidak mendapat konflik 409 tanpa alasan).
+func pairUpdate(ctx context.Context, tx *sql.Tx, aID, bID string, fn func(a, b *game.Player) error, save ...bool) (game.Player, error) {
 	a, err := scanPlayer(tx.QueryRowContext(ctx, selectPlayer+` WHERE id = ?`, aID))
 	if err != nil {
 		return game.Player{}, err
@@ -72,7 +74,10 @@ func pairUpdate(ctx context.Context, tx *sql.Tx, aID, bID string, fn func(a, b *
 		return game.Player{}, err
 	}
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
-	for _, p := range []*game.Player{&a, &b} {
+	for i, p := range []*game.Player{&a, &b} {
+		if i < len(save) && !save[i] {
+			continue
+		}
 		if err := p.State.ValidEconomy(); err != nil {
 			return game.Player{}, fmt.Errorf("%w: %v", ErrInvalidState, err)
 		}
@@ -89,13 +94,25 @@ func pairUpdate(ctx context.Context, tx *sql.Tx, aID, bID string, fn func(a, b *
 	return a, nil
 }
 
-func inBattle(ctx context.Context, tx *sql.Tx, id string) bool {
-	_, err := loadBattle(ctx, tx, id)
-	return err == nil
+// checkNotInBattle menolak transaksi dagang bila SALAH SATU pemain sedang bertarung. Diperiksa di dalam
+// transaksi yang sama dengan perubahan ransel (koneksi tunggal = tidak ada pertarungan yang bisa dimulai di
+// antara pemeriksaan dan penyimpanan). Kesalahan database tidak dianggap "tidak bertarung" (gagal aman).
+func checkNotInBattle(ctx context.Context, tx *sql.Tx, ids ...string) error {
+	for _, id := range ids {
+		_, err := loadBattle(ctx, tx, id)
+		switch {
+		case err == nil:
+			return ErrTradeBattle
+		case !errors.Is(err, ErrNotFound):
+			return fmt.Errorf("periksa pertarungan: %w", err)
+		}
+	}
+	return nil
 }
 
 // CreateTrade: pemain fromID menawarkan qty barang kepada pemain bernama toName seharga price emas.
-// Barangnya langsung dititipkan (keluar dari ransel penjual). Mengembalikan state penjual terbaru.
+// Barangnya langsung dititipkan (keluar dari ransel penjual). Kedua pemain tidak boleh sedang bertarung.
+// Mengembalikan state penjual terbaru.
 func (s *Store) CreateTrade(ctx context.Context, fromID, toName, item string, qty, price int) (game.Player, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -113,8 +130,8 @@ func (s *Store) CreateTrade(ctx context.Context, fromID, toName, item string, qt
 	if toID == fromID {
 		return game.Player{}, ErrTradeSelf
 	}
-	if inBattle(ctx, tx, fromID) {
-		return game.Player{}, ErrTradeBattle
+	if err := checkNotInBattle(ctx, tx, fromID, toID); err != nil {
+		return game.Player{}, err
 	}
 	var open int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM trades WHERE from_id = ? AND status = 'pending'`, fromID).Scan(&open); err != nil {
@@ -125,7 +142,7 @@ func (s *Store) CreateTrade(ctx context.Context, fromID, toName, item string, qt
 	}
 	seller, err := pairUpdate(ctx, tx, fromID, toID, func(a, _ *game.Player) error {
 		return a.State.EscrowTrade(item, qty, price, realName)
-	})
+	}, true, false) // pembeli belum berubah sampai tawaran diterima
 	if err != nil {
 		return game.Player{}, err
 	}
@@ -168,8 +185,17 @@ func (s *Store) finishTrade(ctx context.Context, playerID string, tradeID int64,
 	case want == "":
 		return game.Player{}, ErrTradeNotFound
 	}
-	if inBattle(ctx, tx, playerID) {
-		return game.Player{}, ErrTradeBattle
+	// Diterima: ransel dan emas KEDUA pemain berubah, jadi keduanya tidak boleh bertarung. Dibatalkan/ditolak:
+	// hanya ransel penjual yang berubah (barang titipan kembali), jadi cukup penjual yang diperiksa dan disimpan.
+	changed := []bool{true, true}
+	if status == game.TradeDone {
+		err = checkNotInBattle(ctx, tx, t.FromID, t.ToID)
+	} else {
+		err = checkNotInBattle(ctx, tx, t.FromID)
+		changed = []bool{playerID == t.FromID, playerID != t.FromID}
+	}
+	if err != nil {
+		return game.Player{}, err
 	}
 	other := t.FromID
 	if playerID == t.FromID {
@@ -187,7 +213,7 @@ func (s *Store) finishTrade(ctx context.Context, playerID string, tradeID int64,
 			return seller.State.TradeSold(t)
 		}
 		return seller.State.TradeReturn(t)
-	})
+	}, changed...)
 	if err != nil {
 		return game.Player{}, err
 	}
