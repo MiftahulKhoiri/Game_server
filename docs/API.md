@@ -613,3 +613,57 @@ saat aplikasi dibuka. Rincian: [PATCH.md](PATCH.md).
 - Serangan musuh ketiga dalam siklus serangan diarahkan ke pendamping sehat pertama dalam party. Pendamping dengan HP 0 tidak menyerang lagi.
 - `POST /v1/allies/heal` menerima JSON `{"hero":"ksatria"}`. Satu ramuan `ramuan` memulihkan 15 HP, termasuk menghidupkan pendamping yang HP-nya 0. Endpoint ditolak saat pertarungan berlangsung, jika target bukan anggota party, jika HP penuh, atau jika ramuan tidak tersedia.
 - Respons sukses adalah objek pemain terbaru, termasuk HP pendamping dan inventaris yang sudah dikurangi satu ramuan.
+
+## AI hybrid musuh, peran pendamping, formasi, dan adaptive difficulty (v0.78.0)
+
+Semua dihitung server (`internal/game/ai.go`, `party.go`, `boss.go`, `adapt.go`); klien hanya menampilkan. Semua
+kunci baru **opsional** (`omitempty`): klien lama mengabaikannya, data pemain dan pertarungan lama tetap sah.
+
+**Respons pertarungan (`battle`)** mendapat kunci baru:
+
+| Kunci | Isi |
+|-------|-----|
+| `ai_profile` | profil perilaku musuh: `goblin`, `orc`, `serigala`, `ular`, `babi`, `kelelawar`, `belalang`, `golem`, `naga`, `malzareth` (kosong = biasa) |
+| `ai_state` | keadaan FSM musuh: `approach`, `windup`, `recover`, `retreat` |
+| `enemy_intent` | taktik serangan musuh berikutnya, untuk ancang-ancang di klien: `heavy`, `quick`, `ambush`, `area`, `ranged`, `special`, `retreat` (kosong = biasa) |
+| `enemy_guard_ms` | sisa waktu musuh bertahan setelah mundur (kerusakan yang diterimanya separuh) |
+| `adapt` | faktor adaptive difficulty pertarungan ini dalam permil (900..1150); kosong = netral |
+
+**Event (`events[]`)** mendapat kunci `tactic` dan jenis baru:
+
+| Event | Arti |
+|-------|------|
+| `who:"enemy"`, `tactic:"heavy"/"quick"/"ambush"/"area"/"ranged"` | serangan musuh memakai taktik itu (`area`: pendamping sehat dan 3 prajurit terdepan ikut terkena 50%) |
+| `who:"enemy"`, `kind:"retreat"` | musuh mundur bertahan (sekali per pertarungan, bukan bos) |
+| `who:"enemy"`, `kind:"phase"`, `skill:"Fase N"`, `tactic:"phaseN"` | bos masuk fase baru (HP di bawah 2/3 dan 1/3) |
+| `who:"ally"`, `kind:"heal"`, `hero:"penyihir"`, `heal:N`, `skill:<id>` | Penyihir menyembuhkan pendamping `<id>` (kosong = pemain) |
+| `who:"ally"`, `kind:"attack"`, `tactic:<peran>` | serangan pendamping dengan perannya: `tank`, `heavy`, `ranged`, `quick`, `magic` |
+
+**Peran pendamping** (tetap, per id pahlawan): `ksatria` tank (memancing serangan, menahan kerusakan), `pendekar_kapak`
+heavy, `pemanah` ranged (unggul lawan musuh lincah/terbang, jarang diincar), `pendekar_tombak` quick (mendorong jadwal
+serangan musuh mundur sedikit), `penyihir` magic (menembus separuh pertahanan, menyembuhkan kawan di bawah 50% HP).
+Daftarnya juga di `GET /v1/progress` (`roles`).
+
+### `POST /v1/soldiers/formation`  (login)
+
+Body: `{"formation": "perisai"}`. Pilihan (juga di `GET /v1/progress`, kunci `formations`):
+
+| id | Nama | Efek |
+|----|------|------|
+| `""` | Barisan | seimbang (bawaan; akun lama) |
+| `perisai` | Dinding Perisai | kerusakan diterima -30%, serangan -20% |
+| `tombak` | Formasi Tombak | serangan +25%, kerusakan diterima +15% |
+| `pemanah` | Formasi Pemanah | jarang diincar (1 dari 3 serangan), serangan -10% |
+| `lingkaran` | Lingkaran | mengepung pemain, kerusakan diterima -10%, serangan -20% |
+| `serbu` | Serbuan | serbuan pembuka x2, kerusakan diterima +15% |
+
+Membalas `Player` (`state.formation`). `422` bila formasi tidak dikenal, `409` saat bertarung, `401` tanpa token.
+
+### Adaptive difficulty
+
+`state.adapt` (opsional) = `{"factor": 1050, "recent": "EEWEE"}`. Setelah tiap pertarungan melawan musuh biasa server
+mencatat hasilnya (`E` menang dengan HP >= 70%, `W` menang, `L` pingsan, `F` kabur; 8 terakhir). Mulai pertarungan ke-5:
+menang mudah >= 75% tanpa kalah -> +10 permil; kalah > 50% -> -20 permil; selain itu kembali pelan ke 1000. Faktor
+selalu 900..1150 dan hanya mengubah **HP dan serangan musuh biasa**. Hadiah (XP, emas, jarahan) tidak pernah berubah;
+bos, musuh raid, dan musuh sasaran cerita tidak disesuaikan. Kabur tidak menurunkan kesulitan (supaya tidak bisa
+dipakai melemahkan musuh dengan gratis). Klien tidak bisa mengubah `state.adapt` (simpan hanya menerapkan posisi).

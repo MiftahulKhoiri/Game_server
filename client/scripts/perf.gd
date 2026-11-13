@@ -5,6 +5,8 @@ extends RefCounted
 ## disetel tanpa mencari ke banyak skrip. Dipakai lewat `const Perf := preload("res://scripts/perf.gd")`.
 
 ## Indeks: 0 = Hemat, 1 = Normal, 2 = Tinggi.
+## Normal adalah profil "Balanced" (v0.78.0): 60 FPS, skala 3D 0,75, kamera 90, bangunan 42, LOD warga 18 / musuh 16,
+## efek 100%, bayangan 16, 5 lampu. Bawaan pemain baru (Session.quality = 1).
 const FPS_CAP := [30, 60, 60]                 # batas FPS: Hemat 30 supaya baterai awet dan HP tidak panas
 const CAMERA_FAR := [60.0, 90.0, 110.0]       # jarak pandang kamera (petak)
 const BANGUNAN_JARAK := [30.0, 42.0, 56.0]    # bangunan lebih jauh dari ini tidak digambar

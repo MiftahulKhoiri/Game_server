@@ -49,6 +49,17 @@ di Pi, CI menjalankannya dengan `-race`.
 `go test -race` tidak bisa dijalankan di Pi 5 (ThreadSanitizer Go di arm64 butuh ruang alamat 48-bit, kernel Pi
 memakai 47-bit); CI (`.github/workflows/ci.yml`, Ubuntu x86-64) menjalankannya di setiap push/PR.
 
+## AI hybrid & adaptive difficulty v0.78.0
+
+| Bagian | Tes |
+|--------|-----|
+| AI musuh (Fase 1) | `game/ai_test.go`: profil per id, `TestAIUsesNoExtraRandomness` (tiap serangan tetap tepat satu angka acak: deterministik), taktik orc/babi/golem/naga/goblin/serigala/ular/kelelawar, mundur, `TestAIProfilesKeepBalance` (kerusakan rata-rata 0,8-1,25x musuh biasa), JSON pertarungan lama |
+| Peran & formasi (Fase 2) | `game/party_test.go`, `api/formation_test.go`: taunt ksatria, heal penyihir, dorong tombak, pemanah vs musuh terbang, 6 formasi, `MaxParty`/`MaxSoldiers` tidak berubah, formasi tak dikenal ditolak |
+| Bos (Fase 3) | `game/boss_test.go`: fase 2/3 sekali, jurus khusus, serangan area, bos tidak mundur, Malzareth tetap memakai mekaniknya |
+| Klien (Fase 4) | `make client-test` (ancang-ancang, event baru tidak membuat skrip galat); tampilan di HP Android: **belum diuji** |
+| Adaptive (Fase 5) | `game/adapt_test.go`: pemain baru/lama netral, butuh 5 pertarungan, sangat kuat (berhenti di 1150), sangat lemah (berhenti di 900), stabil, bergantian, kabur bukan celah, bos/raid/cerita tidak ikut, hadiah tetap, solo = party penuh, validasi data |
+| Tolok ukur | `BenchmarkEnemyAttackAI`, `BenchmarkAdapt` (`internal/game/ai_bench_test.go`) |
+
 ## Hasil acuan di Raspberry Pi 5 (v0.63.0)
 
 | Ukuran | Hasil |
