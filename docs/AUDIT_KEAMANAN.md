@@ -1,7 +1,6 @@
 # Laporan Audit Keamanan & Hardening Game Server
 
-Cabang: `security-hardening` (commit di atas `main` 358ebc7 / v0.76.0). Belum digabung ke `main`, belum di-push,
-server yang berjalan di Pi belum di-restart.
+Dirilis di v0.77.0 (PR #5 dan #6, digabung ke `main` 13 Nov 2026).
 
 ## A. Ringkasan
 
