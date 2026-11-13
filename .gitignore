@@ -31,3 +31,4 @@ client/export/
 .env
 *.pem
 coverage.out
+__pycache__/
