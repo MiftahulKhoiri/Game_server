@@ -504,8 +504,15 @@ func (b *Battle) settle(p *Player, e Enemy, upto int64, rng Rand, res *Result) b
 		// Kemampuan khusus (tanpa memakai angka acak tambahan, jadi urutan acak tetap sama).
 		sp := special(e, b.Round)
 		spName := e.SpecialName
-		if e.ID == MalzarethID {
+		switch {
+		case e.ID == MalzarethID:
 			sp, spName = b.malzarethPhase(e, res)
+		case genericBoss(e): // pola fase bos (boss.go)
+			ph := b.bossPhase(e, res)
+			sp = bossSpecial(e, b.Round, ph)
+			if sp == "" && bossArea(b.Round, ph) {
+				plan.tactic, plan.area, plan.dmgPct = TacticArea, true, max(plan.dmgPct, 120)
+			}
 		}
 		if sp != "" {
 			plan.dmgPct = 100 // kemampuan khusus sudah kuat: tidak ditumpuk dengan serangan berat

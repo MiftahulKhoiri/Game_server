@@ -21,6 +21,8 @@ const (
 	TacticArea    = "area"    // serangan area: pemain, pendamping, dan barisan depan prajurit sekaligus
 	TacticRanged  = "ranged"  // serangan jarak jauh (napas api): tidak bisa ditangkis sempurna, tetap bisa dihindari
 	TacticRetreat = "retreat" // mundur bertahan sesaat (sekali per pertarungan): tidak menyerang, kerusakan diterima /2
+	// IntentSpecial: serangan berikutnya memakai kemampuan khusus (hanya untuk ancang-ancang klien).
+	IntentSpecial = "special"
 )
 
 // Keadaan FSM yang disimpan di Battle.AIState.
@@ -117,7 +119,7 @@ func (b *Battle) assess(e Enemy, prof AIProfile, playerHPPct, helpers int) aiPla
 		ownPct = b.EnemyHP * 100 / b.EnemyMaxHP
 	}
 	switch {
-	case prof.RetreatPct > 0 && !b.Retreated && ownPct < prof.RetreatPct && b.Round > 1:
+	case prof.RetreatPct > 0 && !e.Boss && !b.Retreated && ownPct < prof.RetreatPct && b.Round > 1: // bos tidak mundur
 		// Kondisi tidak menguntungkan: mundur sekali, bertahan, lalu kembali menyerang.
 		plan.tactic, plan.dmgPct, plan.ivPct = TacticRetreat, 0, 60
 		return plan
@@ -156,7 +158,14 @@ func (b *Battle) heavyDue(prof AIProfile, playerHPPct int) bool {
 // keputusan assess, dihitung dengan keadaan sekarang.
 func (b *Battle) nextIntent(e Enemy, st *State) string {
 	prof := ProfileFor(e)
-	if prof.ID == "biasa" || prof.ID == "malzareth" {
+	switch {
+	case genericBoss(e) && bossSpecial(e, b.Round, b.Phase) != "":
+		return IntentSpecial
+	case genericBoss(e) && bossArea(b.Round, b.Phase):
+		return TacticArea
+	case !e.Boss && special(e, b.Round) != "":
+		return IntentSpecial
+	case prof.ID == "biasa" || prof.ID == "malzareth":
 		return ""
 	}
 	if t := b.assess(e, prof, hpPct(st), b.helpers(st)).tactic; t != TacticNormal {
