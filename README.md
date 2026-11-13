@@ -36,6 +36,29 @@ curl -s -H "Authorization: Bearer <token>" localhost:8090/v1/players/me
 
 Menjalankan sebagai layanan di Pi (tanpa sudo): `make install-user-service`, lalu `make restart` setelah mengubah kode.
 
+## Alamat server untuk aplikasi (HTTPS)
+
+Sejak v0.77.1 aplikasi tersambung lewat **https://raspberrypi.tail3e263f.ts.net:8443**, bisa dari mana saja
+(tidak hanya wifi rumah). Alamat ini sudah jadi bawaan APK; HP yang masih menyimpan alamat wifi lama
+(`http://192.168.225.3:8090`) dipindahkan otomatis. Mengganti manual: layar awal > **Pengaturan** >
+**Alamat server** > isi alamat > **Tes server**.
+
+APK sekarang APK rilis, yang hanya mau alamat `https://` (alamat `http://` biasa ditolak Android).
+
+HTTPS disediakan [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) di Pi, yang meneruskan ke server di
+`127.0.0.1:8090` dengan sertifikat sah. Sekali saja di Pi: `sudo tailscale set --operator=pi5`. Lalu:
+
+```bash
+tailscale funnel --bg --https=8443 http://127.0.0.1:8090   # nyalakan (tetap aktif setelah Pi restart)
+tailscale funnel status                                    # lihat yang sedang aktif
+tailscale funnel --https=8443 off                          # matikan (server kembali hanya untuk jaringan rumah)
+curl -s https://raspberrypi.tail3e263f.ts.net:8443/healthz # periksa dari mana saja
+```
+
+Funnel di port 443 (alamat tanpa `:8443`) dipakai layanan lain di Pi; jangan diubah. Server terbuka ke
+internet, tetapi tetap dilindungi login, batas laju, dan pemeriksaan gerakan (lihat
+[docs/AUDIT_KEAMANAN.md](docs/AUDIT_KEAMANAN.md)). Detail: [docs/API.md](docs/API.md#alamat-server).
+
 ## Perintah penting
 
 | Perintah | Guna |
