@@ -145,9 +145,12 @@ jobs:
           "$GODOT" --headless --path client --export-release "Android" "$out" 2>&1 | tee export.log
           status=${PIPESTATUS[0]}
           mode=release
-          # Server game memakai HTTP biasa (no. 242): APK rilis wajib mengizinkan lalu lintas tanpa TLS,
-          # kalau tidak, HP tidak bisa tersambung. Bila tidak diizinkan, pakai ekspor debug (perilaku lama).
-          if [ "$status" = 0 ] && [ -f "$out" ]; then
+          # Sejak v0.77.1 alamat bawaan server memakai HTTPS (Tailscale Funnel), jadi APK rilis cukup.
+          # Bila alamat bawaan masih http:// (no. 242), APK rilis wajib mengizinkan lalu lintas tanpa TLS;
+          # kalau tidak, pakai ekspor debug (perilaku lama).
+          if grep -qE '^var base_url: String = "https://' client/scripts/api.gd; then
+            echo "Alamat bawaan server HTTPS: APK rilis dipakai"
+          elif [ "$status" = 0 ] && [ -f "$out" ]; then
             ct="$("$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}/aapt2" dump xmltree --file AndroidManifest.xml "$out" | grep -i usesCleartextTraffic || true)"
             echo "usesCleartextTraffic: ${ct:-tidak ada}"
             if ! echo "$ct" | grep -qiE '(=true|0xffffffff)'; then

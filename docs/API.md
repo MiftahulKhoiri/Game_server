@@ -31,6 +31,14 @@ Authorization: Bearer <token>
 - Klien **tidak boleh** menyimpan kata sandi di HP, hanya token.
 - Percobaan login yang gagal dibatasi (lihat `429` di bawah).
 
+## Alamat server
+
+Sejak v0.77.1 aplikasi memakai `https://raspberrypi.tail3e263f.ts.net:8443` (Tailscale Funnel di Pi: HTTPS dengan
+sertifikat sah, bisa dari internet, meneruskan ke `127.0.0.1:8090`). HP yang masih menyimpan alamat wifi lama
+`http://192.168.225.3:8090` dipindahkan otomatis. Pasang/lepas di Pi: `tailscale funnel --bg --https=8443
+http://127.0.0.1:8090` / `tailscale funnel --https=8443 off`. Funnel 443 dipakai layanan lain (MCP), jangan diubah.
+APK sekarang APK rilis, yang menolak alamat `http://` biasa; alamat lain harus `https://`.
+
 ## Versi klien
 
 Klien mengirim versinya di setiap permintaan:

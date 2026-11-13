@@ -14,7 +14,8 @@ extends Node
 const DIR := "user://patch"
 const STATE := "user://patch/state.cfg"
 const SETTINGS := "user://settings.cfg"
-const DEFAULT_URL := "http://192.168.225.3:8090"
+const DEFAULT_URL := "https://raspberrypi.tail3e263f.ts.net:8443"  # sama dengan Api.DEFAULT_URL (v0.77.1)
+const OLD_DEFAULT_URL := "http://192.168.225.3:8090"
 const CONNECT_TIMEOUT_MS := 4000
 const MANIFEST_TIMEOUT_MS := 5000
 const DOWNLOAD_TIMEOUT_MS := 40000
@@ -145,7 +146,8 @@ func _saved_url() -> String:
 	var cfg := ConfigFile.new()
 	if cfg.load(SETTINGS) != OK:
 		return DEFAULT_URL
-	return str(cfg.get_value("server", "url", DEFAULT_URL))
+	var url := str(cfg.get_value("server", "url", DEFAULT_URL))
+	return DEFAULT_URL if url == OLD_DEFAULT_URL else url
 
 
 ## GET sinkron. `to_file` kosong = isi dikembalikan di `body`; berisi path = ditulis ke berkas.

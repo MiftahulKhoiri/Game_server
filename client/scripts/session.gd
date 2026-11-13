@@ -95,6 +95,8 @@ func load_config() -> void:
 	if cfg.load(CONFIG_PATH) != OK:
 		return
 	Api.base_url = str(cfg.get_value("server", "url", Api.base_url))
+	if Api.base_url == Api.OLD_DEFAULT_URL:  # v0.77.1: alamat wifi rumah lama -> HTTPS
+		Api.base_url = Api.DEFAULT_URL
 	Api.token = str(cfg.get_value("auth", "token", ""))
 	saved_name = str(cfg.get_value("auth", "name", "")) if Api.token != "" else ""
 	quality = clampi(int(cfg.get_value("game", "quality", 1)), 0, 2)

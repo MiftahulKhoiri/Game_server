@@ -8,7 +8,12 @@ extends Node
 
 const Version = preload("res://scripts/version.gd")
 
-var base_url: String = "http://192.168.225.3:8090"
+var base_url: String = DEFAULT_URL
+## Alamat bawaan (v0.77.1): server di Pi lewat Tailscale Funnel dengan HTTPS sah, bisa dari mana saja (tidak hanya
+## wifi rumah) dan memungkinkan APK rilis (APK rilis menolak http:// biasa).
+const DEFAULT_URL := "https://raspberrypi.tail3e263f.ts.net:8443"
+## Alamat bawaan lama (wifi rumah, http://): tersimpan di HP lama, otomatis diganti DEFAULT_URL.
+const OLD_DEFAULT_URL := "http://192.168.225.3:8090"
 var token: String = ""
 ## Dikirim ke server di setiap permintaan; server menolak (426) bila di bawah batas minimum.
 var client_version: String = Version.app_version()

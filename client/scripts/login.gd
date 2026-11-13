@@ -429,7 +429,7 @@ func _build_settings() -> void:
 	_server_box = VBoxContainer.new()
 	_server_box.add_theme_constant_override("separation", 12)
 	_server_box.add_child(_make_label("Alamat server", 26))
-	_url_edit = _make_edit(Api.base_url, "http://192.168.x.x:8090")
+	_url_edit = _make_edit(Api.base_url, Api.DEFAULT_URL)
 	_url_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
 	_url_edit.text_submitted.connect(func(_t: String) -> void:
 		_url_edit.release_focus()
