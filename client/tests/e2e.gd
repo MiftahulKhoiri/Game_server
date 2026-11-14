@@ -3283,6 +3283,7 @@ func _test_kreator(login_name: String, pw: String) -> void:
 	# v0.82.2: tempelan di tulang yang benar, posisi/tembus, bahan, ikut animasi; kebocoran memori.
 	await _check_attachments(KModels)
 	await _test_leaks(KModels, KT)
+	await _test_gender(KModels, KT)
 	var bad_look: Dictionary = await Api.set_look({"hair": "rambut_kepang"})
 	_check(not bad_look.ok and bad_look.status == 422, "memakai rambut yang belum dibeli ditolak 422")
 	var illegal: Dictionary = await Api.wardrobe_buy("skin_gratis_hack", Api.new_request_id())
@@ -3791,4 +3792,48 @@ func _test_leaks(KModels: GDScript, KT: GDScript) -> void:
 		await process_frame
 	var a2: Array = mon.call()
 	_check(a2[0] <= b2[0] + 2 and a2[1] == 0 and a2[2] <= b2[2] + 10, "15x buka-tutup Character Creator: node %d->%d, yatim %d, resource %d->%d" % [b2[0], a2[0], a2[1], b2[2], a2[2]])
+	k.free()
+
+
+
+## v0.83.0: pahlawan perempuan (pilihan Jenis Kelamin, berlaku untuk semua pahlawan).
+func _test_gender(KModels: GDScript, KT: GDScript) -> void:
+	var fem := {"made": true, "gender": "wanita"}
+	var all_ok := true
+	for hid: String in ["ksatria", "pendekar_kapak", "pemanah", "pendekar_tombak", "penyihir"]:
+		var r: Node3D = KModels.create(hid)
+		root.add_child(r)
+		KModels.dress(r, 0, {}, fem)
+		var body: Node = r.find_child("BentukTubuh", true, false)
+		var narrow: bool = body != null and ((body.get("scales") as Dictionary).get("chest", Vector3.ONE) as Vector3).x < 1.0
+		var face_ok: bool = r.find_child("*wajah2*", true, false) != null  # bulu mata + bibir
+		var hair_ok: bool = r.find_child("*rambut*", true, false) != null or hid == "penyihir"  # Penyihir berkerudung
+		var smaller: bool = r.scale.y < (r.get_meta("base_scale") as Vector3).y
+		all_ok = all_ok and narrow and face_ok and hair_ok and smaller
+		if hid == "pendekar_kapak":
+			var hm := r.find_children("Barbarian_Head", "MeshInstance3D", true, false)
+			var sm: Material = (hm[0] as MeshInstance3D).get_surface_override_material(0) if not hm.is_empty() else null
+			_check(sm is ShaderMaterial and bool((sm as ShaderMaterial).get_shader_parameter("grey_swap")), "Pendekar Kapak perempuan: janggut bawaan model diganti warna kulit")
+		r.queue_free()
+	_check(all_ok, "kelima pahlawan bisa perempuan: bahu & tinggi menyesuaikan, bulu mata/bibir, rambut panjang")
+	# Server: jenis kelamin tersimpan; perempuan tidak berjenggot walau klien mengirim jenggot.
+	var res: Dictionary = await Api.set_look({"gender": "wanita", "beard": "tebal", "hair": "rambut_panjang"})
+	_check(res.ok and str(res.data.state.look.get("gender", "")) == "wanita" and str(res.data.state.look.get("beard", "")) == "", "server menyimpan pahlawan perempuan tanpa jenggot")
+	var bad: Dictionary = await Api.set_look({"gender": "naga"})
+	_check(not bad.ok and bad.status == 422, "jenis kelamin tidak dikenal ditolak 422")
+	if res.ok:
+		Session.merge_server_player(res.data)
+	var k: CanvasLayer = KT.new()
+	root.add_child(k)
+	await process_frame
+	k.open("Penampilan", true)
+	await create_timer(0.3).timeout
+	_check(k._sub == "Jenis Kelamin", "pemain baru mulai dari pilihan Jenis Kelamin")
+	k._set_sub("Wajah")
+	var has_beard_row := false
+	for c: Node in k._content.get_children():
+		if c is Label and (c as Label).text == "Jenggot dan kumis":
+			has_beard_row = true
+	_check(not has_beard_row, "pilihan jenggot disembunyikan untuk pahlawan perempuan")
+	k.close()
 	k.free()

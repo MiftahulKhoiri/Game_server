@@ -397,11 +397,11 @@ Klien hanya mengirim id; harga, level, saldo, dan kepemilikan dari server.
 
 | Endpoint | Body | Efek |
 |----------|------|------|
-| `GET /v1/wardrobe` | - | Katalog: `cosmetics` (id, name, desc, category, tier, price, level, color, glow, shape), `categories`, `options` (face, eyes, nose, mouth, brow, beard, body), `hair_colors`, `skin_colors`, `eye_colors`, `tiers`, `body_min`/`body_max` (-3/3), `max_acc` (4), `gear` (perlengkapan tempur yang dijual), `gear_shop` |
+| `GET /v1/wardrobe` | - | Katalog: `cosmetics` (id, name, desc, category, tier, price, level, color, glow, shape), `categories`, `options` (gender, face, eyes, nose, mouth, brow, beard, body), `hair_colors`, `skin_colors`, `eye_colors`, `tiers`, `body_min`/`body_max` (-3/3), `max_acc` (4), `gear` (perlengkapan tempur yang dijual), `gear_shop` |
 | `POST /v1/wardrobe/buy` | `{"item":"rambut_ikal","request_id":"..."}` | Beli kosmetik: emas dikurangi dan kosmetik masuk `state.wardrobe` dalam satu transaksi. `422` bila sudah dimiliki, gratis, emas kurang, level kurang; `404` bila tidak dikenal; kolom lain (mis. `price`) ditolak `400` |
 | `POST /v1/players/me/look` | `{"look":{...}}` | Simpan penampilan. Semua id diperiksa; kosmetik harus dimiliki (`422`). `state.look.made` jadi `true` |
 
-`state.look`: `skin`, `hair`, `hair_color`, `skin_color`, `face`, `eyes`, `eye_color`, `nose`, `mouth`, `brow`,
+`state.look`: `gender` (`pria` | `wanita`, v0.83.0; kosong = pria; untuk `wanita` server mengosongkan `beard`), `skin`, `hair`, `hair_color`, `skin_color`, `face`, `eyes`, `eye_color`, `nose`, `mouth`, `brow`,
 `beard`, `body`, `height`/`width`/`muscle`/`head`/`torso` (bilangan bulat -3..3), `clothes`, `pants`, `gloves`,
 `hat`, `cape`, `accessories` (maks 4). Kosong = tampilan bawaan (akun lama). Memilih `skin` bawaan
 (`skin_asli/merah/hijau/biru`) juga mengisi `outfit` lama; `POST /v1/players/me/outfit` mengosongkan `look.skin`.

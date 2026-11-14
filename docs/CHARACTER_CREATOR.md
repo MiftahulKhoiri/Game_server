@@ -20,7 +20,7 @@ Kanan, enam tab:
 | Tab | Isi |
 |-----|-----|
 | Karakter | Ringkasan perlengkapan dan penampilan, **Acak Penampilan**, **Kembali ke Asli** |
-| Penampilan | Rambut (model), Warna Rambut, Wajah (bentuk wajah, hidung, mulut, alis, jenggot & kumis), Mata (bentuk + warna), Kulit, Tubuh (bentuk tubuh + penggeser tinggi, lebar badan, otot, ukuran kepala, proporsi badan) |
+| Penampilan | Jenis Kelamin (Laki-laki/Perempuan, v0.83.0), Rambut (model), Warna Rambut, Wajah (bentuk wajah, hidung, mulut, alis, jenggot & kumis), Mata (bentuk + warna), Kulit, Tubuh (bentuk tubuh + penggeser tinggi, lebar badan, otot, ukuran kepala, proporsi badan) |
 | Perlengkapan | Pakaian, Celana, Sarung Tangan, Jubah, Topi, Skin, Aksesori (kosmetik), Zirah, Helm, Sepatu, Perisai (perlengkapan tempur) |
 | Senjata | Senjata dan perisai: dimiliki = Pakai/Lepas, belum = pratinjau + Beli |
 | Inventaris | Hanya barang yang dimiliki: Skin, Rambut, Pakaian, Armor, Helm, Sepatu, Senjata, Aksesori |
@@ -31,6 +31,20 @@ kelangkaan, harga, level yang dibutuhkan, dan status (Dimiliki / Dipakai). Ketuk
 serangan/pertahanan, kecepatan, kritis, gaya senjata) dan pratinjau di model sebelum membeli. **Beli** membuka
 konfirmasi yang menampilkan saldo sebelum dan sesudah. Kosmetik yang dipakai disimpan lewat **Simpan Penampilan**
 (atau otomatis saat layar ditutup); perlengkapan tempur langsung dipakai/dilepas di server.
+
+## Pahlawan perempuan (v0.83.0)
+
+Paket KayKit hanya punya kepala Knight, Barbarian, Rogue, dan Mage, tanpa pahlawan yang jelas perempuan. Karena itu
+jenis kelamin adalah pilihan di Character Creator (`state.look.gender`), berlaku untuk kelima pahlawan:
+
+- Wajah: bulu mata, bibir merah muda, pipi merona, alis lebih tipis/melengkung; tanpa jenggot/kumis (pilihan jenggot
+  disembunyikan dan dikosongkan server).
+- Rambut: tanpa pilihan rambut = rambut panjang cokelat; topi/helm bawaan model diganti rambut.
+- Tubuh: sedikit lebih pendek, bahu lebih sempit, lengan lebih ramping, kepala sedikit lebih besar (lewat
+  body_shape.gd, rangka dan animasi tetap).
+- Pendekar Kapak (kepala Barbarian) punya janggut abu-abu di model; shader kepala mengganti warna abu-abu itu
+  menjadi warna kulit untuk perempuan, dan menjadi warna rambut pilihan untuk laki-laki.
+- Pemain baru memulai Character Creator di pilihan Jenis Kelamin. Akun lama tetap laki-laki sampai diubah.
 
 ## Kelangkaan
 

@@ -17,7 +17,7 @@ const LookBuild = preload("res://scripts/look_build.gd")
 
 const TABS := ["Karakter", "Penampilan", "Perlengkapan", "Senjata", "Inventaris", "Toko"]
 const SUBTABS := {
-	"Penampilan": ["Rambut", "Warna Rambut", "Wajah", "Mata", "Kulit", "Tubuh"],
+	"Penampilan": ["Jenis Kelamin", "Rambut", "Warna Rambut", "Wajah", "Mata", "Kulit", "Tubuh"],
 	"Perlengkapan": ["Pakaian", "Celana", "Sarung Tangan", "Jubah", "Topi", "Skin", "Aksesori", "Zirah", "Helm", "Sepatu", "Perisai"],
 	"Inventaris": ["Skin", "Rambut", "Pakaian", "Armor", "Helm", "Sepatu", "Senjata", "Aksesori"],
 	"Toko": ["Skin", "Rambut", "Pakaian", "Armor", "Helm & Topi", "Jubah", "Sepatu", "Senjata", "Aksesori"],
@@ -203,7 +203,9 @@ func open(tab := "Penampilan", welcome := false) -> void:
 	_busy = false
 	_saving = false
 	_selected = {}
-	_status.text = "Selamat datang! Buat penampilan pahlawanmu, lalu ketuk Simpan." if welcome else ""
+	_status.text = "Selamat datang! Pilih laki-laki atau perempuan, buat penampilanmu, lalu ketuk Simpan." if welcome else ""
+	if welcome:
+		_sub = "Jenis Kelamin"
 	visible = true
 	is_open = true
 	_make_rig()
@@ -548,7 +550,7 @@ func _refresh_all() -> void:
 func _show_karakter() -> void:
 	var st: Dictionary = Session.player.state
 	var eq: Dictionary = st.get("equipment", {})
-	var lines: Array = ["%s — %s" % [Session.player.get("name", ""), Heroes.current().name], ""]
+	var lines: Array = ["%s — %s (%s)" % [Session.player.get("name", ""), Heroes.current().name, "Perempuan" if str(_draft.get("gender", "")) == "wanita" else "Laki-laki"], ""]
 	for slot: String in ["weapon", "offhand", "armor", "helmet", "boots"]:
 		var id := str(eq.get(slot, ""))
 		lines.append("%s: %s" % [SLOT_NAME[slot], _name_of(id) if id != "" else "-"])
@@ -577,6 +579,12 @@ func _show_karakter() -> void:
 func _show_penampilan() -> void:
 	var cat: Dictionary = Session.wardrobe_catalog
 	match _sub:
+		"Jenis Kelamin":
+			_options("Jenis kelamin pahlawan", "gender", Vector2(260, 90), 28)
+			var gnote := _label("Berlaku untuk semua pahlawan (Ksatria, Pendekar Kapak, Pemanah, Pendekar Tombak, Penyihir). Perempuan: wajah, bulu mata, bibir, rambut, dan bentuk tubuh perempuan.", 19)
+			gnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			gnote.add_theme_color_override("font_color", Color("9aa8b8"))
+			_content.add_child(gnote)
 		"Rambut":
 			_show_items(_cos_list("rambut"))
 		"Warna Rambut":
@@ -588,6 +596,8 @@ func _show_penampilan() -> void:
 			_swatches("Warna mata", "eye_color", cat.get("eye_colors", []))
 		"Wajah":
 			for p: Array in FACE_PARTS:
+				if p[0] == "beard" and str(_draft.get("gender", "")) == "wanita":
+					continue  # pahlawan perempuan tanpa jenggot/kumis
 				_options(str(p[1]), str(p[0]))
 		"Tubuh":
 			_options("Bentuk tubuh", "body")
@@ -599,7 +609,7 @@ func _show_penampilan() -> void:
 			_content.add_child(note)
 
 
-func _options(title: String, field: String) -> void:
+func _options(title: String, field: String, size := Vector2(130, 54), font := 20) -> void:
 	_content.add_child(_label(title, 22))
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 6)
@@ -608,9 +618,9 @@ func _options(title: String, field: String) -> void:
 	var opts: Array = (Session.wardrobe_catalog.get("options", {}) as Dictionary).get(field, [])
 	for o: Dictionary in opts:
 		var id := str(o.id)
-		var b := _button(str(o.name), _set_field.bind(field, id), 20)
+		var b := _button(str(o.name), _set_field.bind(field, id), font)
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(130, 54)
+		b.custom_minimum_size = size
 		var cur := str(_draft.get(field, ""))
 		b.set_pressed_no_signal(cur == id or (cur == "" and opts.find(o) == 0 and field != "beard"))
 		flow.add_child(b)
@@ -668,6 +678,8 @@ func _slider(title: String, field: String) -> void:
 
 func _set_field(field: String, value: String) -> void:
 	_draft[field] = value
+	if field == "gender" and value == "wanita":
+		_draft.erase("beard")  # server juga mengosongkan jenggot untuk pahlawan perempuan
 	_touch()
 	_redress()
 	_refresh_all()
@@ -906,7 +918,7 @@ func _save() -> bool:
 func _randomize() -> void:
 	var cat: Dictionary = Session.wardrobe_catalog
 	var d := {}
-	for field: String in ["face", "eyes", "nose", "mouth", "brow", "beard", "body"]:
+	for field: String in ["gender", "face", "eyes", "nose", "mouth", "brow", "beard", "body"]:
 		var opts: Array = (cat.get("options", {}) as Dictionary).get(field, [])
 		if not opts.is_empty():
 			d[field] = str(opts.pick_random().id)
@@ -914,6 +926,8 @@ func _randomize() -> void:
 		var cl: Array = cat.get(pair[1], [])
 		if not cl.is_empty():
 			d[pair[0]] = str(cl.pick_random())
+	if str(d.get("gender", "")) == "wanita":
+		d.erase("beard")
 	var hairs := _cos_list("rambut").filter(func(e: Dictionary) -> bool: return _owned(e))
 	if not hairs.is_empty():
 		d["hair"] = str(hairs.pick_random().id)

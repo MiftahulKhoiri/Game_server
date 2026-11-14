@@ -451,7 +451,7 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary, look := {}) -
 	var skin_on := str(look.get("skin_color", "")) != ""
 	var skin_c := LookBuild.skin_color(look)
 	var own_cape := str(look.get("cape", "")) != ""
-	var own_hair := LookBuild.shape_of(LookBuild.cosm(str(look.get("hair", "")))) != ""
+	var own_hair := LookBuild.shape_of(LookBuild.cosm(str(look.get("hair", "")))) != "" or LookBuild.is_female(look)
 	var list: Array = []
 	_meshes(sk, Transform3D.IDENTITY, list)
 	var head_box := AABB()
@@ -471,7 +471,13 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary, look := {}) -
 		if nm.ends_with("_LegLeft") or nm.ends_with("_LegRight"):
 			c = c * pants_c
 		if nm.ends_with("_Head") or nm.ends_with("_Head_Hooded") or nm.ends_with("_ArmLeft") or nm.ends_with("_ArmRight"):
-			LookBuild.set_skin(mi, skin_on, skin_c)  # hanya piksel kulit (wajah, tangan) yang diwarnai
+			# Janggut bawaan kepala Barbarian: hilang (jadi kulit) untuk perempuan, ikut warna rambut untuk laki-laki.
+			var grey_to := Color(0, 0, 0, 0)
+			if nm == "Barbarian_Head" and LookBuild.is_female(look):
+				grey_to = skin_c
+			elif nm == "Barbarian_Head" and str(look.get("hair_color", "")) != "":
+				grey_to = LookBuild.hair_color(look)
+			LookBuild.set_skin(mi, skin_on or grey_to.a > 0.0, skin_c, grey_to)  # hanya piksel kulit (wajah, tangan) yang diwarnai
 		if not armor.is_empty() and _ends_with_any(nm, ARMOR_PARTS):
 			c = c * (armor.tint as Color)
 			glow = armor.get("glow", glow)

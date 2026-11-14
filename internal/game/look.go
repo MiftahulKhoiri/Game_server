@@ -125,13 +125,15 @@ type LookOption struct {
 
 // LookOptions: pilihan gratis per bagian. Pilihan pertama = bawaan.
 var LookOptions = map[string][]LookOption{
-	"face":  {{"oval", "Oval"}, {"bulat", "Bulat"}, {"persegi", "Persegi"}, {"lancip", "Lancip"}},
-	"eyes":  {{"bulat", "Bulat"}, {"sipit", "Sipit"}, {"besar", "Besar"}, {"tajam", "Tajam"}},
-	"nose":  {{"kecil", "Kecil"}, {"mancung", "Mancung"}, {"lebar", "Lebar"}},
-	"mouth": {{"senyum", "Senyum"}, {"datar", "Datar"}, {"tipis", "Tipis"}, {"lebar", "Lebar"}},
-	"brow":  {{"tegas", "Tegas"}, {"tipis", "Tipis"}, {"tebal", "Tebal"}, {"melengkung", "Melengkung"}},
-	"beard": {{"", "Tanpa"}, {"kumis", "Kumis"}, {"tipis", "Jenggot Tipis"}, {"tebal", "Jenggot Tebal"}, {"kambing", "Jenggot Kambing"}, {"lengkap", "Kumis + Jenggot"}, {"penyihir", "Jenggot Penyihir"}},
-	"body":  {{"sedang", "Sedang"}, {"ramping", "Ramping"}, {"kekar", "Kekar"}, {"gempal", "Gempal"}},
+	// Jenis kelamin (v0.83.0): berlaku untuk semua pahlawan; "" (akun lama) = laki-laki.
+	"gender": {{"pria", "Laki-laki"}, {"wanita", "Perempuan"}},
+	"face":   {{"oval", "Oval"}, {"bulat", "Bulat"}, {"persegi", "Persegi"}, {"lancip", "Lancip"}},
+	"eyes":   {{"bulat", "Bulat"}, {"sipit", "Sipit"}, {"besar", "Besar"}, {"tajam", "Tajam"}},
+	"nose":   {{"kecil", "Kecil"}, {"mancung", "Mancung"}, {"lebar", "Lebar"}},
+	"mouth":  {{"senyum", "Senyum"}, {"datar", "Datar"}, {"tipis", "Tipis"}, {"lebar", "Lebar"}},
+	"brow":   {{"tegas", "Tegas"}, {"tipis", "Tipis"}, {"tebal", "Tebal"}, {"melengkung", "Melengkung"}},
+	"beard":  {{"", "Tanpa"}, {"kumis", "Kumis"}, {"tipis", "Jenggot Tipis"}, {"tebal", "Jenggot Tebal"}, {"kambing", "Jenggot Kambing"}, {"lengkap", "Kumis + Jenggot"}, {"penyihir", "Jenggot Penyihir"}},
+	"body":   {{"sedang", "Sedang"}, {"ramping", "Ramping"}, {"kekar", "Kekar"}, {"gempal", "Gempal"}},
 }
 
 // Palet warna (hex). Pilihan pertama = bawaan.
@@ -145,7 +147,8 @@ var hexColor = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
 // Look adalah penampilan pahlawan utama. Nilai kosong = bawaan (pemain lama tetap tampil seperti dulu).
 type Look struct {
-	Made      bool   `json:"made,omitempty"` // sudah pernah menyimpan di Character Creator
+	Made      bool   `json:"made,omitempty"`   // sudah pernah menyimpan di Character Creator
+	Gender    string `json:"gender,omitempty"` // "pria" | "wanita"; kosong = pria (v0.83.0)
 	Skin      string `json:"skin,omitempty"`
 	Hair      string `json:"hair,omitempty"`
 	HairColor string `json:"hair_color,omitempty"`
@@ -172,6 +175,12 @@ type Look struct {
 	Cape        string   `json:"cape,omitempty"`
 	Accessories []string `json:"accessories,omitempty"`
 }
+
+// Jenis kelamin pahlawan (v0.83.0).
+const (
+	GenderMale   = "pria"
+	GenderFemale = "wanita"
+)
 
 // Kesalahan penampilan dan lemari.
 var (
@@ -269,7 +278,7 @@ func (s State) checkCosmetic(id, cat string) error {
 
 // SetLook menyimpan penampilan dari Character Creator. Semua id diperiksa, kosmetik harus dimiliki.
 func (s *State) SetLook(l Look) error {
-	for part, id := range map[string]string{"face": l.Face, "eyes": l.Eyes, "nose": l.Nose, "mouth": l.Mouth, "brow": l.Brow, "beard": l.Beard, "body": l.Body} {
+	for part, id := range map[string]string{"gender": l.Gender, "face": l.Face, "eyes": l.Eyes, "nose": l.Nose, "mouth": l.Mouth, "brow": l.Brow, "beard": l.Beard, "body": l.Body} {
 		if id != "" && !optionOK(part, id) {
 			return fmt.Errorf("%w: %s", ErrUnknownLook, part)
 		}
@@ -301,6 +310,9 @@ func (s *State) SetLook(l Look) error {
 		}
 	}
 	l.Made = true
+	if l.Gender == GenderFemale {
+		l.Beard = "" // pahlawan perempuan tidak berjenggot/berkumis
+	}
 	if l.Skin != "" {
 		c, _ := CosmeticByID(l.Skin)
 		s.Outfit = c.Outfit // skin bawaan = variasi pakaian lama; skin toko memakai warna sendiri (Outfit 0)
@@ -315,6 +327,9 @@ func (s *State) SetLook(l Look) error {
 func (s State) validLook() error {
 	l := s.Look
 	bad := errors.New("data penampilan tidak sah")
+	if l.Gender != "" && l.Gender != GenderMale && l.Gender != GenderFemale {
+		return bad
+	}
 	for _, v := range []string{l.Skin, l.Hair, l.HairColor, l.SkinColor, l.Face, l.Eyes, l.EyeColor, l.Nose, l.Mouth, l.Brow, l.Beard, l.Body, l.Clothes, l.Pants, l.Gloves, l.Hat, l.Cape} {
 		if len(v) > 64 {
 			return bad

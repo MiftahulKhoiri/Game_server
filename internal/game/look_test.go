@@ -263,3 +263,27 @@ func TestLookValidateLegacy(t *testing.T) {
 		t.Fatal("tinggi di luar rentang harus ditolak")
 	}
 }
+
+func TestLookGender(t *testing.T) {
+	st := NewState()
+	if err := st.SetLook(Look{Gender: GenderFemale, Beard: "tebal", Hair: "rambut_panjang"}); err != nil {
+		t.Fatal(err)
+	}
+	if st.Look.Gender != GenderFemale || st.Look.Beard != "" || st.Validate() != nil {
+		t.Fatalf("pahlawan perempuan: %+v", st.Look)
+	}
+	if err := st.SetLook(Look{Gender: "naga"}); !errors.Is(err, ErrUnknownLook) {
+		t.Fatalf("jenis kelamin tidak dikenal: %v", err)
+	}
+	if err := st.SetLook(Look{Gender: GenderMale, Beard: "kumis"}); err != nil || st.Look.Beard != "kumis" {
+		t.Fatalf("laki-laki berkumis: %v %+v", err, st.Look)
+	}
+	st.Look.Gender = "x"
+	if st.Validate() == nil {
+		t.Fatal("jenis kelamin rusak di data harus ditolak")
+	}
+	old := NewState() // akun lama tanpa jenis kelamin tetap sah (= laki-laki)
+	if old.Look.Gender != "" || old.Validate() != nil {
+		t.Fatal("akun lama")
+	}
+}

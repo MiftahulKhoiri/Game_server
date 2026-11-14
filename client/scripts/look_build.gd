@@ -28,6 +28,8 @@ uniform vec4 key_mid : source_color = vec4(0.965, 0.753, 0.612, 1.0);
 uniform vec4 key_light : source_color = vec4(0.973, 0.800, 0.671, 1.0);
 uniform vec4 key_dark : source_color = vec4(0.949, 0.659, 0.494, 1.0);
 uniform float tolerance = 0.07;
+uniform bool grey_swap = false;
+uniform vec4 grey_to : source_color = vec4(1.0);
 uniform float rim_amount = 0.35;
 uniform float rim_tint_amount = 0.4;
 float hit(vec3 c, vec3 key) { return 1.0 - smoothstep(tolerance * 0.5, tolerance, distance(c, key)); }
@@ -37,6 +39,14 @@ void fragment() {
 	o = mix(o, skin.rgb, hit(c, key_mid.rgb));
 	o = mix(o, skin.rgb * (key_light.rgb / key_mid.rgb), hit(c, key_light.rgb));
 	o = mix(o, skin.rgb * (key_dark.rgb / key_mid.rgb), hit(c, key_dark.rgb));
+	if (grey_swap) {
+		// janggut abu-abu kepala Barbarian (v0.83.0): jadi warna kulit (pahlawan perempuan) atau warna rambut
+		float sat = max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b);
+		float lum = (c.r + c.g + c.b) / 3.0;
+		if (sat < 0.1 && lum > 0.3 && lum < 0.72) {
+			o = grey_to.rgb * clamp(lum / 0.55, 0.7, 1.2);
+		}
+	}
 	ALBEDO = o * tint.rgb;
 	ROUGHNESS = 0.75;
 	RIM = rim_amount;
@@ -155,7 +165,7 @@ static func skin_color(look: Dictionary) -> Color:
 
 ## Pasang/lepas shader kulit pada mesh kepala/lengan. on = warna kulit dipilih. Bahan standar asli disimpan di
 ## meta supaya bisa dikembalikan (ganti pahlawan/penampilan berkali-kali tidak menumpuk bahan).
-static func set_skin(mi: MeshInstance3D, on: bool, c: Color) -> void:
+static func set_skin(mi: MeshInstance3D, on: bool, c: Color, grey_to := Color(0, 0, 0, 0)) -> void:
 	if mi.mesh == null:
 		return
 	for i in mi.mesh.get_surface_count():
@@ -181,10 +191,22 @@ static func set_skin(mi: MeshInstance3D, on: bool, c: Color) -> void:
 			cur = sm
 		if cur is ShaderMaterial:
 			(cur as ShaderMaterial).set_shader_parameter("skin", c)
+			(cur as ShaderMaterial).set_shader_parameter("grey_swap", grey_to.a > 0.0)
+			(cur as ShaderMaterial).set_shader_parameter("grey_to", grey_to)
 
 
 static func hair_color(look: Dictionary) -> Color:
-	return col(look.get("hair_color", ""), Color("2a1c12"))
+	return col(look.get("hair_color", ""), Color("5a3620") if is_female(look) else Color("2a1c12"))
+
+
+## Pahlawan perempuan (v0.83.0): pilihan Jenis Kelamin di Character Creator, berlaku untuk semua pahlawan.
+static func is_female(look: Dictionary) -> bool:
+	return str(look.get("gender", "")) == "wanita"
+
+
+const LIPS := Color("c8505a")
+const LASH := Color("1a1210")
+const BLUSH := Color("f29a8a")
 
 
 ## Ciri wajah untuk Models._face (alis dan janggut mengikuti warna rambut).
@@ -202,6 +224,12 @@ static func face_dict(look: Dictionary) -> Dictionary:
 			f["brow_tilt"] = -0.22
 		_:
 			f["brow_tilt"] = 0.2
+	if is_female(look):  # alis lebih tipis dan melengkung, pipi merona, tanpa jenggot
+		f["brow_w"] = float(f.get("brow_w", 1.0)) * 0.6
+		if str(look.get("brow", "")) in ["", "tegas"]:
+			f["brow_tilt"] = -0.14
+		f["blush"] = BLUSH
+		return f
 	match str(look.get("beard", "")):
 		"kumis":
 			f["mustache"] = hc
@@ -474,6 +502,8 @@ static func apply(rig: Node3D, sk: Skeleton3D, list: Array, look: Dictionary, eq
 static func _hair(sk: Skeleton3D, look: Dictionary, head: AABB, covered: bool) -> void:
 	var c := cosm(str(look.get("hair", "")))
 	var shape := shape_of(c)
+	if shape == "" and is_female(look):
+		shape = "panjang"  # perempuan tanpa pilihan rambut: rambut panjang bawaan
 	if shape == "":
 		return
 	var hc := hair_color(look)
@@ -585,6 +615,14 @@ static func _face_extra(sk: Skeleton3D, look: Dictionary, head: AABB) -> void:
 			pupil.scale = Vector3(1, minf(sz.y, 1.0), 0.3)
 			eye.add_child(pupil)
 			root.add_child(eye)
+	var female := is_female(look)
+	if female:  # bulu mata: tiga helai miring di atas tiap mata
+		for sx: float in [-1.0, 1.0]:
+			for k in 3:
+				var lash := _part(_box(Vector3(w * 0.045, h * 0.012, w * 0.02)), LASH, Vector3(sx * w * (0.13 + k * 0.045), h * (0.075 + k * 0.012), -w * 0.0))
+				lash.rotation.z = sx * (0.25 + k * 0.25)
+				root.add_child(lash)
+	var mouth_c := LIPS if female else MOUTH
 	var skin := skin_color(look) * Color(0.9, 0.85, 0.82)
 	match str(look.get("nose", "")):
 		"kecil":
@@ -599,17 +637,22 @@ static func _face_extra(sk: Skeleton3D, look: Dictionary, head: AABB) -> void:
 			root.add_child(n2)
 	match str(look.get("mouth", "")):
 		"senyum":
-			root.add_child(_part(_box(Vector3(w * 0.12, h * 0.025, w * 0.02)), MOUTH, Vector3(0, -h * 0.22, -w * 0.005)))
+			root.add_child(_part(_box(Vector3(w * 0.12, h * 0.025, w * 0.02)), mouth_c, Vector3(0, -h * 0.22, -w * 0.005)))
 			for sx: float in [-1.0, 1.0]:
-				var corner := _part(_box(Vector3(w * 0.06, h * 0.022, w * 0.02)), MOUTH, Vector3(sx * w * 0.08, -h * 0.205, -w * 0.01))
+				var corner := _part(_box(Vector3(w * 0.06, h * 0.022, w * 0.02)), mouth_c, Vector3(sx * w * 0.08, -h * 0.205, -w * 0.01))
 				corner.rotation.z = sx * 0.5
 				root.add_child(corner)
 		"datar":
-			root.add_child(_part(_box(Vector3(w * 0.16, h * 0.025, w * 0.02)), MOUTH, Vector3(0, -h * 0.22, -w * 0.005)))
+			root.add_child(_part(_box(Vector3(w * 0.16, h * 0.025, w * 0.02)), mouth_c, Vector3(0, -h * 0.22, -w * 0.005)))
 		"tipis":
-			root.add_child(_part(_box(Vector3(w * 0.13, h * 0.012, w * 0.02)), MOUTH, Vector3(0, -h * 0.22, -w * 0.005)))
+			root.add_child(_part(_box(Vector3(w * 0.13, h * 0.012, w * 0.02)), mouth_c, Vector3(0, -h * 0.22, -w * 0.005)))
+		"":
+			if female:  # bibir kecil berwarna
+				var lips := _part(_sphere(w * 0.05), LIPS, Vector3(0, -h * 0.21, -w * 0.01))
+				lips.scale = Vector3(1.5, 0.55, 0.5)
+				root.add_child(lips)
 		"lebar":
-			var m := _part(_box(Vector3(w * 0.24, h * 0.045, w * 0.02)), MOUTH, Vector3(0, -h * 0.22, -w * 0.005))
+			var m := _part(_box(Vector3(w * 0.24, h * 0.045, w * 0.02)), mouth_c, Vector3(0, -h * 0.22, -w * 0.005))
 			root.add_child(m)
 			root.add_child(_part(_box(Vector3(w * 0.2, h * 0.015, w * 0.022)), Color("f4f2ee"), Vector3(0, -h * 0.207, 0)))
 	if root.get_child_count() == 0:
@@ -924,23 +967,31 @@ static func apply_body(rig: Node3D, sk: Skeleton3D, look: Dictionary) -> void:
 	var muscle := float(look.get("muscle", 0)) + float(preset[1])
 	var torso := float(look.get("torso", 0)) + float(preset[2])
 	var head := float(look.get("head", 0))
+	var female := is_female(look)
+	if female:  # tubuh perempuan: sedikit lebih pendek, bahu lebih sempit, lengan lebih ramping
+		height -= 0.8
+		width -= 0.5
 	rig.scale = base * (1.0 + STEP_HEIGHT * height)
 	var kw := 1.0 + STEP_WIDTH * width
 	var km := 1.0 + STEP_MUSCLE * muscle
 	var kt := 1.0 + STEP_TORSO * torso
 	var fs: Vector3 = FACE_SCALE.get(str(look.get("face", "")), Vector3.ONE)
 	var kh := 1.0 + STEP_HEAD * head
+	var kc := km * (0.88 if female else 1.0)  # bahu (dada) lebih sempit
+	var ka := km * (0.88 if female else 1.0)  # lengan atas lebih ramping
+	if female:
+		kh *= 1.04
 	var scales := {}
 	if kw != 1.0:
 		scales["hips"] = Vector3(kw, 1, kw)
-	if km != 1.0 or kt != 1.0:
-		scales["chest"] = Vector3(km, 1, km)
+	if km != 1.0 or kt != 1.0 or female:
+		scales["chest"] = Vector3(kc, 1, kc)
 		scales["spine"] = Vector3(1, kt, 1)
 		for side: String in ["l", "r"]:
-			scales["upperarm." + side] = Vector3(km, 1, km)
+			scales["upperarm." + side] = Vector3(ka, 1, ka)
 			scales["upperleg." + side] = Vector3(km, 1, km)
 	# Kepala mewarisi skala tulang induk (hips, spine, chest): dibalik supaya ukurannya hanya dari pilihan kepala.
-	var inherit := Vector3(kw * km, kt, kw * km)
+	var inherit := Vector3(kw * kc, kt, kw * kc)
 	scales["head"] = Vector3(kh * fs.x / inherit.x, kh * fs.y / inherit.y, kh * fs.z / inherit.z)
 	if scales["head"] == Vector3.ONE:
 		scales.erase("head")
