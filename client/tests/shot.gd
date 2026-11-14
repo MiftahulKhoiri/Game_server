@@ -6,6 +6,7 @@ extends Node
 
 func _gallery() -> void:
 	const Models = preload("res://scripts/models.gd")
+	const Maps = preload("res://scripts/maps.gd")
 	var ids: Array = OS.get_environment("SHOT_IDS").split(",")
 	var root := Node3D.new()
 	get_tree().root.add_child.call_deferred(root)
@@ -31,7 +32,14 @@ func _gallery() -> void:
 	floor_mesh.material_override = fm
 	root.add_child(floor_mesh)
 	for i in ids.size():
-		var m: Node3D = Models.create(ids[i])
+		var m: Node3D = null
+		if OS.get_environment("SHOT_WARGA") != "":  # SHOT_IDS = id warga di Maps.WARGA (model + baju + wajah)
+			for wd: Dictionary in Maps.WARGA:
+				if str(wd.id) == ids[i]:
+					m = Models.create_warga(wd)
+					break
+		if m == null:
+			m = Models.create(ids[i])
 		# SHOT_DRESS = "pakaian,senjata,pelindung,helm" (mis. "1,pedang_rune,zirah_besi,helm_besi")
 		if OS.get_environment("SHOT_DRESS") != "":
 			var d: PackedStringArray = OS.get_environment("SHOT_DRESS").split(",")

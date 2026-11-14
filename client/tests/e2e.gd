@@ -1403,6 +1403,38 @@ func _run() -> void:
 		face_ok = face_ok and fm.find_children("wajah", "", true, false).size() == 1
 		fm.queue_free()
 	_check(face_ok, "tiap pahlawan punya ciri wajah sendiri, tidak menumpuk saat ganti perlengkapan")
+	# v0.81.0 (roadmap no. 31): variasi wajah warga — tiap warga manusia berwajah, tetap sama tiap dibuat, beragam.
+	var wf_ok := true
+	var wf_seen := {}
+	var wf_n := 0
+	for wf_def: Dictionary in Maps.WARGA:
+		if not SModels.FACE_KIND.has(str(wf_def.model)):
+			_check(SModels.warga_face_of(wf_def).is_empty(), "%s (bukan manusia) tidak diberi wajah" % wf_def.name)
+			continue
+		var wf_face: Dictionary = SModels.warga_face_of(wf_def)
+		wf_ok = wf_ok and not wf_face.is_empty() and wf_face == SModels.warga_face_of(wf_def.duplicate())
+		wf_seen[str(wf_face)] = true
+		wf_n += 1
+	_check(wf_ok and wf_n >= 20, "semua warga manusia (%d) punya wajah tetap" % wf_n)
+	_check(wf_seen.size() >= 12, "wajah warga beragam (%d bentuk wajah berbeda)" % wf_seen.size())
+	var wf_nodes_ok := true
+	for wf_id: String in ["pak_saleh", "rina", "bu_sari", "kepala_suku"]:
+		for wf_def2: Dictionary in Maps.WARGA:
+			if wf_def2.id == wf_id:
+				var wm: Node3D = SModels.create_warga(wf_def2)
+				get_root().add_child(wm)
+				var wfn: Array = wm.find_children("wajah", "", true, false)
+				wf_nodes_ok = wf_nodes_ok and wfn.size() == 1 and (wfn[0] as Node).get_child_count() >= 2
+				for wfp in (wfn[0] as Node).get_children() if wfn.size() == 1 else []:
+					wf_nodes_ok = wf_nodes_ok and (wfp as GeometryInstance3D).visibility_range_end == SModels.WARGA_FACE_FAR
+				wm.queue_free()
+				break
+	_check(wf_nodes_ok, "model warga memakai ciri wajahnya (tidak digambar dari jauh)")
+	var wf_saleh: Dictionary = {}
+	for wf_d3: Dictionary in Maps.WARGA:
+		if wf_d3.id == "pak_saleh":
+			wf_saleh = SModels.warga_face_of(wf_d3)
+	_check(wf_saleh.has("glasses"), "Pak Saleh (penjaga bank) berkacamata")
 	_check(SModels.has_glb("belalang_raksasa"), "Belalang Raksasa punya model belalang")
 	_check(ResourceLoader.exists("res://assets/models/alam/kuil_quaternius.glb") and str((load("res://scripts/world_build.gd") as GDScript).get_script_constant_map().BANGUNAN_MODEL.kuil) == "kuil_quaternius", "kuil desa memakai model kuil sendiri (bukan gereja Rumah Sehat)")
 	mage.queue_free()

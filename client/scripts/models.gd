@@ -468,7 +468,7 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 		var w_tint: Color = weapon.get("tint", Color(1, 1, 1))
 		_attach(sk, "handslot.r", _staff_mesh(weapon.get("glow", Color("b77dff")) as Color, w_tint))
 	if head_box.size != Vector3.ZERO:
-		_face(sk, str(rig.name), head_box, not helmet.is_empty())
+		_face(sk, FACES.get(str(rig.name), {}), head_box, not helmet.is_empty())
 
 
 ## Wajah khas tiap pahlawan (roadmap no. 5, v0.80.0). Model KayKit memakai kepala yang sama per jenis, jadi
@@ -482,8 +482,9 @@ const FACES := {
 	"penyihir": {"brow": Color("e8e8f0"), "brow_tilt": -0.2, "wizard_beard": Color("eeeef4")},
 }
 
-static func _face(sk: Skeleton3D, id: String, head: AABB, helmet: bool) -> void:
-	var f: Dictionary = FACES.get(id, {})
+## Ciri wajah `f` (lihat FACES / WARGA_FACES) ditempel di tulang kepala. far > 0 = bagian wajah tidak digambar
+## lebih jauh dari `far` meter (warga jauh: hemat panggilan gambar di HP).
+static func _face(sk: Skeleton3D, f: Dictionary, head: AABB, helmet: bool, far := 0.0) -> void:
 	if f.is_empty():
 		return
 	var root := Node3D.new()
@@ -492,14 +493,15 @@ static func _face(sk: Skeleton3D, id: String, head: AABB, helmet: bool) -> void:
 	var h := head.size.y
 	var cx := head.position.x + w / 2.0
 	var front := head.end.z
-	var eye_y := head.position.y + h * FACE_EYE_Y
+	var eye_y := head.position.y + h * float(f.get("eye_y", FACE_EYE_Y))
 	root.set_meta("rig_pos", Vector3(cx, eye_y, front))
 	if f.has("brow") and not helmet:
+		var bw := float(f.get("brow_w", 1.0))
 		for sx: float in [-1.0, 1.0]:
 			var b := _face_part(BoxMesh.new(), f.brow as Color)
-			(b.mesh as BoxMesh).size = Vector3(w * 0.17, h * 0.035, w * 0.04)
+			(b.mesh as BoxMesh).size = Vector3(w * 0.17, h * 0.035 * bw, w * 0.04)
 			b.position = Vector3(sx * w * 0.17, h * 0.1, -w * 0.02)
-			b.rotation.z = sx * float(f.brow_tilt)
+			b.rotation.z = sx * float(f.get("brow_tilt", 0.0))
 			root.add_child(b)
 	if f.has("blush"):
 		for sx: float in [-1.0, 1.0]:
@@ -508,13 +510,21 @@ static func _face(sk: Skeleton3D, id: String, head: AABB, helmet: bool) -> void:
 			(c.mesh as SphereMesh).height = w * 0.05
 			c.position = Vector3(sx * w * 0.27, -h * 0.09, -w * 0.05)
 			root.add_child(c)
+	if f.has("freckles"):  # bintik di pipi (anak-anak)
+		for sx: float in [-1.0, 1.0]:
+			for k in 3:
+				var fr := _face_part(SphereMesh.new(), f.freckles as Color)
+				(fr.mesh as SphereMesh).radius = w * 0.014
+				(fr.mesh as SphereMesh).height = w * 0.02
+				fr.position = Vector3(sx * w * (0.2 + 0.05 * k), -h * (0.04 + 0.03 * (k % 2)), -w * 0.02)
+				root.add_child(fr)
 	if f.has("mustache"):
 		for sx: float in [-1.0, 1.0]:
 			var m := _face_part(CapsuleMesh.new(), f.mustache as Color)
 			(m.mesh as CapsuleMesh).radius = w * 0.035
 			(m.mesh as CapsuleMesh).height = w * 0.22
 			m.position = Vector3(sx * w * 0.08, -h * 0.17, -w * 0.01)
-			m.rotation.z = sx * 1.25
+			m.rotation.z = sx * float(f.get("mustache_tilt", 1.25))
 			root.add_child(m)
 	if f.has("stubble"):
 		var s := _face_part(SphereMesh.new(), f.stubble as Color)
@@ -523,6 +533,16 @@ static func _face(sk: Skeleton3D, id: String, head: AABB, helmet: bool) -> void:
 		s.position = Vector3(0, -h * 0.3, -w * 0.12)
 		s.scale = Vector3(1.0, 0.7, 0.55)
 		root.add_child(s)
+	if f.has("goatee"):  # jenggot kambing: kerucut kecil di dagu
+		var g := _face_part(CylinderMesh.new(), f.goatee as Color)
+		var gm := g.mesh as CylinderMesh
+		gm.top_radius = w * 0.07
+		gm.bottom_radius = w * 0.01
+		gm.height = h * 0.22
+		gm.radial_segments = 6
+		g.position = Vector3(0, -h * 0.36, -w * 0.04)
+		g.scale = Vector3(1.0, 1.0, 0.6)
+		root.add_child(g)
 	if f.has("beard"):
 		var bd := _face_part(SphereMesh.new(), f.beard as Color)
 		(bd.mesh as SphereMesh).radius = w * 0.3
@@ -546,6 +566,36 @@ static func _face(sk: Skeleton3D, id: String, head: AABB, helmet: bool) -> void:
 		mo.position = Vector3(0, -h * 0.18, -w * 0.0)
 		mo.rotation.z = PI / 2.0
 		root.add_child(mo)
+	if f.has("mole"):  # tahi lalat di pipi
+		var ml := _face_part(SphereMesh.new(), Color("3a2418"))
+		(ml.mesh as SphereMesh).radius = w * 0.022
+		(ml.mesh as SphereMesh).height = w * 0.03
+		ml.position = Vector3(float(f.mole) * w * 0.24, -h * 0.16, -w * 0.03)
+		root.add_child(ml)
+	if f.has("scar"):  # bekas luka miring melintasi mata (prajurit)
+		var sc := _face_part(BoxMesh.new(), Color("b8645a"))
+		(sc.mesh as BoxMesh).size = Vector3(w * 0.03, h * 0.3, w * 0.03)
+		sc.position = Vector3(float(f.scar) * w * 0.17, -h * 0.02, w * 0.005)
+		sc.rotation.z = float(f.scar) * 0.45
+		root.add_child(sc)
+	if f.has("glasses"):  # kacamata bulat: dua lingkar + jembatan
+		for sx: float in [-1.0, 1.0]:
+			var lens := _face_part(TorusMesh.new(), f.glasses as Color)
+			var tm := lens.mesh as TorusMesh
+			tm.inner_radius = w * 0.075
+			tm.outer_radius = w * 0.1
+			tm.rings = 12
+			tm.ring_segments = 6
+			lens.position = Vector3(sx * w * 0.17, -h * 0.01, w * 0.03)
+			lens.rotation.x = PI / 2.0
+			root.add_child(lens)
+		var br := _face_part(BoxMesh.new(), f.glasses as Color)
+		(br.mesh as BoxMesh).size = Vector3(w * 0.14, w * 0.025, w * 0.025)
+		br.position = Vector3(0, -h * 0.0, w * 0.03)
+		root.add_child(br)
+	if far > 0.0:
+		for part in root.get_children():
+			(part as GeometryInstance3D).visibility_range_end = far
 	_attach(sk, "head", root)
 
 
@@ -718,7 +768,74 @@ static func create_warga(def: Dictionary) -> Node3D:
 		m.scale = m.scale * float(def.ukuran)
 	if def.has("baju") or def.has("kulit"):
 		npc_look(m, def.get("baju", Color(1, 1, 1)), def.get("kulit", Color(1, 1, 1)))
+	npc_face(m, def)
 	return m
+
+
+# --- variasi wajah warga (roadmap no. 31, v0.81.0) ---
+
+## Jenis wajah per model warga: pria, wanita, atau anak. Model lain (hewan, goblin) tidak diberi wajah.
+const FACE_KIND := {
+	"warga_bapak": "pria", "warga_bapak2": "pria", "pendekar_kapak": "pria", "pendekar_tombak": "pria",
+	"ksatria": "pria", "prajurit": "pria", "warga_ibu": "wanita", "warga_ibu2": "wanita", "pemanah": "wanita",
+	"anak_desa": "anak",
+}
+## Kumpulan wajah; warga mendapat satu wajah tetap menurut id+namanya (sama di dunia dan di layar dialog).
+const WARGA_FACES := {
+	"pria": [
+		{"brow": Color("2a1c12"), "brow_tilt": 0.1, "mustache": Color("2a1c12")},
+		{"brow": Color("4a2e1a"), "brow_tilt": 0.22, "brow_w": 1.4, "stubble": Color("4a3020")},
+		{"brow": Color("1e1610"), "brow_tilt": -0.05, "goatee": Color("1e1610")},
+		{"brow": Color("8a8a8a"), "brow_tilt": -0.12, "mustache": Color("a8a8a8"), "mustache_tilt": 1.45},
+		{"brow": Color("3a2414"), "brow_tilt": 0.05, "beard": Color("3a2414")},
+		{"brow": Color("5a3a22"), "brow_tilt": 0.15, "mole": 1.0},
+		{"brow": Color("2a1c12"), "brow_tilt": 0.0, "glasses": Color("4a3a2a")},
+	],
+	"wanita": [
+		{"brow": Color("3a2414"), "brow_tilt": -0.08, "brow_w": 0.7, "blush": Color("f29a8a")},
+		{"brow": Color("2a1c12"), "brow_tilt": -0.15, "brow_w": 0.7, "mole": -1.0},
+		{"brow": Color("6a3a20"), "brow_tilt": -0.05, "brow_w": 0.8, "blush": Color("e88a90"), "mole": 1.0},
+		{"brow": Color("1e1610"), "brow_tilt": -0.2, "brow_w": 0.65},
+		{"brow": Color("9a9a9a"), "brow_tilt": -0.1, "brow_w": 0.7, "glasses": Color("8a6a3a")},
+	],
+	"anak": [
+		{"brow": Color("4a2e1a"), "brow_tilt": -0.1, "brow_w": 0.8, "blush": Color("f4a090"), "freckles": Color("b07050")},
+		{"brow": Color("2a1c12"), "brow_tilt": 0.12, "brow_w": 0.9, "freckles": Color("a06848")},
+		{"brow": Color("3a2414"), "brow_tilt": -0.05, "brow_w": 0.8, "blush": Color("f29a8a")},
+	],
+}
+## Ciri wajah tidak digambar dari jauh (meter) supaya warga jauh tidak menambah panggilan gambar di HP.
+const WARGA_FACE_FAR := 16.0
+
+
+## Wajah warga `def` (Maps.WARGA): def.wajah (kamus ciri) bila ada, selain itu dipilih dari WARGA_FACES.
+static func warga_face_of(def: Dictionary) -> Dictionary:
+	if def.has("wajah"):
+		return def.wajah
+	var pool: Array = WARGA_FACES.get(FACE_KIND.get(str(def.get("model", "")), ""), [])
+	if pool.is_empty():
+		return {}
+	var key := (str(def.get("id", "")) + "/" + str(def.get("name", ""))).hash()
+	return pool[absi(key) % pool.size()]
+
+
+static func npc_face(rig: Node3D, def: Dictionary) -> void:
+	var f := warga_face_of(def)
+	if f.is_empty() or rig == null:
+		return
+	var sk: Skeleton3D = null
+	for n in rig.find_children("*", "Skeleton3D", true, false):
+		sk = n as Skeleton3D
+		break
+	if sk == null:
+		return
+	var list: Array = []
+	_meshes(sk, Transform3D.IDENTITY, list)
+	for pair: Array in list:
+		var nm := str((pair[0] as MeshInstance3D).name)
+		if nm.ends_with("_Head") or nm.ends_with("_Head_Hooded"):
+			_face(sk, f, (pair[1] as Transform3D) * (pair[0] as MeshInstance3D).get_aabb(), false, WARGA_FACE_FAR)
+			return
 
 
 ## Pakaian dan perlengkapan pemain yang sedang login.
