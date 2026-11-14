@@ -184,6 +184,9 @@ func BuyAt(st *State, shop, id string, qty int) error {
 	if shop != "" && def.Shop != shop {
 		return ErrWrongShop
 	}
+	if st.Level < def.Level {
+		return ErrLevelLow // syarat level dari katalog server, sama dengan saat memakai (v0.82.1)
+	}
 	cost := def.BuyPrice * qty
 	if d := st.ShopDiscount(def.Shop); d > 0 {
 		cost = cost * (100 - d) / 100 // sahabat penjaga toko: potongan harga (roadmap no. 59)
@@ -256,6 +259,9 @@ func BarterAt(st *State, shop, id string, qty int) error {
 	}
 	if def.Shop != shop {
 		return ErrWrongShop
+	}
+	if st.Level < def.Level {
+		return ErrLevelLow
 	}
 	need := BarterCost(def, qty)
 	if st.itemQty(DiamondID) < need {

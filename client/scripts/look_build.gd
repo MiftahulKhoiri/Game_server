@@ -10,8 +10,40 @@ extends RefCounted
 const BodyShape = preload("res://scripts/body_shape.gd")
 const DRESS_NODE := "Perlengkapan"  # sama dengan Models.DRESS_NODE: tempelan lama dibuang saat dress ulang
 
-## Warna kulit bawaan tekstur KayKit (pengali warna kulit = warna pilihan / warna ini).
-const BASE_SKIN := Color("d9a477")
+## Warna kulit tekstur palet KayKit (diukur dari ksatria/pemanah/... _texture.png): tengah, terang, gelap.
+const BASE_SKIN := Color("f6c09c")
+const SKIN_LIGHT := Color("f8ccab")
+const SKIN_DARK := Color("f2a87e")
+
+## Shader kulit (v0.82.1): hanya piksel tekstur berwarna kulit KayKit yang diganti warna kulit pilihan, dengan
+## terang-gelap yang sama; rambut, mata, baju, zirah di tekstur yang sama tetap. Kode di sini (bukan berkas aset)
+## supaya ikut patch skrip. Gaya toon + cahaya tepi sama dengan bahan pahlawan lain.
+const SKIN_SHADER := """
+shader_type spatial;
+render_mode diffuse_toon, specular_toon;
+uniform sampler2D albedo_tex : source_color, filter_nearest_mipmap;
+uniform vec4 tint : source_color = vec4(1.0);
+uniform vec4 skin : source_color = vec4(0.965, 0.753, 0.612, 1.0);
+uniform vec4 key_mid : source_color = vec4(0.965, 0.753, 0.612, 1.0);
+uniform vec4 key_light : source_color = vec4(0.973, 0.800, 0.671, 1.0);
+uniform vec4 key_dark : source_color = vec4(0.949, 0.659, 0.494, 1.0);
+uniform float tolerance = 0.07;
+uniform float rim_amount = 0.35;
+uniform float rim_tint_amount = 0.4;
+float hit(vec3 c, vec3 key) { return 1.0 - smoothstep(tolerance * 0.5, tolerance, distance(c, key)); }
+void fragment() {
+	vec3 c = texture(albedo_tex, UV).rgb;
+	vec3 o = c;
+	o = mix(o, skin.rgb, hit(c, key_mid.rgb));
+	o = mix(o, skin.rgb * (key_light.rgb / key_mid.rgb), hit(c, key_light.rgb));
+	o = mix(o, skin.rgb * (key_dark.rgb / key_mid.rgb), hit(c, key_dark.rgb));
+	ALBEDO = o * tint.rgb;
+	ROUGHNESS = 0.75;
+	RIM = rim_amount;
+	RIM_TINT = rim_tint_amount;
+}
+"""
+static var _skin_shader: Shader = null
 const MOUTH := Color("6a2a24")
 
 ## Bentuk rambut bila katalog belum dimuat.
@@ -62,7 +94,7 @@ const BUILTIN_WEAPONS := ["1H_Sword", "2H_Axe", "Spear", "2H_Crossbow", "1H_Cros
 const BUILTIN_SHIELD := ["Badge_Shield", "Round_Shield", "Spike_Shield", "Rectangle_Shield", "Knife_Offhand"]
 
 ## Bentuk wajah dan tubuh: pengali skala tulang.
-const FACE_SCALE := {"oval": Vector3(1, 1, 1), "bulat": Vector3(1.07, 0.95, 1.04), "persegi": Vector3(1.06, 1.0, 1.06), "lancip": Vector3(0.93, 1.06, 0.97)}
+const FACE_SCALE := {"oval": Vector3(1, 1, 1), "bulat": Vector3(1.14, 0.93, 1.08), "persegi": Vector3(1.12, 1.02, 1.12), "lancip": Vector3(0.88, 1.1, 0.94)}
 ## Tubuh: [lebar, otot, badan] tambahan penggeser.
 const BODY_PRESET := {"sedang": [0.0, 0.0, 0.0], "ramping": [-1.5, -1.0, 0.3], "kekar": [1.0, 2.0, 0.0], "gempal": [2.5, 0.5, -0.6]}
 const STEP_HEIGHT := 0.035
@@ -116,13 +148,39 @@ static func skin_tint(look: Dictionary) -> Array:
 	return [col(c.color), glow_of(c)]
 
 
-## Pengali warna kulit untuk kepala (warna pilihan dibanding warna kulit tekstur).
-static func skin_mult(look: Dictionary) -> Color:
-	var s := str(look.get("skin_color", ""))
-	if s == "":
-		return Color(1, 1, 1)
-	var c := col(s, BASE_SKIN)
-	return Color(clampf(c.r / BASE_SKIN.r, 0.2, 1.25), clampf(c.g / BASE_SKIN.g, 0.2, 1.25), clampf(c.b / BASE_SKIN.b, 0.2, 1.25))
+## Warna kulit pilihan (bawaan = warna kulit tekstur KayKit).
+static func skin_color(look: Dictionary) -> Color:
+	return col(look.get("skin_color", ""), BASE_SKIN)
+
+
+## Pasang/lepas shader kulit pada mesh kepala/lengan. on = warna kulit dipilih. Bahan standar asli disimpan di
+## meta supaya bisa dikembalikan (ganti pahlawan/penampilan berkali-kali tidak menumpuk bahan).
+static func set_skin(mi: MeshInstance3D, on: bool, c: Color) -> void:
+	if mi.mesh == null:
+		return
+	for i in mi.mesh.get_surface_count():
+		var cur := mi.get_surface_override_material(i)
+		var key := "std_mat_%d" % i
+		if not on:
+			if cur is ShaderMaterial and mi.has_meta(key):
+				mi.set_surface_override_material(i, mi.get_meta(key) as Material)
+			continue
+		if cur is StandardMaterial3D:
+			var std := cur as StandardMaterial3D
+			if std.albedo_texture == null:
+				continue  # tanpa tekstur palet: tidak ada piksel kulit
+			mi.set_meta(key, std)
+			if _skin_shader == null:
+				_skin_shader = Shader.new()
+				_skin_shader.code = SKIN_SHADER
+			var sm := ShaderMaterial.new()
+			sm.shader = _skin_shader
+			sm.set_shader_parameter("albedo_tex", std.albedo_texture)
+			sm.set_shader_parameter("tint", std.get_meta("base_col", std.albedo_color) if std.has_meta("base_col") else std.albedo_color)
+			mi.set_surface_override_material(i, sm)
+			cur = sm
+		if cur is ShaderMaterial:
+			(cur as ShaderMaterial).set_shader_parameter("skin", c)
 
 
 static func hair_color(look: Dictionary) -> Color:
@@ -300,7 +358,7 @@ static func _hair(sk: Skeleton3D, look: Dictionary, head: AABB, covered: bool) -
 		return
 	var hc := hair_color(look)
 	if shape == "botak":
-		hc = BASE_SKIN * skin_mult(look)
+		hc = skin_color(look)
 	var w := head.size.x
 	var d := head.size.z
 	var h := head.size.y
@@ -320,19 +378,29 @@ static func _hair(sk: Skeleton3D, look: Dictionary, head: AABB, covered: bool) -
 					continue  # jangan menutupi wajah
 				root.add_child(_part(_sphere(r * 0.3), hc, p))
 			cap_y_scale = 0.85
-		var cap := _part(_sphere(r, r), hc, Vector3.ZERO, shape == "botak")
-		(cap.mesh as SphereMesh).is_hemisphere = true
-		cap.scale = Vector3(1.02, cap_y_scale * 1.08, 1.06)
-		root.add_child(cap)
-		var fringe := _part(_box(Vector3(w * 0.86, h * 0.08, d * 0.12)), hc, Vector3(0, -h * 0.02, d * 0.43))
-		if shape != "botak":
-			root.add_child(fringe)  # poni tipis di dahi
-		else:
-			fringe.free()
+	# Tempurung rambut = elips mengikuti kotak kepala, sedikit ke atas dan ke belakang: bagian depan-bawahnya masuk
+	# ke dalam kepala sehingga wajah tetap terlihat dan tidak ada tepi mangkuk yang kaku. Di bawah helm/topi dibuat
+	# sedikit lebih kecil (di dalam helm) supaya hanya rambut di bawah pinggir helm yang terlihat, tanpa menembus.
+	var shrink := 0.86 if covered else 1.0
+	var cap := _part(_sphere(0.5, 1.0), hc, Vector3(0, -h * 0.03 if covered else h * 0.04, -d * 0.05), shape == "botak")
+	cap.scale = Vector3(w * 1.08, h * cap_y_scale / 0.95, d * 1.1) * shrink
+	root.add_child(cap)
+	if not covered and shape != "botak":
+		# jambul rambut bawaan model KayKit di atas dahi ikut tertutup warna rambut pilihan
+		var crown := _part(_sphere(0.5, 1.0), hc, Vector3(0, h * 0.3, d * 0.2))
+		crown.scale = Vector3(w * 0.9, h * 0.42, d * 0.8)
+		root.add_child(crown)
+		for sx: float in [-1.0, 1.0]:  # poni: dua helai miring di dahi
+			var bang := _part(_sphere(0.5, 1.0), hc, Vector3(sx * w * 0.17, -h * 0.03, d * 0.4))
+			bang.scale = Vector3(w * 0.42, h * 0.2, d * 0.18)
+			bang.rotation.z = sx * 0.35
+			root.add_child(bang)
 	match shape:
 		"lurus", "panjang":
-			var length := h * (0.75 if shape == "lurus" else 1.35)
-			root.add_child(_part(_box(Vector3(w * 0.98, length, d * 0.2)), hc, Vector3(0, -length / 2.0 + r * 0.3, -d * 0.42)))
+			var length := h * (0.75 if shape == "lurus" else 1.2)
+			var back := _part(_sphere(0.5, 1.0), hc, Vector3(0, -length / 2.0 + h * 0.15, -d * 0.4))
+			back.scale = Vector3(w * 0.96, length, d * 0.32)  # helai belakang membulat mengikuti kepala
+			root.add_child(back)
 			if not covered:
 				for sx: float in [-1.0, 1.0]:
 					root.add_child(_part(_box(Vector3(w * 0.12, h * 0.55, d * 0.6)), hc, Vector3(sx * w * 0.47, -h * 0.2, -d * 0.1)))
@@ -377,9 +445,14 @@ static func _face_extra(sk: Skeleton3D, look: Dictionary, head: AABB) -> void:
 	if eyes != "" or str(look.get("eye_color", "")) != "":
 		var ec := col(look.get("eye_color", ""), Color("3a2414"))
 		var sz := {"bulat": Vector2(1.0, 1.0), "sipit": Vector2(1.1, 0.45), "besar": Vector2(1.3, 1.3), "tajam": Vector2(1.15, 0.6)}.get(eyes, Vector2.ONE) as Vector2
+		var lid := skin_color(look)
 		for sx: float in [-1.0, 1.0]:
+			# Penutup mata lukisan tekstur KayKit (warna kulit), supaya bentuk mata pilihan tidak tumpang tindih.
+			var cover := _part(_sphere(w * 0.1), lid, Vector3(sx * w * 0.17, h * 0.03, -w * 0.03))
+			cover.scale = Vector3(1.25, 1.15, 0.22)
+			root.add_child(cover)
 			var eye := Node3D.new()
-			eye.position = Vector3(sx * w * 0.17, -h * 0.02, -w * 0.01)
+			eye.position = Vector3(sx * w * 0.17, h * 0.02, -w * 0.005)
 			if eyes == "tajam":
 				eye.rotation.z = sx * 0.25
 			var white := _part(_sphere(w * 0.065), Color("f4f2ee"))
@@ -392,7 +465,7 @@ static func _face_extra(sk: Skeleton3D, look: Dictionary, head: AABB) -> void:
 			pupil.scale = Vector3(1, minf(sz.y, 1.0), 0.3)
 			eye.add_child(pupil)
 			root.add_child(eye)
-	var skin := BASE_SKIN * skin_mult(look) * Color(0.9, 0.85, 0.82)
+	var skin := skin_color(look) * Color(0.9, 0.85, 0.82)
 	match str(look.get("nose", "")):
 		"kecil":
 			root.add_child(_part(_sphere(w * 0.04), skin, Vector3(0, -h * 0.1, w * 0.0)))
@@ -562,7 +635,9 @@ static func _accessory(sk: Skeleton3D, c: Dictionary, bx: Dictionary, head: AABB
 			var ring := _part(_torus(bw * 0.3, bw * 0.33), color, Vector3.ZERO, true)
 			ring.rotation.x = 0.35
 			n.add_child(ring)
-			n.add_child(_part(_sphere(bw * 0.06), color, Vector3(0, -bw * 0.12, body.size.z * 0.45), true, glow))
+			n.add_child(_part(_sphere(bw * 0.08), color, Vector3(0, -bw * 0.2, body.size.z * 0.6), true, glow))  # liontin di depan dada
+			var chain := _part(_cyl(bw * 0.012, bw * 0.012, bw * 0.2, 6), color, Vector3(0, -bw * 0.1, body.size.z * 0.57), true)
+			n.add_child(chain)
 			_attach(sk, "chest", n, neck)
 		"cincin":
 			var ri := Node3D.new()
@@ -608,7 +683,7 @@ static func _accessory(sk: Skeleton3D, c: Dictionary, bx: Dictionary, head: AABB
 					bone.rotation.z = sx * -0.6
 					wing.add_child(bone)
 				wings.add_child(wing)
-			_attach(sk, "chest", wings, Vector3(cx, body.end.y - body.size.y * 0.1, body.position.z - 0.05))
+			_attach(sk, "chest", wings, Vector3(cx, body.end.y - body.size.y * 0.1, body.position.z - 0.13))  # di belakang jubah
 
 
 static func _boots(sk: Skeleton3D, id: String, bx: Dictionary) -> void:
@@ -654,9 +729,9 @@ static func weapon_mesh(wl: Dictionary) -> Node3D:
 			for sx: float in ([1.0] if wl.kind == "kapak" else [1.0, -1.0]):
 				var head := _part(_box(Vector3(0.42, 0.34, 0.05)), blade, Vector3(sx * 0.22, top, 0), true, glow)
 				root.add_child(head)
-				var edge := _part(_cyl(0.2, 0.2, 0.05, 12), blade, Vector3(sx * 0.4, top, 0), true, glow)
+				var edge := _part(_cyl(0.17, 0.17, 0.05, 12), blade, Vector3(sx * 0.36, top, 0), true, glow)
 				edge.rotation.x = PI / 2.0
-				edge.scale = Vector3(0.6, 1, 1.15)
+				edge.scale = Vector3(0.5, 1, 1.1)
 				root.add_child(edge)
 		"palu":
 			root.add_child(_part(_cyl(0.045, 0.055, length, 8), grip, Vector3(0, length * 0.35, 0)))

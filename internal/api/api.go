@@ -1071,7 +1071,7 @@ func (s *Server) shopTrade(trade func(*game.State, string, string, int) error) h
 			writeError(w, http.StatusConflict, "tidak bisa berdagang saat bertarung")
 		case errors.Is(err, game.ErrUnknownItem), errors.Is(err, game.ErrUnknownShop):
 			writeError(w, http.StatusNotFound, err.Error())
-		case errors.Is(err, game.ErrBadRequestID):
+		case errors.Is(err, game.ErrBadRequestID), errors.Is(err, game.ErrLevelLow):
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		case errors.Is(err, game.ErrWrongShop), errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
 			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull),

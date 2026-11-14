@@ -46,6 +46,9 @@ var is_open := false
 var _draft: Dictionary = {}       # penampilan yang sedang diubah (belum tentu tersimpan)
 var _dirty := false
 var _busy := false
+var _saving := false              # permintaan simpan penampilan sedang berjalan (tidak dikirim ganda)
+var _closing := false
+var _last_error := ""
 var _tab := "Penampilan"
 var _sub := "Rambut"
 var _selected: Dictionary = {}    # barang yang dipilih (untuk rincian, pratinjau, beli/pakai)
@@ -71,6 +74,7 @@ var _status: Label
 var _gold: Label
 var _confirm: PanelContainer
 var _confirm_label: Label
+var _confirm_row: HBoxContainer
 
 
 func _init() -> void:
@@ -174,7 +178,7 @@ func _ready() -> void:
 	brow.add_child(_btn_use)
 	_btn_buy = _button("Beli", _on_buy, 24, true)
 	brow.add_child(_btn_buy)
-	_btn_save = _button("Simpan Penampilan", _save, 24, true)
+	_btn_save = _button("Simpan Penampilan", func() -> void: _save(), 24, true)
 	brow.add_child(_btn_save)
 	_status = _label("", 21)
 	_status.add_theme_color_override("font_color", Color("ffd27a"))
@@ -185,13 +189,20 @@ func _ready() -> void:
 # --- buka / tutup ---
 
 ## Buka layar. welcome = pemain baru (belum pernah membuat karakter): mulai di Penampilan > Rambut.
+## Draf yang belum sempat tersimpan (mis. jaringan putus) dipulihkan; data server tetap acuan sampai disimpan.
 func open(tab := "Penampilan", welcome := false) -> void:
 	_welcome = welcome
 	_draft = Session.look_of(Session.player.state.get("look", {}))
 	_dirty = false
 	_busy = false
+	_saving = false
 	_selected = {}
 	_status.text = "Selamat datang! Buat penampilan pahlawanmu, lalu ketuk Simpan." if welcome else ""
+	var pending := Session.load_look_draft()
+	if not pending.is_empty() and pending != _draft:
+		_draft = pending
+		_dirty = true
+		_status.text = "Perubahan yang belum tersimpan dipulihkan. Ketuk Simpan untuk menyimpannya."
 	visible = true
 	is_open = true
 	_make_rig()
@@ -203,25 +214,47 @@ func open(tab := "Penampilan", welcome := false) -> void:
 				_items[str(d.id)] = d
 	if Session.cosmetics.is_empty():
 		await Session.ensure_wardrobe()
+	_redress()
 	_refresh_all()
 
 
+## Tutup layar (dipanggil pemilik setelah sinyal `closed`). Draf yang belum tersimpan sudah disimpan di HP.
 func close() -> void:
 	visible = false
 	is_open = false
 	_confirm.visible = false
+	_closing = false
 	if _rig != null:
 		_rig.queue_free()
 		_rig = null
 
 
-## Tutup; penampilan yang belum tersimpan disimpan dulu.
+## Tombol Tutup / kembali. Penampilan yang belum tersimpan disimpan dulu; layar baru ditutup setelah server
+## menerimanya. Bila gagal, layar tetap terbuka, draf tetap ada, dan pemain memilih Coba Lagi / Tutup (draf
+## disimpan di HP untuk lain kali) / Kembali.
 func request_close() -> void:
 	if _confirm.visible:
 		_confirm.visible = false
 		return
-	if _dirty and not _busy:
-		await _save()
+	if _closing:
+		return
+	if _saving:
+		_status.text = "Tunggu, penampilan sedang disimpan..."
+		return
+	if _dirty:
+		_closing = true
+		var ok := await _save()
+		_closing = false
+		if not ok:
+			_ask("Penampilan belum tersimpan:\n%s\nPerubahanmu tidak hilang." % _last_error, [
+				["Coba Lagi", request_close],
+				["Tutup, simpan nanti", func() -> void:
+					Session.save_look_draft(_draft)
+					closed.emit()],
+				["Kembali", func() -> void: pass],
+			])
+			return
+	Session.clear_look_draft()
 	closed.emit()
 
 
@@ -742,16 +775,18 @@ func _on_buy() -> void:
 	var price := int(e.get("price", 0))
 	if _confirm_req == "":
 		_confirm_req = Api.new_request_id()
-	_confirm_label.text = "Beli %s seharga %d emas?\nSaldo: %d  ->  %d" % [e.name, price, gold, gold - price]
+	if int(e.get("level", 0)) > int(Session.player.state.get("level", 1)):
+		_ask("%s butuh level %d (levelmu %d)." % [e.name, int(e.level), int(Session.player.state.get("level", 1))], [["Tutup", func() -> void: pass]])
+		return
 	if gold < price:
-		_confirm_label.text = "Emas tidak cukup untuk %s.\nHarga %d, saldo %d." % [e.name, price, gold]
-	(_confirm.get_meta("yes") as Button).visible = gold >= price
-	_confirm.visible = true
+		_ask("Emas tidak cukup untuk %s.\nHarga %d, saldo %d." % [e.name, price, gold], [["Tutup", func() -> void: pass]])
+		return
+	_ask("Beli %s seharga %d emas?\nSaldo: %d  ->  %d" % [e.name, price, gold, gold - price], [["Ya, beli", _confirm_buy], ["Batal", func() -> void: pass]])
 
 
 func _confirm_buy() -> void:
 	_confirm.visible = false
-	if _selected.is_empty() or _busy:
+	if _selected.is_empty() or _busy:  # ketukan ganda: permintaan kedua tidak dikirim
 		return
 	var e := _selected
 	_busy = true
@@ -774,31 +809,49 @@ func _confirm_buy() -> void:
 	_refresh_all()
 
 
-func _save() -> void:
-	if _busy or not _dirty:
-		return
+## Simpan penampilan ke server. true = tersimpan (atau tidak ada perubahan). Hanya satu permintaan berjalan;
+## gagal = draf tetap, pesan ditampilkan, pemain bisa mengetuk Simpan lagi (tidak dicoba otomatis berulang).
+func _save() -> bool:
+	if not _dirty:
+		return true
+	if _saving:
+		return false
 	if Session.offline:
 		Session.player.state["look"] = _draft.duplicate(true)
 		_dirty = false
 		look_changed.emit()
 		_refresh_all()
-		return
+		return true
+	_saving = true
 	_busy = true
 	_status.text = "Menyimpan..."
 	_refresh_all()
-	var body := Session.look_of(_draft)
+	var sent := Session.look_of(_draft)
+	var body := sent.duplicate(true)
 	body.erase("made")
 	var res: Dictionary = await Api.set_look(body)
+	_saving = false
 	_busy = false
-	if res.ok:
-		Session.merge_server_player(res.data)
-		_draft = Session.look_of(Session.player.state.get("look", {}))
-		_dirty = false
-		_status.text = "Penampilan tersimpan di server."
-		look_changed.emit()
+	if not res.ok:
+		_last_error = str(res.error) if str(res.get("error", "")) != "" else "jaringan terputus"
+		Session.save_look_draft(_draft)  # tidak hilang walau aplikasi ditutup
+		_status.text = "Gagal menyimpan: %s. Perubahan tetap ada; ketuk Simpan untuk mencoba lagi." % _last_error
+		_refresh_all()
+		return false
+	Session.merge_server_player(res.data)  # server sumber kebenaran
+	var server_look := Session.look_of(Session.player.state.get("look", {}))
+	var changed_meanwhile := Session.look_of(_draft) != sent
+	if changed_meanwhile:
+		Session.save_look_draft(_draft)  # pemain masih mengubah saat menyimpan: perubahan baru belum tersimpan
 	else:
-		_status.text = "Gagal menyimpan: %s" % res.error
+		_draft = server_look
+		_dirty = false
+		Session.clear_look_draft()
+	_status.text = "Penampilan tersimpan di server." if not changed_meanwhile else "Tersimpan; ada perubahan baru yang belum disimpan."
+	look_changed.emit()
+	_redress()
 	_refresh_all()
+	return not changed_meanwhile
 
 
 ## Penampilan acak dari pilihan gratis dan kosmetik yang dimiliki.
@@ -853,13 +906,23 @@ func _build_confirm() -> void:
 	_confirm_label = _label("", 26)
 	_confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_confirm_label)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	box.add_child(row)
-	var yes := _button("Ya, beli", _confirm_buy, 26, true)
-	row.add_child(yes)
-	row.add_child(_button("Batal", func() -> void: _confirm.visible = false, 26, true))
-	_confirm.set_meta("yes", yes)
+	_confirm_row = HBoxContainer.new()
+	_confirm_row.add_theme_constant_override("separation", 12)
+	box.add_child(_confirm_row)
+
+
+## Dialog dengan pesan dan tombol [[teks, aksi], ...]; setiap tombol menutup dialog lalu menjalankan aksinya.
+func _ask(text: String, buttons: Array) -> void:
+	_confirm_label.text = text
+	for c in _confirm_row.get_children():
+		_confirm_row.remove_child(c)
+		c.queue_free()
+	for pair: Array in buttons:
+		var act: Callable = pair[1]
+		_confirm_row.add_child(_button(str(pair[0]), func() -> void:
+			_confirm.visible = false
+			act.call(), 24, true))
+	_confirm.visible = true
 
 
 # --- pembuat kontrol ---

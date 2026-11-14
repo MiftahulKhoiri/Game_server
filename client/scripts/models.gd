@@ -448,7 +448,8 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary, look := {}) -
 	var custom_shield := LookBuild.SHIELDS.has(str(equipment.get("offhand", "")))
 	var clothes_c := LookBuild.col(LookBuild.cosm(str(look.get("clothes", ""))).get("color", ""))
 	var pants_c := LookBuild.col(LookBuild.cosm(str(look.get("pants", ""))).get("color", ""))
-	var skin_m := LookBuild.skin_mult(look)
+	var skin_on := str(look.get("skin_color", "")) != ""
+	var skin_c := LookBuild.skin_color(look)
 	var own_cape := str(look.get("cape", "")) != ""
 	var own_hair := LookBuild.shape_of(LookBuild.cosm(str(look.get("hair", "")))) != ""
 	var list: Array = []
@@ -469,8 +470,8 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary, look := {}) -
 			c = c * clothes_c
 		if nm.ends_with("_LegLeft") or nm.ends_with("_LegRight"):
 			c = c * pants_c
-		if nm.ends_with("_Head") or nm.ends_with("_Head_Hooded"):
-			c = c * skin_m
+		if nm.ends_with("_Head") or nm.ends_with("_Head_Hooded") or nm.ends_with("_ArmLeft") or nm.ends_with("_ArmRight"):
+			LookBuild.set_skin(mi, skin_on, skin_c)  # hanya piksel kulit (wajah, tangan) yang diwarnai
 		if not armor.is_empty() and _ends_with_any(nm, ARMOR_PARTS):
 			c = c * (armor.tint as Color)
 			glow = armor.get("glow", glow)

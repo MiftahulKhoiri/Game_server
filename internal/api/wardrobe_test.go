@@ -142,3 +142,51 @@ func TestCosmeticConcurrentBuy(t *testing.T) {
 		t.Fatalf("pembelian ganda: emas %d lemari %v", p.State.Gold, p.State.Wardrobe)
 	}
 }
+
+// Ketukan Beli yang terkirim ulang bersamaan (id sama) di toko peralatan hanya membayar sekali, dan
+// pembelian kosmetik bersamaan dengan id BERBEDA tetap hanya sekali karena kosmetik dimiliki sekali (v0.82.1).
+func TestShopBuyConcurrentSameRequest(t *testing.T) {
+	ts, st := newTestServerWithStore(t)
+	cr := register(t, ts, "Pembeli")
+	setState(t, st, cr.Player.ID, func(s *game.State) { s.Gold = 1000; s.Level = 5 })
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			do(t, "POST", ts.URL+"/v1/shop/buy", cr.Token, map[string]any{"shop": game.ShopGear, "item": "sepatu_kulit", "qty": 1, "request_id": "ketuk-1"})
+		}()
+		go func(i int) {
+			defer wg.Done()
+			do(t, "POST", ts.URL+"/v1/wardrobe/buy", cr.Token, map[string]any{"item": "jubah_biru", "request_id": "jubah-" + string(rune('a'+i))})
+		}(i)
+	}
+	wg.Wait()
+	_, data := do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
+	p := playerOf(t, data)
+	boots := 0
+	for _, it := range p.State.Inventory {
+		if it.ID == "sepatu_kulit" {
+			boots = it.Qty
+		}
+	}
+	// 1000 - 90 (sepatu, sekali) - 220 (jubah, sekali)
+	if p.State.Gold != 690 || boots != 1 || len(p.State.Wardrobe) != 1 {
+		t.Fatalf("transaksi ganda: emas %d sepatu %d lemari %v", p.State.Gold, boots, p.State.Wardrobe)
+	}
+}
+
+// Syarat level dari katalog server berlaku saat membeli perlengkapan, bukan hanya saat memakai (v0.82.1).
+func TestShopBuyLevelRequirement(t *testing.T) {
+	ts, st := newTestServerWithStore(t)
+	cr := register(t, ts, "Pemula")
+	setState(t, st, cr.Player.ID, func(s *game.State) { s.Gold = 99999 })
+	resp, data := do(t, "POST", ts.URL+"/v1/shop/buy", cr.Token, map[string]any{"shop": game.ShopGear, "item": "pedang_legenda", "qty": 1})
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Fatalf("level 1 membeli senjata Lv 30 harus 422: %d %s", resp.StatusCode, data)
+	}
+	_, data = do(t, "GET", ts.URL+"/v1/players/me", cr.Token, nil)
+	if p := playerOf(t, data); p.State.Gold != 99999 || len(p.State.Inventory) != 1 {
+		t.Fatalf("penolakan tidak boleh mengubah emas/barang: %+v", p.State)
+	}
+}

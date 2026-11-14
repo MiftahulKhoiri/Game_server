@@ -188,12 +188,16 @@ func TestSetLook(t *testing.T) {
 func TestEquipNewGear(t *testing.T) {
 	st := NewState() // Ksatria = pedang
 	st.Gold = 99999
-	st.Level = 5
+	if err := Buy(&st, "helm_ksatria", 1); !errors.Is(err, ErrLevelLow) {
+		t.Fatalf("membeli helm Lv 18 di level 1: %v", err)
+	}
+	st.Level = 20 // beli dulu (syarat level saat membeli), lalu turunkan untuk menguji syarat saat memakai
 	for _, id := range []string{"belati", "kapak_besar", "perisai_kayu", "sepatu_kulit", "helm_ksatria", "zirah_berat"} {
 		if err := Buy(&st, id, 1); err != nil {
 			t.Fatal(id, err)
 		}
 	}
+	st.Level = 5
 	if err := st.Equip("kapak_besar"); !errors.Is(err, ErrWrongStyle) && !errors.Is(err, ErrLevelLow) {
 		t.Fatalf("kapak untuk ksatria: %v", err)
 	}

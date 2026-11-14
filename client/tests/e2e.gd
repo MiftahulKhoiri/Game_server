@@ -1153,7 +1153,7 @@ func _run() -> void:
 		_check(not h_bad_kind.ok and h_bad_kind.status == 422, "jenis benda salah ditolak 422")
 		var ws2: Dictionary = await Api.world_state("desa_awal")
 		_check(ws2.ok and (ws2.data.items as Array).size() == 2, "dunia mencatat peti terbuka dan pohon hancur")
-		await _test_kreator()
+		await _test_kreator(hn, pw)
 		Api.token = saved_token
 	for c: Dictionary in Maps.CHESTS:
 		_check(Maps.walkable(str(c.map), c.pos.x, c.pos.y), "peti %s berada di petak yang bisa dilewati" % c.id)
@@ -3178,7 +3178,7 @@ func _run() -> void:
 
 ## Character Creator, perlengkapan, inventaris, dan toko (v0.82.0). Dipanggil dengan token pemain uji yang
 ## sudah membuka peti (punya sedikit emas).
-func _test_kreator() -> void:
+func _test_kreator(login_name: String, pw: String) -> void:
 	print("== Character Creator, toko, perlengkapan (v0.82.0)")
 	var KModels: GDScript = load("res://scripts/models.gd")
 	var me: Dictionary = await Api.get_me()
@@ -3229,6 +3229,91 @@ func _test_kreator() -> void:
 	var me2: Dictionary = await Api.get_me()
 	var lk: Dictionary = me2.data.state.get("look", {}) if me2.ok else {}
 	_check(str(lk.get("hair", "")) == "rambut_panjang" and str(lk.get("face", "")) == "bulat" and int(lk.get("height", 0)) == 2 and str(lk.get("beard", "")) == "kumis", "muat ulang dari server: karakter tetap sama")
+	# v0.82.1: login ulang memuat penampilan terakhir.
+	var relog: Dictionary = await Api.login(login_name, pw)
+	if relog.ok:
+		Api.token = str(relog.data.token)
+	var me3: Dictionary = await Api.get_me()
+	_check(relog.ok and me3.ok and str(me3.data.state.look.get("hair", "")) == "rambut_panjang" and int(me3.data.state.look.get("head", 0)) == -1, "login ulang memuat penampilan terakhir")
+	# v0.82.1: penyimpanan gagal (jaringan putus) tidak menghilangkan draf dan tidak menutup layar.
+	var saved_url: String = Api.base_url
+	var saved_delay: float = Api.retry_delay
+	kr._set_tab("Penampilan")
+	kr._set_field("hair_color", "#3a5ac8")
+	var closed_n := [0]
+	var on_closed := func() -> void: closed_n[0] += 1
+	kr.closed.connect(on_closed)
+	Api.base_url = "http://127.0.0.1:9"
+	Api.retry_delay = 0.0
+	await kr.request_close()
+	_check(closed_n[0] == 0 and kr.is_open and kr._dirty and kr._confirm.visible, "simpan gagal: layar tetap terbuka, draf tetap, pilihan Coba Lagi muncul")
+	_check(str(Session.load_look_draft().get("hair_color", "")) == "#3a5ac8", "simpan gagal: draf disimpan di HP")
+	_check(str(Session.player.state.look.get("hair_color", "")) == "#d9b45a", "simpan gagal: data pemain (server) tidak berubah")
+	Api.base_url = saved_url
+	Api.retry_delay = saved_delay
+	await kr.request_close()  # Coba Lagi (dialog ditutup dulu)
+	await kr.request_close()
+	_check(closed_n[0] == 1 and not kr._dirty and Session.load_look_draft().is_empty(), "coba lagi berhasil: tersimpan, draf HP dihapus, layar ditutup")
+	var me4: Dictionary = await Api.get_me()
+	_check(me4.ok and str(me4.data.state.look.get("hair_color", "")) == "#3a5ac8", "server menerima penampilan setelah coba lagi")
+	kr.closed.disconnect(on_closed)
+	kr.open("Penampilan")
+	await process_frame
+	# v0.82.1: ukuran tubuh stabil selama animasi berjalan lama, dan modifier tidak menumpuk skala.
+	var BodyT: GDScript = load("res://scripts/body_shape.gd")
+	var body_look := {"made": true, "height": 2, "width": 3, "muscle": 3, "head": 2, "torso": 2, "face": "bulat"}
+	var br: Node3D = KModels.create("ksatria")
+	root.add_child(br)
+	KModels.dress(br, 0, {}, body_look)
+	var bsk := br.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
+	var bhead := bsk.find_bone("head")
+	var probe := {}
+	bsk.skeleton_updated.connect(func() -> void:
+		probe["head"] = bsk.get_bone_global_pose(bhead).basis.get_scale()
+		probe["hips"] = bsk.get_bone_global_pose(bsk.find_bone("hips")).basis.get_scale())
+	for _f in 30:
+		await process_frame
+	var idle0: Dictionary = probe.duplicate()  # diam, sebelum berlari
+	br.set("moving", true)
+	br.set("move_speed", 2.6)  # berlari
+	var lo := Vector3(INF, INF, INF)
+	var hi := -lo
+	for f in 460:
+		if f == 400:
+			br.call("play_action", "tendang")
+		await process_frame
+		lo = lo.min(probe.head)
+		hi = hi.max(probe.head)
+	br.set("moving", false)
+	br.set("move_speed", 0.0)
+	for _f in 120:
+		await process_frame
+	var spread := (hi - lo) / (idle0.head as Vector3)
+	# Kepala ikut berputar di bawah tulang induk yang skalanya tidak seragam -> goyang kecil selama gerak, tetapi
+	# setelah kembali diam ukurannya harus sama dengan sebelum bergerak (tidak menumpuk).
+	_check(idle0.has("head") and spread.x < 0.03 and spread.y < 0.03 and spread.z < 0.03, "ukuran kepala selama 460 bingkai lari + tendang tetap dalam batas (rentang %s)" % spread)
+	_check((idle0.head as Vector3).distance_to(probe.head) < 0.002 and (idle0.hips as Vector3).is_equal_approx(probe.hips), "skala tubuh stabil: setelah lari + tendang kembali sama persis (%s -> %s)" % [idle0.get("head"), probe.get("head")])
+	var bm: Node = br.find_child("BentukTubuh", true, false)
+	var hips_i := bsk.find_bone("hips")
+	var base_hips := bsk.get_bone_pose_scale(hips_i)
+	for _k in 50:  # dipanggil berulang tanpa animasi di antaranya (pose tidak dikembalikan)
+		bm.call("_process_modification")
+	_check(bsk.get_bone_pose_scale(hips_i).is_equal_approx((bm.call("base_of", "hips") as Vector3) * (bm.scales["hips"] as Vector3)), "modifier dipanggil 50x berturut-turut tidak menumpuk skala (%s)" % bsk.get_bone_pose_scale(hips_i))
+	_check(base_hips != Vector3.ZERO and bm.get_script() == BodyT, "bentuk tubuh memakai body_shape.gd")
+	# v0.82.1: berganti pahlawan tidak merusak bentuk tubuh (penampilan sama di model lain).
+	var br2: Node3D = KModels.create("pemanah")
+	root.add_child(br2)
+	KModels.dress(br2, 0, {}, body_look)
+	var bm2: Node = br2.find_child("BentukTubuh", true, false)
+	var ratio1: float = br.scale.y / (br.get_meta("base_scale") as Vector3).y
+	var ratio2: float = br2.scale.y / (br2.get_meta("base_scale") as Vector3).y
+	_check(bm2 != null and str(bm2.scales) == str(bm.scales) and is_equal_approx(ratio1, ratio2), "ganti pahlawan: bentuk tubuh sama di Ksatria dan Pemanah")
+	KModels.dress(br2, 0, {}, {})
+	_check(br2.find_child("BentukTubuh", true, false) == null and br2.scale.is_equal_approx(br2.get_meta("base_scale")), "kembali ke penampilan asli: skala tubuh pulih tanpa sisa")
+	br.queue_free()
+	br2.queue_free()
+	# v0.82.1: semua pilihan kosmetik dan perlengkapan punya hasil visual yang berbeda.
+	_check_visuals(KModels)
 	var bad_look: Dictionary = await Api.set_look({"hair": "rambut_kepang"})
 	_check(not bad_look.ok and bad_look.status == 422, "memakai rambut yang belum dibeli ditolak 422")
 	var illegal: Dictionary = await Api.wardrobe_buy("skin_gratis_hack", Api.new_request_id())
@@ -3238,7 +3323,7 @@ func _test_kreator() -> void:
 	var noown: Dictionary = await Api.inventory_equip("perisai_legenda")
 	_check(not noown.ok and noown.status == 422, "memakai perlengkapan yang belum dimiliki ditolak")
 	var gold := int(Session.player.state.gold)
-	if gold < 20:  # emas peti acak: jual barang hasil peti dulu supaya uji beli selalu berjalan
+	if gold < 40:  # emas peti acak: jual barang hasil peti dulu supaya uji beli selalu berjalan
 		for it: Dictionary in (Session.player.state.inventory as Array).duplicate():
 			for shop: String in ["toko", "makan"]:
 				var sold: Dictionary = await Api.shop_sell(str(it.id), int(it.qty), shop)
@@ -3246,13 +3331,40 @@ func _test_kreator() -> void:
 					Session.merge_server_player(sold.data)
 					break
 		gold = int(Session.player.state.gold)
+	# Pratinjau tidak menyimpan apa pun: lihat barang toko yang belum dimiliki, lalu bandingkan data server.
+	var before: Dictionary = (await Api.get_me()).data.state
+	kr._set_tab("Toko")
+	for sub: String in ["Rambut", "Jubah", "Senjata", "Sepatu", "Helm & Topi"]:
+		kr._set_sub(sub)
+		for e: Dictionary in kr._entries(sub, false):
+			if not kr._owned(e):
+				kr._select(e)
+				break
+	var after: Dictionary = (await Api.get_me()).data.state
+	_check(str(after.look) == str(before.look) and str(after.equipment) == str(before.equipment) and str(after.get("wardrobe", [])) == str(before.get("wardrobe", [])) and int(after.gold) == int(before.gold) and not kr._dirty, "pratinjau toko tidak mengubah data tersimpan (penampilan, perlengkapan, lemari, emas)")
+	if gold >= 20:
+		# Ketukan ganda "Ya, beli" di layar: permintaan kedua tidak dikirim.
+		kr._set_sub("Sepatu")
+		for e: Dictionary in kr._entries("Sepatu", false):
+			if e.id == "sepatu_biasa":
+				kr._select(e)
+		kr._on_buy()
+		kr._confirm_buy()
+		kr._confirm_buy()
+		while kr._busy:
+			await process_frame
+		_check(int(Session.player.state.gold) == gold - 20 and Session.item_count("sepatu_biasa") == 1, "ketukan Beli ganda hanya membeli sekali (emas %d -> %d)" % [gold, int(Session.player.state.gold)])
+		gold = int(Session.player.state.gold)
 	if gold >= 20:
 		var rid: String = Api.new_request_id()
+		var have: int = Session.item_count("sepatu_biasa")
 		var b1: Dictionary = await Api.shop_buy("sepatu_biasa", 1, "peralatan", rid)
 		var b2: Dictionary = await Api.shop_buy("sepatu_biasa", 1, "peralatan", rid)
 		_check(b1.ok and b2.ok and int(b2.data.state.gold) == gold - 20, "beli sepatu: permintaan diulang tidak mengurangi saldo dua kali")
 		if b2.ok:
 			Session.merge_server_player(b2.data)
+		_check(Session.item_count("sepatu_biasa") == have + 1, "barang yang dibeli masuk inventaris sekali")
+	if Session.item_count("sepatu_biasa") > 0:
 		kr._set_tab("Perlengkapan")
 		kr._set_sub("Sepatu")
 		var boots: Dictionary = {}
@@ -3300,3 +3412,72 @@ func _test_kreator() -> void:
 	kn.queue_free()
 	Session.set_player(saved_player)
 	Session.offline = saved_offline
+
+
+
+## Tanda tangan visual model: semua mesh yang tampil (jalur, posisi, ukuran, warna) + bentuk tubuh + skala.
+func _visual_sig(rig: Node3D) -> String:
+	var parts: Array = []
+	for n: Node in rig.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if not mi.visible:
+			continue
+		var colr := ""
+		for i in (mi.mesh.get_surface_count() if mi.mesh != null else 0):
+			var m: Material = mi.material_override if mi.material_override != null else mi.get_surface_override_material(i)
+			if m is StandardMaterial3D:
+				colr += str((m as StandardMaterial3D).albedo_color) + str((m as StandardMaterial3D).emission_enabled)
+			elif m is ShaderMaterial:
+				colr += str((m as ShaderMaterial).get_shader_parameter("skin"))
+		parts.append("%s|%s|%s|%s|%s" % [rig.get_path_to(mi), mi.transform.origin.snappedf(0.0001), mi.scale.snappedf(0.0001), mi.get_aabb().size.snappedf(0.0001), colr])
+	parts.sort()
+	var bm := rig.find_child("BentukTubuh", true, false)
+	return "%s#%s#%s" % [";".join(parts), str(bm.get("scales")) if bm != null else "", rig.scale]
+
+
+## Setiap pilihan dalam satu kelompok harus menghasilkan tampilan berbeda (pasangan demi pasangan).
+func _check_visuals(KModels: GDScript) -> void:
+	var rig: Node3D = KModels.create("ksatria")
+	root.add_child(rig)
+	var sig := func(look: Dictionary, eq: Dictionary) -> String:
+		KModels.dress(rig, 0, eq, look)
+		return _visual_sig(rig)
+	var groups := {}  # nama kelompok -> [[id, tanda]]
+	var field_of := {"skin": "skin", "rambut": "hair", "pakaian": "clothes", "celana": "pants", "sarung": "gloves", "topi": "hat", "jubah": "cape"}
+	for c: Dictionary in Session.wardrobe_catalog.get("cosmetics", []):
+		var look := {"made": true}
+		if str(c.category) == "aksesori":
+			look["accessories"] = [str(c.id)]
+		else:
+			look[field_of[str(c.category)]] = str(c.id)
+		(groups.get_or_add("kosmetik " + str(c.category), []) as Array).append([c.id, sig.call(look, {})])
+	for part: String in (Session.wardrobe_catalog.get("options", {}) as Dictionary):
+		for o: Dictionary in Session.wardrobe_catalog.options[part]:
+			(groups.get_or_add("pilihan " + part, []) as Array).append([o.id, sig.call({"made": true, part: str(o.id), "eyes": "bulat"} if part != "eyes" else {"made": true, part: str(o.id)}, {})])
+	for pair: Array in [["hair_color", "hair_colors", {"hair": "rambut_pendek"}], ["skin_color", "skin_colors", {}], ["eye_color", "eye_colors", {"eyes": "bulat"}]]:
+		for hx: Variant in Session.wardrobe_catalog.get(pair[1], []):
+			var look2: Dictionary = (pair[2] as Dictionary).duplicate()
+			look2["made"] = true
+			look2[pair[0]] = str(hx)
+			(groups.get_or_add("warna " + str(pair[0]), []) as Array).append([hx, sig.call(look2, {})])
+	for f: String in ["height", "width", "muscle", "head", "torso"]:
+		for v in range(-3, 4):
+			(groups.get_or_add("tubuh " + f, []) as Array).append([v, sig.call({"made": true, f: v}, {})])
+	for g: Dictionary in Session.wardrobe_catalog.get("gear", []):
+		(groups.get_or_add("perlengkapan " + str(g.slot), []) as Array).append([g.id, sig.call({}, {str(g.slot): str(g.id)})])
+	var base_sig: String = sig.call({"made": true}, {})
+	var bad: Array = []
+	var total := 0
+	for gname: String in groups:
+		var seen := {}
+		for entry: Array in groups[gname]:
+			total += 1
+			var sgn: String = entry[1]
+			if seen.has(sgn):
+				bad.append("%s: %s = %s" % [gname, entry[0], seen[sgn]])
+			seen[sgn] = entry[0]
+			if gname.begins_with("perlengkapan") and sgn == sig.call({}, {}):
+				bad.append("%s: %s tidak terlihat" % [gname, entry[0]])
+	_check(bad.is_empty() and total > 120, "semua %d pilihan kosmetik, warna, tubuh, dan perlengkapan punya hasil visual berbeda %s" % [total, bad])
+	_check(base_sig != "", "tanda visual dasar terbaca")
+	rig.queue_free()

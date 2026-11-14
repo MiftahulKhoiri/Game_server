@@ -60,6 +60,10 @@ func _gallery() -> void:
 	root.add_child(cam)
 	cam.position = Vector3(0, 4.2, 6.2) * (float(OS.get_environment("SHOT_ZOOM")) if OS.get_environment("SHOT_ZOOM") != "" else 1.0)
 	cam.look_at(Vector3(0, 0.5, -1.6))
+	if OS.get_environment("SHOT_CAM") != "":  # "x,y,z,tx,ty,tz": kamera dekat (mis. wajah)
+		var v: PackedFloat64Array = OS.get_environment("SHOT_CAM").split_floats(",")
+		cam.position = Vector3(v[0], v[1], v[2])
+		cam.look_at(Vector3(v[3], v[4], v[5]))
 	cam.current = true
 	await get_tree().create_timer(0.8).timeout
 	var img := get_viewport().get_texture().get_image()

@@ -435,6 +435,38 @@ func ensure_wardrobe() -> bool:
 	return not cosmetics.is_empty()
 
 
+## Draf penampilan yang belum tersimpan di server (jaringan putus), per pemain, juga di disk HP supaya tidak
+## hilang bila aplikasi ditutup. Server tetap sumber kebenaran: draf hanya dikirim lewat tombol Simpan.
+const LOOK_DRAFT_PATH := "user://draf_penampilan.json"
+
+
+func save_look_draft(d: Dictionary) -> void:
+	var all := _read_drafts()
+	all[str(player.get("name", ""))] = look_of(d)
+	var f := FileAccess.open(LOOK_DRAFT_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(all))
+
+
+func load_look_draft() -> Dictionary:
+	return look_of(_read_drafts().get(str(player.get("name", "")), {}))
+
+
+func clear_look_draft() -> void:
+	var all := _read_drafts()
+	if all.erase(str(player.get("name", ""))):
+		var f := FileAccess.open(LOOK_DRAFT_PATH, FileAccess.WRITE)
+		if f != null:
+			f.store_string(JSON.stringify(all))
+
+
+func _read_drafts() -> Dictionary:
+	if not FileAccess.file_exists(LOOK_DRAFT_PATH):
+		return {}
+	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(LOOK_DRAFT_PATH))
+	return v if v is Dictionary else {}
+
+
 static func look_of(v: Variant) -> Dictionary:
 	var out := {}
 	if not (v is Dictionary):

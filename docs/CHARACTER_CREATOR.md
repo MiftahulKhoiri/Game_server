@@ -66,13 +66,35 @@ Penyihir tongkat); Pedang Naga Purba (mitos) cocok untuk semua. Perisai menambah
 tombak). Di model, senjata dan perisai digambar di tulang tangan (`handslot.r` / `handslot.l`) dan senjata
 bawaan KayKit disembunyikan, jadi senjata ikut diayun animasi serangan.
 
+## Penyimpanan (v0.82.1)
+
+- **Simpan Penampilan** atau **Tutup** mengirim penampilan ke server; hanya satu permintaan berjalan (tombol
+  nonaktif selama menyimpan, tidak ada percobaan ulang otomatis).
+- Layar baru ditutup setelah server menerima. Bila gagal (mis. jaringan putus): layar tetap terbuka, draf tetap,
+  pesan kegagalan tampil, dan dialog **Coba Lagi / Tutup, simpan nanti / Kembali**.
+- Draf yang belum tersimpan juga ditulis ke HP (`user://draf_penampilan.json`, per nama pemain) dan dipulihkan
+  saat layar dibuka lagi; dihapus setelah server menerima. Data server tetap acuan: draf hanya dikirim lewat Simpan.
+- Bila pemain masih mengubah penampilan saat permintaan berjalan, perubahan baru itu tidak ditimpa jawaban server.
+- Pratinjau (memilih barang di toko, mencoba kosmetik) hanya mengubah model di layar; data permanen baru berubah
+  lewat Simpan, Pakai/Lepas perlengkapan, atau Beli.
+
 ## Bentuk tubuh tanpa merusak animasi
 
 `client/scripts/body_shape.gd` adalah `SkeletonModifier3D` yang mengalikan skala tulang **setelah** animasi:
 `hips` (lebar), `chest`/`upperarm`/`upperleg` (otot), `spine` (proporsi), `head` (ukuran & bentuk wajah, dibalik
-dari skala induk). Tinggi = skala model keseluruhan (kaki tetap di tanah). Rangka, klip animasi, dan tulang tidak
+dari skala induk). Hasil selalu dihitung dari skala dasar tulang (v0.82.1): Godot 4.7 mengembalikan pose ke hasil
+animasi tiap pembaruan, dan bila tidak (modifier dipanggil lagi tanpa animasi di antaranya) skala dasar yang
+tersimpan dipakai, jadi skala tidak pernah menumpuk. Gerakan tendang (`hero_actions.gd`) kini mengalikan skala
+kaki, bukan menimpanya, sehingga ukuran otot tetap saat menendang. Tinggi = skala model keseluruhan (kaki tetap di tanah). Rangka, klip animasi, dan tulang tidak
 diganti. Collision dan hitbox tidak terpengaruh: gerak memakai petak peta (server `MoveTo`) dan pertarungan
 dihitung server dari angka, bukan dari ukuran model.
+
+## Warna kulit (v0.82.1)
+
+Shader kulit di `look_build.gd` (`SKIN_SHADER`) hanya mengganti piksel tekstur yang berwarna kulit KayKit
+(`#f6c09c`, `#f8ccab`, `#f2a87e`) pada kepala dan lengan/tangan, dengan terang-gelap yang sama. Rambut, mata,
+baju, dan zirah pada tekstur yang sama tidak ikut berubah. Mata lukisan tekstur ditutup lapisan warna kulit
+supaya bentuk mata pilihan tidak bertumpuk.
 
 ## Aset
 

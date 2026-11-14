@@ -233,7 +233,8 @@ func _process_modification() -> void:
 	for bone: String in scales:
 		var si := sk.find_bone(bone)
 		if si >= 0:
-			sk.set_bone_pose_scale(si, Vector3.ONE * float(scales[bone]))
+			# Dikalikan, bukan ditimpa: ukuran otot dari Character Creator (body_shape.gd) tetap saat menendang.
+			sk.set_bone_pose_scale(si, sk.get_bone_pose_scale(si) * float(scales[bone]))
 	for bone: String in deltas:
 		var i := sk.find_bone(bone)
 		if i < 0:
