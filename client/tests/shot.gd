@@ -119,6 +119,8 @@ func _profile() -> void:
 ## Character Creator (v0.82.0): SHOT_TAB, SHOT_SUB, SHOT_PICK (id barang dipilih), SHOT_WARDROBE (katalog JSON),
 ## SHOT_LOOKS (larik JSON; yang pertama dipakai sebagai penampilan).
 func _kreator() -> void:
+	if OS.get_environment("SHOT_NOMERGE") != "":
+		load("res://scripts/look_build.gd").merge_parts = false
 	Session.use_offline_player()
 	Session.player.state["gold"] = 1500
 	Session.player.state["level"] = 12
@@ -140,6 +142,15 @@ func _kreator() -> void:
 			if str(e.id) == OS.get_environment("SHOT_PICK"):
 				scr._select(e)
 	await get_tree().create_timer(1.2).timeout
+	if OS.get_environment("SHOT_PERF") != "":  # ukur panggilan gambar, memori, dan FPS pratinjau (v0.82.2)
+		var t0 := Time.get_ticks_msec()
+		var frames := 0
+		while Time.get_ticks_msec() - t0 < 3000:
+			await get_tree().process_frame
+			frames += 1
+		print("PERF draw=%d obj=%d mem_mb=%.1f vmem_mb=%.1f fps=%.1f" % [
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0, Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, frames / 3.0])
 	var img := get_viewport().get_texture().get_image()
 	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))

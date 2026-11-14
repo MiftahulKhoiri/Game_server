@@ -26,6 +26,8 @@ signal connection_changed(is_online: bool)
 signal session_expired(message: String)
 ## Jeda percobaan ulang GET saat jaringan putus (detik); 0 = tanpa ulang (dipakai uji).
 var retry_delay := 1.5
+## Batas waktu satu permintaan (detik); uji "server lambat" memperkecilnya.
+var timeout_sec := 10.0
 
 
 ## Daftar perangkat yang sedang masuk ke akun ini: {"sessions": [{created, last_used, current}], "idle_days"}.
@@ -363,7 +365,7 @@ func _track(res: Dictionary, auth: bool, path: String) -> void:
 
 func _call_once(method: HTTPClient.Method, path: String, body: Variant, auth: bool) -> Dictionary:
 	var req := HTTPRequest.new()
-	req.timeout = 10.0
+	req.timeout = timeout_sec
 	add_child(req)
 
 	var headers := PackedStringArray([

@@ -644,9 +644,7 @@ const FACE_EYE_Y := 0.42
 static func _face_part(mesh: Mesh, color: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	var m := _mat(color)
-	m.rim_enabled = false
-	mi.material_override = m
+	mi.material_override = _mat(color, false, false)
 	return mi
 
 
@@ -679,7 +677,7 @@ static func _staff_mesh(glow: Color, tint: Color) -> Node3D:
 	sm.radius = 0.17
 	sm.height = 0.34
 	orb.mesh = sm
-	var om := _mat(glow)
+	var om := _new_mat(glow)  # bahan sendiri: diubah di bawah (tidak boleh bahan bersama)
 	om.rim_enabled = false
 	om.emission_enabled = true
 	om.emission = glow
@@ -706,10 +704,26 @@ static func _attach(sk: Skeleton3D, bone: String, part: Node3D) -> void:
 		# bagian diletakkan di posisi rangka tertentu: ubah ke ruang tulang
 		var t := Transform3D(Basis.IDENTITY, part.get_meta("rig_pos") as Vector3)
 		part.transform = rest.affine_inverse() * t
+	LookBuild.merge_colored(part)  # alis, kumis, helm: semua bagian satu tempelan jadi 1-2 mesh (v0.82.2)
 	ba.add_child(part)
 
 
-static func _mat(c: Color, metal := false) -> StandardMaterial3D:
+## Bahan bersama per (warna, logam, cahaya tepi), v0.82.2: wajah/helm/bantalan yang dibuat ulang setiap kali
+## model dipakaikan tidak lagi membuat bahan baru terus-menerus. Bahan bersama TIDAK boleh diubah setelah dibuat;
+## yang perlu diubah (bola tongkat, helm bercahaya) memakai _new_mat.
+static var _mat_cache: Dictionary = {}
+
+
+static func _mat(c: Color, metal := false, rim := true) -> StandardMaterial3D:
+	var key := "%s|%s|%s" % [c.to_html(), metal, rim]
+	if not _mat_cache.has(key):
+		var m := _new_mat(c, metal)
+		m.rim_enabled = rim
+		_mat_cache[key] = m
+	return _mat_cache[key]
+
+
+static func _new_mat(c: Color, metal := false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
 	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
@@ -783,9 +797,11 @@ static func _helmet_mesh(look: Dictionary, head: AABB) -> Node3D:
 		for c in root.get_children():
 			var m := (c as MeshInstance3D).material_override as StandardMaterial3D
 			if m != null and c != root.get_child(root.get_child_count() - 1):
-				m.emission_enabled = true
-				m.emission = look.glow
-				m.emission_energy_multiplier = 0.4
+				var g := m.duplicate() as StandardMaterial3D  # salinan: bahan bersama tidak diubah
+				g.emission_enabled = true
+				g.emission = look.glow
+				g.emission_energy_multiplier = 0.4
+				(c as MeshInstance3D).material_override = g
 	return root
 
 

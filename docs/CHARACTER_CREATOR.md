@@ -72,8 +72,12 @@ bawaan KayKit disembunyikan, jadi senjata ikut diayun animasi serangan.
   nonaktif selama menyimpan, tidak ada percobaan ulang otomatis).
 - Layar baru ditutup setelah server menerima. Bila gagal (mis. jaringan putus): layar tetap terbuka, draf tetap,
   pesan kegagalan tampil, dan dialog **Coba Lagi / Tutup, simpan nanti / Kembali**.
-- Draf yang belum tersimpan juga ditulis ke HP (`user://draf_penampilan.json`, per nama pemain) dan dipulihkan
-  saat layar dibuka lagi; dihapus setelah server menerima. Data server tetap acuan: draf hanya dikirim lewat Simpan.
+- Draf ditulis ke HP (`user://draf_penampilan.json`) 0,4 detik setelah setiap perubahan (juga saat gagal simpan),
+  jadi tidak hilang walau aplikasi ditutup paksa. Kuncinya **id pemain dari server** (v0.82.2; dulu nama), sehingga
+  draf satu akun tidak pernah terbaca akun lain; draf format lama (kunci nama) diabaikan.
+- Saat layar dibuka dan ada draf yang berbeda dari data server, pemain ditanya **Pulihkan / Buang** (plus catatan
+  bila penampilan di server sudah berubah sejak draf dibuat). Draf tidak pernah diterapkan atau dikirim tanpa
+  pilihan itu; draf yang sama dengan server dibuang diam-diam. Draf dihapus setelah server menerima.
 - Bila pemain masih mengubah penampilan saat permintaan berjalan, perubahan baru itu tidak ditimpa jawaban server.
 - Pratinjau (memilih barang di toko, mencoba kosmetik) hanya mengubah model di layar; data permanen baru berubah
   lewat Simpan, Pakai/Lepas perlengkapan, atau Beli.
@@ -88,6 +92,14 @@ tersimpan dipakai, jadi skala tidak pernah menumpuk. Gerakan tendang (`hero_acti
 kaki, bukan menimpanya, sehingga ukuran otot tetap saat menendang. Tinggi = skala model keseluruhan (kaki tetap di tanah). Rangka, klip animasi, dan tulang tidak
 diganti. Collision dan hitbox tidak terpengaruh: gerak memakai petak peta (server `MoveTo`) dan pertarungan
 dihitung server dari angka, bukan dari ukuran model.
+
+## Performa (v0.82.2)
+
+- Semua bentuk dasar dalam satu tempelan (rambut, wajah, sepatu, sayap, helm, senjata, ...) digabung menjadi 1-2
+  mesh dengan warna titik (`LookBuild.merge_colored`). Penampilan + perlengkapan lengkap: 26 mesh tempelan (dulu
+  56); pratinjau Character Creator dengan pakaian lengkap menambah 19 panggilan gambar (dulu 69), diukur di Pi.
+- Bahan dipakai bersama per warna (`LookBuild._mat`, `Models._mat`); bahan yang perlu diubah memakai salinan.
+- Uji: 400x ganti penampilan dan 15x buka-tutup layar tanpa pertambahan node, node yatim, resource, atau bahan.
 
 ## Warna kulit (v0.82.1)
 

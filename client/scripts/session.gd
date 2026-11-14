@@ -435,36 +435,66 @@ func ensure_wardrobe() -> bool:
 	return not cosmetics.is_empty()
 
 
-## Draf penampilan yang belum tersimpan di server (jaringan putus), per pemain, juga di disk HP supaya tidak
-## hilang bila aplikasi ditutup. Server tetap sumber kebenaran: draf hanya dikirim lewat tombol Simpan.
+## Draf penampilan yang belum tersimpan di server, juga di disk HP supaya tidak hilang bila aplikasi ditutup
+## paksa atau jaringan putus (v0.82.1, diperketat v0.82.2):
+## - Kuncinya id pemain dari server (bukan nama), jadi draf satu akun tidak pernah terbaca akun lain.
+## - Disimpan bersama penampilan server saat draf dibuat ("base"), untuk memberi tahu bila server sudah berubah.
+## - Draf TIDAK pernah diterapkan atau dikirim otomatis: Character Creator menanyakan Pulihkan/Buang dulu, dan
+##   draf baru sampai ke server lewat Simpan/Tutup oleh pemain.
 const LOOK_DRAFT_PATH := "user://draf_penampilan.json"
 
 
+func _draft_key() -> String:
+	var id := str(player.get("id", ""))
+	return "id:" + id if id != "" else ""
+
+
 func save_look_draft(d: Dictionary) -> void:
+	var key := _draft_key()
+	if key == "":
+		return  # pemain uji tanpa id: tidak disimpan di disk
 	var all := _read_drafts()
-	all[str(player.get("name", ""))] = look_of(d)
-	var f := FileAccess.open(LOOK_DRAFT_PATH, FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify(all))
+	var prev: Dictionary = all.get(key, {})
+	all[key] = {
+		"look": look_of(d),
+		"base": prev.get("base", look_of(player.get("state", {}).get("look", {}))),
+		"at": int(Time.get_unix_time_from_system()),
+	}
+	_write_drafts(all)
 
 
+## {"look", "base", "at"} milik pemain ini, atau {} bila tidak ada.
 func load_look_draft() -> Dictionary:
-	return look_of(_read_drafts().get(str(player.get("name", "")), {}))
+	var key := _draft_key()
+	var e: Variant = _read_drafts().get(key, {}) if key != "" else {}
+	if not (e is Dictionary) or not (e as Dictionary).has("look"):
+		return {}
+	return {"look": look_of(e.look), "base": look_of(e.get("base", {})), "at": int(e.get("at", 0))}
 
 
 func clear_look_draft() -> void:
 	var all := _read_drafts()
-	if all.erase(str(player.get("name", ""))):
-		var f := FileAccess.open(LOOK_DRAFT_PATH, FileAccess.WRITE)
-		if f != null:
-			f.store_string(JSON.stringify(all))
+	if all.erase(_draft_key()):
+		_write_drafts(all)
 
 
 func _read_drafts() -> Dictionary:
 	if not FileAccess.file_exists(LOOK_DRAFT_PATH):
 		return {}
 	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(LOOK_DRAFT_PATH))
-	return v if v is Dictionary else {}
+	if not (v is Dictionary):
+		return {}
+	var out := {}
+	for k: String in (v as Dictionary):
+		if k.begins_with("id:"):  # format v0.82.1 (kunci nama) diabaikan: tidak bisa dipastikan pemiliknya
+			out[k] = v[k]
+	return out
+
+
+func _write_drafts(all: Dictionary) -> void:
+	var f := FileAccess.open(LOOK_DRAFT_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(all))
 
 
 static func look_of(v: Variant) -> Dictionary:

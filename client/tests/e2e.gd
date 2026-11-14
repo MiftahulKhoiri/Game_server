@@ -1426,7 +1426,8 @@ func _run() -> void:
 				var wm: Node3D = SModels.create_warga(wf_def2)
 				get_root().add_child(wm)
 				var wfn: Array = wm.find_children("wajah", "", true, false)
-				wf_nodes_ok = wf_nodes_ok and wfn.size() == 1 and (wfn[0] as Node).get_child_count() >= 2
+				# v0.82.2: bagian wajah digabung jadi 1 mesh (warna titik), tetap dengan batas jarak gambar.
+				wf_nodes_ok = wf_nodes_ok and wfn.size() == 1 and (wfn[0] as Node).get_child_count() >= 1
 				for wfp in (wfn[0] as Node).get_children() if wfn.size() == 1 else []:
 					wf_nodes_ok = wf_nodes_ok and (wfp as GeometryInstance3D).visibility_range_end == SModels.WARGA_FACE_FAR
 				wm.queue_free()
@@ -3247,7 +3248,7 @@ func _test_kreator(login_name: String, pw: String) -> void:
 	Api.retry_delay = 0.0
 	await kr.request_close()
 	_check(closed_n[0] == 0 and kr.is_open and kr._dirty and kr._confirm.visible, "simpan gagal: layar tetap terbuka, draf tetap, pilihan Coba Lagi muncul")
-	_check(str(Session.load_look_draft().get("hair_color", "")) == "#3a5ac8", "simpan gagal: draf disimpan di HP")
+	_check(str(Session.load_look_draft().get("look", {}).get("hair_color", "")) == "#3a5ac8", "simpan gagal: draf disimpan di HP")
 	_check(str(Session.player.state.look.get("hair_color", "")) == "#d9b45a", "simpan gagal: data pemain (server) tidak berubah")
 	Api.base_url = saved_url
 	Api.retry_delay = saved_delay
@@ -3259,47 +3260,12 @@ func _test_kreator(login_name: String, pw: String) -> void:
 	kr.closed.disconnect(on_closed)
 	kr.open("Penampilan")
 	await process_frame
-	# v0.82.1: ukuran tubuh stabil selama animasi berjalan lama, dan modifier tidak menumpuk skala.
-	var BodyT: GDScript = load("res://scripts/body_shape.gd")
+	# v0.82.2: draf (server lambat, ditutup paksa, ganti akun, login ulang, pulihkan/buang, simpan ulang).
+	await _test_drafts(KT, login_name, pw)
+	# v0.82.2: ukuran tubuh: modifier 50/100/500x dibanding hasil pertama, idle/jalan/lari/tendang/serang.
 	var body_look := {"made": true, "height": 2, "width": 3, "muscle": 3, "head": 2, "torso": 2, "face": "bulat"}
-	var br: Node3D = KModels.create("ksatria")
-	root.add_child(br)
-	KModels.dress(br, 0, {}, body_look)
-	var bsk := br.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
-	var bhead := bsk.find_bone("head")
-	var probe := {}
-	bsk.skeleton_updated.connect(func() -> void:
-		probe["head"] = bsk.get_bone_global_pose(bhead).basis.get_scale()
-		probe["hips"] = bsk.get_bone_global_pose(bsk.find_bone("hips")).basis.get_scale())
-	for _f in 30:
-		await process_frame
-	var idle0: Dictionary = probe.duplicate()  # diam, sebelum berlari
-	br.set("moving", true)
-	br.set("move_speed", 2.6)  # berlari
-	var lo := Vector3(INF, INF, INF)
-	var hi := -lo
-	for f in 460:
-		if f == 400:
-			br.call("play_action", "tendang")
-		await process_frame
-		lo = lo.min(probe.head)
-		hi = hi.max(probe.head)
-	br.set("moving", false)
-	br.set("move_speed", 0.0)
-	for _f in 120:
-		await process_frame
-	var spread := (hi - lo) / (idle0.head as Vector3)
-	# Kepala ikut berputar di bawah tulang induk yang skalanya tidak seragam -> goyang kecil selama gerak, tetapi
-	# setelah kembali diam ukurannya harus sama dengan sebelum bergerak (tidak menumpuk).
-	_check(idle0.has("head") and spread.x < 0.03 and spread.y < 0.03 and spread.z < 0.03, "ukuran kepala selama 460 bingkai lari + tendang tetap dalam batas (rentang %s)" % spread)
-	_check((idle0.head as Vector3).distance_to(probe.head) < 0.002 and (idle0.hips as Vector3).is_equal_approx(probe.hips), "skala tubuh stabil: setelah lari + tendang kembali sama persis (%s -> %s)" % [idle0.get("head"), probe.get("head")])
+	var br: Node3D = await _test_body_shape(KModels, body_look)
 	var bm: Node = br.find_child("BentukTubuh", true, false)
-	var hips_i := bsk.find_bone("hips")
-	var base_hips := bsk.get_bone_pose_scale(hips_i)
-	for _k in 50:  # dipanggil berulang tanpa animasi di antaranya (pose tidak dikembalikan)
-		bm.call("_process_modification")
-	_check(bsk.get_bone_pose_scale(hips_i).is_equal_approx((bm.call("base_of", "hips") as Vector3) * (bm.scales["hips"] as Vector3)), "modifier dipanggil 50x berturut-turut tidak menumpuk skala (%s)" % bsk.get_bone_pose_scale(hips_i))
-	_check(base_hips != Vector3.ZERO and bm.get_script() == BodyT, "bentuk tubuh memakai body_shape.gd")
 	# v0.82.1: berganti pahlawan tidak merusak bentuk tubuh (penampilan sama di model lain).
 	var br2: Node3D = KModels.create("pemanah")
 	root.add_child(br2)
@@ -3314,6 +3280,9 @@ func _test_kreator(login_name: String, pw: String) -> void:
 	br2.queue_free()
 	# v0.82.1: semua pilihan kosmetik dan perlengkapan punya hasil visual yang berbeda.
 	_check_visuals(KModels)
+	# v0.82.2: tempelan di tulang yang benar, posisi/tembus, bahan, ikut animasi; kebocoran memori.
+	await _check_attachments(KModels)
+	await _test_leaks(KModels, KT)
 	var bad_look: Dictionary = await Api.set_look({"hair": "rambut_kepang"})
 	_check(not bad_look.ok and bad_look.status == 422, "memakai rambut yang belum dibeli ditolak 422")
 	var illegal: Dictionary = await Api.wardrobe_buy("skin_gratis_hack", Api.new_request_id())
@@ -3423,6 +3392,15 @@ func _visual_sig(rig: Node3D) -> String:
 		if not mi.visible:
 			continue
 		var colr := ""
+		if mi.mesh is ArrayMesh and mi.mesh.get_surface_count() > 0:  # mesh gabungan: warna ada di warna titik
+			var va: PackedVector3Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+			var vsum := Vector3.ZERO
+			for vv: Vector3 in va:
+				vsum += vv.abs()
+			colr += "%d:%s" % [va.size(), vsum.snappedf(0.001)]  # bentuk tiap bagian ikut terhitung
+			var ca: Variant = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+			if ca is PackedColorArray:
+				colr += str(Array(ca as PackedColorArray).reduce(func(acc: String, cc: Color) -> String: return acc if acc.contains(cc.to_html()) else acc + cc.to_html(), ""))
 		for i in (mi.mesh.get_surface_count() if mi.mesh != null else 0):
 			var m: Material = mi.material_override if mi.material_override != null else mi.get_surface_override_material(i)
 			if m is StandardMaterial3D:
@@ -3481,3 +3459,336 @@ func _check_visuals(KModels: GDScript) -> void:
 	_check(bad.is_empty() and total > 120, "semua %d pilihan kosmetik, warna, tubuh, dan perlengkapan punya hasil visual berbeda %s" % [total, bad])
 	_check(base_sig != "", "tanda visual dasar terbaca")
 	rig.queue_free()
+
+
+
+## v0.82.2 (A): skala tulang dari body_shape.gd. Mengembalikan model uji (dipakai uji ganti pahlawan).
+func _test_body_shape(KModels: GDScript, body_look: Dictionary) -> Node3D:
+	var br: Node3D = KModels.create("ksatria")
+	root.add_child(br)
+	KModels.dress(br, 0, {}, body_look)
+	var bsk := br.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
+	# Penumpukan diukur dari skala LOKAL tiap tulang yang ditulis modifier (= pose animasi x pengali): harus tetap.
+	# Skala global kepala hanya dipakai untuk goyang: tulang yang berputar di bawah induk berskala tidak seragam
+	# memang terlihat sedikit berubah menurut fase animasi.
+	var watch: Array = (br.find_child("BentukTubuh", true, false).get("scales") as Dictionary).keys()
+	var probe := {}
+	bsk.skeleton_updated.connect(func() -> void:
+		probe["head"] = bsk.get_bone_global_pose(bsk.find_bone("head")).basis.get_scale()
+		for b: String in watch:
+			probe["L" + b] = bsk.get_bone_pose_scale(bsk.find_bone(b)))
+	for _f in 30:
+		await process_frame
+	var idle0: Dictionary = probe.duplicate()
+	# Setiap animasi: goyang kepala selama gerak kecil (<3%), dan setelah kembali diam semua tulang = sebelum.
+	for a: Array in [["diam", 0.0, ""], ["jalan", 1.2, ""], ["lari", 2.6, ""], ["tendang", 0.0, "tendang"], ["serang", 0.0, "serang"]]:
+		br.set("moving", float(a[1]) > 0.0)
+		br.set("move_speed", float(a[1]))
+		var lo := Vector3(INF, INF, INF)
+		var hi := -lo
+		for f in 240:
+			if a[2] == "tendang" and f == 10:
+				br.call("play_action", "tendang")
+			elif a[2] == "serang" and f % 60 == 10:
+				br.call("play_attack")
+			await process_frame
+			lo = lo.min(probe.head)
+			hi = hi.max(probe.head)
+		br.set("moving", false)
+		br.set("move_speed", 0.0)
+		for _f in 120:
+			await process_frame
+		var spread := (hi - lo) / (idle0.head as Vector3)
+		var same := true
+		for b: String in watch:
+			same = same and (idle0["L" + b] as Vector3).is_equal_approx(probe["L" + b])
+		_check(spread.x < 0.03 and spread.y < 0.03 and spread.z < 0.03 and same, "skala tubuh %s: skala lokal %d tulang kembali persis, goyang kepala %s" % [a[0], watch.size(), spread.snappedf(0.0001)])
+	# Modifier dipanggil berulang tanpa animasi di antaranya: dibanding HASIL PEMANGGILAN PERTAMA, bukan skala dasar.
+	var bm: Node = br.find_child("BentukTubuh", true, false)
+	var bones: Array = (bm.get("scales") as Dictionary).keys()
+	bm.call("_process_modification")
+	var first := {}
+	for b: String in bones:
+		first[b] = bsk.get_bone_pose_scale(bsk.find_bone(b))
+	var calls := 1
+	for target: int in [50, 100, 500]:
+		while calls < target:
+			bm.call("_process_modification")
+			calls += 1
+		var ok := true
+		for b: String in bones:
+			ok = ok and bsk.get_bone_pose_scale(bsk.find_bone(b)).is_equal_approx(first[b])
+		_check(ok, "modifier dipanggil %dx berturut-turut: skala %d tulang sama dengan hasil pemanggilan pertama" % [target, bones.size()])
+	# Pose berubah (animasi menulis skala lain) lalu modifier dipanggil 100x: hasil = skala baru x pengali, sekali.
+	var hi_i := bsk.find_bone("hips")
+	bsk.set_bone_pose_scale(hi_i, Vector3(1.2, 1.0, 1.2))
+	bm.call("_process_modification")
+	var once := bsk.get_bone_pose_scale(hi_i)
+	for _k in 100:
+		bm.call("_process_modification")
+	_check(once.is_equal_approx(Vector3(1.2, 1.0, 1.2) * (bm.scales["hips"] as Vector3)) and bsk.get_bone_pose_scale(hi_i).is_equal_approx(once), "pose animasi berubah: modifier memakai pose baru sekali saja (%s)" % once)
+	for _f in 3:
+		await process_frame
+	return br
+
+
+## v0.82.2 (B): draf penampilan.
+func _test_drafts(KT: GDScript, login_name: String, pw: String) -> void:
+	var token_a: String = Api.token
+	var me_a: Dictionary = (await Api.get_me()).data
+	Session.set_player(me_a)
+	Session.clear_look_draft()
+	var server_look: Dictionary = Session.look_of(me_a.state.look)
+	var kd: CanvasLayer = KT.new()
+	root.add_child(kd)
+	await process_frame
+	kd.open("Penampilan")
+	await create_timer(0.3).timeout
+	_check(not kd._confirm.visible, "tanpa draf: tidak ada tawaran pemulihan")
+	# Server lambat: pelayan yang menerima sambungan tetapi tidak pernah menjawab.
+	var tcp := TCPServer.new()
+	var port := 18977
+	tcp.listen(port, "127.0.0.1")
+	var saved_url: String = Api.base_url
+	var saved_timeout: float = Api.timeout_sec
+	Api.base_url = "http://127.0.0.1:%d" % port
+	Api.timeout_sec = 2.0
+	kd._set_field("hair_color", "#6a3a9a")
+	kd._save()  # tidak ditunggu: permintaan menggantung
+	var conns: Array = []
+	for _f in 20:
+		await process_frame
+		while tcp.is_connection_available():
+			conns.append(tcp.take_connection())
+	var second: bool = await kd._save()
+	await kd.request_close()
+	_check(kd._saving and not second and kd.is_open and kd._status.text.contains("Tunggu"), "server lambat: Simpan/Tutup kedua tidak mengirim ulang, layar menunggu")
+	var tw := Time.get_ticks_msec()
+	while kd._saving and Time.get_ticks_msec() - tw < 6000:
+		await process_frame
+		while tcp.is_connection_available():
+			conns.append(tcp.take_connection())
+	_check(conns.size() == 1, "server lambat: hanya satu permintaan simpan yang terkirim (%d)" % conns.size())
+	_check(not kd._saving and kd._dirty and str(Session.load_look_draft().get("look", {}).get("hair_color", "")) == "#6a3a9a", "server lambat: waktu habis -> draf tetap di layar dan di HP")
+	for c: StreamPeerTCP in conns:
+		c.disconnect_from_host()
+	tcp.stop()
+	Api.base_url = saved_url
+	Api.timeout_sec = saved_timeout
+	kd._confirm.visible = false
+	# Aplikasi ditutup paksa: perubahan ditulis ke HP sendiri (tanpa menunggu gagal simpan), layar dibuang.
+	kd._set_field("brow", "tebal")
+	await create_timer(0.7).timeout
+	kd.free()
+	var me_now: Dictionary = (await Api.get_me()).data
+	var now_look: Dictionary = Session.look_of(me_now.state.look)
+	_check(str(now_look.get("brow", "")) == str(server_look.get("brow", "")) and str(now_look.get("hair_color", "")) == str(server_look.get("hair_color", "")), "ditutup paksa: data server tidak berubah")
+	var kd2: CanvasLayer = KT.new()
+	root.add_child(kd2)
+	await process_frame
+	kd2.open("Penampilan")
+	await create_timer(0.4).timeout
+	_check(kd2._confirm.visible and kd2._confirm_label.text.contains("Pulihkan") and not kd2._dirty and str(kd2._draft.get("brow", "")) == str(server_look.get("brow", "")), "dibuka lagi: draf ditawarkan (Pulihkan/Buang), belum diterapkan")
+	# Ganti akun: draf akun A tidak terbaca akun B.
+	var bn := "Lain%d" % (Time.get_ticks_usec() % 100000)
+	var reg_b: Dictionary = await Api.register(bn, bn.to_lower() + "@contoh.id", pw)
+	if reg_b.ok:
+		Api.token = str(reg_b.data.token)
+		Session.set_player((await Api.get_me()).data)
+		_check(Session.load_look_draft().is_empty(), "ganti akun: draf akun lain tidak terbaca")
+		var kb: CanvasLayer = KT.new()
+		root.add_child(kb)
+		await process_frame
+		kb.open("Penampilan")
+		await create_timer(0.3).timeout
+		_check(not kb._confirm.visible and not kb._dirty, "ganti akun: Character Creator akun lain tidak menawarkan draf")
+		kb.close()
+		kb.free()
+	# Login ulang akun A: draf masih ada dan tetap ditawarkan.
+	var relog: Dictionary = await Api.login(login_name, pw)
+	Api.token = str(relog.data.token) if relog.ok else token_a
+	Session.set_player((await Api.get_me()).data)
+	_check(relog.ok and str(Session.load_look_draft().get("look", {}).get("brow", "")) == "tebal", "login ulang: draf akun sendiri masih ada")
+	# Pulihkan (pilihan pemain) lalu simpan ulang.
+	(kd2._confirm_row.get_child(0) as Button).pressed.emit()
+	_check(kd2._dirty and str(kd2._draft.get("brow", "")) == "tebal" and str(kd2._draft.get("hair_color", "")) == "#6a3a9a", "Pulihkan: draf diterapkan ke layar (belum ke server)")
+	var me_mid: Dictionary = (await Api.get_me()).data
+	_check(str(Session.look_of(me_mid.state.look).get("brow", "")) == str(server_look.get("brow", "")), "Pulihkan saja tidak mengirim ke server")
+	var saved: bool = await kd2._save()
+	var me_saved: Dictionary = (await Api.get_me()).data
+	_check(saved and str(me_saved.state.look.get("brow", "")) == "tebal" and Session.load_look_draft().is_empty(), "simpan ulang: server menerima, draf HP dihapus")
+	kd2.close()
+	kd2.free()
+	# Buang: draf lama tidak menimpa server.
+	var server2: Dictionary = Session.look_of(me_saved.state.look)
+	var junk: Dictionary = server2.duplicate(true)
+	junk["hair_color"] = "#3a8a4a"
+	Session.save_look_draft(junk)
+	var kd3: CanvasLayer = KT.new()
+	root.add_child(kd3)
+	await process_frame
+	kd3.open("Penampilan")
+	await create_timer(0.4).timeout
+	(kd3._confirm_row.get_child(1) as Button).pressed.emit()
+	await kd3.request_close()
+	var me_end: Dictionary = (await Api.get_me()).data
+	_check(Session.load_look_draft().is_empty() and str(me_end.state.look.get("hair_color", "")) == str(server2.get("hair_color", "")) and not kd3._dirty, "Buang: draf dihapus, server tidak ditimpa")
+	# Draf yang sama dengan server dibuang diam-diam (tidak ada yang perlu dipulihkan).
+	Session.save_look_draft(server2)
+	kd3.close()
+	kd3.open("Penampilan")
+	await create_timer(0.4).timeout
+	_check(not kd3._confirm.visible and Session.load_look_draft().is_empty(), "draf sama dengan server: dibuang tanpa bertanya")
+	kd3.close()
+	kd3.free()
+	Session.set_player(me_end)
+
+
+## v0.82.2 (C): tempelan di tulang yang benar, posisi/tembus, bahan, dan ikut animasi.
+func _check_attachments(KModels: GDScript) -> void:
+	var LB: GDScript = load("res://scripts/look_build.gd")
+	var rig: Node3D = KModels.create("ksatria")
+	root.add_child(rig)
+	var look := {"made": true, "hair": "rambut_panjang", "hair_color": "#a8321e", "skin_color": "#7a4a2c", "eyes": "besar", "nose": "mancung",
+		"mouth": "senyum", "beard": "lengkap", "clothes": "baju_petualang", "pants": "celana_kulit", "gloves": "sarung_besi", "cape": "jubah_merah",
+		"accessories": ["kalung_permata", "sayap_malaikat", "ornamen_bahu", "cincin_emas"]}
+	var eq := {"weapon": "pedang_panjang", "offhand": "perisai_besi", "boots": "sepatu_armor", "helmet": "helm_ksatria", "armor": "zirah_berat"}
+	KModels.dress(rig, 0, eq, look)
+	var sk := rig.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
+	var want := {"rambut": "head", "wajah": "head", "wajah2": "head", "helm": "head", "jubah": "chest", "sayap": "chest", "kalung": "chest",
+		"sabuk": "hips", "kantong": "hips", "sepatu_l": "foot.l", "sepatu_r": "foot.r", "sarung_l": "hand.l", "sarung_r": "hand.r", "senjata": "handslot.r",
+		"perisai": "handslot.l", "ornamen_l": "upperarm.l", "ornamen_r": "upperarm.r", "cincin": "hand.r"}
+	var found := {}
+	var wrong: Array = []
+	var boxes := {}
+	for c: Node in sk.get_children():
+		if not (c is BoneAttachment3D) or not c.has_meta("Perlengkapan"):
+			continue
+		var ba := c as BoneAttachment3D
+		var part := ba.get_child(0) as Node3D
+		var pname := str(part.name)
+		found[pname] = true
+		if want.has(pname) and want[pname] != ba.bone_name:
+			wrong.append("%s@%s" % [pname, ba.bone_name])
+		var bi := sk.find_bone(ba.bone_name)
+		boxes[pname] = KModels._aabb_of(part, sk.get_bone_global_rest(bi) * part.transform)
+	var missing: Array = want.keys().filter(func(k: String) -> bool: return not found.has(k))
+	_check(wrong.is_empty() and missing.is_empty(), "setiap bagian menempel di tulang yang benar (salah %s, hilang %s)" % [wrong, missing])
+	var list: Array = []
+	KModels._meshes(sk, Transform3D.IDENTITY, list)
+	var bx: Dictionary = LB.boxes(list)
+	var head: AABB = bx.Head
+	var body: AABB = bx.Body
+	var foot_l := sk.get_bone_global_rest(sk.find_bone("foot.l")).origin
+	var hand_r := sk.get_bone_global_rest(sk.find_bone("handslot.r")).origin
+	var hb: AABB = boxes.rambut
+	var helm: AABB = boxes.helm
+	_check(hb.end.y < helm.end.y and hb.size.x <= helm.size.x + 0.001, "rambut di bawah helm tidak menembus helm (atas %.3f < %.3f, lebar %.3f <= %.3f)" % [hb.end.y, helm.end.y, hb.size.x, helm.size.x])
+	var face: AABB = boxes.wajah2
+	_check(face.end.z >= head.end.z - 0.02 and face.get_center().y > head.position.y and face.get_center().y < head.end.y, "mata/hidung/mulut di depan wajah, di dalam tinggi kepala")
+	_check((boxes.sepatu_l as AABB).grow(0.03).has_point(foot_l), "sepatu kiri di kaki kiri")
+	_check((boxes.senjata as AABB).grow(0.05).has_point(hand_r), "senjata di genggaman tangan kanan")
+	_check((boxes.jubah as AABB).get_center().z < body.position.z + 0.02, "jubah di punggung, tidak menembus ke depan badan")
+	_check((boxes.sayap as AABB).end.z < body.position.z, "sayap seluruhnya di belakang badan (%.3f < %.3f)" % [(boxes.sayap as AABB).end.z, body.position.z])
+	_check((boxes.kalung as AABB).end.z > body.end.z, "liontin kalung di depan dada (tidak tenggelam di zirah)")
+	# Bahan: semua bagian buatan punya bahan; kulit memakai shader kulit dengan warna pilihan; dikembalikan saat dilepas.
+	var no_mat := 0
+	var parts_n := 0
+	for c: Node in sk.get_children():
+		if c is BoneAttachment3D and c.has_meta("Perlengkapan"):
+			for mi: Node in c.find_children("*", "MeshInstance3D", true, false):
+				parts_n += 1
+				if (mi as MeshInstance3D).material_override == null:
+					no_mat += 1
+	var skin_ok := true
+	for mi: Node in rig.find_children("*_Head", "MeshInstance3D", true, false) + rig.find_children("*_Arm*", "MeshInstance3D", true, false):
+		var m := (mi as MeshInstance3D).get_surface_override_material(0)
+		skin_ok = skin_ok and m is ShaderMaterial and (m as ShaderMaterial).get_shader_parameter("skin") == Color("7a4a2c")
+	_check(no_mat == 0 and skin_ok, "bahan: %d mesh tempelan berbahan, kepala & lengan memakai shader kulit pilihan" % parts_n)
+	LB.merge_parts = false
+	KModels.dress(rig, 0, eq, look)
+	var unmerged := 0
+	for c: Node in sk.get_children():
+		if c is BoneAttachment3D and c.has_meta("Perlengkapan"):
+			unmerged += c.find_children("*", "MeshInstance3D", true, false).size()
+	LB.merge_parts = true
+	KModels.dress(rig, 0, eq, look)
+	_check(parts_n * 2 <= unmerged, "bagian satu tempelan digabung: %d mesh tempelan (tanpa penggabungan %d)" % [parts_n, unmerged])
+	KModels.dress(rig, 0, {}, {})
+	var restored := true
+	for mi: Node in rig.find_children("*_Head", "MeshInstance3D", true, false):
+		restored = restored and (mi as MeshInstance3D).get_surface_override_material(0) is StandardMaterial3D
+	_check(restored and sk.get_children().filter(func(n: Node) -> bool: return n.has_meta("Perlengkapan")).size() <= 2, "lepas semua: bahan asli kembali, tempelan lama dibuang")
+	# Ikut animasi: setelah berjalan dan menyerang, setiap tempelan berada di pose tulangnya.
+	KModels.dress(rig, 0, eq, look)
+	rig.set("moving", true)
+	rig.set("move_speed", 1.5)
+	for f in 90:
+		if f == 45:
+			rig.call("play_attack")
+		await process_frame
+	var max_err := 0.0
+	for c: Node in sk.get_children():
+		if c is BoneAttachment3D and c.has_meta("Perlengkapan"):
+			var ba := c as BoneAttachment3D
+			var want_xf := sk.global_transform * sk.get_bone_global_pose(sk.find_bone(ba.bone_name))
+			max_err = maxf(max_err, ba.global_transform.origin.distance_to(want_xf.origin))
+	_check(max_err < 0.01, "semua tempelan ikut tulangnya saat berjalan & menyerang (selisih %.4f)" % max_err)
+	rig.queue_free()
+
+
+## v0.82.2 (D): pembuatan mesh/bahan berulang dan buka-tutup Character Creator tidak membocorkan memori.
+func _test_leaks(KModels: GDScript, KT: GDScript) -> void:
+	var LB: GDScript = load("res://scripts/look_build.gd")
+	var rig: Node3D = KModels.create("pemanah")
+	root.add_child(rig)
+	var looks := [
+		[{"made": true, "hair": "rambut_ikal", "hair_color": "#a8321e", "skin_color": "#7a4a2c", "eyes": "besar", "accessories": ["sayap_naga", "kalung_perak"], "cape": "jubah_bintang"}, {"weapon": "busur_panjang", "boots": "sepatu_legenda"}],
+		[{"made": true, "hair": "rambut_kepang", "skin_color": "#f4d2b4", "hat": "mahkota_naga", "clothes": "jubah_penyihir", "height": 3, "muscle": -2}, {"helmet": "helm_legenda"}],
+		[{}, {}],
+		[{"made": true, "hair": "rambut_jambul", "beard": "penyihir", "gloves": "sarung_naga", "accessories": ["perisai_punggung", "ornamen_bahu", "sabuk_kulit"]}, {"weapon": "pedang_naga_purba", "armor": "zirah_legenda"}],
+	]
+	for lk: Array in looks:
+		KModels.dress(rig, 0, lk[1], lk[0])
+	for _f in 3:
+		await process_frame
+	var mon := func() -> Array:
+		return [Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT),
+			Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT), Performance.get_monitor(Performance.OBJECT_COUNT), LB.material_count()]
+	var before: Array = mon.call()
+	for i in 400:
+		var lk: Array = looks[i % looks.size()]
+		KModels.dress(rig, 0, lk[1], lk[0])
+		if i % 25 == 0:
+			await process_frame
+	KModels.dress(rig, 0, looks[3][1], looks[3][0])
+	for _f in 3:
+		await process_frame
+	var after: Array = mon.call()
+	_check(after[0] == before[0] and after[1] == 0 and after[2] <= before[2] + 10 and after[3] <= before[3] + 50 and after[4] == before[4], "400x ganti penampilan: node %d->%d, yatim %d, resource %d->%d, objek %d->%d, bahan %d->%d" % [before[0], after[0], after[1], before[2], after[2], before[3], after[3], before[4], after[4]])
+	rig.queue_free()
+	# Buka-tutup Character Creator berulang (dengan pratinjau toko).
+	var k: CanvasLayer = KT.new()
+	root.add_child(k)
+	await process_frame
+	k.open("Toko")
+	await create_timer(0.3).timeout
+	k.close()
+	for _f in 3:
+		await process_frame
+	var b2: Array = mon.call()
+	for i in 15:
+		k.open("Toko")
+		await process_frame
+		k._set_sub("Aksesori")
+		var es: Array = k._entries("Aksesori", false)
+		if not es.is_empty():
+			k._select(es[i % es.size()])
+		await process_frame
+		k.close()
+		await process_frame
+	for _f in 3:
+		await process_frame
+	var a2: Array = mon.call()
+	_check(a2[0] <= b2[0] + 2 and a2[1] == 0 and a2[2] <= b2[2] + 10, "15x buka-tutup Character Creator: node %d->%d, yatim %d, resource %d->%d" % [b2[0], a2[0], a2[1], b2[2], a2[2]])
+	k.free()

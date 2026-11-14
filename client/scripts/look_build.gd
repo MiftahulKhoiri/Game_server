@@ -221,7 +221,28 @@ static func face_dict(look: Dictionary) -> Dictionary:
 
 # --- bahan dan tempelan ---
 
+## Bahan dipakai bersama per (warna, logam, cahaya): ganti item berulang tidak membuat bahan baru terus-menerus,
+## dan bagian berwarna sama dalam satu tempelan bisa digabung jadi satu panggilan gambar (v0.82.2). Bahan ini
+## tidak pernah diubah setelah dibuat. Jumlahnya terbatas (warna katalog/palet dan turunannya).
+static var _mats: Dictionary = {}
+## Gabungkan bagian sebahan per tempelan (dimatikan hanya oleh uji untuk mengukur penghematan).
+static var merge_parts := true
+
+
+static func material_count() -> int:
+	return _mats.size() + _vc_mats.size()
+
+
 static func _mat(c: Color, metal := false, glow := Color(0, 0, 0, 0)) -> StandardMaterial3D:
+	var key := "%s|%s|%s" % [c.to_html(), metal, glow.to_html() if glow.a > 0.0 else ""]
+	if _mats.has(key):
+		return _mats[key]
+	var m := _new_mat(c, metal, glow)
+	_mats[key] = m
+	return m
+
+
+static func _new_mat(c: Color, metal := false, glow := Color(0, 0, 0, 0)) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
 	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
@@ -288,6 +309,8 @@ static func _attach(sk: Skeleton3D, bone: String, part: Node3D, rig_pos: Variant
 	if bi < 0:
 		part.free()
 		return
+	if merge_parts:
+		merge_colored(part)  # semua bagian satu tempelan jadi 1-2 mesh: lebih sedikit panggilan gambar di HP
 	var ba := BoneAttachment3D.new()
 	ba.name = "%s_%s_%s" % [DRESS_NODE, bone, part.name]
 	ba.set_meta(DRESS_NODE, true)
@@ -303,6 +326,103 @@ static func _attach(sk: Skeleton3D, bone: String, part: Node3D, rig_pos: Variant
 static func _bone_pos(sk: Skeleton3D, bone: String) -> Vector3:
 	var bi := sk.find_bone(bone)
 	return sk.get_bone_global_rest(bi).origin if bi >= 0 else Vector3.ZERO
+
+
+# --- penggabungan mesh (v0.82.2) ---
+
+## Gabungkan semua bentuk dasar di bawah `root` menjadi satu mesh per jenis bahan (logam/cahaya tepi/cahaya),
+## warnanya disimpan sebagai warna titik. Satu tempelan (rambut, wajah, sepatu, sayap...) biasanya jadi 1-2
+## panggilan gambar, bukan satu per bentuk. Node bernama (dicari kode lain) dan node berskrip tidak disentuh.
+static var _vc_mats: Dictionary = {}
+
+
+static func merge_colored(root: Node3D) -> void:
+	var groups := {}
+	_gather(root, Transform3D.IDENTITY, groups)
+	for key: String in groups:
+		var g: Dictionary = groups[key]
+		if (g.nodes as Array).size() < 2:
+			continue
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = g.v
+		arrays[Mesh.ARRAY_NORMAL] = g.n
+		arrays[Mesh.ARRAY_COLOR] = g.c
+		arrays[Mesh.ARRAY_INDEX] = g.i
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var mi := MeshInstance3D.new()
+		mi.name = "Gabungan"
+		mi.mesh = am
+		mi.material_override = _vc_mat(g.mat as StandardMaterial3D, key)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.visibility_range_end = float(g.far)
+		root.add_child(mi)
+		for n: Node in g.nodes:
+			n.get_parent().remove_child(n)
+			n.free()
+
+
+static func _gather(node: Node, xf: Transform3D, groups: Dictionary) -> void:
+	for c in node.get_children():
+		if not (c is Node3D) or not str(c.name).begins_with("@") or c.get_script() != null:
+			continue
+		var n3 := c as Node3D
+		if not n3.visible:
+			continue
+		var cxf := xf * n3.transform
+		if n3 is MeshInstance3D and n3.get_child_count() == 0:
+			_gather_mesh(n3 as MeshInstance3D, cxf, groups)
+		elif n3.get_class() == "Node3D":
+			_gather(n3, cxf, groups)
+
+
+static func _gather_mesh(mi: MeshInstance3D, xf: Transform3D, groups: Dictionary) -> void:
+	var m := mi.material_override as StandardMaterial3D
+	if mi.mesh == null or m == null or not (mi.mesh is PrimitiveMesh) or m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+		return
+	var glow := m.emission.to_html() + str(m.emission_energy_multiplier) if m.emission_enabled else ""
+	var key := "%s|%s|%s|%s" % [m.metallic > 0.0 or m.roughness < 0.6, m.rim_enabled, glow, mi.visibility_range_end]
+	if not groups.has(key):
+		groups[key] = {"mat": m, "far": mi.visibility_range_end, "nodes": [], "v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "i": PackedInt32Array()}
+	var g: Dictionary = groups[key]
+	var src := mi.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = src[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = src[Mesh.ARRAY_NORMAL]
+	var idx: PackedInt32Array = src[Mesh.ARRAY_INDEX] if src[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+	var nb := xf.basis.inverse().transposed()
+	var base := (g.v as PackedVector3Array).size()
+	var v: PackedVector3Array = g.v
+	var n: PackedVector3Array = g.n
+	var c: PackedColorArray = g.c
+	var ii: PackedInt32Array = g.i
+	for k in verts.size():
+		v.append(xf * verts[k])
+		n.append((nb * norms[k]).normalized() if k < norms.size() else Vector3.UP)
+		c.append(m.albedo_color)
+	if idx.is_empty():
+		for k in verts.size():
+			ii.append(base + k)
+	else:
+		for k in idx.size():
+			ii.append(base + idx[k])
+	g.v = v
+	g.n = n
+	g.c = c
+	g.i = ii
+	(g.nodes as Array).append(mi)
+
+
+## Bahan warna-titik bersama per jenis (logam, cahaya tepi, cahaya).
+static func _vc_mat(src: StandardMaterial3D, key: String) -> StandardMaterial3D:
+	if _vc_mats.has(key):
+		return _vc_mats[key]
+	var m := src.duplicate() as StandardMaterial3D
+	m.albedo_color = Color(1, 1, 1)
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	_vc_mats[key] = m
+	return m
 
 
 # --- penerapan ---

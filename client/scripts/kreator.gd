@@ -49,6 +49,7 @@ var _busy := false
 var _saving := false              # permintaan simpan penampilan sedang berjalan (tidak dikirim ganda)
 var _closing := false
 var _last_error := ""
+var _draft_timer: Timer
 var _tab := "Penampilan"
 var _sub := "Rambut"
 var _selected: Dictionary = {}    # barang yang dipilih (untuk rincian, pratinjau, beli/pakai)
@@ -184,6 +185,11 @@ func _ready() -> void:
 	_status.add_theme_color_override("font_color", Color("ffd27a"))
 	right.add_child(_status)
 	_build_confirm()
+	_draft_timer = Timer.new()
+	_draft_timer.one_shot = true
+	_draft_timer.wait_time = 0.4
+	_draft_timer.timeout.connect(_write_draft_now)
+	add_child(_draft_timer)
 
 
 # --- buka / tutup ---
@@ -198,11 +204,6 @@ func open(tab := "Penampilan", welcome := false) -> void:
 	_saving = false
 	_selected = {}
 	_status.text = "Selamat datang! Buat penampilan pahlawanmu, lalu ketuk Simpan." if welcome else ""
-	var pending := Session.load_look_draft()
-	if not pending.is_empty() and pending != _draft:
-		_draft = pending
-		_dirty = true
-		_status.text = "Perubahan yang belum tersimpan dipulihkan. Ketuk Simpan untuk menyimpannya."
 	visible = true
 	is_open = true
 	_make_rig()
@@ -216,6 +217,54 @@ func open(tab := "Penampilan", welcome := false) -> void:
 		await Session.ensure_wardrobe()
 	_redress()
 	_refresh_all()
+	_offer_draft()
+
+
+## Draf dari sesi sebelumnya (gagal simpan / aplikasi ditutup paksa) milik akun ini: tanya dulu, jangan diterapkan
+## atau dikirim tanpa pilihan pemain. Draf yang sama dengan data server dibuang diam-diam.
+func _offer_draft() -> void:
+	var pending := Session.load_look_draft()
+	if pending.is_empty() or not is_open:
+		return
+	var server_look := Session.look_of(Session.player.state.get("look", {}))
+	if _same_look(pending.look, server_look):
+		Session.clear_look_draft()
+		return
+	var note := ""
+	if not _same_look(pending.base, server_look):
+		note = "\nPenampilan di server sudah berubah sejak itu."
+	_ask("Ada perubahan penampilan yang belum tersimpan.%s\nPulihkan perubahan itu?" % note, [
+		["Pulihkan", func() -> void:
+			_draft = pending.look
+			_dirty = true
+			_status.text = "Perubahan dipulihkan; ketuk Simpan untuk menyimpannya."
+			_redress()
+			_refresh_all()],
+		["Buang", func() -> void:
+			Session.clear_look_draft()
+			_status.text = "Perubahan lama dibuang."],
+	])
+
+
+static func _same_look(a: Dictionary, b: Dictionary) -> bool:
+	var x := a.duplicate(true)
+	var y := b.duplicate(true)
+	x.erase("made")
+	y.erase("made")
+	return x == y
+
+
+## Penampilan draf berubah oleh pemain: tandai belum tersimpan dan tulis draf ke HP (ditunda sebentar supaya
+## geser penggeser tidak menulis berkas di setiap langkah).
+func _touch() -> void:
+	_dirty = true
+	if _draft_timer != null:
+		_draft_timer.start()
+
+
+func _write_draft_now() -> void:
+	if _dirty and is_open:
+		Session.save_look_draft(_draft)
 
 
 ## Tutup layar (dipanggil pemilik setelah sinyal `closed`). Draf yang belum tersimpan sudah disimpan di HP.
@@ -254,7 +303,6 @@ func request_close() -> void:
 				["Kembali", func() -> void: pass],
 			])
 			return
-	Session.clear_look_draft()
 	closed.emit()
 
 
@@ -521,7 +569,7 @@ func _show_karakter() -> void:
 	row.add_child(_button("Acak Penampilan", _randomize, 22, true))
 	row.add_child(_button("Kembali ke Asli", func() -> void:
 		_draft = {}
-		_dirty = true
+		_touch()
 		_redress()
 		_refresh_all(), 22, true))
 
@@ -610,7 +658,7 @@ func _slider(title: String, field: String) -> void:
 	s.value_changed.connect(func(v: float) -> void:
 		_draft[field] = int(v)
 		val.text = "%+d" % int(v)
-		_dirty = true
+		_touch()
 		_btn_save.disabled = false
 		_btn_save.text = "Simpan Penampilan *"
 		_redress())
@@ -620,7 +668,7 @@ func _slider(title: String, field: String) -> void:
 
 func _set_field(field: String, value: String) -> void:
 	_draft[field] = value
-	_dirty = true
+	_touch()
 	_redress()
 	_refresh_all()
 
@@ -741,7 +789,7 @@ func _use_selected() -> void:
 	var e := _selected
 	if e.kind == "cos":
 		_apply_cos(_draft, e)
-		_dirty = true
+		_touch()
 		_redress()
 		_refresh_all()
 		return
@@ -875,7 +923,7 @@ func _randomize() -> void:
 		if _draft.has(f):
 			d[f] = _draft[f]
 	_draft = d
-	_dirty = true
+	_touch()
 	_redress()
 	_refresh_all()
 
