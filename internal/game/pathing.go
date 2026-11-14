@@ -50,6 +50,12 @@ func distField(mapID string, sx, sy int) []float32 {
 			if !Walkable(mapID, nx, ny) {
 				continue
 			}
+			// Gerakan diagonal tidak boleh menyelinap melalui sudut dua tembok.
+			// Kedua petak ortogonal yang membentuk sisi diagonal harus bisa diinjak.
+			if s.dx != 0 && s.dy != 0 &&
+				(!Walkable(mapID, x+s.dx, y) || !Walkable(mapID, x, y+s.dy)) {
+				continue
+			}
 			j := ny*w + nx
 			if nd := n.d + s.cost; nd < d[j] {
 				d[j] = nd
