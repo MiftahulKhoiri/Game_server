@@ -79,6 +79,7 @@ internet, tetapi tetap dilindungi login, batas laju, dan pemeriksaan gerakan (li
 - [Cadangan & pemulihan](docs/BACKUP.md)
 - [Versi dan update APK](docs/VERSIONING.md) · [Patch](docs/PATCH.md)
 - [Klien Android](client/README.md)
+- [Character Creator, perlengkapan & toko](docs/CHARACTER_CREATOR.md)
 - [Desain game](docs/GAME_DESIGN.md) · [Referensi peta & aset](docs/MAP_REFERENCES.md)
 - [Alat yang terpasang di Pi](docs/ALAT_TERPASANG.md)
 - [Cara berkontribusi](CONTRIBUTING.md)

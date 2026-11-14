@@ -39,6 +39,11 @@ var talk_counts: Dictionary = {}
 var safe_steps := 0
 ## Layar narasi cerita The Last Dragon (story.gd) boleh tampil; uji e2e mematikannya kecuali saat menguji narasi.
 var story_popups := true
+## Buka Character Creator otomatis untuk pemain yang belum pernah membuat karakter (v0.82.0); uji mematikannya.
+var creator_prompt := true
+## Katalog kosmetik dari server (GET /v1/wardrobe): id -> data (warna, bentuk, kategori). Dipakai Models.dress.
+var cosmetics: Dictionary = {}
+var wardrobe_catalog: Dictionary = {}
 ## true = tidak terhubung ke server (mis. menguji peta langsung dari editor); tidak disimpan.
 var offline := false
 ## Nama akun terakhir yang masuk di HP ini (untuk tombol "Lanjutkan sebagai ..."). Kata sandi tidak pernah disimpan.
@@ -255,7 +260,7 @@ func merge_server_player(p: Dictionary, adopt_position := false) -> void:
 	for a: String in incoming.achievements:
 		if not before.has(a):
 			achievement_unlocked.emit(a)  # pencapaian baru (roadmap no. 150)
-	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "formation", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "friends", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
+	for key: String in ["level", "xp", "hp", "max_hp", "gold", "inventory", "equipment", "outfit", "look", "wardrobe", "reputation", "house", "talent", "achievements", "achievements_taken", "wins", "crafted", "hero", "allies", "party", "ally_hp", "soldiers", "soldiers_rest", "formation", "hero_levels", "soldier_level", "training", "energy_used", "hutan", "trials", "bank", "friends", "storage", "ledger", "visited", "secrets", "raid", "defended", "story"]:
 		st[key] = incoming[key]
 	if adopt_position:
 		for key: String in ["map", "x", "y", "fx", "fz", "yaw"]:
@@ -404,6 +409,53 @@ func train_job(kind: String) -> Dictionary:
 	return {}
 
 
+## Penampilan dari server dalam bentuk rapi: angka penggeser tubuh jadi bilangan bulat (JSON Godot membaca
+## semua angka sebagai pecahan, dan server menolak "2.0" untuk kolom bilangan bulat), teks jadi String.
+const LOOK_INTS := ["height", "width", "muscle", "head", "torso"]
+
+## Simpan katalog dari GET /v1/wardrobe; Models.dress membaca warna/bentuk kosmetik dari sini.
+func set_wardrobe_catalog(data: Dictionary) -> void:
+	wardrobe_catalog = data
+	cosmetics.clear()
+	for c: Variant in data.get("cosmetics", []):
+		if c is Dictionary:
+			cosmetics[str(c.id)] = c
+
+
+## Muat katalog sekali (diam-diam bila gagal; model tetap tampil dengan bentuk bawaan).
+func ensure_wardrobe() -> bool:
+	if not cosmetics.is_empty() or offline:
+		return not cosmetics.is_empty()
+	var api := get_node_or_null("/root/Api")
+	if api == null:
+		return false
+	var res: Dictionary = await api.wardrobe_get()
+	if res.ok and res.data is Dictionary:
+		set_wardrobe_catalog(res.data)
+	return not cosmetics.is_empty()
+
+
+static func look_of(v: Variant) -> Dictionary:
+	var out := {}
+	if not (v is Dictionary):
+		return out
+	for k: String in (v as Dictionary):
+		var x: Variant = v[k]
+		if LOOK_INTS.has(k):
+			out[k] = clampi(int(x), -3, 3)
+		elif k == "made":
+			out[k] = bool(x)
+		elif k == "accessories":
+			var acc: Array = []
+			if x is Array:
+				for a: Variant in x:
+					acc.append(str(a))
+			out[k] = acc
+		else:
+			out[k] = str(x)
+	return out
+
+
 func _strings(v: Variant) -> Array:
 	var out: Array = []
 	if v is Array:
@@ -418,7 +470,11 @@ func _normalize_state(s: Dictionary) -> Dictionary:
 		inventory.append({"id": str(item.get("id", "")), "qty": int(item.get("qty", 1))})
 	var eq: Dictionary = s.get("equipment", {})
 	return {
-		"equipment": {"weapon": str(eq.get("weapon", "")), "armor": str(eq.get("armor", "")), "helmet": str(eq.get("helmet", ""))},
+		"equipment": {"weapon": str(eq.get("weapon", "")), "armor": str(eq.get("armor", "")), "helmet": str(eq.get("helmet", "")),
+			"boots": str(eq.get("boots", "")), "offhand": str(eq.get("offhand", ""))},
+		# Character Creator (v0.82.0; server: state.look, state.wardrobe).
+		"look": look_of(s.get("look", {})),
+		"wardrobe": _strings(s.get("wardrobe", [])),
 		# Ingatan + keakraban warga (roadmap no. 58-59; server: state.reputation) {id: {p, t, l}}.
 		"reputation": _reputation(s.get("reputation", {})),
 		"house": bool(s.get("house", false)),  # rumah di Desa Awal sudah dibeli (roadmap no. 127)

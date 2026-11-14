@@ -6,6 +6,7 @@ extends RefCounted
 ## asli datang. Arah depan semua model = +Z, tinggi kira-kira 1 petak.
 
 const Rig = preload("res://scripts/model_rig.gd")
+const LookBuild = preload("res://scripts/look_build.gd")
 const WB = preload("res://scripts/world_build.gd")
 
 const MODEL_DIR := "res://assets/models/"
@@ -354,6 +355,8 @@ const OUTFIT_TINTS := [Color(1, 1, 1), Color("ff9c8c"), Color("a6e09a"), Color("
 const ARMOR_LOOK := {
 	"baju_kulit": {"tint": Color("d9b48a"), "pads": false},
 	"zirah_besi": {"tint": Color("c8d2e0"), "pads": true},
+	"zirah_berat": {"tint": Color("8e98a8"), "pads": true},
+	"zirah_legenda": {"tint": Color("ffe08a"), "pads": true, "glow": Color("ffcc33")},
 }
 ## Senjata: pengali warna bilah dan cahaya (pedang rune berpendar).
 const WEAPON_LOOK := {
@@ -365,6 +368,10 @@ const WEAPON_LOOK := {
 const HELMET_LOOK := {
 	"helm_kulit": {"dome": Color("b47c48"), "trim": Color("6e4628"), "crest": false},
 	"helm_besi": {"dome": Color("aeb8c6"), "trim": Color("5e6676"), "crest": true},
+	# v0.82.0: helm baja, ksatria (berjambul), legenda (emas bertanduk).
+	"helm_baja": {"dome": Color("8e98a8"), "trim": Color("4a5262"), "crest": false, "metal": true},
+	"helm_ksatria": {"dome": Color("c8d2e0"), "trim": Color("5e6676"), "crest": true},
+	"helm_legenda": {"dome": Color("e8c050"), "trim": Color("8a5a1a"), "crest": false, "metal": true, "horns": true, "glow": Color("ffcc33")},
 }
 ## Akhiran nama mesh KayKit.
 const CLOTH_PARTS := ["_Cape", "_Body", "_LegLeft", "_LegRight"]
@@ -411,8 +418,9 @@ static func _meshes(n: Node, xf: Transform3D, out: Array) -> void:
 
 ## Kenakan pakaian dan perlengkapan pada model pahlawan buatan create(). Boleh dipanggil berulang
 ## (mis. setelah ganti perlengkapan): warna dihitung ulang dari warna asli dan tempelan lama dibuang.
-## equipment = {"weapon", "armor", "helmet"} (id barang, "" = kosong).
-static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
+## equipment = {"weapon", "armor", "helmet", "boots", "offhand"} (id barang, "" = kosong).
+## look = penampilan Character Creator (state.look, v0.82.0); kosong = tampilan lama.
+static func dress(rig: Node3D, outfit: int, equipment: Dictionary, look := {}) -> void:
 	if rig == null:
 		return
 	var sk: Skeleton3D = null
@@ -426,9 +434,23 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 			sk.remove_child(old)
 			old.free()
 	var cloth: Color = OUTFIT_TINTS[clampi(outfit, 0, OUTFIT_TINTS.size() - 1)]
+	var cloth_glow := Color(0, 0, 0, 0)
+	var skin_t := LookBuild.skin_tint(look)
+	if not skin_t.is_empty():  # skin dari toko/Character Creator menggantikan variasi pakaian lama
+		cloth = skin_t[0]
+		cloth_glow = skin_t[1]
 	var armor: Dictionary = ARMOR_LOOK.get(str(equipment.get("armor", "")), {})
 	var weapon: Dictionary = WEAPON_LOOK.get(str(equipment.get("weapon", "")), {})
 	var helmet: Dictionary = HELMET_LOOK.get(str(equipment.get("helmet", "")), {})
+	var hat := str(look.get("hat", ""))
+	var head_covered := not helmet.is_empty() or hat != ""
+	var custom_weapon := LookBuild.WEAPONS.has(str(equipment.get("weapon", "")))
+	var custom_shield := LookBuild.SHIELDS.has(str(equipment.get("offhand", "")))
+	var clothes_c := LookBuild.col(LookBuild.cosm(str(look.get("clothes", ""))).get("color", ""))
+	var pants_c := LookBuild.col(LookBuild.cosm(str(look.get("pants", ""))).get("color", ""))
+	var skin_m := LookBuild.skin_mult(look)
+	var own_cape := str(look.get("cape", "")) != ""
+	var own_hair := LookBuild.shape_of(LookBuild.cosm(str(look.get("hair", "")))) != ""
 	var list: Array = []
 	_meshes(sk, Transform3D.IDENTITY, list)
 	var head_box := AABB()
@@ -439,17 +461,31 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 		var mi := pair[0] as MeshInstance3D
 		var nm := str(mi.name)
 		var c := Color(1, 1, 1)
+		var glow := Color(0, 0, 0, 0)
 		if _ends_with_any(nm, CLOTH_PARTS):
 			c = c * cloth
+			glow = cloth_glow
+		if nm.ends_with("_Body"):
+			c = c * clothes_c
+		if nm.ends_with("_LegLeft") or nm.ends_with("_LegRight"):
+			c = c * pants_c
+		if nm.ends_with("_Head") or nm.ends_with("_Head_Hooded"):
+			c = c * skin_m
 		if not armor.is_empty() and _ends_with_any(nm, ARMOR_PARTS):
 			c = c * (armor.tint as Color)
-		var glow := Color(0, 0, 0, 0)
+			glow = armor.get("glow", glow)
 		if not weapon.is_empty() and _ends_with_any(nm, WEAPON_PARTS):
 			c = c * (weapon.tint as Color)
 			glow = weapon.get("glow", glow)
 		_paint(mi, c, glow)
 		if _ends_with_any(nm, HEADGEAR_PARTS):
-			mi.visible = helmet.is_empty()  # helm yang dipakai menggantikan topi/helm bawaan
+			mi.visible = not head_covered and not own_hair  # helm/topi/rambut pilihan menggantikan topi/helm bawaan
+		if _ends_with_any(nm, LookBuild.BUILTIN_WEAPONS):
+			mi.visible = not custom_weapon  # senjata per jenis (v0.82.0) menggantikan senjata bawaan
+		if _ends_with_any(nm, LookBuild.BUILTIN_SHIELD):
+			mi.visible = not custom_shield
+		if nm.ends_with("_Cape"):
+			mi.visible = not own_cape
 		if _ends_with_any(nm, WEAPON_PARTS):
 			has_weapon = true
 		if nm.begins_with("Mage_") or nm.ends_with("_Head_Hooded"):  # Penyihir berkerudung (v0.80.0)
@@ -459,16 +495,18 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary) -> void:
 		if nm.ends_with("_Body"):
 			var bb := (pair[1] as Transform3D) * mi.get_aabb()
 			chest_y = bb.end.y
-	if not helmet.is_empty() and head_box.size != Vector3.ZERO:
+	if not helmet.is_empty() and hat == "" and head_box.size != Vector3.ZERO:
 		_attach(sk, "head", _helmet_mesh(helmet, head_box))
 	if armor.get("pads", false) and chest_y > 0.0:
 		for side: String in ["l", "r"]:
 			_attach(sk, "upperarm." + side, _pad_mesh(armor.tint as Color))
-	if is_mage and not has_weapon:
+	if is_mage and not has_weapon and not custom_weapon:
 		var w_tint: Color = weapon.get("tint", Color(1, 1, 1))
 		_attach(sk, "handslot.r", _staff_mesh(weapon.get("glow", Color("b77dff")) as Color, w_tint))
 	if head_box.size != Vector3.ZERO:
-		_face(sk, FACES.get(str(rig.name), {}), head_box, not helmet.is_empty())
+		var f: Dictionary = LookBuild.face_dict(look) if bool(look.get("made", false)) else FACES.get(str(rig.name), {})
+		_face(sk, f, head_box, head_covered)
+	LookBuild.apply(rig, sk, list, look, equipment, head_covered)
 
 
 ## Wajah khas tiap pahlawan (roadmap no. 5, v0.80.0). Model KayKit memakai kepala yang sama per jenis, jadi
@@ -690,7 +728,7 @@ static func _helmet_mesh(look: Dictionary, head: AABB) -> Node3D:
 	var r := w * 0.52
 	var top := head.position.y + head.size.y * 0.56
 	root.set_meta("rig_pos", Vector3(head.get_center().x, top, head.get_center().z))
-	var metal: bool = look.crest
+	var metal: bool = look.crest or bool(look.get("metal", false))
 	var dome := MeshInstance3D.new()
 	var sm := SphereMesh.new()
 	sm.radius = r
@@ -727,6 +765,26 @@ static func _helmet_mesh(look: Dictionary, head: AABB) -> Node3D:
 		nose.material_override = _mat(look.trim as Color, true)
 		nose.position = Vector3(0, -r * 0.25, r * 1.08)
 		root.add_child(nose)
+	if look.get("horns", false):  # helm legenda: dua tanduk melengkung (v0.82.0)
+		for sx: float in [-1.0, 1.0]:
+			var horn := MeshInstance3D.new()
+			var hm := CylinderMesh.new()
+			hm.top_radius = 0.0
+			hm.bottom_radius = r * 0.16
+			hm.height = r * 0.9
+			hm.radial_segments = 8
+			horn.mesh = hm
+			horn.material_override = _mat(Color("f4ead6"))
+			horn.position = Vector3(sx * r * 0.85, r * 0.55, 0)
+			horn.rotation.z = -sx * 0.7
+			root.add_child(horn)
+	if look.has("glow"):
+		for c in root.get_children():
+			var m := (c as MeshInstance3D).material_override as StandardMaterial3D
+			if m != null and c != root.get_child(root.get_child_count() - 1):
+				m.emission_enabled = true
+				m.emission = look.glow
+				m.emission_energy_multiplier = 0.4
 	return root
 
 
@@ -841,7 +899,7 @@ static func npc_face(rig: Node3D, def: Dictionary) -> void:
 ## Pakaian dan perlengkapan pemain yang sedang login.
 static func dress_current(rig: Node3D) -> void:
 	var st: Dictionary = Session.player.get("state", {})
-	dress(rig, int(st.get("outfit", 0)), st.get("equipment", {}))
+	dress(rig, int(st.get("outfit", 0)), st.get("equipment", {}), st.get("look", {}))
 
 
 static func _aabb_of(n: Node, xf: Transform3D) -> AABB:

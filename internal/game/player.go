@@ -98,6 +98,11 @@ type State struct {
 	Trials map[string]HutanProgress `json:"trials,omitempty"`
 	// Equipment hanya diubah server (equip/unequip).
 	Equipment Equipment `json:"equipment"`
+	// Look: penampilan dari Character Creator; Wardrobe: kosmetik yang sudah dibeli; Receipts: id permintaan
+	// pembelian terakhir (mencegah pembelian ganda saat permintaan diulang). Hanya diubah server (look.go, v0.82.0).
+	Look     Look     `json:"look"`
+	Wardrobe []string `json:"wardrobe,omitempty"`
+	Receipts []string `json:"receipts,omitempty"`
 	// Quests hanya diubah server (terima, kemajuan, klaim hadiah).
 	Quests []QuestProgress `json:"quests,omitempty"`
 	// Story: langkah cerita utama "The Last Dragon" yang sedang dijalani (0..StoryEnd), hanya diubah server (story.go).
@@ -255,8 +260,12 @@ func (s State) Validate() error {
 	if s.Outfit < 0 || s.Outfit >= NumOutfits {
 		return ErrUnknownOutfit
 	}
-	if len(s.Equipment.Weapon) > 64 || len(s.Equipment.Armor) > 64 || len(s.Equipment.Helmet) > 64 {
+	if len(s.Equipment.Weapon) > 64 || len(s.Equipment.Armor) > 64 || len(s.Equipment.Helmet) > 64 ||
+		len(s.Equipment.Boots) > 64 || len(s.Equipment.Offhand) > 64 {
 		return errors.New("id perlengkapan terlalu panjang")
+	}
+	if err := s.validLook(); err != nil {
+		return err
 	}
 	if err := validateQuests(s.Quests); err != nil {
 		return err

@@ -11,11 +11,14 @@ type Equipment struct {
 	Armor  string `json:"armor"`
 	// Helmet: slot helm (roadmap no. 16); kosong pada data lama.
 	Helmet string `json:"helmet,omitempty"`
+	// Boots dan Offhand (sepatu dan perisai, v0.82.0); kosong pada data lama.
+	Boots   string `json:"boots,omitempty"`
+	Offhand string `json:"offhand,omitempty"`
 }
 
 // Has memberi tahu apakah barang ini sedang dipakai.
 func (e Equipment) Has(id string) bool {
-	return id != "" && (e.Weapon == id || e.Armor == id || e.Helmet == id)
+	return id != "" && (e.Weapon == id || e.Armor == id || e.Helmet == id || e.Boots == id || e.Offhand == id)
 }
 
 // Kesalahan perlengkapan dan pemakaian barang.
@@ -49,7 +52,9 @@ func (s State) Attack() int {
 func (s State) Defense() int {
 	def, _ := ItemByID(s.Equipment.Armor)
 	helm, _ := ItemByID(s.Equipment.Helmet)
-	return DefenseForLevel(s.Level) + def.Defense + helm.Defense + s.talentDefense()
+	boots, _ := ItemByID(s.Equipment.Boots)
+	shield, _ := ItemByID(s.Equipment.Offhand)
+	return DefenseForLevel(s.Level) + def.Defense + helm.Defense + boots.Defense + shield.Defense + s.talentDefense()
 }
 
 // Equip memakai barang dari tas (barang tetap ada di tas). Perlengkapan lama di slot yang sama diganti.
@@ -64,6 +69,12 @@ func (s *State) Equip(id string) error {
 	if s.itemQty(id) < 1 {
 		return ErrNotEnough
 	}
+	if s.Level < def.Level {
+		return ErrLevelLow
+	}
+	if !styleAllows(def, s.HeroDef().styleID()) {
+		return ErrWrongStyle
+	}
 	switch def.Slot {
 	case SlotWeapon:
 		s.Equipment.Weapon = id
@@ -71,6 +82,10 @@ func (s *State) Equip(id string) error {
 		s.Equipment.Armor = id
 	case SlotHelmet:
 		s.Equipment.Helmet = id
+	case SlotBoots:
+		s.Equipment.Boots = id
+	case SlotOffhand:
+		s.Equipment.Offhand = id
 	default:
 		return ErrNotEquippable
 	}
@@ -87,6 +102,10 @@ func (s *State) Unequip(slot string) error {
 		target = &s.Equipment.Armor
 	case SlotHelmet:
 		target = &s.Equipment.Helmet
+	case SlotBoots:
+		target = &s.Equipment.Boots
+	case SlotOffhand:
+		target = &s.Equipment.Offhand
 	default:
 		return ErrBadSlot
 	}

@@ -385,6 +385,33 @@ Membeli barang di toko yang tidak menjualnya, atau menjual ke toko yang tidak me
 Sejak v0.58.0 membeli juga ditolak `422` (tas penuh) bila tumpukan barang akan melewati 999, sehingga emas
 tidak pernah terbayar untuk barang yang tidak masuk; menjual ditolak `422` bila emas dibawa akan melewati 99.999.999.
 
+Sejak v0.82.0 `POST /v1/shop/buy` menerima `request_id` (opsional, maks 64 karakter, unik per ketukan Beli).
+Permintaan dengan `request_id` yang sudah diproses (30 terakhir diingat per pemain) menjawab `200` dengan pemain
+terbaru **tanpa membeli lagi**, jadi ketukan yang terkirim ulang karena jaringan tidak membayar dua kali.
+
+## Character Creator, perlengkapan, dan toko kosmetik (v0.82.0)
+
+Rancangan lengkap: `docs/CHARACTER_CREATOR.md`. Semua jawaban `200` berisi objek pemain terbaru
+(kecuali katalog), `409` saat bertarung, `404` barang/kosmetik tidak dikenal, `422` aturan dilanggar.
+Klien hanya mengirim id; harga, level, saldo, dan kepemilikan dari server.
+
+| Endpoint | Body | Efek |
+|----------|------|------|
+| `GET /v1/wardrobe` | - | Katalog: `cosmetics` (id, name, desc, category, tier, price, level, color, glow, shape), `categories`, `options` (face, eyes, nose, mouth, brow, beard, body), `hair_colors`, `skin_colors`, `eye_colors`, `tiers`, `body_min`/`body_max` (-3/3), `max_acc` (4), `gear` (perlengkapan tempur yang dijual), `gear_shop` |
+| `POST /v1/wardrobe/buy` | `{"item":"rambut_ikal","request_id":"..."}` | Beli kosmetik: emas dikurangi dan kosmetik masuk `state.wardrobe` dalam satu transaksi. `422` bila sudah dimiliki, gratis, emas kurang, level kurang; `404` bila tidak dikenal; kolom lain (mis. `price`) ditolak `400` |
+| `POST /v1/players/me/look` | `{"look":{...}}` | Simpan penampilan. Semua id diperiksa; kosmetik harus dimiliki (`422`). `state.look.made` jadi `true` |
+
+`state.look`: `skin`, `hair`, `hair_color`, `skin_color`, `face`, `eyes`, `eye_color`, `nose`, `mouth`, `brow`,
+`beard`, `body`, `height`/`width`/`muscle`/`head`/`torso` (bilangan bulat -3..3), `clothes`, `pants`, `gloves`,
+`hat`, `cape`, `accessories` (maks 4). Kosong = tampilan bawaan (akun lama). Memilih `skin` bawaan
+(`skin_asli/merah/hijau/biru`) juga mengisi `outfit` lama; `POST /v1/players/me/outfit` mengosongkan `look.skin`.
+
+Perlengkapan tempur baru (`GET /v1/shop?shop=peralatan`, slot baru `boots` dan `offhand`): senjata punya `style`
+(gaya pahlawan yang boleh memakai; kosong = semua), `speed_pct` (waktu isi ulang serangan, 100 = biasa), `crit`,
+`level` (level minimal), `tier` (common, uncommon, rare, epic, legendary, mythic), `desc`. Memasang senjata/perisai
+yang tidak cocok dengan pahlawan atau level kurang ditolak `422`; berganti pahlawan melepas senjata/perisai yang
+tidak cocok. Perisai hanya untuk gaya pedang, kapak, tombak.
+
 ## Ekonomi (v0.58.0, roadmap no. 171-185)
 
 Mata uang: **emas** (`state.gold`, dibawa) dan **berlian** (barang `berlian`, nilai 500 emas, untuk barter).
@@ -469,7 +496,7 @@ bertarung, `404` bila barang tidak dikenal, `422` bila melanggar aturan.
 |----------|------|------|
 | `POST /v1/inventory/use` | `{"item":"ramuan"}` | Minum ramuan (+15 HP), makan makanan (`roti` +10, `sup_ayam` +25, `daging_bakar` +50 HP), atau minum `ramuan_kekuatan` (isi energi 60 + serangan x1,3). `422` bila HP penuh / tidak punya |
 | `POST /v1/inventory/equip` | `{"item":"pedang_besi"}` | Pasang dari tas; yang lama kembali ke tas. `422` bila bukan perlengkapan / tidak dimiliki |
-| `POST /v1/inventory/unequip` | `{"slot":"weapon"}` (`armor`, `helmet`) | Lepas ke tas. `422` bila slot kosong / tas penuh |
+| `POST /v1/inventory/unequip` | `{"slot":"weapon"}` (`armor`, `helmet`, `boots`, `offhand`) | Lepas ke tas. `422` bila slot kosong / tas penuh |
 | `POST /v1/rest` | - | Istirahat gratis, HP dan energi penuh; hanya di `desa_awal` (`422` di tempat lain atau bila HP dan energi sudah penuh) |
 
 Bonus perlengkapan ditambahkan ke serang/tahan dari level, dan dipakai dalam pertarungan.

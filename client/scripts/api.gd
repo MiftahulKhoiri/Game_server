@@ -304,8 +304,33 @@ func item_catalog() -> Dictionary:
 	return await shop_get("semua")
 
 
-func shop_buy(item: String, qty: int, shop := "toko") -> Dictionary:
-	return await _call(HTTPClient.METHOD_POST, "/v1/shop/buy", {"shop": shop, "item": item, "qty": qty}, true)
+func shop_buy(item: String, qty: int, shop := "toko", request_id := "") -> Dictionary:
+	var body := {"shop": shop, "item": item, "qty": qty}
+	if request_id != "":
+		body["request_id"] = request_id  # ketukan yang terkirim ulang tidak membeli dua kali (v0.82.0)
+	return await _call(HTTPClient.METHOD_POST, "/v1/shop/buy", body, true)
+
+
+# --- Character Creator, lemari, dan toko kosmetik (v0.82.0) ---
+
+## Katalog kosmetik, pilihan wajah/tubuh, palet warna, dan perlengkapan yang dijual.
+func wardrobe_get() -> Dictionary:
+	return await _call(HTTPClient.METHOD_GET, "/v1/wardrobe", null, true)
+
+
+## Beli satu kosmetik; harga dan saldo diperiksa server. request_id unik per ketukan Beli.
+func wardrobe_buy(item: String, request_id: String) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/wardrobe/buy", {"item": item, "request_id": request_id}, true)
+
+
+## Simpan penampilan (rambut, wajah, tubuh, kosmetik yang dipakai). Mengembalikan Player.
+func set_look(look: Dictionary) -> Dictionary:
+	return await _call(HTTPClient.METHOD_POST, "/v1/players/me/look", {"look": look}, true)
+
+
+## Id permintaan acak untuk pembelian (mencegah pembelian ganda saat jaringan mengulang).
+static func new_request_id() -> String:
+	return "%x-%x" % [Time.get_ticks_usec(), randi()]
 
 
 ## Tukar Berlian dengan barang yang dijual toko itu (butuh ceil(harga / 500) berlian).

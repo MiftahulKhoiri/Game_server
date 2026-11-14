@@ -27,6 +27,9 @@ const (
 	SlotWeapon = "weapon" // menambah serangan
 	SlotArmor  = "armor"  // menambah pertahanan
 	SlotHelmet = "helmet" // menambah pertahanan (roadmap no. 16)
+	// Character Creator & perlengkapan (v0.82.0):
+	SlotBoots   = "boots"   // sepatu: menambah pertahanan
+	SlotOffhand = "offhand" // perisai di tangan kiri: menambah pertahanan
 )
 
 // MaxBuyQty membatasi jumlah satu kali transaksi.
@@ -47,11 +50,25 @@ type ItemDef struct {
 	Defense int    `json:"defense,omitempty"` // bonus pertahanan (SlotArmor / SlotHelmet)
 	// Rarity: kelangkaan untuk warna nama (biasa / langka / epik), diisi otomatis (progress.go).
 	Rarity string `json:"rarity,omitempty"`
+	// Tier: kelangkaan enam tingkat (common..mythic, look.go); kosong = diturunkan dari Rarity.
+	Tier string `json:"tier,omitempty"`
+	// Senjata (v0.82.0): Style = gaya senjata yang boleh memakai (combat_style.go; kosong = semua pahlawan),
+	// SpeedPct = waktu isi ulang serangan biasa (persen, 100 = sama dengan gaya; <100 lebih cepat),
+	// Crit = tambahan peluang kritis (persen). Level = level minimal untuk memakai. Desc = keterangan toko.
+	Style    string `json:"style,omitempty"`
+	SpeedPct int    `json:"speed_pct,omitempty"`
+	Crit     int    `json:"crit,omitempty"`
+	Level    int    `json:"level,omitempty"`
+	Desc     string `json:"desc,omitempty"`
 }
 
 func init() {
+	items = append(items, gearItems...)
 	for i := range items {
-		items[i].Rarity = Rarity(items[i].ID)
+		if items[i].Tier == "" {
+			items[i].Tier = tierOfRarity(Rarity(items[i].ID))
+		}
+		items[i].Rarity = rarityOfTier(items[i].Tier)
 	}
 }
 

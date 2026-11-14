@@ -82,6 +82,7 @@ func _run() -> void:
 	Session = root.get_node("Session")
 	Sound = root.get_node("Sound")
 	Session.story_popups = false  # layar narasi cerita diuji tersendiri (bagian "cerita: narasi")
+	Session.creator_prompt = false  # Character Creator untuk pemain baru diuji tersendiri (v0.82.0)
 	# Jam dunia bersama (v0.59.0) mengikuti jam server; supaya uji tidak bergantung kapan dijalankan,
 	# dunia dimulai pagi (jam 8, seperti sebelum v0.59.0) pada hari biasa tanpa serbuan/pasar, dan cuaca
 	# cerah kecuali diuji.
@@ -1152,6 +1153,7 @@ func _run() -> void:
 		_check(not h_bad_kind.ok and h_bad_kind.status == 422, "jenis benda salah ditolak 422")
 		var ws2: Dictionary = await Api.world_state("desa_awal")
 		_check(ws2.ok and (ws2.data.items as Array).size() == 2, "dunia mencatat peti terbuka dan pohon hancur")
+		await _test_kreator()
 		Api.token = saved_token
 	for c: Dictionary in Maps.CHESTS:
 		_check(Maps.walkable(str(c.map), c.pos.x, c.pos.y), "peti %s berada di petak yang bisa dilewati" % c.id)
@@ -3172,3 +3174,129 @@ func _run() -> void:
 	Api.token = "salah"
 	var bad: Dictionary = await Api.get_me()
 	_check(not bad.ok and bad.status == 401, "token salah ditolak 401")
+
+
+## Character Creator, perlengkapan, inventaris, dan toko (v0.82.0). Dipanggil dengan token pemain uji yang
+## sudah membuka peti (punya sedikit emas).
+func _test_kreator() -> void:
+	print("== Character Creator, toko, perlengkapan (v0.82.0)")
+	var KModels: GDScript = load("res://scripts/models.gd")
+	var me: Dictionary = await Api.get_me()
+	_check(me.ok, "ambil data pemain untuk Character Creator")
+	if not me.ok:
+		return
+	var saved_player: Dictionary = Session.player.duplicate(true)
+	var saved_offline: bool = Session.offline
+	Session.offline = false
+	Session.set_player(me.data)
+	_check(Session.player.state.has("look") and not bool(Session.player.state.look.get("made", false)), "pemain baru belum punya penampilan (Character Creator akan dibuka)")
+	var wr: Dictionary = await Api.wardrobe_get()
+	_check(wr.ok and (wr.data.cosmetics as Array).size() >= 30 and (wr.data.gear as Array).size() >= 20 and (wr.data.tiers as Array).size() == 6, "katalog kosmetik & perlengkapan dari server (6 kelangkaan)")
+	if wr.ok:
+		Session.set_wardrobe_catalog(wr.data)
+	var KT: GDScript = load("res://scripts/kreator.gd")
+	var kr: CanvasLayer = KT.new()
+	root.add_child(kr)
+	await process_frame
+	kr.open("Penampilan", true)
+	await create_timer(0.4).timeout
+	_check(kr.is_open and kr._rig != null and kr._status.text.contains("Selamat datang"), "Character Creator terbuka dengan pratinjau 3D dan sapaan pemain baru")
+	var rambut: Dictionary = {}
+	for e: Dictionary in kr._cos_list("rambut"):
+		if e.id == "rambut_panjang":
+			rambut = e
+	kr._select(rambut)
+	kr._set_field("hair_color", "#d9b45a")
+	kr._set_field("skin_color", "#7a4a2c")
+	kr._set_field("face", "bulat")
+	kr._set_field("eyes", "sipit")
+	kr._set_field("eye_color", "#3a78c8")
+	kr._set_field("beard", "kumis")
+	kr._set_field("body", "kekar")
+	kr._draft["height"] = 2
+	kr._draft["head"] = -1
+	kr._redress()
+	await process_frame
+	_check(str(kr._draft.get("hair", "")) == "rambut_panjang", "memilih rambut panjang (gratis) langsung terpakai")
+	_check(kr._rig.find_child("*rambut*", true, false) != null and kr._rig.find_child("*wajah2*", true, false) != null, "rambut dan mata/hidung/mulut tergambar di model")
+	var mod: Node = kr._rig.find_child("BentukTubuh", true, false)
+	_check(mod != null and (mod.get("scales") as Dictionary).has("head") and kr._rig.scale.y > (kr._rig.get_meta("base_scale") as Vector3).y, "ukuran tubuh: lebih tinggi, otot & kepala lewat pengubah tulang")
+	var sk := kr._rig.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
+	_check(sk.get_bone_count() > 20 and sk.find_bone("head") >= 0, "rangka dan tulang tetap utuh setelah bentuk tubuh diubah")
+	_check(kr._dirty, "perubahan penampilan ditandai belum tersimpan")
+	await kr._save()
+	_check(not kr._dirty and bool(Session.player.state.look.get("made", false)), "Simpan: penampilan tersimpan di server")
+	var me2: Dictionary = await Api.get_me()
+	var lk: Dictionary = me2.data.state.get("look", {}) if me2.ok else {}
+	_check(str(lk.get("hair", "")) == "rambut_panjang" and str(lk.get("face", "")) == "bulat" and int(lk.get("height", 0)) == 2 and str(lk.get("beard", "")) == "kumis", "muat ulang dari server: karakter tetap sama")
+	var bad_look: Dictionary = await Api.set_look({"hair": "rambut_kepang"})
+	_check(not bad_look.ok and bad_look.status == 422, "memakai rambut yang belum dibeli ditolak 422")
+	var illegal: Dictionary = await Api.wardrobe_buy("skin_gratis_hack", Api.new_request_id())
+	_check(not illegal.ok and illegal.status == 404, "membeli barang ilegal ditolak 404")
+	var nogold: Dictionary = await Api.wardrobe_buy("sayap_naga", Api.new_request_id())
+	_check(not nogold.ok and nogold.status == 422, "membeli tanpa saldo/level cukup ditolak 422")
+	var noown: Dictionary = await Api.inventory_equip("perisai_legenda")
+	_check(not noown.ok and noown.status == 422, "memakai perlengkapan yang belum dimiliki ditolak")
+	var gold := int(Session.player.state.gold)
+	if gold < 20:  # emas peti acak: jual barang hasil peti dulu supaya uji beli selalu berjalan
+		for it: Dictionary in (Session.player.state.inventory as Array).duplicate():
+			for shop: String in ["toko", "makan"]:
+				var sold: Dictionary = await Api.shop_sell(str(it.id), int(it.qty), shop)
+				if sold.ok:
+					Session.merge_server_player(sold.data)
+					break
+		gold = int(Session.player.state.gold)
+	if gold >= 20:
+		var rid: String = Api.new_request_id()
+		var b1: Dictionary = await Api.shop_buy("sepatu_biasa", 1, "peralatan", rid)
+		var b2: Dictionary = await Api.shop_buy("sepatu_biasa", 1, "peralatan", rid)
+		_check(b1.ok and b2.ok and int(b2.data.state.gold) == gold - 20, "beli sepatu: permintaan diulang tidak mengurangi saldo dua kali")
+		if b2.ok:
+			Session.merge_server_player(b2.data)
+		kr._set_tab("Perlengkapan")
+		kr._set_sub("Sepatu")
+		var boots: Dictionary = {}
+		for e: Dictionary in kr._gear_list("boots", true):
+			if e.id == "sepatu_biasa":
+				boots = e
+		kr._select(boots)
+		await kr._use_selected()
+		_check(str(Session.player.state.equipment.get("boots", "")) == "sepatu_biasa", "memakai sepatu dari layar Perlengkapan")
+		_check(kr._rig.find_child("*sepatu_l*", true, false) != null, "sepatu terlihat di kaki model")
+		kr._select(boots)
+		await kr._use_selected()
+		_check(str(Session.player.state.equipment.get("boots", "")) == "", "melepas sepatu")
+	else:
+		print("  (emas peti %d < 20: uji beli sepatu dilewati)" % gold)
+	kr._set_tab("Toko")
+	kr._set_sub("Aksesori")
+	var wings: Dictionary = {}
+	for e: Dictionary in kr._entries("Aksesori", false):
+		if e.id == "sayap_malaikat":
+			wings = e
+	kr._select(wings)
+	await process_frame
+	_check(kr._rig.find_child("*sayap*", true, false) != null and kr._btn_buy.visible, "Toko: sayap dipratinjau di model sebelum dibeli, tombol Beli tampil")
+	kr._on_buy()
+	_check(kr._confirm.visible, "Beli meminta konfirmasi dengan saldo")
+	kr.request_close()
+	_check(not kr._confirm.visible and kr.is_open, "kembali menutup dialog konfirmasi dulu")
+	kr._set_tab("Senjata")
+	_check(kr._content.get_child_count() > 0, "tab Senjata menampilkan senjata")
+	kr._set_tab("Inventaris")
+	kr._set_tab("Karakter")
+	_check(kr._content.get_child_count() > 0, "tab Karakter dan Inventaris bisa dibuka")
+	kr.close()
+	kr.queue_free()
+	var kn: Node3D = KModels.create("ksatria")
+	root.add_child(kn)
+	KModels.dress(kn, 0, {"weapon": "pedang_panjang", "offhand": "perisai_besi", "boots": "sepatu_besi"}, {})
+	_check(kn.find_child("*senjata*", true, false) != null and kn.find_child("*perisai*", true, false) != null, "pedang panjang dan perisai terpasang di tangan model")
+	var hidden := true
+	for mi: Node in kn.find_children("*", "MeshInstance3D", true, false):
+		if str(mi.name) == "1H_Sword" or str(mi.name) == "Badge_Shield":
+			hidden = hidden and not (mi as MeshInstance3D).visible
+	_check(hidden, "senjata dan perisai bawaan disembunyikan saat diganti")
+	kn.queue_free()
+	Session.set_player(saved_player)
+	Session.offline = saved_offline

@@ -11,6 +11,7 @@ const Joystick = preload("res://scripts/joystick.gd")
 const GameMenu = preload("res://scripts/game_menu.gd")
 const Companions = preload("res://scripts/companions.gd")
 const ProfileScreen = preload("res://scripts/profile.gd")
+const KreatorScreen = preload("res://scripts/kreator.gd")
 const TempaScreen = preload("res://scripts/tempa.gd")
 const EkonomiScreen = preload("res://scripts/ekonomi.gd")
 const WorldLife = preload("res://scripts/world_life.gd")
@@ -176,6 +177,7 @@ var _talk_button: Button
 var _buttons: Array[Button] = []
 var _menu: CanvasLayer
 var _profile: CanvasLayer
+var _kreator: CanvasLayer  # Character Creator + toko (v0.82.0)
 var _tempa: CanvasLayer                     # layar tempa di pandai besi (roadmap no. 145)
 var _ekonomi: CanvasLayer                   # bank, peti simpan, dagang (roadmap no. 176-182)
 var _life: Node                             # serbuan, Hari Pasar, wilayah, rahasia, hujan, ladang (roadmap no. 186-200)
@@ -285,6 +287,9 @@ func _ready() -> void:
 	_story.setup(self)
 	if not Session.offline and not Atmosphere.clock_locked:
 		_sync_world_clock()
+	if not Session.offline:
+		_load_wardrobe()
+		_maybe_open_kreator()
 
 	var st: Dictionary = Session.player.state
 	var map_id := str(st.map)
@@ -2415,6 +2420,16 @@ func _build_ui() -> void:
 	_profile = ProfileScreen.new()
 	add_child(_profile)
 	_profile.closed.connect(_close_profile)
+	_kreator = KreatorScreen.new()
+	add_child(_kreator)
+	_kreator.closed.connect(func() -> void:
+		_kreator.close()
+		_locked = false
+		_refresh_hud())
+	_kreator.look_changed.connect(_refresh_hud)
+	_menu.creator_requested.connect(func() -> void:
+		_menu.close()
+		open_kreator())
 	_tempa = TempaScreen.new()
 	add_child(_tempa)
 	_tempa.closed.connect(func() -> void:
@@ -2546,7 +2561,7 @@ func _open_from_menu(scene: String) -> void:
 ## Ringkasan pakaian + perlengkapan; model pahlawan dipakaikan ulang bila berubah.
 func _dress_signature() -> String:
 	var st: Dictionary = Session.player.state
-	return "%s|%s" % [st.get("outfit", 0), str(st.get("equipment", {}))]
+	return "%s|%s|%s|%d" % [st.get("outfit", 0), str(st.get("equipment", {})), str(st.get("look", {})), Session.cosmetics.size()]
 
 
 func _refresh_hud() -> void:
@@ -2687,6 +2702,8 @@ func _toggle_menu() -> void:
 		return
 	if _profile.is_open:
 		_close_profile()
+	elif _kreator != null and _kreator.is_open:
+		_kreator.request_close()
 	elif _menu.is_open:
 		_menu.back()
 	elif not _locked:
@@ -2710,6 +2727,28 @@ func _make_player() -> void:
 	if old != null:
 		old.queue_free()
 		_apply_transform()
+
+
+## Buka Character Creator (v0.82.0). welcome = pemain baru yang belum pernah membuat karakter.
+func open_kreator(tab := "Penampilan", welcome := false) -> void:
+	_locked = true
+	_set_moving(false)
+	_kreator.open(tab, welcome)
+
+
+## Katalog kosmetik (warna/bentuk) untuk menggambar penampilan; model dipakaikan ulang setelah termuat.
+func _load_wardrobe() -> void:
+	if await Session.ensure_wardrobe() and is_inside_tree():
+		_refresh_hud()
+
+
+## Pemain baru (penampilan belum pernah disimpan) langsung diajak membuat karakter.
+func _maybe_open_kreator() -> void:
+	if Session.offline or not Session.creator_prompt or bool((Session.player.state.get("look", {}) as Dictionary).get("made", false)):
+		return
+	await get_tree().create_timer(0.6).timeout
+	if not _locked and is_inside_tree():
+		open_kreator("Penampilan", true)
 
 
 func _open_profile() -> void:

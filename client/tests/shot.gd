@@ -8,6 +8,8 @@ func _gallery() -> void:
 	const Models = preload("res://scripts/models.gd")
 	const Maps = preload("res://scripts/maps.gd")
 	var ids: Array = OS.get_environment("SHOT_IDS").split(",")
+	if OS.get_environment("SHOT_WARDROBE") != "":  # katalog kosmetik (JSON GET /v1/wardrobe) untuk warna asli
+		get_node("/root/Session").set_wardrobe_catalog(JSON.parse_string(FileAccess.get_file_as_string(OS.get_environment("SHOT_WARDROBE"))))
 	var root := Node3D.new()
 	get_tree().root.add_child.call_deferred(root)
 	await get_tree().process_frame
@@ -44,6 +46,11 @@ func _gallery() -> void:
 		if OS.get_environment("SHOT_DRESS") != "":
 			var d: PackedStringArray = OS.get_environment("SHOT_DRESS").split(",")
 			Models.dress(m, int(d[0]), {"weapon": d[1], "armor": d[2], "helmet": d[3]})
+		# SHOT_LOOKS = JSON larik [{"look": {...}, "equipment": {...}}] per model (Character Creator, v0.82.0)
+		if OS.get_environment("SHOT_LOOKS") != "":
+			var looks: Array = JSON.parse_string(OS.get_environment("SHOT_LOOKS"))
+			var lk: Dictionary = looks[i % looks.size()]
+			Models.dress(m, 0, lk.get("equipment", {}), lk.get("look", {}))
 		m.position = Vector3((i % 2) * 2.0 - 1.0, 0, (i / 2) * -2.0)
 		m.rotation.y = deg_to_rad(float(OS.get_environment("SHOT_TURN")) if OS.get_environment("SHOT_TURN") != "" else 0.0)
 		root.add_child(m)
@@ -99,6 +106,36 @@ func _profile() -> void:
 	scr.open()
 	scr._select(int(OS.get_environment("SHOT_HERO")) if OS.get_environment("SHOT_HERO") != "" else 0)
 	await get_tree().create_timer(1.0).timeout
+	var img := get_viewport().get_texture().get_image()
+	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
+	img.save_png(OS.get_environment("SHOT_OUT"))
+	get_tree().quit()
+
+
+## Character Creator (v0.82.0): SHOT_TAB, SHOT_SUB, SHOT_PICK (id barang dipilih), SHOT_WARDROBE (katalog JSON),
+## SHOT_LOOKS (larik JSON; yang pertama dipakai sebagai penampilan).
+func _kreator() -> void:
+	Session.use_offline_player()
+	Session.player.state["gold"] = 1500
+	Session.player.state["level"] = 12
+	if OS.get_environment("SHOT_WARDROBE") != "":
+		Session.set_wardrobe_catalog(JSON.parse_string(FileAccess.get_file_as_string(OS.get_environment("SHOT_WARDROBE"))))
+	if OS.get_environment("SHOT_LOOKS") != "":
+		var lk: Dictionary = (JSON.parse_string(OS.get_environment("SHOT_LOOKS")) as Array)[0]
+		Session.player.state["look"] = Session.look_of(lk.get("look", {}))
+		Session.player.state["equipment"] = lk.get("equipment", {})
+	var scr: CanvasLayer = load("res://scripts/kreator.gd").new()
+	get_tree().root.add_child.call_deferred(scr)
+	await get_tree().create_timer(0.5).timeout
+	scr.open(OS.get_environment("SHOT_TAB") if OS.get_environment("SHOT_TAB") != "" else "Penampilan")
+	await get_tree().create_timer(0.3).timeout
+	if OS.get_environment("SHOT_SUB") != "":
+		scr._set_sub(OS.get_environment("SHOT_SUB"))
+	if OS.get_environment("SHOT_PICK") != "":
+		for e: Dictionary in scr._entries(scr._sub, false):
+			if str(e.id) == OS.get_environment("SHOT_PICK"):
+				scr._select(e)
+	await get_tree().create_timer(1.2).timeout
 	var img := get_viewport().get_texture().get_image()
 	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))
@@ -166,6 +203,9 @@ func _ready() -> void:
 		return
 	if OS.get_environment("SHOT_SCENE") == "profile":
 		_profile()
+		return
+	if OS.get_environment("SHOT_SCENE") == "kreator":
+		_kreator()
 		return
 	if OS.get_environment("SHOT_SCENE") == "models":
 		_gallery()

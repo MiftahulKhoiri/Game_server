@@ -135,6 +135,9 @@ func newServer(st *store.Store, log *slog.Logger, info version.Info, rng game.Ra
 	mux.Handle("GET /v1/heroes", s.auth(http.HandlerFunc(s.getHeroes)))
 	mux.Handle("POST /v1/players/me/hero", s.auth(http.HandlerFunc(s.setHero)))
 	mux.Handle("POST /v1/players/me/outfit", s.auth(http.HandlerFunc(s.setOutfit)))
+	mux.Handle("POST /v1/players/me/look", s.auth(http.HandlerFunc(s.setLook)))
+	mux.Handle("GET /v1/wardrobe", s.auth(http.HandlerFunc(s.getWardrobe)))
+	mux.Handle("POST /v1/wardrobe/buy", s.auth(http.HandlerFunc(s.buyCosmetic)))
 	mux.Handle("POST /v1/warga/talk", s.auth(http.HandlerFunc(s.wargaTalk)))
 	mux.Handle("POST /v1/house/buy", s.auth(http.HandlerFunc(s.buyHouse)))
 	mux.Handle("GET /v1/progress", s.auth(http.HandlerFunc(s.progressInfo)))
@@ -716,7 +719,7 @@ func (s *Server) applyToState(w http.ResponseWriter, r *http.Request, fn func(*g
 		writeJSON(w, http.StatusOK, sess.Player)
 	case errors.Is(err, errBattleActive):
 		writeError(w, http.StatusConflict, "tidak bisa dilakukan saat bertarung")
-	case errors.Is(err, game.ErrUnknownItem):
+	case errors.Is(err, game.ErrUnknownItem), errors.Is(err, game.ErrCosmeticUnknown):
 		writeError(w, http.StatusNotFound, err.Error())
 	case isRuleError(err):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
@@ -739,6 +742,8 @@ func isRuleError(err error) bool {
 		game.ErrNotStored, game.ErrBadPrice, game.ErrNotTradable, game.ErrEquipped, store.ErrInvalidState,
 		game.ErrUnknownSecret, game.ErrSecretFar, game.ErrSecretFound, game.ErrNoRaid, game.ErrRaidGoal, game.ErrRaidClaimed,
 		game.ErrStoryNotHere, game.ErrStoryFar, game.ErrStoryBoss, game.ErrStoryFreed, game.ErrUnknownFormation,
+		game.ErrLevelLow, game.ErrWrongStyle, game.ErrUnknownLook, game.ErrCosmeticOwned, game.ErrCosmeticNotOwn, game.ErrCosmeticFree,
+		game.ErrWrongCategory, game.ErrWardrobeFull, game.ErrBadRequestID,
 	} {
 		if errors.Is(err, e) {
 			return true
@@ -1038,6 +1043,9 @@ type tradeRequest struct {
 	Shop string `json:"shop"` // toko tempat transaksi (kosong = toko ramuan)
 	Item string `json:"item"`
 	Qty  int    `json:"qty"`
+	// RequestID: id unik per ketukan Beli (opsional). Permintaan yang diulang dengan id sama tidak membeli
+	// dua kali (v0.82.0).
+	RequestID string `json:"request_id,omitempty"`
 }
 
 // shopTrade membuat handler jual/beli. Transaksi atomik: gagal berarti tidak ada yang berubah.
@@ -1055,13 +1063,16 @@ func (s *Server) shopTrade(trade func(*game.State, string, string, int) error) h
 			if shop == "" {
 				shop = game.ShopPotion
 			}
-			return trade(&sess.Player.State, shop, req.Item, req.Qty)
+			st := &sess.Player.State
+			return st.Once(req.RequestID, func() error { return trade(st, shop, req.Item, req.Qty) })
 		})
 		switch {
 		case errors.Is(err, errBattleActive):
 			writeError(w, http.StatusConflict, "tidak bisa berdagang saat bertarung")
 		case errors.Is(err, game.ErrUnknownItem), errors.Is(err, game.ErrUnknownShop):
 			writeError(w, http.StatusNotFound, err.Error())
+		case errors.Is(err, game.ErrBadRequestID):
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
 		case errors.Is(err, game.ErrWrongShop), errors.Is(err, game.ErrNotForSale), errors.Is(err, game.ErrNotBuyable), errors.Is(err, game.ErrBadQty),
 			errors.Is(err, game.ErrNoGold), errors.Is(err, game.ErrNotEnough), errors.Is(err, game.ErrInventoryFull),
 			errors.Is(err, game.ErrEquipped), errors.Is(err, game.ErrNoDiamond), errors.Is(err, game.ErrGoldMax), errors.Is(err, store.ErrInvalidState):

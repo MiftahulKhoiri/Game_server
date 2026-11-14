@@ -45,9 +45,17 @@ const (
 	DodgeMs     = 500
 )
 
-// Style mengembalikan gaya senjata pahlawan aktif.
+// Style mengembalikan gaya senjata pahlawan aktif, disesuaikan senjata yang dipakai (v0.82.0):
+// SpeedPct mengubah waktu isi ulang serangan biasa dan Crit menambah peluang kritis.
 func (s State) Style() WeaponStyle {
-	return WeaponStyles[s.HeroDef().styleID()]
+	ws := WeaponStyles[s.HeroDef().styleID()]
+	if def, ok := ItemByID(s.Equipment.Weapon); ok {
+		if def.SpeedPct > 0 {
+			ws.AttackMs = ws.AttackMs * int64(def.SpeedPct) / 100
+		}
+		ws.CritBonus += def.Crit
+	}
+	return ws
 }
 
 func (h HeroDef) styleID() string {

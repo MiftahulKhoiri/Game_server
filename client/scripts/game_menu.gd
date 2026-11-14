@@ -6,6 +6,7 @@ extends CanvasLayer
 
 signal resumed
 signal profile_requested
+signal creator_requested
 signal inventory_requested
 signal atribut_requested
 signal trade_requested
@@ -106,6 +107,7 @@ func _ready() -> void:
 	_btn_dagang = _button("Dagang dengan pemain", func() -> void: trade_requested.emit())
 	grid.add_child(_btn_dagang)
 	grid.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
+	grid.add_child(_button("Karakter dan Toko", func() -> void: creator_requested.emit()))
 	grid.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
 	grid.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
 	_btn_logout = _button("Keluar akun", Callable())

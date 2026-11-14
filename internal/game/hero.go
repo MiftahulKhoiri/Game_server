@@ -60,6 +60,7 @@ func (s *State) SetOutfit(n int) error {
 		return ErrUnknownOutfit
 	}
 	s.Outfit = n
+	s.Look.Skin = "" // pilihan lama di Profil menggantikan skin dari Character Creator
 	return nil
 }
 
@@ -70,5 +71,6 @@ func (s *State) SetHero(id string) error {
 		return ErrUnknownHero
 	}
 	s.Hero = h.ID
+	s.dropIncompatible() // senjata/perisai yang tidak cocok dengan pahlawan baru dilepas (v0.82.0)
 	return nil
 }
