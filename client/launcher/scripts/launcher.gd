@@ -300,7 +300,7 @@ func _fill_card(card: PanelContainer, e: Dictionary) -> void:
 	var tile := card.find_child("Tile", true, false) as ColorRect
 	tile.color = _game_color(m)
 	(card.find_child("Initials", true, false) as Label).text = _initials(str(m.get("name", e.id)))
-	var tex := _texture(str(m.get("icon", "")))
+	var tex := _game_icon(e)
 	(card.find_child("Icon", true, false) as TextureRect).texture = tex
 	(card.find_child("Name", true, false) as Label).text = str(m.get("name", e.id))
 	(card.find_child("Category", true, false) as Label).text = "%s · %s" % [str(m.get("category", "Game")),
@@ -347,7 +347,7 @@ func _show_detail() -> void:
 	_d_reason.visible = _d_reason.text != ""
 	_d_cover_bg.color = _game_color(m).darkened(0.2)
 	_d_initials.text = _initials(str(m.get("name", e.id)))
-	_d_cover.texture = _texture(str(m.get("cover", m.get("icon", ""))))
+	_d_cover.texture = _texture(str(m.get("cover", ""))) if str(m.get("cover", "")) != "" else _game_icon(e)
 
 	var busy: bool = e.state in [State.DOWNLOADING, State.VERIFYING, State.INSTALLING]
 	_b_play.visible = e.state in [State.INSTALLED, State.UPDATE_AVAILABLE]
@@ -432,6 +432,79 @@ static func _initials(name: String) -> String:
 
 
 ## Tekstur dari res:// (hanya aset di dalam aplikasi atau paket game yang sudah dimuat).
+# --- Ikon game unduhan (0.84.3) -----------------------------------------------------------------------------
+# Kartu memakai ikon res:// bila ada (game bawaan / paket yang sudah dimuat). Untuk game unduhan, manifest
+# bertanda tangan memuat icon_sha256: ikon diambil dari GET /v1/games/<id>/icon, diverifikasi sha256-nya,
+# lalu disimpan di user://icons/ supaya tetap tampil saat offline.
+
+const SecurityManager := preload("res://core/security_manager.gd")
+const ICON_DIR := "user://icons/"
+const ICON_MAX_BYTES := 1048576
+var _icons: Dictionary = {}  # "<id>/<sha>" -> Texture2D
+var _icon_busy: Dictionary = {}
+
+
+func _game_icon(e: Dictionary) -> Texture2D:
+	var m: Dictionary = e.manifest
+	var tex := _texture(str(m.get("icon", "")))
+	if tex != null:
+		return tex
+	var sha := str(m.get("icon_sha256", "")).to_lower()
+	var id := str(e.id)
+	if sha.length() != 64 or not SecurityManager.is_valid_id(id):
+		return null
+	var key := id + "/" + sha
+	if _icons.has(key):
+		return _icons[key]
+	var path := ICON_DIR + "%s-%s.png" % [id, sha.substr(0, 16)]
+	if FileAccess.file_exists(path):
+		tex = _png_texture(FileAccess.get_file_as_bytes(path), sha)
+		if tex != null:
+			_icons[key] = tex
+			return tex
+	if not _icon_busy.has(key):
+		_fetch_icon(id, sha, path)
+	return null
+
+
+func _fetch_icon(id: String, sha: String, path: String) -> void:
+	var key := id + "/" + sha
+	_icon_busy[key] = true
+	var r: Dictionary = await GameManager.api.get_bytes("/v1/games/%s/icon" % id)
+	if not is_inside_tree():
+		return
+	var body: PackedByteArray = r.get("body", PackedByteArray())
+	var tex := _png_texture(body, sha) if bool(r.get("ok", false)) and body.size() <= ICON_MAX_BYTES else null
+	if tex == null:
+		return  # tetap _icon_busy: tidak mencoba berulang dalam sesi ini (inisial tetap tampil)
+	DirAccess.make_dir_recursive_absolute(ICON_DIR)
+	for f in DirAccess.get_files_at(ICON_DIR):
+		if f.begins_with(id + "-"):
+			DirAccess.remove_absolute(ICON_DIR + f)
+	var fa := FileAccess.open(path, FileAccess.WRITE)
+	if fa != null:
+		fa.store_buffer(body)
+		fa.close()
+	_icons[key] = tex
+	_icon_busy.erase(key)
+	_reload()
+
+
+## PNG -> tekstur hanya bila sha256-nya sama dengan manifest bertanda tangan.
+static func _png_texture(bytes: PackedByteArray, sha: String) -> Texture2D:
+	if bytes.is_empty():
+		return null
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	ctx.update(bytes)
+	if ctx.finish().hex_encode() != sha:
+		return null
+	var img := Image.new()
+	if img.load_png_from_buffer(bytes) != OK:
+		return null
+	return ImageTexture.create_from_image(img)
+
+
 static func _texture(path: String) -> Texture2D:
 	if path == "" or not path.begins_with("res://") or not ResourceLoader.exists(path):
 		return null

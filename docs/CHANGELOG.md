@@ -2,6 +2,17 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## v0.84.3 — ikon game unduhan di launcher (15 November 2026)
+
+- Server: `GET /v1/games/{id}/icon` melayani `icon.png` dari katalog (hanya PNG ≤ 1 MB, id tervalidasi).
+- `gamepack publish`: bila `game.json` punya `icon` (PNG di `res://games/<id>/`), ikon disalin ke katalog dan
+  `icon_sha256` dimasukkan ke manifest & katalog yang ditandatangani.
+- Launcher (APK 0.84.3): kartu & detail game unduhan menampilkan ikon walau paket belum dipasang — ikon diunduh,
+  diverifikasi dengan `icon_sha256`, disimpan di `user://icons/` (tetap tampil offline). Ikon `res://` bawaan
+  tetap dipakai lebih dulu; tanpa ikon tetap memakai inisial.
+- Paket education_sd 2.4.3 diterbitkan ulang dengan ikon. Uji: `go test ./...`, `make client-test`,
+  `make platform-test` (+4 pemeriksaan ikon), `make sd-test` (610) lulus.
+
 ## Paket education_sd v2.4.2 — ikon game (15 November 2026)
 
 - Ikon "Petualangan Pulau Ilmu SD" (gambar dari pengguna) di `assets/icon/sd_icon_512.png` & `sd_icon_192.png`,

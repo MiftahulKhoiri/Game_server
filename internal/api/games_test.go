@@ -197,3 +197,42 @@ func TestGameProgressPerGame(t *testing.T) {
 		}
 	}
 }
+
+
+func TestGameIcon(t *testing.T) {
+	ts, dir := newCatalogServer(t, []byte("pck"))
+	resp, err := http.Get(ts.URL + "/v1/games/education_sd/icon")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("tanpa icon.png harus 404, dapat %d", resp.StatusCode)
+	}
+	png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, []byte("isi-ikon")...)
+	if err := os.WriteFile(filepath.Join(dir, "education_sd", "icon.png"), png, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resp, err = http.Get(ts.URL + "/v1/games/education_sd/icon")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "image/png" || string(body) != string(png) {
+		t.Fatalf("ikon: status %d, tipe %q", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+	if err := os.WriteFile(filepath.Join(dir, "education_sd", "icon.png"), []byte("bukan png"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resp, _ = http.Get(ts.URL + "/v1/games/education_sd/icon")
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("berkas bukan PNG harus ditolak, dapat %d", resp.StatusCode)
+	}
+	resp, _ = http.Get(ts.URL + "/v1/games/..%2Fetc/icon")
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		t.Fatal("id tidak sah tidak boleh dilayani")
+	}
+}

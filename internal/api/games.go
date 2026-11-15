@@ -22,6 +22,7 @@ import (
 //	GET /v1/games/{id}/manifest       manifest.json (byte persis yang ditandatangani)
 //	GET /v1/games/{id}/manifest.sig   tanda tangan manifest
 //	GET /v1/games/{id}/download       berkas .pck (mendukung HTTP Range untuk melanjutkan unduhan)
+//	GET /v1/games/{id}/icon           icon.png game (diverifikasi klien dengan icon_sha256 di manifest)
 //
 // Butuh login (Authorization: Bearer):
 //
@@ -103,6 +104,15 @@ func (s *Server) registerGames(mux *http.ServeMux, dir string) {
 		w.Header().Set("Content-Disposition", `attachment; filename="`+m.Package+`"`)
 		// ServeFile melayani HTTP Range (206) sehingga unduhan yang putus bisa dilanjutkan.
 		http.ServeFile(w, r, p)
+	})
+	mux.HandleFunc("GET /v1/games/{id}/icon", func(w http.ResponseWriter, r *http.Request) {
+		b, err := c.Icon(r.PathValue("id"))
+		if err != nil {
+			s.catalogError(w, r, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		writeRaw(w, "image/png", b)
 	})
 	mux.Handle("GET /v1/games/{id}/progress", s.auth(http.HandlerFunc(s.getGameProgress)))
 	mux.Handle("POST /v1/games/{id}/progress", s.auth(http.HandlerFunc(s.putGameProgress)))

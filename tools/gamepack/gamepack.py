@@ -31,7 +31,7 @@ SEMVER_RE = re.compile(r"^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9
 ENGINE_FILES = {"project.binary", ".godot/uid_cache.bin", ".godot/global_script_class_cache.cfg",
                 "icon.svg.import", "icon.svg", "assets/icon/icon_512.png"}
 DISPLAY_FIELDS = ["id", "name", "description", "category", "version", "type", "entry_scene", "package", "size",
-                  "sha256", "min_launcher_version", "min_engine_version", "icon", "icon_color", "enabled", "updated"]
+                  "sha256", "min_launcher_version", "min_engine_version", "icon", "icon_sha256", "icon_color", "enabled", "updated"]
 
 
 def read_pck(path):
@@ -192,6 +192,19 @@ def cmd_publish(a):
               "min_engine_version": engine,
               "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
     m.setdefault("enabled", True)
+    # Ikon (opsional): game.json "icon" = res://games/<id>/....png -> disalin ke <katalog>/<id>/icon.png;
+    # sha256-nya masuk manifest bertanda tangan supaya launcher bisa memverifikasi ikon yang diunduh.
+    icon = str(src.get("icon", ""))
+    if icon:
+        if not icon.startswith(f"res://games/{a.id}/") or not icon.endswith(".png") or ".." in icon:
+            sys.exit("icon harus berkas .png di res://games/<id>/")
+        client_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(a.game_json))))
+        with open(os.path.join(client_dir, icon[len("res://"):]), "rb") as f:
+            ib = f.read()
+        if not ib.startswith(b"\x89PNG\r\n\x1a\n") or len(ib) > 1 << 20:
+            sys.exit("icon harus PNG <= 1 MB")
+        write_atomic(os.path.join(gdir, "icon.png"), ib)
+        m["icon_sha256"] = hashlib.sha256(ib).hexdigest()
     write_atomic(mp + ".new", json.dumps(m, ensure_ascii=False, indent=1) + "\n")
     sig = sign(mp + ".new", a.key)
     write_atomic(os.path.join(gdir, "manifest.sig.new"), sig)

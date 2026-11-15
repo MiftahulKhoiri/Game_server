@@ -177,6 +177,27 @@ func (c *Catalog) PackagePath(id string) (string, Manifest, error) {
 	return p, m, nil
 }
 
+// MaxIconBytes membatasi ikon game (PNG) yang dilayani server.
+const MaxIconBytes = 1 << 20
+
+var pngMagic = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
+
+// Icon mengembalikan isi icon.png game id (bila ada). Keasliannya diperiksa klien lewat icon_sha256 di
+// manifest yang ditandatangani; server hanya memastikan berkas berupa PNG dan tidak terlalu besar.
+func (c *Catalog) Icon(id string) ([]byte, error) {
+	if !ValidID(id) {
+		return nil, ErrNotFound
+	}
+	b, err := readLimited(filepath.Join(c.Dir, id, "icon.png"), MaxIconBytes)
+	if err != nil {
+		return nil, err
+	}
+	if len(b) < len(pngMagic) || string(b[:len(pngMagic)]) != string(pngMagic) {
+		return nil, fmt.Errorf("%w: icon.png bukan PNG", ErrInvalid)
+	}
+	return b, nil
+}
+
 func readLimited(path string, limit int64) ([]byte, error) {
 	f, err := os.Open(path)
 	if errors.Is(err, os.ErrNotExist) {

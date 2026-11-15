@@ -211,6 +211,19 @@ func _phase_install() -> void:
 	var launcher = current_scene
 	_check(launcher._cards.has("adventure") and launcher._cards.has("education_sd") and launcher._cards.has("education_smp"),
 		"launcher menampilkan game bawaan + game unduhan")
+	var sd_m: Dictionary = GM.game("education_sd").manifest
+	_check(str(sd_m.get("icon_sha256", "")).length() == 64, "manifest SD bertanda tangan memuat icon_sha256")
+	var icon_rect: TextureRect = null
+	for i in 30:
+		icon_rect = launcher._cards["education_sd"].find_child("Icon", true, false)
+		if icon_rect.texture != null:
+			break
+		await _wait(0.1)
+	_check(icon_rect.texture != null and icon_rect.texture.get_width() > 0, "ikon game SD diunduh dari server & tampil di kartu sebelum dipasang")
+	var cached := DirAccess.get_files_at(launcher.ICON_DIR)
+	_check(cached.size() == 1 and cached[0].begins_with("education_sd-"), "ikon disimpan di user://icons untuk offline")
+	var raw := FileAccess.get_file_as_bytes(launcher.ICON_DIR + cached[0])
+	_check(launcher._png_texture(raw, "0".repeat(64)) == null, "ikon dengan sha256 berbeda dari manifest ditolak")
 	launcher._select("education_sd")
 	_check(launcher._b_download.visible and not launcher._b_play.visible, "SD: tombol DOWNLOAD tampil, MAINKAN tidak")
 	launcher._select("adventure")

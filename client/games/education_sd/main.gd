@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.4.2, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.4.3, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -25,7 +25,7 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.4.2"
+const VERSION := "2.4.3"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
