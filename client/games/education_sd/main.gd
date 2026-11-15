@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.5, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.1.0, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -11,17 +11,20 @@ const SdProgress := preload("res://games/education_sd/scripts/sd_progress.gd")
 const SdAudio := preload("res://games/education_sd/scripts/sd_audio.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
+const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.gd")
+const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 
 const GAME_ID := "education_sd"
 const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.0.5"
+const VERSION := "2.1.0"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
 const TRAIL_PATH := "user://education_sd_trail.txt"
+const CHEST_SCORE := 70  # nilai kuis minimal untuk membuka peti pengetahuan di dunia 3D
 const NPC_KIND := {"matematika": "raja", "bahasa": "kancil", "ipa": "profesor", "ips": "nakhoda"}
 
 var game_id := GAME_ID  # dibaca uji platform
@@ -41,6 +44,10 @@ var _exit_dialog: ConfirmationDialog
 var _exit_noted := false
 var _touch_start := {}  # indeks jari -> posisi awal sentuhan
 var _trail: FileAccess
+var _press_index := -1
+var world: Node3D  # dunia 3D yang sedang tampil (null di layar lain)
+var hud: Control
+var _world_return := ""  # wilayah 3D tujuan kembali setelah sesi/mini-game yang dimulai dari dunia 3D
 var _frames := 0
 var _anim := true  # animasi gambar (maskot, peta); dimatikan otomatis bila game crash berulang
 
@@ -160,12 +167,13 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			_touch_start[event.index] = event.position
+			_press_index = event.index
 			UI.touch_dragged = false
 		else:
 			_touch_start.erase(event.index)
 	elif event is InputEventScreenDrag:
 		var s: Vector2 = _touch_start.get(event.index, event.position)
-		if event.position.distance_to(s) > UI.DRAG_CANCEL_PX:
+		if event.index == _press_index and event.position.distance_to(s) > UI.DRAG_CANCEL_PX:
 			UI.touch_dragged = true
 
 
@@ -244,14 +252,20 @@ func grade() -> int:
 
 # --- Kerangka layar ------------------------------------------------------------------------------------
 
-func _clear(id: String) -> VBoxContainer:
+func _clear_raw(id: String) -> void:
 	screen = id
 	trail("layar " + id)
 	UI.guard(350)
 	_qview = null
+	world = null
+	hud = null
 	for c in _root.get_children():
 		_root.remove_child(c)
 		c.queue_free()
+
+
+func _clear(id: String) -> VBoxContainer:
+	_clear_raw(id)
 	var scroll := ScrollContainer.new()
 	scroll.name = "Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -314,6 +328,8 @@ func go_back() -> void:
 				show_home()
 			else:
 				_confirm_exit("back Android di pengenalan")
+		"world":
+			show_home()
 		"session":
 			_confirm_leave_session()
 		"region":
@@ -328,6 +344,8 @@ func go_back() -> void:
 					show_region(str(session.get("region", "matematika")))
 				"subjects":
 					show_subjects()
+				"world":
+					show_world(_world_return)
 				_:
 					show_home()
 
@@ -454,8 +472,13 @@ func show_home() -> void:
 		UI.expand(card)
 		prog.add_child(card)
 	v.add_child(prog)
+	_world_return = ""
 	var big := UI.hbox(16)
-	var start := UI.button("MULAI PETUALANGAN", show_map, UI.GOOD, 34, 110)
+	var w3d := UI.button("JELAJAHI PULAU 3D", show_world.bind(""), Color("8a6bd8"), 34, 110)
+	w3d.name = "IslandWorld"
+	UI.expand(w3d)
+	big.add_child(w3d)
+	var start := UI.button("MULAI PETUALANGAN", show_map, UI.GOOD, 30, 110)
 	UI.expand(start)
 	big.add_child(start)
 	var pick := UI.button("PILIH PELAJARAN", show_subjects, UI.PRIMARY, 30, 110)
@@ -486,9 +509,184 @@ func _apply_look(av) -> void:
 	av.set_look(outfit, hat, acc)
 
 
+# --- Dunia 3D --------------------------------------------------------------------------------------------
+# Mode petualangan 3D: pulau per wilayah dengan gerbang/jembatan per area. Semua aktivitas belajar memakai
+# sesi soal, kuis, ujian, dan mini-game yang sama dengan mode 2D (hadiah dari SdProgress, tidak digandakan).
+
+func _wkey(region_id: String) -> String:
+	return "k%d/%s" % [grade(), region_id]
+
+
+func _world_ctx(region_id: String) -> Dictionary:
+	var r := data.region(region_id)
+	var ts := data.topics_for(region_id, grade())
+	var topics: Array = []
+	var all_done := true
+	for i in ts.size():
+		var t: Dictionary = ts[i]
+		var rec := SdProgress.area_rec(p, grade(), region_id, str(t.id))
+		var open: bool = i == 0 or SdProgress.area_rec(p, grade(), region_id, str(ts[i - 1].id)).get("done", false)
+		if not rec.get("done", false):
+			all_done = false
+		topics.append({"id": str(t.id), "name": str(t.name), "done": bool(rec.get("done", false)),
+			"stars": int(rec.get("stars", 0)), "open": open})
+	var ex: Dictionary = SdProgress.grade_rec(p, grade()).exams.get(region_id, {})
+	var outfit := Color("e05a4f")
+	for s in data.doc.get("shop", []):
+		if str(s.id) == str(p.player.avatar.get("outfit", "")):
+			outfit = Color.from_string(str(s.value), outfit)
+	return {"region": r, "grade": grade(), "topics": topics,
+		"exam": {"open": all_done and not ts.is_empty(), "passed": bool(ex.get("passed", false))},
+		"chest_opened": bool((p.world.chests as Dictionary).get(_wkey(region_id), false)),
+		"found": bool((p.world.found as Dictionary).get(_wkey(region_id), false)),
+		"minigame": _minigame_for(region_id), "gfx": str(p.settings.gfx),
+		"hero": {"shirt": outfit, "long_hair": str(p.settings.hero) == "perempuan"}}
+
+
+func show_world(region_id: String = "") -> void:
+	if region_id == "":
+		region_id = str(p.world.region)
+	if data.region(region_id).is_empty():
+		region_id = "matematika"
+	p.world.region = region_id
+	_world_return = ""
+	_clear_raw("world")
+	var ctx := _world_ctx(region_id)
+	var prof: Dictionary = IslandWorld.PROFILES.get(str(ctx.gfx), IslandWorld.PROFILES.seimbang)
+	var box := SubViewportContainer.new()
+	box.name = "View3D"
+	box.stretch = true
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(box)
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var vp := SubViewport.new()
+	vp.own_world_3d = true
+	vp.scaling_3d_scale = float(prof.scale)
+	vp.msaa_3d = Viewport.MSAA_2X if bool(prof.msaa) else Viewport.MSAA_DISABLED
+	vp.handle_input_locally = false
+	box.add_child(vp)
+	world = IslandWorld.new()
+	world.name = "World"
+	vp.add_child(world)
+	world.build(ctx)
+	world.interacted.connect(_on_world_interact)
+	hud = Hud3D.new()
+	hud.name = "Hud"
+	_root.add_child(hud)
+	var r: Dictionary = ctx.region
+	hud.setup(world, "%s · Kelas %d" % [str(r.name), grade()], Color.from_string(str(r.color), UI.PRIMARY))
+	hud.back_pressed.connect(go_back)
+	hud.chips.add_child(_chip("Bintang %d" % SdProgress.total_stars(p), UI.GOLD))
+	hud.chips.add_child(_chip("Koin %d" % int(p.coins), Color("ffd166")))
+	hud.set_hint(_world_hint(ctx))
+	trail("dunia 3D %s grafis %s" % [region_id, str(ctx.gfx)])
+	# Gerbang yang baru selesai sejak kunjungan terakhir: animasi terbuka + sorak.
+	var seen: Dictionary = p.world.seen_done
+	for t in ctx.topics:
+		var k := _wkey(region_id) + "/" + str(t.id)
+		if t.done and not seen.has(k):
+			seen[k] = true
+			world.celebrate_gate(str(t.id))
+			if audio != null:
+				audio.play("buka")
+	save()
+
+
+func _world_hint(ctx: Dictionary) -> String:
+	for i in (ctx.topics as Array).size():
+		var t: Dictionary = ctx.topics[i]
+		if not t.done:
+			return "Tujuan: %s %d \"%s\" di jalan depan. Dekati lalu tekan AKSI." % [
+				"perbaiki jembatan" if i % 3 == 1 else "buka gerbang", i + 1, str(t.name)]
+	if not ctx.exam.passed:
+		return "Semua gerbang terbuka! Tantang Penjaga Wilayah di ujung jalan (ujian akhir)."
+	if not ctx.chest_opened:
+		return "Wilayah ditaklukkan! Buka Peti Pengetahuan di alun-alun, atau pindah pulau lewat portal."
+	return "Hebat! Jelajahi pulau lain lewat portal, cari tempat rahasia, atau main mini-game."
+
+
+func _from_world(cb: Callable) -> void:
+	var rid := str(p.world.region)
+	cb.call()
+	if screen in ["session", "minigame"]:
+		_world_return = rid
+
+
+func _on_world_interact(kind: String, id: String) -> void:
+	trail("3D aksi %s %s" % [kind, id])
+	if audio != null:
+		audio.play("klik")
+	var rid := str(p.world.region)
+	var r := data.region(rid)
+	var ctx := _world_ctx(rid)
+	match kind:
+		"npc":
+			var next := ""
+			for t in ctx.topics:
+				if not t.done:
+					next = str(t.id)
+					break
+			var intro := str(r.intro) if not p.seen_intro.has(rid) else "Halo lagi, %s!" % str(p.player.name)
+			p.seen_intro[rid] = true
+			var btns: Array = []
+			if next != "":
+				btns.append(["Latihan dulu", _from_world.bind(start_practice.bind(next)), UI.PRIMARY])
+			hud.show_dialog(str(r.npc), intro + "\n" + _world_hint(ctx), btns)
+		"gate":
+			var idx := -1
+			for i in (ctx.topics as Array).size():
+				if str(ctx.topics[i].id) == id:
+					idx = i
+			if idx < 0:
+				return
+			var t: Dictionary = ctx.topics[idx]
+			var topic: Dictionary = data.topics[id]
+			if t.done:
+				hud.show_dialog(str(t.name), "Sudah terbuka dengan %d bintang. Mau mengulang untuk bintang lebih banyak?" % int(t.stars),
+					[["Ulangi", _from_world.bind(start_area.bind(rid, id)), UI.PRIMARY]])
+			elif not t.open:
+				hud.show_dialog(str(t.name), "Masih terkunci. Selesaikan dulu \"%s\"." % str(ctx.topics[idx - 1].name))
+			else:
+				hud.show_dialog(str(t.name), str(topic.story) + "\nJawab %d soal untuk membukanya!" % AREA_QUESTIONS,
+					[["Mulai!", _from_world.bind(start_area.bind(rid, id)), UI.GOOD]])
+		"boss":
+			if ctx.exam.open:
+				hud.show_dialog(str(IslandWorld.THEMES.get(rid, {}).get("boss", "Penjaga Wilayah")),
+					"Kalahkan aku dengan ujian akhir: %d soal, nilai 70 ke atas berarti menang!" % EXAM_QUESTIONS,
+					[["Mulai ujian", _from_world.bind(start_exam.bind(rid)), UI.GOLD]])
+			else:
+				hud.show_dialog("Penjaga Wilayah", "Buka semua gerbang di wilayah ini dulu, baru tantang aku!")
+		"chest":
+			var txt := "Peti ini terkunci teka-teki. Jawab kuis %s (%d soal) dengan nilai %d ke atas untuk membukanya." % [
+				str(r.subject), QUIZ_QUESTIONS, CHEST_SCORE]
+			if ctx.chest_opened:
+				txt = "Peti sudah terbuka! Kamu tetap boleh main kuis lagi untuk mengumpulkan koin."
+			hud.show_dialog("Peti Pengetahuan", txt, [["Mulai kuis", _from_world.bind(start_quiz.bind(rid)), UI.GOLD]])
+		"minigame":
+			_from_world(start_minigame.bind(id))
+		"portal":
+			var btns: Array = []
+			for reg in data.regions:
+				if str(reg.id) != rid:
+					btns.append([str(reg.name), show_world.bind(str(reg.id)), Color.from_string(str(reg.color), UI.PRIMARY)])
+			hud.show_dialog("Portal Pulau", "Mau pergi ke pulau mana?", btns)
+		"secret":
+			var fact := "Kamu menemukan tempat rahasia!"
+			for t in data.topics_for(rid, grade()):
+				if t.has("card"):
+					fact += "\nTahukah kamu? %s: %s" % [str(t.card.title), str(t.card.fact)]
+					break
+			if not (p.world.found as Dictionary).has(_wkey(rid)):
+				(p.world.found as Dictionary)[_wkey(rid)] = true
+				world.mark_secret_found()
+				save()
+			hud.show_dialog("Tempat Rahasia", fact)
+
+
 # --- Peta & wilayah --------------------------------------------------------------------------------------
 
 func show_map() -> void:
+	_world_return = ""
 	var v := _clear("map")
 	_header(v, "Peta Pulau Ilmu · Kelas %d" % grade())
 	var holder := Control.new()
@@ -702,6 +900,8 @@ func _finish_session() -> void:
 			SdProgress.add_history(p, "latihan", subject, str(data.topics[str(session.topic)].name), grade(), correct, total)
 		"kuis":
 			reward = SdProgress.finish_quiz(p, grade(), region, score)
+			if _world_return != "" and score >= CHEST_SCORE:
+				(p.world.chests as Dictionary)[_wkey(region)] = true
 			SdProgress.add_history(p, "kuis", subject, "Kuis", grade(), correct, total)
 		"ujian":
 			reward = SdProgress.finish_exam(p, grade(), region, score)
@@ -716,6 +916,8 @@ func _finish_session() -> void:
 func _show_result(correct: int, total: int, score: int, reward: Dictionary) -> void:
 	var kind := str(session.kind)
 	var back := "region" if kind in ["petualangan", "ujian"] else "subjects"
+	if _world_return != "":
+		back = "world"
 	var v := _clear("result")
 	_header(v, "Hasil " + str(session.title), back)
 	var row := UI.hbox(24)
@@ -786,6 +988,9 @@ func _confirm_leave_session() -> void:
 
 func leave_session() -> void:
 	save()
+	if _world_return != "":
+		show_world(_world_return)
+		return
 	if str(session.get("kind", "")) in ["petualangan", "ujian"]:
 		show_region(str(session.region))
 	else:
@@ -795,6 +1000,7 @@ func leave_session() -> void:
 # --- Pilih pelajaran (latihan & kuis) ----------------------------------------------------------------------
 
 func show_subjects() -> void:
+	_world_return = ""
 	var v := _clear("subjects")
 	_header(v, "Pilih Pelajaran · Kelas %d" % grade())
 	v.add_child(UI.label("Latihan: tanpa batas waktu, boleh mencoba lagi, ada petunjuk. Kuis: 10 soal, nilai, pembahasan di akhir.", 22, UI.SOFT))
@@ -830,6 +1036,7 @@ static func _short(name: String) -> String:
 # --- Mini-game ---------------------------------------------------------------------------------------------
 
 func show_minigames() -> void:
+	_world_return = ""
 	var v := _clear("minigames")
 	_header(v, "Mini-game")
 	var g := UI.grid(2, 16)
@@ -846,7 +1053,7 @@ func show_minigames() -> void:
 func start_minigame(id: String) -> void:
 	trail("mini-game " + id)
 	var info := SdMini.info(id)
-	var from := screen if screen in ["region", "minigames", "minigame"] else "minigames"
+	var from := screen if screen in ["region", "minigames", "minigame", "world"] else "minigames"
 	if from == "minigame":
 		from = str(session.get("from", "minigames"))
 	session = {"kind": "minigame", "region": str(info.region), "mg": id, "from": from}
@@ -885,7 +1092,9 @@ func _on_minigame_done(score: int, total: int, extra: Dictionary, id: String) ->
 
 
 func _back_from_minigame() -> void:
-	if str(session.get("from", "")) == "region":
+	if str(session.get("from", "")) == "world":
+		show_world(str(session.region))
+	elif str(session.get("from", "")) == "region":
 		show_region(str(session.region))
 	else:
 		show_minigames()
@@ -1063,6 +1272,20 @@ func show_settings() -> void:
 		UI.expand(b)
 		arow.add_child(b)
 	v.add_child(arow)
+	v.add_child(UI.label("Dunia 3D", 26, UI.INK))
+	var hrow := UI.hbox(12)
+	for h in [["laki", "Karakter: Laki-laki"], ["perempuan", "Karakter: Perempuan"]]:
+		var b := UI.button(h[1], set_setting.bind("hero", h[0]), UI.GOLD if str(p.settings.hero) == h[0] else Color("e8e2f2"), 24, 76)
+		UI.expand(b)
+		hrow.add_child(b)
+	v.add_child(hrow)
+	var grow := UI.hbox(12)
+	for gp in [["hemat", "Grafis: Hemat"], ["seimbang", "Grafis: Seimbang"], ["tinggi", "Grafis: Tinggi"]]:
+		var b := UI.button(gp[1], set_setting.bind("gfx", gp[0]), UI.GOLD if str(p.settings.gfx) == gp[0] else Color("e8e2f2"), 24, 76)
+		UI.expand(b)
+		grow.add_child(b)
+	v.add_child(grow)
+	v.add_child(UI.label("Hemat: untuk HP ringan (tanpa bayangan, resolusi 3D lebih rendah). Tinggi: tampilan terbaik.", 20, UI.SOFT))
 	v.add_child(UI.button("Kembali ke Launcher", _confirm_exit.bind("tombol pengaturan"), Color("8a9bb8"), 26, 80))
 
 
@@ -1071,6 +1294,13 @@ func change_grade(k: int) -> void:
 	if screen == "settings":
 		show_settings()
 	toast("Sekarang belajar materi kelas %d." % k)
+
+
+func set_setting(key: String, value: String) -> void:
+	p.settings[key] = value
+	save()
+	if screen == "settings":
+		show_settings()
 
 
 func toggle_setting(key: String) -> void:

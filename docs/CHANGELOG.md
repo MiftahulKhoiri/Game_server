@@ -2,6 +2,16 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.1.0 — Pulau Ilmu 3D (Fase 1–2) (15 November 2026)
+
+- Mode baru "JELAJAHI PULAU 3D" di beranda: karakter 3D (laki-laki/perempuan) dengan kamera orang-ketiga,
+  joystick + geser kamera + tombol AKSI/LOMPAT/LARI di HP, WASD/mouse di desktop.
+- Empat pulau 3D bertema (Kerajaan Matematika, Hutan Bahasa, Laboratorium IPA, Negeri Penjelajah IPS): gerbang dan
+  jembatan rusak per area yang terbuka dengan menjawab soal, NPC pemandu, Peti Pengetahuan (kuis ≥ 70), Penjaga
+  Wilayah (ujian akhir), kios mini-game, portal antarpulau, tempat rahasia.
+- Semua materi, penilaian, dan hadiah memakai sistem lama; mode 2D tetap ada. Profil grafis Hemat/Seimbang/Tinggi.
+- Rincian audit, rancangan, dan hasil uji: [SD_PULAU_ILMU_3D.md](SD_PULAU_ILMU_3D.md).
+
 ## Paket education_sd v2.0.5 — perbaikan crash musik di Samsung A18 (15 November 2026)
 
 - Penyebab terlacak: jejak 2.0.4 menunjukkan crash ±7 detik setelah musik diputar, tepat saat musik latar

@@ -1,5 +1,7 @@
 # Game Pembelajaran SD — "Petualangan Pulau Ilmu" (paket `education_sd` v2.0.0)
 
+> Dunia petualangan 3D (paket 2.1.0): lihat [SD_PULAU_ILMU_3D.md](SD_PULAU_ILMU_3D.md).
+
 ## 1. Audit awal (sebelum perubahan)
 
 | Bagian | Temuan |

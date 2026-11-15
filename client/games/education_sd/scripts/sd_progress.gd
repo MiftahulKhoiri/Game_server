@@ -26,7 +26,8 @@ static func default_data() -> Dictionary:
 		"history": [],
 		"daily": {},
 		"minigames": {},
-		"settings": {"music": true, "sfx": true},
+		"settings": {"music": true, "sfx": true, "hero": "laki", "gfx": "seimbang"},
+		"world": {"region": "matematika", "chests": {}, "found": {}, "seen_done": {}},
 		"seen_intro": {},
 	}
 
@@ -52,6 +53,9 @@ static func ensure(d: Dictionary) -> Dictionary:
 	for k in base.settings:
 		if not d.settings.has(k):
 			d.settings[k] = base.settings[k]
+	for k in base.world:
+		if not d.world.has(k) or not _same_kind(d.world[k], base.world[k]):
+			d.world[k] = base.world[k]
 	d.schema = SCHEMA
 	return d
 

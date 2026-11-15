@@ -1,0 +1,277 @@
+extends Control
+## Kontrol & antarmuka dunia 3D.
+## Android: joystick kiri (gerak), geser bagian kanan layar (kamera), tombol AKSI / LOMPAT / LARI (multisentuh).
+## Desktop: WASD/panah (gerak), seret mouse (kamera), Spasi (lompat), E (aksi), Shift (lari).
+## Dialog NPC dan pilihan pulau tampil di atas kontrol; selama dialog terbuka pemain berhenti.
+
+const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
+
+signal back_pressed
+
+var world: Node3D
+var joy_vec := Vector2.ZERO
+var _joy_center := Vector2.ZERO
+var _joy_radius := 105.0
+var _joy_index := -2
+var _look_index := -2
+var _joy_draw: Control
+var _btn_action: Control
+var _btn_jump: Control
+var _btn_run: Control
+var _top: HBoxContainer
+var _hint: Label
+var _prompt: Label
+var _dialog: PanelContainer
+var _dialog_title: Label
+var _dialog_text: Label
+var _dialog_btns: HBoxContainer
+var _run_on := false
+var chips: HBoxContainer
+
+
+class RoundBtn extends Control:
+	var text := ""
+	var color := Color("3f7fd8")
+	var active := false
+	var radius := 60.0
+
+	func _init(t: String, c: Color, r: float) -> void:
+		text = t
+		color = c
+		radius = r
+		custom_minimum_size = Vector2(r * 2.0, r * 2.0)
+		size = custom_minimum_size
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c := size / 2.0
+		draw_circle(c, radius, Color(0, 0, 0, 0.18))
+		draw_circle(c - Vector2(0, 3), radius - 2.0, color.lightened(0.15) if active else Color(color, 0.85))
+		var f := ThemeDB.fallback_font
+		var fs := int(radius * 0.36)
+		var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
+		draw_string(f, c + Vector2(-w / 2.0, fs * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+
+	func hit(p: Vector2) -> bool:
+		return visible and get_global_rect().get_center().distance_to(p) <= radius * 1.1
+
+
+class JoyDraw extends Control:
+	var hud: Control
+
+	func _draw() -> void:
+		var c: Vector2 = hud._joy_center - global_position
+		var r: float = hud._joy_radius
+		draw_circle(c, r, Color(1, 1, 1, 0.22))
+		draw_arc(c, r, 0, TAU, 40, Color(1, 1, 1, 0.6), 4.0, true)
+		draw_circle(c + hud.joy_vec * Vector2(1, -1) * r, r * 0.42, Color(1, 1, 1, 0.75))
+
+
+func setup(w: Node3D, title: String, color: Color) -> void:
+	world = w
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_joy_draw = JoyDraw.new()
+	_joy_draw.hud = self
+	_joy_draw.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_joy_draw)
+	_joy_draw.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_btn_action = RoundBtn.new("AKSI", Color("3fae63"), 78.0)
+	_btn_jump = RoundBtn.new("LOMPAT", Color("3f7fd8"), 58.0)
+	_btn_run = RoundBtn.new("LARI", Color("e0813d"), 46.0)
+	for b in [_btn_action, _btn_jump, _btn_run]:
+		add_child(b)
+	_top = UI.hbox(12)
+	_top.position = Vector2(16, 12)
+	add_child(_top)
+	var back := UI.button("Kembali", func() -> void: back_pressed.emit(), Color("cfc8dc"), 22, 60)
+	back.name = "Back"
+	_top.add_child(back)
+	var tp := UI.panel(Color(1, 1, 1, 0.85), 18)
+	tp.add_child(UI.label(title, 26, color, false))
+	_top.add_child(tp)
+	chips = UI.hbox(8)
+	_top.add_child(chips)
+	_hint = UI.label("", 20, UI.INK)
+	var hp := UI.panel(Color(1, 1, 1, 0.8), 16)
+	hp.name = "HintPanel"
+	hp.add_child(_hint)
+	hp.position = Vector2(16, 86)
+	hp.custom_minimum_size = Vector2(520, 0)
+	add_child(hp)
+	_prompt = UI.label("", 22, Color.WHITE, false)
+	_prompt.add_theme_color_override("font_outline_color", Color("2b2440"))
+	_prompt.add_theme_constant_override("outline_size", 8)
+	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	add_child(_prompt)
+	_dialog = UI.panel(Color.WHITE, 26)
+	_dialog.name = "Dialog"
+	var dv := UI.vbox(10)
+	_dialog_title = UI.label("", 28, UI.PRIMARY, false)
+	_dialog_text = UI.label("", 24, UI.INK)
+	_dialog_btns = UI.hbox(12)
+	dv.add_child(_dialog_title)
+	dv.add_child(_dialog_text)
+	dv.add_child(_dialog_btns)
+	_dialog.add_child(dv)
+	_dialog.visible = false
+	add_child(_dialog)
+	w.focus_changed.connect(_on_focus)
+	_on_focus("")
+	resized.connect(_layout)
+	_layout.call_deferred()
+
+
+func _layout() -> void:
+	var s := size
+	_joy_radius = clampf(s.y * 0.15, 80.0, 120.0)
+	_joy_center = Vector2(_joy_radius + 70.0, s.y - _joy_radius - 50.0)
+	_btn_action.position = Vector2(s.x - 200, s.y - 210)
+	_btn_jump.position = Vector2(s.x - 340, s.y - 140)
+	_btn_run.position = Vector2(s.x - 160, s.y - 330)
+	_prompt.position = Vector2(s.x - 760, s.y - 255)
+	_prompt.size = Vector2(540, 40)
+	_dialog.position = Vector2(s.x * 0.18, s.y * 0.38)
+	_dialog.custom_minimum_size = Vector2(s.x * 0.64, 0)
+	_dialog.size = Vector2(s.x * 0.64, 0)
+	_joy_draw.queue_redraw()
+
+
+func set_hint(text: String) -> void:
+	_hint.text = text
+	_hint.get_parent().visible = text != ""
+
+
+func _on_focus(text: String) -> void:
+	_prompt.text = text
+	(_btn_action as RoundBtn).active = text != ""
+	_btn_action.queue_redraw()
+
+
+func dialog_open() -> bool:
+	return _dialog.visible
+
+
+## buttons: [[teks, Callable, warna], ...]. Tombol "Tutup" selalu ditambahkan.
+func show_dialog(title: String, text: String, buttons: Array = []) -> void:
+	_dialog_title.text = title
+	_dialog_text.text = text
+	for c in _dialog_btns.get_children():
+		c.queue_free()
+	for b in buttons:
+		var cb: Callable = b[1]
+		var btn := UI.button(str(b[0]), func() -> void:
+			close_dialog()
+			cb.call(), b[2] if b.size() > 2 else UI.GOOD, 24, 70)
+		UI.expand(btn)
+		_dialog_btns.add_child(btn)
+	var close := UI.button("Tutup", close_dialog, Color("cfc8dc"), 24, 70)
+	close.name = "Close"
+	UI.expand(close)
+	_dialog_btns.add_child(close)
+	_dialog.visible = true
+	_set_frozen(true)
+
+
+func close_dialog() -> void:
+	_dialog.visible = false
+	_set_frozen(false)
+
+
+func _set_frozen(f: bool) -> void:
+	if world != null and world.player != null:
+		world.player.frozen = f
+	joy_vec = Vector2.ZERO
+	_joy_index = -2
+	_look_index = -2
+	_push_move()
+
+
+func _push_move() -> void:
+	if world != null and world.player != null:
+		world.player.move_input = joy_vec
+		world.player.run = _run_on
+	_joy_draw.queue_redraw()
+
+
+func _over_ui(p: Vector2) -> bool:
+	if _dialog.visible:
+		return true
+	return _top.get_global_rect().has_point(p)
+
+
+func _press(p: Vector2, index: int) -> bool:
+	if (_btn_action as RoundBtn).hit(p):
+		trigger_action()
+		return true
+	if (_btn_jump as RoundBtn).hit(p):
+		world.player.jump()
+		return true
+	if (_btn_run as RoundBtn).hit(p):
+		_run_on = not _run_on
+		(_btn_run as RoundBtn).active = _run_on
+		_btn_run.queue_redraw()
+		_push_move()
+		return true
+	if p.distance_to(_joy_center) <= _joy_radius * 1.7 and p.x < size.x * 0.45:
+		_joy_index = index
+		_joy_move(p)
+		return true
+	if p.x > size.x * 0.4:
+		_look_index = index
+		return true
+	return false
+
+
+func _joy_move(p: Vector2) -> void:
+	var v := (p - _joy_center) / _joy_radius
+	joy_vec = Vector2(v.x, -v.y).limit_length(1.0)
+	_push_move()
+
+
+func _release(index: int) -> void:
+	if index == _joy_index:
+		_joy_index = -2
+		joy_vec = Vector2.ZERO
+		_push_move()
+	if index == _look_index:
+		_look_index = -2
+
+
+func trigger_action() -> void:
+	if world != null and not _dialog.visible:
+		world.interact()
+
+
+func _input(event: InputEvent) -> void:
+	if world == null or not is_visible_in_tree():
+		return
+	if event is InputEventKey and event.pressed and not event.echo and not _dialog.visible:
+		match event.physical_keycode:
+			KEY_E, KEY_ENTER:
+				trigger_action()
+			KEY_SPACE:
+				world.player.jump()
+		return
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if not _over_ui(event.position):
+				_press(event.position, event.index)
+		else:
+			_release(event.index)
+	elif event is InputEventScreenDrag:
+		if event.index == _joy_index:
+			_joy_move(event.position)
+		elif event.index == _look_index:
+			world.player.look(event.relative * 1.2)
+	elif event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			if not _over_ui(event.position):
+				_press(event.position, -1)
+		else:
+			_release(-1)
+	elif event is InputEventMouseMotion and event.device != InputEvent.DEVICE_ID_EMULATION:
+		if _joy_index == -1:
+			_joy_move(event.position)
+		elif _look_index == -1 or (event.button_mask & MOUSE_BUTTON_MASK_RIGHT) != 0:
+			world.player.look(event.relative)

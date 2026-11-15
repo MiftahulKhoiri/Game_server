@@ -451,6 +451,8 @@ func _app_tests() -> void:
 	app.leave_session()
 	app.change_grade(1)
 
+	await _world_tests(app)
+	_check(int((app.p.world.chests as Dictionary).size()) >= 1, "progres dunia 3D ikut tersimpan")
 	print("== Simpan, buka ulang, dan migrasi")
 	var coins := int(app.p.coins)
 	var answered := int(app.p.totals.answered)
@@ -487,6 +489,8 @@ func _app_tests() -> void:
 	SaveManager.save("education_sd", {"levels": {"matematika/k12": {"best": 90, "attempts": 3}}, "history": [], "last_answers": []}, 1)
 	app = await _open()
 	_check(app.p.has("legacy") and int(app.p.schema) == 2 and int(app.p.coins) == 20, "save lama skema 1 dimigrasikan otomatis")
+	_check(app.p.has("world") and str(app.p.settings.gfx) == "seimbang" and str(app.p.world.region) == "matematika",
+		"data lama mendapat bagian dunia 3D & pengaturan grafis bawaan tanpa kehilangan isi")
 	var file := SaveManager.load_progress("education_sd", 2)
 	_check(int(file.get("schema_version", 0)) == 2, "berkas save ditulis ulang dalam skema 2 (cadangan lama di .bak)")
 	await root.get_node("GameManager").exit_to_launcher()
@@ -499,3 +503,167 @@ func _button_texts(app: Node) -> Array:
 	for b in app.page().find_children("*", "Button", true, false):
 		out.append((b as Button).text)
 	return out
+
+
+func _dialog_press(app: Node, text: String) -> bool:
+	SdUI.guard_until_ms = 0
+	SdUI.touch_dragged = false
+	for b in app.hud.find_children("*", "Button", true, false):
+		if (b as Button).text == text and b.is_visible_in_tree():
+			(b as Button).pressed.emit()
+			return true
+	return false
+
+
+func _dialog_text(app: Node) -> String:
+	return str(app.hud._dialog_title.text) + " | " + str(app.hud._dialog_text.text)
+
+
+func _steps(n: int) -> void:
+	for i in n:
+		await physics_frame
+
+
+func _go_to(app: Node, kind: String, id: String = "") -> bool:
+	var a: Area3D = app.world.find_use(kind, id)
+	if a == null:
+		return false
+	app.world.player.place(a.global_position - Vector3(0, 1.0, 0) + Vector3(0, 0.1, 0.6), 0.0)
+	await _steps(4)
+	return app.world.focus_label() != ""
+
+
+func _world_tests(app: Node) -> void:
+	print("== Dunia 3D: gerak, tabrakan, interaksi, belajar, hadiah, simpan")
+	app.set_player("Ani", 2)
+	app.show_world("matematika")
+	await process_frame
+	var w: Node3D = app.world
+	_check(app.screen == "world" and w != null and w.player != null, "dunia 3D Kerajaan Matematika terbuka dengan pemain")
+	var ts: Array = app.data.topics_for("matematika", 2)
+	_check(w.gates.size() == ts.size(), "satu gerbang/jembatan per area kelas 2 (%d)" % ts.size())
+	_check(w.find_use("npc") != null and w.find_use("chest") != null and w.find_use("boss") != null and w.find_use("portal") != null
+		and w.find_use("minigame") != null and w.find_use("secret") != null, "alun-alun: NPC, peti, kios mini-game, portal, tempat rahasia, penjaga wilayah")
+	var z0: float = w.player.global_position.z
+	w.player.move_input = Vector2(0, 1)
+	await _steps(60)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.z < z0 - 2.0, "joystick maju menggerakkan karakter (%.1f m)" % (z0 - w.player.global_position.z))
+	w.player.place(Vector3(0, 0.1, -10.0), 0.0)
+	w.player.move_input = Vector2(1, 0)
+	await _steps(120)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.x < w.PATH_HALF, "pagar menahan karakter di jalan (x=%.1f)" % w.player.global_position.x)
+	w.player.place(Vector3(0, 0.1, w.gate_z(0) + 2.5), 0.0)
+	w.player.move_input = Vector2(0, 1)
+	await _steps(120)
+	w.player.move_input = Vector2.ZERO
+	var first := str(ts[0].id)
+	_check(w.gate_blocked(first) and w.player.global_position.z > w.gate_z(0), "gerbang terkunci menghalangi jalan sebelum soal dijawab")
+	w.player.place(Vector3(0, 0.1, 0.0), 0.0)
+	w.player.jump()
+	await _steps(8)
+	_check(w.player.global_position.y > 0.5, "tombol lompat membuat karakter melompat")
+	await _steps(60)
+	_check(await _go_to(app, "npc") and w.focus_label().begins_with("Bicara"), "mendekati NPC memunculkan ajakan bicara (Area3D)")
+	_check(w.interact() and app.hud.dialog_open() and _dialog_text(app).contains("Raja Angka"), "AKSI: berbicara dengan Raja Angka")
+	_check(w.player.frozen, "pemain berhenti selama dialog terbuka")
+	app.hud.close_dialog()
+	# Gerbang kedua masih terkunci
+	await _go_to(app, "gate", str(ts[1].id))
+	w.interact()
+	_check(_dialog_text(app).contains("terkunci"), "gerbang/jembatan berikutnya terkunci sebelum area sebelumnya selesai")
+	app.hud.close_dialog()
+	await _go_to(app, "boss")
+	w.interact()
+	_check(not _dialog_press(app, "Mulai ujian") and _dialog_text(app).contains("Buka semua gerbang"), "penjaga wilayah (ujian akhir) terkunci")
+	app.hud.close_dialog()
+	# Gerbang pertama: soal -> gerbang terbuka
+	var coins0 := int(app.p.coins)
+	await _go_to(app, "gate", first)
+	w.interact()
+	_check(_dialog_press(app, "Mulai!") and app.screen == "session" and app._world_return == "matematika", "gerbang 1: sesi soal dimulai dari dunia 3D")
+	await _play_session(app, true)
+	_check(app.screen == "result", "sesi selesai -> hasil + pembahasan")
+	app.go_back()
+	w = app.world
+	_check(app.screen == "world" and w != null, "Lanjut dari hasil kembali ke dunia 3D")
+	_check(not w.gate_blocked(first) and bool(SdProgress.area_rec(app.p, 2, "matematika", first).done), "gerbang 1 terbuka setelah area selesai")
+	_check(int(app.p.coins) > coins0, "hadiah koin dari hasil soal (%d -> %d)" % [coins0, int(app.p.coins)])
+	_check((app.p.world.seen_done as Dictionary).has("k2/matematika/" + first), "animasi gerbang terbuka diputar sekali (tercatat)")
+	_check(w.spawn_point().z < w.gate_z(0), "pemain muncul di balik gerbang yang sudah terbuka")
+	# Jembatan (gerbang ke-2): tinggalkan sesi di tengah -> kembali ke dunia, jembatan tetap rusak
+	await _go_to(app, "gate", str(ts[1].id))
+	w.interact()
+	_check(_dialog_text(app).contains("Jawab") and _dialog_press(app, "Mulai!"), "jembatan rusak: mulai soal untuk memperbaikinya")
+	app.leave_session()
+	w = app.world
+	_check(app.screen == "world" and w.gate_blocked(str(ts[1].id)), "keluar dari sesi: kembali ke dunia, jembatan tetap rusak (tanpa hadiah)")
+	# Peti pengetahuan: kuis nilai >= 70
+	await _go_to(app, "chest")
+	w.interact()
+	_check(_dialog_press(app, "Mulai kuis") and app.screen == "session", "peti pengetahuan: kuis dimulai")
+	await _play_session(app, false)
+	app.go_back()
+	_check(app.screen == "world" and not bool(app._world_ctx("matematika").chest_opened), "kuis gagal: peti tetap tertutup")
+	await _go_to(app, "chest")
+	app.world.interact()
+	_dialog_press(app, "Mulai kuis")
+	await _play_session(app, true)
+	app.go_back()
+	_check(bool(app._world_ctx("matematika").chest_opened), "kuis nilai >= 70: peti pengetahuan terbuka")
+	# Tempat rahasia
+	w = app.world
+	_check(await _go_to(app, "secret"), "tempat rahasia bisa ditemukan")
+	w.interact()
+	_check(bool((app.p.world.found as Dictionary).get("k2/matematika", false)) and _dialog_text(app).contains("Tahukah kamu"), "tempat rahasia: fakta pengetahuan + tercatat")
+	app.hud.close_dialog()
+	# Mini-game dari kios
+	await _go_to(app, "minigame")
+	w.interact()
+	_check(app.screen == "minigame" and str(app.session.from) == "world", "kios mini-game membuka mini-game wilayah")
+	app._back_from_minigame()
+	_check(app.screen == "world", "selesai mini-game kembali ke dunia 3D")
+	# Portal ke pulau lain
+	w = app.world
+	await _go_to(app, "portal")
+	w.interact()
+	_check(_dialog_press(app, "Hutan Bahasa") and app.screen == "world" and str(app.world.ctx.region.id) == "bahasa", "portal: pindah ke Hutan Bahasa")
+	_check(str(app.p.world.region) == "bahasa", "pulau terakhir tersimpan")
+	# Kontrol layar sentuh (joystick HUD)
+	app.hud._layout()
+	app.hud._press(app.hud._joy_center + Vector2(0, -60), 3)
+	_check(app.world.player.move_input.y > 0.4, "joystick layar: geser ke atas = maju")
+	app.hud._release(3)
+	_check(app.world.player.move_input == Vector2.ZERO, "lepas joystick: berhenti")
+	var yaw0: float = app.world.player.yaw
+	app.hud._press(Vector2(app.hud.size.x * 0.6, app.hud.size.y * 0.3), 4)
+	app.hud._input(_drag(4, Vector2(80, 0)))
+	_check(absf(app.world.player.yaw - yaw0) > 0.1, "geser layar kanan memutar kamera")
+	app.hud._release(4)
+	# Profil grafis
+	app.set_setting("gfx", "hemat")
+	app.show_world("ipa")
+	var vp: SubViewport = app.world.get_viewport()
+	_check(is_equal_approx(vp.scaling_3d_scale, 0.6) and not app.world._sun.shadow_enabled, "profil Hemat: resolusi 3D 60%, tanpa bayangan")
+	app.set_setting("gfx", "tinggi")
+	app.show_world("ips")
+	vp = app.world.get_viewport()
+	_check(is_equal_approx(vp.scaling_3d_scale, 1.0) and app.world._sun.shadow_enabled and vp.msaa_3d == Viewport.MSAA_2X, "profil Tinggi: resolusi penuh, bayangan, MSAA")
+	app.set_setting("hero", "perempuan")
+	app.show_world("ips")
+	_check(app.world.player.rig.long_hair, "pilihan karakter perempuan dipakai di dunia 3D")
+	app.set_setting("gfx", "seimbang")
+	app.set_setting("hero", "laki")
+	app.go_back()
+	_check(app.screen == "home", "Kembali dari dunia 3D -> beranda")
+	app.set_player("Ani", 1)
+	app.show_home()
+
+
+func _drag(index: int, rel: Vector2) -> InputEventScreenDrag:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.relative = rel
+	e.position = Vector2(900, 300)
+	return e

@@ -1,9 +1,9 @@
 {
 	"id": "education_sd",
 	"name": "Petualangan Pulau Ilmu SD",
-	"description": "Game pembelajaran SD kelas 1–6: jelajahi Kerajaan Matematika, Hutan Bahasa, Laboratorium IPA, dan Negeri Penjelajah IPS. Mode petualangan, latihan, dan kuis, 11 tipe soal, mini-game, koleksi, prestasi, dan laporan belajar. Bisa dimainkan tanpa internet setelah diunduh.",
+	"description": "Game pembelajaran SD kelas 1–6 dengan dunia petualangan 3D: jelajahi Kerajaan Matematika, Hutan Bahasa, Laboratorium IPA, dan Negeri Penjelajah IPS. Mode petualangan, latihan, dan kuis, 11 tipe soal, mini-game, koleksi, prestasi, dan laporan belajar. Bisa dimainkan tanpa internet setelah diunduh.",
 	"category": "Pendidikan",
-	"version": "2.0.5",
+	"version": "2.1.0",
 	"entry_scene": "res://games/education_sd/main.tscn",
 	"min_launcher_version": "0.84.0",
 	"icon_color": "#2f8a6f",
