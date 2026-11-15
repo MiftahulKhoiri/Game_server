@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.3, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.4, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -17,7 +17,7 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.0.3"
+const VERSION := "2.0.4"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
@@ -41,6 +41,8 @@ var _exit_dialog: ConfirmationDialog
 var _exit_noted := false
 var _touch_start := {}  # indeks jari -> posisi awal sentuhan
 var _trail: FileAccess
+var _frames := 0
+var _anim := true  # animasi gambar (maskot, peta); dimatikan otomatis bila game crash berulang
 
 
 ## Catatan diagnosis (ikut tersinkron ke server): kapan dan dari layar mana game ditutup.
@@ -49,25 +51,48 @@ func _note_exit(reason: String) -> void:
 	_exit_noted = true
 
 
+func _start_audio() -> void:
+	trail("audio: mulai (musik %s, efek %s)" % [p.settings.music, p.settings.sfx])
+	audio.apply(bool(p.settings.music), bool(p.settings.sfx))
+	trail("audio: berjalan")
+
+
+func _process(_delta: float) -> void:
+	_frames += 1
+	if _frames in [1, 10, 60, 180, 600]:
+		trail("frame %d" % _frames)
+
+
+## Mode aman bertahap setelah crash berulang: tingkat 1 musik dimatikan, tingkat 2 animasi gambar juga.
+func _freeze_anim(n: Node) -> void:
+	if n is Control and n.has_method("_process") and n.get_script() != null and n != self:
+		n.set_process.call_deferred(false)
+
+
 func _check_last_trail() -> void:
 	if not FileAccess.file_exists(TRAIL_PATH):
 		return
 	var lines := FileAccess.get_file_as_string(TRAIL_PATH).strip_edges().split("\n")
-	if lines.is_empty() or lines[-1].ends_with(" END"):
+	if lines.is_empty() or lines[-1].ends_with(" END") or lines[-1].ends_with(" PAUSE"):
 		return
 	var tail := Array(lines.slice(-30))
 	var last := str(tail[-1])
-	var kind := "jeda" if last.ends_with(" PAUSE") else "crash"
-	p["crash"] = {"found_at": Time.get_datetime_string_from_system(false, true), "kind": kind, "trail": tail}
-	_note_event("tertutup tidak normal (%s), langkah terakhir: %s" % [kind, last])
+	var kind := "crash"
+	var lvl := mini(int(p.get("safe_level", 0)) + 1, 2)
+	p["safe_level"] = lvl
+	if lvl >= 1:
+		p.settings.music = false
+	p["crash"] = {"found_at": Time.get_datetime_string_from_system(false, true), "kind": kind, "trail": tail,
+		"safe_level": lvl}
+	_note_event("tertutup tidak normal (%s), langkah terakhir: %s; mode aman %d" % [kind, last, lvl])
 	save()
 
 
 func _open_trail() -> void:
 	_trail = FileAccess.open(TRAIL_PATH, FileAccess.WRITE)
 	UI.on_press = func(text: String) -> void: trail("tombol " + text)
-	trail("BUKA v%s | %s | Android %s | %s | layar %s" % [VERSION, OS.get_model_name(), OS.get_version(),
-		RenderingServer.get_video_adapter_name(), str(get_viewport().get_visible_rect().size)])
+	trail("BUKA v%s | %s | Android %s | %s | layar %s | mode aman %d" % [VERSION, OS.get_model_name(), OS.get_version(),
+		RenderingServer.get_video_adapter_name(), str(get_viewport().get_visible_rect().size), int(p.get("safe_level", 0))])
 
 
 func trail(text: String) -> void:
@@ -107,7 +132,10 @@ func _ready() -> void:
 	_check_last_trail()
 	_open_trail()
 	_note_event("dibuka")
-	audio.apply.call_deferred(bool(p.settings.music), bool(p.settings.sfx))
+	_anim = int(p.get("safe_level", 0)) < 2
+	if not _anim:
+		get_tree().node_added.connect(_freeze_anim)
+	_start_audio.call_deferred()
 	if str(p.player.name) == "":
 		show_onboarding()
 	else:

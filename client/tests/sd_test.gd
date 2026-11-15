@@ -473,7 +473,10 @@ func _app_tests() -> void:
 	_check(app.p.has("crash") and str(app.p.crash.kind) == "crash" and str(app.p.crash.trail[-1]).ends_with("Kerajaan Matematika"),
 		"crash terdeteksi saat dibuka lagi: jejak langkah terakhir tersimpan untuk server")
 	_check(str(app.p.diag[-2].reason).begins_with("tertutup tidak normal"), "catatan diagnosis mencatat penutupan tidak normal")
+	_check(int(app.p.safe_level) == 1 and not bool(app.p.settings.music), "mode aman 1 setelah crash: musik dimatikan")
 	app.p.erase("crash")
+	app.p.erase("safe_level")
+	app.p.settings.music = true
 	# Data game SD lama (skema 1) di HP -> dimigrasikan saat dibuka.
 	await root.get_node("GameManager").exit_to_launcher()
 	for f in ["save.json", "save.json.bak"]:

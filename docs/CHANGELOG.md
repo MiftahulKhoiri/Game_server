@@ -2,6 +2,15 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.0.4 — mode aman bertahap untuk crash di Samsung A18 (15 November 2026)
+
+- Jejak dari HP pelapor (SM-A185G, Mali-G57 MC2, layar 1560x720): aplikasi crash 2 kali berturut-turut tepat
+  setelah layar pengenalan tampil, tanpa sentuhan. Di Pi (1560x720, OpenGL) layar yang sama berjalan normal.
+- Jejak kini juga mencatat audio (mulai/berjalan) dan frame 1/10/60/180/600, untuk memisahkan crash saat audio
+  dibuat/diputar dari crash saat menggambar.
+- Mode aman bertahap: setelah crash, musik dimatikan (tingkat 1); bila masih crash, animasi gambar maskot/peta
+  juga dihentikan (tingkat 2). Tingkat tersimpan di progres (`safe_level`) dan ikut terkirim ke server.
+
 ## Paket education_sd v2.0.3 — jejak langkah untuk melacak crash di HP (15 November 2026)
 
 - Di Samsung A18 Android menampilkan "Game server ditutup karena aplikasi ini memiliki bug" (aplikasi crash),
