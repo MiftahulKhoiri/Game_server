@@ -454,6 +454,7 @@ func _app_tests() -> void:
 	await _world_tests(app)
 	await _world_tests2(app)
 	await _base_tests(app)
+	await _v23_tests(app)
 	_check(int((app.p.world.chests as Dictionary).size()) >= 1, "progres dunia 3D ikut tersimpan")
 	print("== Simpan, buka ulang, dan migrasi")
 	var coins := int(app.p.coins)
@@ -792,7 +793,7 @@ func _world_tests2(app: Node) -> void:
 	for m in ms:
 		types[m.type] = true
 		_check(m.has("id") and m.has("name") and m.has("desc") and m.has("goal") and m.has("reward") and m.has("done"), "misi %s punya id/nama/deskripsi/tujuan/hadiah/status" % m.id) if m.id in ["gerbang", "soal_harian"] else null
-	_check(types.size() == 7, "7 jenis misi: utama, sampingan, teka-teki, npc, eksplorasi, benda, harian (%s)" % ", ".join(types.keys()))
+	_check(types.size() == 8, "8 jenis misi: utama, sampingan, teka-teki, npc, eksplorasi, benda, tantangan, harian (%s)" % ", ".join(types.keys()))
 	app.show_missions()
 	_check(app.hud.dialog_open() and _dialog_text(app).contains("Buku Petualangan"), "tombol MISI membuka Buku Petualangan")
 	app.hud.close_dialog()
@@ -903,3 +904,225 @@ func _base_tests(app: Node) -> void:
 	_check(not fb.is_glb() and fb._hips != null, "model GLB tidak ada di APK: otomatis kembali ke model primitif")
 	fb.free()
 	app.go_back()
+
+
+
+func _touch(index: int, pos: Vector2, pressed: bool) -> InputEventScreenTouch:
+	var e := InputEventScreenTouch.new()
+	e.index = index
+	e.position = pos
+	e.pressed = pressed
+	return e
+
+
+func _drag_at(index: int, pos: Vector2, rel: Vector2) -> InputEventScreenDrag:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.position = pos
+	e.relative = rel
+	return e
+
+
+func _v23_tests(app: Node) -> void:
+	print("== 2.3.0: kamera 360°, karakter semi-realistis, pengacau & penjaga, alat, lingkungan")
+	app.set_player("Ani", 2)
+	app.show_world("matematika")
+	await process_frame
+	var w: Node3D = app.world
+	var pl: CharacterBody3D = w.player
+	# Kamera 360°
+	var y0: float = pl.yaw
+	for i in 12:
+		pl.look(Vector2(-TAU / 12.0 / pl.LOOK_SENS, 0))
+	_check(is_equal_approx(fposmod(pl.yaw - y0, TAU), 0.0) or is_equal_approx(fposmod(pl.yaw - y0, TAU), TAU), "kamera berputar penuh 360° dan kembali ke arah semula")
+	_check(pl.yaw >= 0.0 and pl.yaw < TAU, "sudut yaw dibungkus 0..360°")
+	pl.look(Vector2(0, 100000))
+	_check(is_equal_approx(pl.pitch, pl.PITCH_MIN), "batas bawah sudut vertikal (tidak terbalik)")
+	pl.look(Vector2(0, -100000))
+	_check(is_equal_approx(pl.pitch, pl.PITCH_MAX), "batas atas sudut vertikal (kamera tidak masuk tanah)")
+	pl.pitch = -0.3
+	pl.zoom(-100)
+	_check(is_equal_approx(pl.distance, pl.ZOOM_MIN), "zoom dekat dibatasi")
+	pl.zoom(100)
+	_check(is_equal_approx(pl.distance, pl.ZOOM_MAX), "zoom jauh dibatasi")
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	app.hud._input(wheel)
+	_check(pl.distance < pl.ZOOM_MAX, "scroll mouse mendekatkan kamera")
+	# Collision kamera: pemain menempel pagar kiri, kamera diputar ke arah pagar
+	pl.distance = 6.0
+	pl.place(Vector3(-w.PATH_HALF + 0.7, 0.1, -10.0), 0.0)
+	pl.yaw = PI * 1.5  # lengan kamera mengarah ke -X: kamera akan berada di balik pagar kiri
+	pl.pitch = -0.1
+	for i in 30:
+		await process_frame
+	await physics_frame
+	_check(pl._arm.get_hit_length() < 5.0, "kamera tidak menembus pagar (jarak dipendekkan ke %.1f m)" % pl._arm.get_hit_length())
+	# Arah gerak mengikuti kamera
+	pl.place(Vector3(0, 0.1, 6.0), 0.0)
+	pl.yaw = PI / 2.0  # kamera menghadap -X
+	pl.move_input = Vector2(0, 1)
+	await _steps(40)
+	pl.move_input = Vector2.ZERO
+	_check(pl.global_position.x < -1.5 and absf(pl.global_position.z - 6.0) < 0.5, "maju mengikuti arah kamera (kamera diputar 90° -> bergerak ke -X)")
+	# Multisentuh: joystick + geser kamera bersamaan, lalu cubit untuk zoom
+	pl.place(Vector3(0, 0.1, 6.0), 0.0)
+	var hud: Control = app.hud
+	hud._layout()
+	hud._input(_touch(1, hud._joy_center + Vector2(0, -70), true))
+	var right_pt := Vector2(hud.size.x * 0.7, hud.size.y * 0.35)
+	hud._input(_touch(2, right_pt, true))
+	var yaw1: float = pl.yaw
+	hud._input(_drag_at(2, right_pt + Vector2(60, 0), Vector2(60, 0)))
+	_check(pl.move_input.y > 0.5 and absf(pl.yaw - yaw1) > 0.1, "multisentuh: bergerak (joystick) sambil memutar kamera")
+	hud._input(_touch(3, right_pt + Vector2(0, 160), true))
+	pl.distance = 5.0
+	hud._input(_drag_at(3, right_pt + Vector2(0, 300), Vector2(0, 140)))
+	var d_spread: float = pl.distance
+	hud._input(_drag_at(3, right_pt + Vector2(0, 120), Vector2(0, -180)))
+	_check(d_spread < 5.0 and pl.distance > d_spread, "cubit dua jari: direnggangkan = mendekat, dirapatkan = menjauh")
+	for i in [1, 2, 3]:
+		hud._input(_touch(i, Vector2.ZERO, false))
+	_check(pl.move_input == Vector2.ZERO, "lepas semua jari: berhenti")
+	# Karakter semi-realistis
+	var rig = pl.rig
+	_check(rig._joints.size() == 4 and rig._joints.has(rig._leg_l) and rig._joints.has(rig._arm_r), "lengan & tungkai dua ruas (siku & lutut)")
+	rig._cur.clear()
+	rig.animate(0.016, 0.0, true)
+	var knee0: float = (rig._joints[rig._leg_l] as Node3D).rotation.x
+	var max_knee := 0.0
+	var steps_changed := 0
+	var prev: float = rig._leg_l.rotation.x
+	for i in 60:
+		rig.animate(0.016, 4.0, true)
+		max_knee = maxf(max_knee, absf((rig._joints[rig._leg_l] as Node3D).rotation.x))
+		if absf(rig._leg_l.rotation.x - prev) > 0.25:
+			steps_changed += 1
+		prev = rig._leg_l.rotation.x
+	_check(max_knee > 0.3, "lutut menekuk saat berjalan (%.2f rad)" % max_knee)
+	_check(steps_changed == 0, "transisi pose halus (tidak ada lompatan sudut > 0,25 rad per frame)")
+	app.set_setting("hero", "petualang")
+	app.show_world("matematika")
+	_check(app.world.player.rig.is_glb(), "karakter Petualang memakai model 3D KayKit beranimasi")
+	app.set_setting("hero", "laki")
+	if not (app.p.owned as Array).has("topi_petualang"):
+		(app.p.owned as Array).append("topi_petualang")
+	app._wear_extra("hat", "topi_petualang")
+	_check(app.world.player.rig.hat == "petualang", "topi dari toko kostum dipakai karakter 3D")
+	app._wear_extra("hat", "")
+	# Lingkungan
+	w = app.world
+	_check(w.get_node_or_null("Scatter0") != null and w.get_node_or_null("Scatter1") != null, "batu & rumput memakai MultiMesh")
+	_check(w.find_children("*", "CylinderShape3D", true, false).size() >= 0 and w.get_children().filter(func(c): return c is StaticBody3D).size() > 20, "batang pohon dekat jalur punya tabrakan (kamera)")
+	app.show_world("bahasa")
+	_check(app.world.get_node_or_null("Landmark") != null and app.world._env.fog_enabled, "landmark Pohon Bahasa Raksasa + kabut atmosfer (Seimbang)")
+	# Pengacau Lupa
+	app.show_world("matematika")
+	w = app.world
+	var fo: Node3D = w.foes
+	_check(fo.foes.size() == 3, "profil Seimbang: 3 Pengacau Lupa")
+	_check(fo.foes[0].rig.is_glb() and not (fo.foes[0].rig.find_children("Orc_Weapon", "MeshInstance3D", true, false)[0] as MeshInstance3D).visible,
+		"pengacau memakai model GLB berlisensi, senjata disembunyikan (ramah anak)")
+	var f0: Dictionary = fo.foes[0]
+	var n0: Node3D = f0.node
+	var p0 := n0.position
+	w.player.place(Vector3(0, 0.1, -3.0), 0.0)
+	for i in 90:
+		await process_frame
+	_check(n0.position.distance_to(p0) > 0.2 and str(f0.state) == "patroli", "pengacau berpatroli saat pemain jauh")
+	w.player.place(n0.global_position + Vector3(4.0, 0.1, 0), 0.0)
+	for i in 6:
+		await process_frame
+	_check(str(f0.state) == "kejar", "pengacau mengejar saat pemain mendekat")
+	var tamed0 := int(app.p.world.tamed)
+	var ans0 := int(app.p.totals.answered)
+	for i in 200:
+		await process_frame
+		if app.hud.dialog_open():
+			break
+	_check(app.hud.dialog_open() and _dialog_text(app).contains("Pengacau Lupa") and fo.paused, "menyentuh pemain: soal cepat muncul, pengacau berhenti")
+	var q: Dictionary = app._foe_q
+	var right_text := ("Benar" if bool(q.answer) else "Salah") if str(q.type) == "tf" else str(q.options[int(q.answer)])
+	_check(_dialog_press(app, right_text), "pilihan jawaban tampil sebagai tombol")
+	_check(int(app.p.world.tamed) == tamed0 + 1 and int(app.p.totals.answered) == ans0 + 1 and str(f0.state) == "jinak", "jawaban benar: pengacau jinak, jawaban tercatat di progres belajar")
+	var f1: Dictionary = fo.foes[1]
+	var n1: Node3D = f1.node
+	w.player.place(n1.global_position + Vector3(0.5, 0.1, 0), 0.0)
+	app._on_foe(n1)
+	var qq: Dictionary = app._foe_q
+	var wrong_text := ("Salah" if bool(qq.answer) else "Benar") if str(qq.type) == "tf" else str(qq.options[(int(qq.answer) + 1) % (qq.options as Array).size()])
+	_dialog_press(app, wrong_text)
+	await physics_frame
+	_check(str(f1.state) == "mundur" and w.player.velocity.length() > 3.0 and int(app.p.world.tamed) == tamed0 + 1, "jawaban salah: pemain terdorong lembut, pengacau mundur, tidak dihitung jinak")
+	var f2: Dictionary = fo.foes[2]
+	app._on_foe(f2.node)
+	app.hud.close_dialog()
+	await process_frame
+	_check(str(f2.state) == "mundur" and not fo.paused, "dialog ditutup tanpa menjawab: pengacau mundur")
+	app.p.world.tamed = 4
+	app._foe_q = {}
+	app.show_world("matematika")
+	var fx: Node3D = app.world.foes.foes[0].node
+	app._on_foe(fx)
+	var q3: Dictionary = app._foe_q
+	_dialog_press(app, ("Benar" if bool(q3.answer) else "Salah") if str(q3.type) == "tf" else str(q3.options[int(q3.answer)]))
+	_check((app.p.world.inventory as Dictionary).has("jaring"), "misi jinakkan 5 pengacau memberi alat Jaring Ilmu")
+	app._equip_tool("jaring")
+	app._on_foe(app.world.foes.foes[1].node)
+	var q4: Dictionary = app._foe_q
+	var nbtn: int = app.hud._dialog_btns.get_child_count() - 1
+	_check(str(q4.type) == "tf" or nbtn == (q4.options as Array).size() - 1, "Jaring Ilmu menghilangkan satu pilihan salah")
+	app.hud.close_dialog()
+	# Penjaga wilayah: pola berjaga -> hentakan -> lelah
+	var g := 2
+	for t in app.data.topics_for("matematika", g):
+		var old: Dictionary = SdProgress.area_rec(app.p, g, "matematika", str(t.id))
+		if not old.get("done", false):
+			(SdProgress.grade_rec(app.p, g).areas as Dictionary)["matematika/" + str(t.id)] = {"done": true, "stars": 3, "best": 100}
+	app.show_world("matematika")
+	w = app.world
+	var bs: Dictionary = w.foes.boss
+	_check(bool(w.ctx.exam.open) and bool(bs.get("active", false)), "penjaga aktif setelah semua gerbang terbuka")
+	await _go_to(app, "boss")
+	bs.state = "berjaga"
+	bs.t = 0.0
+	w.interact()
+	_check(_dialog_text(app).contains("Tunggu sampai ia lelah") and not _dialog_press(app, "Mulai ujian"), "penjaga berjaga: belum bisa ditantang")
+	app.hud.close_dialog()
+	w.player.place(w.get_node("Boss").global_position + Vector3(0, 0.1, 3.0), 0.0)
+	bs.state = "hentakan"
+	bs.t = 1.15
+	await process_frame
+	await process_frame
+	_check(str(bs.state) == "lelah" and w.player.velocity.length() > 3.0, "hentakan penjaga mendorong pemain yang terlalu dekat, lalu penjaga lelah")
+	await _go_to(app, "boss")
+	bs.state = "lelah"
+	bs.t = 0.0
+	w.interact()
+	_check(_dialog_press(app, "Mulai ujian") and str(app.session.kind) == "ujian", "penjaga lelah: ujian akhir bisa dimulai")
+	await _play_session(app, true)
+	app.go_back()
+	_check((app.p.world.inventory as Dictionary).has("kompas"), "mengalahkan Penjaga Kerajaan Matematika memberi Kompas")
+	# Alat
+	app._equip_tool("kompas")
+	await process_frame
+	_check(app.hud.compass_target != null and app.hud._compass.visible, "Kompas: panah tujuan tampil")
+	for id in ["senter", "teropong", "sepatu", "kaca_pembesar"]:
+		app.p.world.inventory[id] = true
+	app._equip_tool("senter")
+	_check(app.world.flashlight != null, "Senter: lampu menempel pada karakter")
+	app._equip_tool("teropong")
+	_check(is_equal_approx(app.world.player.zoom_max, 12.0), "Teropong: kamera bisa ditarik lebih jauh")
+	app._equip_tool("sepatu")
+	_check(is_equal_approx(app.world.player.speed_bonus, 1.15), "Sepatu Petualang: lebih cepat 15%")
+	app.show_world("ipa")
+	app._equip_tool("kaca_pembesar")
+	var any_item: Node3D = app.world.find_children("Item_*", "Node3D", false, false)[0]
+	_check(any_item.scale.x > 1.5, "Kaca Pembesar: benda tersembunyi membesar dan bersinar")
+	app.show_bag()
+	_check(_dialog_text(app).contains("Tas Petualangan") and _dialog_text(app).contains("Kompas Penjelajah"), "TAS menampilkan alat & kostum")
+	app.hud.close_dialog()
+	app.go_back()
+	app.set_player("Ani", 1)
+	app.show_home()

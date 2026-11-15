@@ -1,4 +1,4 @@
-# Petualangan Pulau Ilmu 3D — audit, rancangan, dan laporan Fase 1–8
+# Petualangan Pulau Ilmu 3D — audit, rancangan, dan laporan Fase 1–8 + 2.3.0
 
 Paket `education_sd` **2.1.0**. Dunia 3D ditambahkan **di atas** game 2D yang sudah ada: semua materi, bank soal,
 penilaian, hadiah, progres, mini-game, koleksi, prestasi, dan laporan tetap dipakai apa adanya. Hanya paket PCK
@@ -215,3 +215,70 @@ koin baru), model GLB + cadangan primitif, penggabungan mesh. `make platform-tes
 - Belum diuji di HP: kinerja nyata Mali-G57, multisentuh nyata, suara hujan/kicau.
 - Draw call Seimbang ±260 masih bisa berat untuk HP kelas bawah: pakai Hemat bila FPS < 30.
 - Model GLB memakai berkas APK: bila APK masa depan menghapusnya, game memakai model primitif (aman, tapi tampilan turun).
+
+
+---
+
+# 2.3.0 — semi-realistis, kamera 360°, pengacau & penjaga, alat
+
+## Audit (Tahap A)
+
+Kamera 2.2.0 sudah bisa berputar horizontal tanpa batas, tetapi diperbarui di langkah fisika (bisa tersendat),
+tanpa zoom, dan batang pohon tidak punya tabrakan (kamera bisa menembus). Karakter pemain berproporsi "chibi"
+(kepala ±1:3) dengan lengan/tungkai satu ruas dan pose yang langsung berganti. Belum ada musuh, pola perilaku
+penjaga, alat/inventaris, dan lingkungan masih jarang di luar lokasi.
+
+## Kamera & kontrol (Tahap B) — `w3d_player.gd`, `w3d_hud.gd`
+
+- Yaw 360° dibungkus 0..TAU; pitch dibatasi −1,2..0,35 rad (tidak terbalik, tidak masuk tanah).
+- Kamera mengikuti di `_process` dengan penghalusan eksponensial (tidak bergetar karena langkah fisika).
+- `SpringArm3D` dengan probe bola 0,25 m: menahan kamera di depan pagar, bangunan, batu, tanah, dan **batang
+  pohon** (pohon dekat jalur kini punya tabrakan statis).
+- Jarak kamera 2,2–8 m (Teropong: 12 m): scroll mouse (PC) dan cubit dua jari di sisi kanan (HP).
+- Multisentuh: joystick (jari 1) + putar kamera (jari 2) + cubit (jari 3) bersamaan; tombol AKSI/LOMPAT/LARI tetap.
+
+## Karakter (Tahap C) — `w3d_rig.gd`
+
+- Pemain & NPC cadangan semi-realistis: tinggi ±1,45 m, kepala ±1:6, leher, lengan/tungkai dua ruas (siku, lutut),
+  tangan, sepatu, kerah, ikat pinggang, alis, hidung, telinga, poni. Topi & aksesori toko kostum lama tampil di 3D
+  (petualang, mahkota, toga, pita, kacamata, syal, ransel).
+- Animasi prosedural dengan transisi halus (setiap sendi mengejar sudut target): idle bernapas, jalan & lari dengan
+  tekukan lutut dan siku, lompat menekuk, interaksi melambai, sorak.
+- Pilihan karakter ketiga **Petualang** memakai model KayKit `anak_desa.glb` (rangka & animasi dari berkas).
+- NPC, warga, penjaga, hewan tetap GLB KayKit (2.2.0); pengacau memakai `goblin.glb` (Quaternius, CC0) berwarna
+  pastel dengan senjata disembunyikan.
+
+## Dunia & gameplay (Tahap D)
+
+- Lingkungan: batu, rumpun rumput, dan bunga dengan MultiMesh (jumlah per profil); kabut atmosfer bertema
+  (Seimbang/Tinggi); landmark tinggi di ujung jalur sebagai penunjuk arah: Istana Angka, Pohon Bahasa Raksasa,
+  Observatorium, Mercusuar Nusantara.
+- **Pengacau Lupa** (`w3d_foes.gd`): patroli → kejar (7 m) → menantang (soal cepat pilihan ganda/benar-salah dari
+  topik wilayah kelas aktif, tercatat lewat `SdProgress.record_answer`) → jinak (benar) / mundur & pemain terdorong
+  lembut (salah atau dialog ditutup). Tidak ada nyawa atau kalah.
+- **Penjaga Wilayah** berpola: berjaga (3 dtk) → hentakan (mendorong pemain dalam 5,5 m) → lelah (4,5 dtk). Ujian
+  akhir hanya bisa dimulai saat penjaga lelah.
+- **Alat petualangan** (`w3d_items.gd`, disimpan di `world.inventory`/`world.equip`): Kompas (panah tujuan), Kaca
+  Pembesar (benda tersembunyi membesar & bersinar), Senter (lampu saat senja/malam), Teropong (zoom 12 m), Sepatu
+  Petualang (+15% kecepatan), Jaring Ilmu (satu pilihan salah dihilangkan saat menjinakkan). Didapat dari misi:
+  kalahkan penjaga tiap pulau, kunjungi 4 pulau, jinakkan 5 pengacau (misi jenis baru "tantangan").
+- **TAS**: daftar alat (pakai satu), kostum/aksesori milik (pakai/lepas), jumlah pengacau dijinakkan & benda.
+
+## Pengujian & ukuran (Tahap E)
+
+- `make sd-test`: **569 pemeriksaan LULUS, 0 gagal** (+42): kamera 360°, batas vertikal, zoom & scroll, tabrakan
+  kamera dengan pagar, arah gerak mengikuti kamera, multisentuh joystick+kamera+cubit, sendi dua ruas, transisi
+  halus, karakter Petualang GLB, topi 3D, MultiMesh & tabrakan pohon, landmark & kabut, pengacau (patroli, kejar,
+  soal, jinak, salah, tutup dialog, Jaring), pola penjaga (berjaga/hentakan/lelah), hadiah alat, efek 5 alat, TAS.
+- `make platform-test`: LULUS.
+- Ukur di Pi (llvmpipe, kelas 4, 1560×720): draw call Hemat 201/173, Seimbang 285/261, Tinggi 304/270
+  (Matematika/IPS); RAM statis 64–70 MB; VRAM 61–85 MB; bangun dunia 91–122 ms. Naik ±6–9% dari 2.2.0 karena
+  pengacau, lingkungan, dan landmark.
+- **Belum diuji di HP Android** (kinerja, multisentuh nyata, kamera). Hasil HP harus dicatat terpisah.
+
+## Belum selesai / risiko
+
+- Model "semi-realistis" pemain masih prosedural; model anak laki-laki/perempuan GLB beranimasi lengkap
+  (lari, lompat, interaksi) dengan lisensi jelas belum tersedia di repo.
+- Animasi GLB hanya idle/walk; lompat/interaksi/sorak untuk model GLB masih gerak prosedural sederhana.
+- Senjata tidak dibuat (sesuai usia SD); "alat petualangan" menggantikannya.

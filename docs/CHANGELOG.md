@@ -2,6 +2,16 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.3.0 — semi-realistis & kamera 360° (15 November 2026)
+
+- Kamera orang-ketiga bebas 360°: batas vertikal, mengikuti halus, tidak menembus pagar/bangunan/pohon, zoom
+  (scroll / cubit dua jari), multisentuh gerak + kamera.
+- Karakter semi-realistis (proporsi natural, siku & lutut, transisi animasi halus, topi & aksesori 3D) + pilihan
+  karakter Petualang (model KayKit).
+- Pengacau Lupa (patroli, kejar, soal cepat untuk menjinakkan) dan Penjaga Wilayah berpola (berjaga, hentakan, lelah).
+- Alat petualangan dari misi (Kompas, Kaca Pembesar, Senter, Teropong, Sepatu, Jaring) dan TAS; lingkungan lebih
+  kaya (batu, rumput, bunga, kabut, landmark). Rincian: [SD_PULAU_ILMU_3D.md](SD_PULAU_ILMU_3D.md).
+
 ## Paket education_sd v2.2.0 — Pulau Ilmu 3D Fase 3–8 (15 November 2026)
 
 - 20 lokasi baru (5 per pulau) dengan teka-teki, warga, museum kartu, hewan, dan mini-game; labirin, jembatan angka,
