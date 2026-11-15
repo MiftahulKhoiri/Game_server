@@ -1,0 +1,596 @@
+{
+	"schema": 1,
+	"lessons": {
+		"berhitung": {
+			"1-2": {
+				"title": "Menghitung Benda",
+				"text": [
+					"Hitung benda satu per satu sambil menunjuk.",
+					"Angka terakhir yang kamu sebut adalah jumlah bendanya.",
+					"Angka bisa diurutkan dari yang kecil ke yang besar."
+				],
+				"example": "Apel, apel, apel → satu, dua, tiga. Ada 3 apel."
+			}
+		},
+		"penjumlahan": {
+			"1-2": {
+				"title": "Penjumlahan",
+				"text": [
+					"Menjumlah artinya menggabungkan dua kelompok benda.",
+					"Mulai dari angka yang lebih besar, lalu hitung maju."
+				],
+				"example": "3 + 2: mulai dari 3, hitung maju 4, 5. Jadi 3 + 2 = 5."
+			},
+			"3-4": {
+				"title": "Penjumlahan Bersusun",
+				"text": [
+					"Susun angka sesuai tempatnya: satuan di bawah satuan, puluhan di bawah puluhan.",
+					"Jumlahkan dari kanan (satuan). Kalau lebih dari 9, simpan 1 ke kolom berikutnya."
+				],
+				"example": "245 + 138 = 383 (5+8=13, tulis 3 simpan 1)."
+			},
+			"5-6": {
+				"title": "Penjumlahan Bilangan Besar & Negatif",
+				"text": [
+					"Untuk bilangan besar, jumlahkan per kolom dari kanan.",
+					"Bilangan negatif ada di kiri nol pada garis bilangan. Menambah berarti bergerak ke kanan."
+				],
+				"example": "-3 + 5 = 2 (dari -3 bergerak 5 langkah ke kanan)."
+			}
+		},
+		"pengurangan": {
+			"1-2": {
+				"title": "Pengurangan",
+				"text": [
+					"Mengurangi artinya mengambil sebagian benda.",
+					"Mulai dari angka pertama, lalu hitung mundur."
+				],
+				"example": "7 − 3: dari 7 hitung mundur 6, 5, 4. Jadi 7 − 3 = 4."
+			},
+			"3-4": {
+				"title": "Pengurangan Bersusun",
+				"text": [
+					"Kurangi dari kanan (satuan).",
+					"Kalau angka atas lebih kecil, pinjam 10 dari kolom sebelah kirinya."
+				],
+				"example": "52 − 27 = 25 (12 − 7 = 5 setelah meminjam)."
+			},
+			"5-6": {
+				"title": "Pengurangan Bilangan Besar & Negatif",
+				"text": [
+					"Cek hasil pengurangan dengan penjumlahan.",
+					"Mengurangi pada garis bilangan berarti bergerak ke kiri."
+				],
+				"example": "2 − 5 = −3 (dari 2 bergerak 5 langkah ke kiri)."
+			}
+		},
+		"perkalian": {
+			"1-2": {
+				"title": "Perkalian Awal",
+				"text": [
+					"Perkalian adalah penjumlahan berulang.",
+					"3 × 2 artinya ada 3 kelompok, masing-masing berisi 2."
+				],
+				"example": "3 × 2 = 2 + 2 + 2 = 6."
+			},
+			"3-4": {
+				"title": "Perkalian",
+				"text": [
+					"Hafalkan perkalian 1 sampai 10, sedikit demi sedikit.",
+					"Urutan perkalian boleh ditukar: 4 × 6 = 6 × 4."
+				],
+				"example": "7 × 8 = 56."
+			},
+			"5-6": {
+				"title": "Perkalian Bilangan Besar & Pangkat",
+				"text": [
+					"Kalikan per bagian: puluhan dan satuan.",
+					"Pangkat dua artinya bilangan dikali dirinya sendiri."
+				],
+				"example": "12 × 5 = 10×5 + 2×5 = 60. 4² = 4 × 4 = 16."
+			}
+		},
+		"pembagian": {
+			"3-4": {
+				"title": "Pembagian",
+				"text": [
+					"Membagi artinya membagi sama banyak.",
+					"Pembagian adalah kebalikan perkalian."
+				],
+				"example": "12 : 3 = 4, karena 4 × 3 = 12."
+			},
+			"5-6": {
+				"title": "Pembagian Bilangan Besar",
+				"text": [
+					"Gunakan perkalian untuk mencari hasil bagi.",
+					"Periksa jawaban: hasil × pembagi = bilangan yang dibagi."
+				],
+				"example": "45 : 5 = 9, karena 9 × 5 = 45."
+			}
+		},
+		"pecahan": {
+			"3-4": {
+				"title": "Pecahan",
+				"text": [
+					"Pecahan menunjukkan bagian dari satu benda utuh yang dibagi sama besar.",
+					"Angka bawah (penyebut) = banyak bagian. Angka atas (pembilang) = bagian yang diambil."
+				],
+				"example": "Kue dibagi 4, diambil 1 → 1/4."
+			},
+			"5-6": {
+				"title": "Pecahan, Desimal, Persen",
+				"text": [
+					"Pecahan senilai: kalikan pembilang dan penyebut dengan bilangan yang sama.",
+					"Persen artinya per seratus."
+				],
+				"example": "1/2 = 2/4 = 50/100 = 50% = 0,5."
+			}
+		},
+		"pengukuran": {
+			"1-2": {
+				"title": "Mengukur",
+				"text": [
+					"Kita bisa membandingkan: lebih panjang, lebih pendek, lebih berat, lebih ringan.",
+					"Satu minggu ada 7 hari. Satu jam ada 60 menit."
+				],
+				"example": "Gajah lebih berat daripada kucing."
+			},
+			"3-4": {
+				"title": "Satuan Ukuran",
+				"text": [
+					"1 meter = 100 sentimeter. 1 kilogram = 1.000 gram.",
+					"1 jam = 60 menit."
+				],
+				"example": "2 meter = 200 sentimeter."
+			},
+			"5-6": {
+				"title": "Pengukuran & Kecepatan",
+				"text": [
+					"1 kilometer = 1.000 meter. 1 liter = 1.000 mililiter.",
+					"Jarak = kecepatan × waktu."
+				],
+				"example": "60 km per jam selama 2 jam = 120 km."
+			}
+		},
+		"bangun_datar": {
+			"1-2": {
+				"title": "Bangun Datar",
+				"text": [
+					"Bangun datar adalah bentuk rata, seperti segitiga, persegi, dan lingkaran.",
+					"Segitiga punya 3 sisi. Persegi punya 4 sisi sama panjang. Lingkaran tidak punya sudut."
+				],
+				"example": "Roda berbentuk lingkaran, papan catur berbentuk persegi."
+			},
+			"3-4": {
+				"title": "Keliling & Luas",
+				"text": [
+					"Keliling = jumlah panjang semua sisi.",
+					"Luas persegi panjang = panjang × lebar."
+				],
+				"example": "Persegi panjang 8 cm × 5 cm: luas 40 cm²."
+			},
+			"5-6": {
+				"title": "Luas Bangun Datar",
+				"text": [
+					"Luas segitiga = alas × tinggi : 2.",
+					"Luas lingkaran = π × r × r (π = 22/7 atau 3,14)."
+				],
+				"example": "Segitiga alas 8 cm, tinggi 6 cm: luas 24 cm²."
+			}
+		},
+		"bangun_ruang": {
+			"3-4": {
+				"title": "Bangun Ruang",
+				"text": [
+					"Bangun ruang punya isi, seperti kubus, balok, tabung, dan bola.",
+					"Kubus seperti dadu: 6 sisi persegi."
+				],
+				"example": "Kaleng berbentuk tabung, bola sepak berbentuk bola."
+			},
+			"5-6": {
+				"title": "Volume Bangun Ruang",
+				"text": [
+					"Volume kubus = sisi × sisi × sisi.",
+					"Volume balok = panjang × lebar × tinggi."
+				],
+				"example": "Kubus rusuk 3 cm: volume 27 cm³."
+			}
+		},
+		"logika": {
+			"1-2": {
+				"title": "Pola Angka",
+				"text": [
+					"Pola adalah susunan yang berulang dengan aturan tetap.",
+					"Cari aturannya: ditambah berapa setiap langkah?"
+				],
+				"example": "2, 4, 6, 8, … aturannya +2, berikutnya 10."
+			},
+			"3-4": {
+				"title": "Pola, FPB, dan KPK",
+				"text": [
+					"FPB = faktor sama yang paling besar.",
+					"KPK = kelipatan sama yang paling kecil."
+				],
+				"example": "KPK 4 dan 6 adalah 12."
+			},
+			"5-6": {
+				"title": "Data & Pola",
+				"text": [
+					"Rata-rata = jumlah semua data dibagi banyak data.",
+					"Modus = data yang paling sering muncul."
+				],
+				"example": "Rata-rata 4, 6, 8 adalah 6."
+			}
+		},
+		"huruf": {
+			"1-2": {
+				"title": "Huruf & Suku Kata",
+				"text": [
+					"Huruf vokal ada lima: a, i, u, e, o.",
+					"Huruf digabung menjadi suku kata, suku kata digabung menjadi kata."
+				],
+				"example": "bu + ku = buku."
+			}
+		},
+		"kata_kalimat": {
+			"1-2": {
+				"title": "Kata & Kalimat",
+				"text": [
+					"Kalimat diawali huruf kapital dan diakhiri tanda titik, tanya, atau seru.",
+					"Nama orang dan nama tempat ditulis dengan huruf kapital."
+				],
+				"example": "Adik minum susu."
+			},
+			"3-4": {
+				"title": "Kata Dasar & Imbuhan",
+				"text": [
+					"Kata dasar bisa mendapat imbuhan, misalnya me-, ber-, di-.",
+					"Gunakan kata baku saat menulis."
+				],
+				"example": "me- + tulis = menulis."
+			},
+			"5-6": {
+				"title": "Kalimat Efektif",
+				"text": [
+					"Kalimat efektif singkat, jelas, dan tidak berulang.",
+					"\"Para\" sudah berarti banyak, jadi kata tidak perlu diulang."
+				],
+				"example": "Para siswa berbaris (bukan: para siswa-siswa)."
+			}
+		},
+		"tanda_baca": {
+			"1-2": {
+				"title": "Tanda Baca",
+				"text": [
+					"Titik (.) mengakhiri kalimat berita.",
+					"Tanda tanya (?) mengakhiri kalimat tanya."
+				],
+				"example": "Siapa namamu?"
+			},
+			"3-4": {
+				"title": "Tanda Baca",
+				"text": [
+					"Koma (,) memisahkan benda yang disebutkan satu per satu.",
+					"Tanda seru (!) untuk perintah atau perasaan kuat."
+				],
+				"example": "Aku membeli apel, jeruk, dan mangga."
+			},
+			"5-6": {
+				"title": "Tanda Baca",
+				"text": [
+					"Setiap tanda baca punya tugas sendiri.",
+					"Tanda petik dipakai untuk kalimat langsung."
+				],
+				"example": "Ibu berkata, \"Ayo makan!\""
+			}
+		},
+		"sinonim_antonim": {
+			"1-2": {
+				"title": "Sinonim & Antonim",
+				"text": [
+					"Sinonim: kata yang artinya sama.",
+					"Antonim: kata yang artinya berlawanan."
+				],
+				"example": "pandai = pintar; besar ↔ kecil."
+			}
+		},
+		"bacaan": {
+			"3-4": {
+				"title": "Memahami Bacaan",
+				"text": [
+					"Baca pelan-pelan, lalu cari kalimat yang menjawab pertanyaan.",
+					"Ide pokok biasanya ada di kalimat utama."
+				],
+				"example": "Pertanyaan \"kapan\" dijawab dengan waktu, misalnya setiap pagi."
+			},
+			"5-6": {
+				"title": "Jenis Teks",
+				"text": [
+					"Teks prosedur berisi langkah-langkah. Teks eksplanasi menjelaskan proses.",
+					"Fakta bisa dibuktikan, opini adalah pendapat."
+				],
+				"example": "\"Matahari terbit di timur\" adalah fakta."
+			}
+		},
+		"cerita": {
+			"3-4": {
+				"title": "Unsur Cerita",
+				"text": [
+					"Tokoh adalah pelaku cerita. Latar adalah tempat dan waktu.",
+					"Fabel adalah cerita tentang binatang yang berperilaku seperti manusia."
+				],
+				"example": "Kancil dan Buaya adalah fabel."
+			}
+		},
+		"pantun": {
+			"3-4": {
+				"title": "Pantun",
+				"text": [
+					"Satu bait pantun ada 4 baris, bersajak a-b-a-b.",
+					"Baris 1–2 sampiran, baris 3–4 isi."
+				],
+				"example": "Baris 1 dan 3 berakhir bunyi yang sama."
+			}
+		},
+		"pancaindra": {
+			"1-2": {
+				"title": "Pancaindra",
+				"text": [
+					"Manusia punya lima indra: mata, telinga, hidung, lidah, dan kulit.",
+					"Setiap indra punya tugas sendiri."
+				],
+				"example": "Mata untuk melihat, telinga untuk mendengar."
+			}
+		},
+		"tubuh": {
+			"1-2": {
+				"title": "Tubuh Kita",
+				"text": [
+					"Tubuh bergerak berkat tulang dan otot.",
+					"Rawat tubuh: gosok gigi, mandi, dan makan sehat."
+				],
+				"example": "Gosok gigi dua kali sehari."
+			},
+			"3-4": {
+				"title": "Organ Tubuh",
+				"text": [
+					"Jantung memompa darah, paru-paru untuk bernapas.",
+					"Rangka melindungi organ tubuh."
+				],
+				"example": "Tengkorak melindungi otak."
+			},
+			"5-6": {
+				"title": "Sistem Tubuh",
+				"text": [
+					"Paru-paru menukar oksigen dan karbon dioksida.",
+					"Sari makanan diserap di usus halus."
+				],
+				"example": "Darah dipompa jantung ke seluruh tubuh."
+			}
+		},
+		"hewan": {
+			"1-2": {
+				"title": "Hewan di Sekitar Kita",
+				"text": [
+					"Ada hewan yang hidup di air, ada yang di darat.",
+					"Ada hewan yang bertelur, ada yang melahirkan."
+				],
+				"example": "Ikan hidup di air dan bernapas dengan insang."
+			},
+			"3-4": {
+				"title": "Makanan & Daur Hidup Hewan",
+				"text": [
+					"Herbivora makan tumbuhan, karnivora makan daging.",
+					"Kupu-kupu: telur → ulat → kepompong → kupu-kupu."
+				],
+				"example": "Sapi adalah herbivora."
+			},
+			"5-6": {
+				"title": "Adaptasi Hewan",
+				"text": [
+					"Hewan menyesuaikan diri dengan lingkungannya.",
+					"Bunglon mengubah warna kulit untuk menyamar."
+				],
+				"example": "Ikan bernapas dengan insang, cacing dengan kulit."
+			}
+		},
+		"tumbuhan": {
+			"1-2": {
+				"title": "Tumbuhan",
+				"text": [
+					"Tumbuhan butuh air, cahaya matahari, dan udara.",
+					"Akar menyerap air, daun membuat makanan."
+				],
+				"example": "Tanaman yang tidak disiram akan layu."
+			},
+			"3-4": {
+				"title": "Fotosintesis",
+				"text": [
+					"Tumbuhan hijau membuat makanan sendiri di daun dengan bantuan cahaya matahari.",
+					"Bunga punya benang sari dan putik."
+				],
+				"example": "Proses membuat makanan di daun disebut fotosintesis."
+			}
+		},
+		"wujud_benda": {
+			"1-2": {
+				"title": "Wujud Benda",
+				"text": [
+					"Benda bisa padat, cair, atau gas.",
+					"Benda cair bentuknya mengikuti wadah."
+				],
+				"example": "Batu padat, air cair, uap gas."
+			},
+			"3-4": {
+				"title": "Perubahan Wujud",
+				"text": [
+					"Mencair: padat jadi cair. Membeku: cair jadi padat.",
+					"Menguap: cair jadi gas."
+				],
+				"example": "Es batu di luar kulkas mencair."
+			}
+		},
+		"energi": {
+			"3-4": {
+				"title": "Energi & Gaya",
+				"text": [
+					"Matahari adalah sumber energi terbesar bagi Bumi.",
+					"Gravitasi menarik benda jatuh ke bawah."
+				],
+				"example": "Gesekan kedua tangan menghasilkan panas."
+			},
+			"5-6": {
+				"title": "Energi & Listrik",
+				"text": [
+					"Energi bisa berubah bentuk, misalnya listrik menjadi cahaya.",
+					"Rangkaian paralel: lampu lain tetap menyala bila satu putus."
+				],
+				"example": "Air mendidih berubah menjadi uap."
+			}
+		},
+		"lingkungan": {
+			"1-2": {
+				"title": "Menjaga Lingkungan",
+				"text": [
+					"Buang sampah pada tempatnya.",
+					"Sampah di sungai bisa menyebabkan banjir."
+				],
+				"example": "Botol plastik bisa didaur ulang."
+			},
+			"3-4": {
+				"title": "Lingkungan Sehat",
+				"text": [
+					"Kurangi sampah plastik dengan membawa tas sendiri.",
+					"Tanam pohon agar udara segar."
+				],
+				"example": "Membawa tas belanja sendiri mengurangi sampah."
+			}
+		},
+		"ekosistem": {
+			"5-6": {
+				"title": "Ekosistem",
+				"text": [
+					"Makhluk hidup saling bergantung.",
+					"Rantai makanan dimulai dari produsen (tumbuhan hijau)."
+				],
+				"example": "rumput → belalang → katak → ular."
+			}
+		},
+		"tata_surya": {
+			"5-6": {
+				"title": "Tata Surya",
+				"text": [
+					"Matahari adalah pusat tata surya.",
+					"Ada delapan planet; Yupiter yang terbesar."
+				],
+				"example": "Bumi adalah planet ketiga dari Matahari."
+			}
+		},
+		"keluarga": {
+			"1-2": {
+				"title": "Keluarga",
+				"text": [
+					"Keluarga inti terdiri dari ayah, ibu, dan anak.",
+					"Anggota keluarga saling menyayangi dan membantu."
+				],
+				"example": "Membantu ibu merapikan tempat tidur."
+			}
+		},
+		"masyarakat": {
+			"1-2": {
+				"title": "Hidup Bermasyarakat",
+				"text": [
+					"Di lingkungan rumah, kita hidup bersama tetangga.",
+					"Gotong royong artinya bekerja bersama-sama."
+				],
+				"example": "Kerja bakti membersihkan selokan."
+			},
+			"5-6": {
+				"title": "Masyarakat & Aturan",
+				"text": [
+					"Aturan dibuat agar hidup bersama tertib.",
+					"Setiap warga punya hak dan kewajiban."
+				],
+				"example": "Mematuhi lampu lalu lintas."
+			}
+		},
+		"pekerjaan": {
+			"1-2": {
+				"title": "Pekerjaan",
+				"text": [
+					"Ada pekerjaan yang menghasilkan barang dan ada yang memberi jasa.",
+					"Petani menghasilkan padi, guru memberi jasa mengajar."
+				],
+				"example": "Dokter bekerja di rumah sakit."
+			}
+		},
+		"lingkungan_alam": {
+			"1-2": {
+				"title": "Kenampakan Alam",
+				"text": [
+					"Gunung, sungai, dan laut adalah kenampakan alam.",
+					"Sawah dan waduk dibuat oleh manusia."
+				],
+				"example": "Sungai mengalir dari gunung ke laut."
+			},
+			"3-4": {
+				"title": "Kenampakan Alam & Buatan",
+				"text": [
+					"Kenampakan alam terbentuk sendiri; buatan dibuat manusia.",
+					"Dataran tinggi biasanya berhawa sejuk."
+				],
+				"example": "Waduk adalah kenampakan buatan."
+			}
+		},
+		"peta": {
+			"3-4": {
+				"title": "Peta & Mata Angin",
+				"text": [
+					"Arah mata angin utama: utara, timur, selatan, barat.",
+					"Peta punya legenda yang menjelaskan simbol."
+				],
+				"example": "Matahari terbit di timur."
+			}
+		},
+		"ekonomi": {
+			"3-4": {
+				"title": "Kegiatan Ekonomi",
+				"text": [
+					"Produksi = membuat barang. Konsumsi = memakai barang.",
+					"Koperasi berasaskan kekeluargaan."
+				],
+				"example": "Pedagang menjual, pembeli membeli."
+			}
+		},
+		"budaya": {
+			"3-4": {
+				"title": "Budaya Nusantara",
+				"text": [
+					"Indonesia punya banyak rumah adat, tarian, dan alat musik daerah.",
+					"Kita menghargai budaya daerah lain."
+				],
+				"example": "Angklung dari Jawa Barat. Rumah gadang dari Sumatra Barat."
+			}
+		},
+		"sejarah": {
+			"5-6": {
+				"title": "Sejarah Bangsa",
+				"text": [
+					"Sumpah Pemuda diikrarkan 28 Oktober 1928.",
+					"Indonesia merdeka pada 17 Agustus 1945."
+				],
+				"example": "Proklamasi dibacakan Soekarno–Hatta."
+			}
+		},
+		"geografi": {
+			"3-4": {
+				"title": "Letak Indonesia",
+				"text": [
+					"Indonesia adalah negara kepulauan.",
+					"Indonesia terletak di antara Benua Asia dan Australia."
+				],
+				"example": "Indonesia punya ribuan pulau."
+			}
+		}
+	}
+}

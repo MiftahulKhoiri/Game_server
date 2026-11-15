@@ -216,3 +216,53 @@ Tangkapan layar diperiksa: desa dari dermaga, akademi di bukit, jembatan & bente
 
 - FPS di HP belum diukur (perlu HP). Profil Hemat disarankan untuk HP lama.
 - Paket 3.1.0 belum diterbitkan (menunggu belajar, misi, pertarungan).
+
+---
+
+## Tahap 3 — Sistem pembelajaran: Akademi Tunas (paket 3.2.0, 15 Nov 2026)
+
+### Alur belajar (sesuai dokumen induk bagian 4)
+
+Pintu akademi di bukit → **aula Akademi Tunas (3D)** → datangi guru di ruang kelas → **daftar materi**
+kelas anak → **materi singkat** (penjelasan + contoh) → **latihan interaktif 5 soal** → **hasil**
+(bintang, XP, koin, pesan positif, status penguasaan) → ulangi / baca materi lagi / kembali.
+
+| Ruang kelas | Guru | Bank soal |
+|---|---|---|
+| Ruang Matematika | Bu Guru Sinta | matematika |
+| Perpustakaan Bahasa | Pak Guru Bayu | bahasa |
+| Laboratorium IPAS (alam) | Profesor Kiko | ipa |
+| Balai Pengetahuan Sosial (IPAS sosial) | Bu Guru Ratna | ips |
+| Aula Pendidikan Pancasila, Sanggar Seni, Lapangan Olahraga | — | pintu "Segera dibuka" (belum ada materi) |
+
+### Berkas
+
+| Berkas | Isi |
+|---|---|
+| `data/lessons.json` | Materi singkat untuk **semua 35 topik**, per pita kelas 1–2 / 3–4 / 5–6 (pita terdekat dipakai bila tidak ada) |
+| `scripts/engine/learning_engine.gd` | Ruang kelas, materi, mulai latihan (adaptif lewat `SdData.pick`), catat jawaban, nilai akhir, status penguasaan, ringkasan rapor |
+| `scripts/world/academy_scene.gd` | Aula 3D: lantai kayu, dinding, pilar, papan tulis bernama, meja, guru (GLB), rak buku, pintu keluar |
+| `scripts/ui/lesson_view.gd` | Layar kelas → materi → latihan → hasil, di atas dunia 3D |
+
+### Aturan penilaian & adaptasi
+
+- Soal memakai 11 tipe soal yang sudah ada; ada **Petunjuk**, boleh **mencoba lagi**, setiap soal ada **pembahasan**.
+- Bintang dari jawaban **benar tanpa salah**: ≥90% = 3, ≥60% = 2, selesai = 1. Bintang terbaik disimpan.
+- Usaha dihargai: jawaban salah tetap mendapat XP & koin kecil; pesan hasil selalu positif.
+- Status: *Belum dipelajari / Sedang dipelajari / Perlu latihan lagi / Sudah dikuasai*. Dikuasai bila ≥8 jawaban
+  terakhir dan ≥80% benar; perlu latihan bila ≥6 jawaban dan <50% — **tidak menyimpulkan dari 1–2 soal**.
+- Adaptif: sering salah → soal dari kelas lebih rendah (konsep sama) + catatan "dibuat sedikit lebih mudah";
+  sudah mahir → soal sulit didahulukan. **Kecepatan menjawab tidak dipakai.**
+- MISI di akademi = Rapor Belajar per ruang (bintang, materi dikuasai).
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **490 pemeriksaan LULUS** (+39): materi semua topik, pita kelas, 4 ruang berisi, latihan 5 soal, bintang & bonus, usaha dihargai, adaptasi mudah/menantang, status penguasaan; masuk aula, pintu segera dibuka, guru, materi, latihan sampai 3 bintang, tersimpan, ulangi, berhenti (dengan konfirmasi), rapor, keluar ke depan pintu akademi |
+| `make platform-test` | **LULUS** |
+
+### Catatan
+
+- Materi Pendidikan Pancasila, Seni, PJOK belum ada di bank soal → ruangnya "Segera dibuka".
+- Materi perlu ditinjau guru dan dicocokkan dengan Capaian Pembelajaran Kurikulum Merdeka (Tahap 9).

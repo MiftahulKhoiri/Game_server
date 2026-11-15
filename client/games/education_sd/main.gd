@@ -11,6 +11,9 @@ const SdAudio := preload("res://games/education_sd/scripts/sd_audio.gd")
 const SaveEngine := preload("res://games/education_sd/scripts/engine/save_engine.gd")
 const WorldEngine := preload("res://games/education_sd/scripts/engine/world_engine.gd")
 const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.gd")
+const LearningEngine := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
+const AcademyScene := preload("res://games/education_sd/scripts/world/academy_scene.gd")
+const LessonView := preload("res://games/education_sd/scripts/ui/lesson_view.gd")
 const TitleScreen := preload("res://games/education_sd/scripts/ui/title_screen.gd")
 const ProfileScreen := preload("res://games/education_sd/scripts/ui/profile_screen.gd")
 const WorldMap := preload("res://games/education_sd/scripts/ui/world_map.gd")
@@ -20,7 +23,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.1.0"
+const VERSION := "3.2.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -29,6 +32,9 @@ var game_id := GAME_ID  # dibaca uji platform
 var data := SdData.new()  # bank soal & toko (dipakai Learning Engine di tahap berikutnya)
 var worlds := WorldEngine.new()
 var npc := NpcEngine.new()  # isi pulau yang sedang dikunjungi (penduduk, tempat, papan)
+var learning := LearningEngine.new()
+var lesson: Control  # ruang kelas yang sedang terbuka di akademi (null bila tidak ada)
+var rng := RandomNumberGenerator.new()
 var p: Dictionary = {}
 var audio: Node
 var screen := ""
@@ -60,8 +66,9 @@ func _ready() -> void:
 	audio.name = "Audio"
 	add_child(audio)
 	_build_toast()
-	if not data.load_data() or not worlds.load_data():
-		_show_error("Data game tidak bisa dimuat:\n" + "\n".join((data.errors + worlds.errors).slice(0, 5)))
+	rng.randomize()
+	if not data.load_data() or not worlds.load_data() or not learning.setup(data):
+		_show_error("Data game tidak bisa dimuat:\n" + "\n".join((data.errors + worlds.errors + learning.errors).slice(0, 5)))
 		return
 	_load_progress()
 	_reset_safe_mode()
@@ -157,8 +164,9 @@ func level() -> int:
 # --- Kerangka layar --------------------------------------------------------------------------------------------
 
 func _clear(id: String) -> void:
-	if screen == "island" and id != "island" and audio != null:
+	if screen in ["island", "academy"] and not id in ["island", "academy"] and audio != null:
 		audio.ambient(false)
+	lesson = null
 	screen = id
 	trail("layar " + id)
 	UI.guard(350)
@@ -185,6 +193,10 @@ func go_back() -> void:
 	if _modal != null:
 		close_modal()
 		return
+	if lesson != null and is_instance_valid(lesson):
+		if not lesson.back():
+			close_class()
+		return
 	match screen:
 		"error":
 			_exit_to_launcher("kembali dari layar galat")
@@ -199,6 +211,8 @@ func go_back() -> void:
 			show_title()
 		"island":
 			leave_island()
+		"academy":
+			leave_academy()
 		_:
 			show_title()
 
@@ -429,13 +443,10 @@ func hero_look() -> Dictionary:
 		"model_path": path if ResourceLoader.exists(path) else ""}
 
 
-func show_island(id: String) -> void:
-	var isl := worlds.island(id)
-	if isl.is_empty() or worlds.status(id, p) != "open":
-		show_map()
-		return
+## Wadah 3D bersama untuk pulau & akademi: SubViewport + adegan + HUD.
+func _make_3d(id: String, scene: Node3D, ctx: Dictionary, title: String, color: Color) -> void:
 	var box := SubViewportContainer.new()
-	_show("island", box)
+	_show(id, box)
 	box.stretch = true
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var prof: Dictionary = IslandWorld.PROFILES.get(str(p.settings.gfx), IslandWorld.PROFILES.seimbang)
@@ -445,32 +456,124 @@ func show_island(id: String) -> void:
 	vp.msaa_3d = Viewport.MSAA_2X if bool(prof.msaa) else Viewport.MSAA_DISABLED
 	vp.handle_input_locally = false
 	box.add_child(vp)
+	world = scene
+	world.name = "World"
+	vp.add_child(world)
+	world.build(ctx)
+	hud = Hud3D.new()
+	hud.name = "Hud"
+	_root.add_child(hud)
+	hud.setup(world, title, color)
+	hud.back_pressed.connect(go_back)
+	hud.bag_pressed.connect(show_bag)
+	hud.set_perf(bool(p.settings.perf))
+	if audio != null:
+		audio.ambient(true)
+
+
+## at: "" (dermaga) atau "academy" (keluar dari pintu akademi).
+func show_island(id: String, at := "") -> void:
+	var isl := worlds.island(id)
+	if isl.is_empty() or worlds.status(id, p) != "open":
+		show_map()
+		return
 	var layout := {}
 	if str(isl.get("layout", "")) != "":
 		if npc.load_layout(str(isl.layout)):
 			layout = npc.layout
 		else:
 			trail("tata letak pulau gagal: " + ", ".join(npc.errors.slice(0, 3)))
-	world = IslandScene.new()
-	world.name = "World"
-	vp.add_child(world)
-	world.build({"island": isl, "layout": layout, "npc_engine": npc if not layout.is_empty() else null,
-		"gfx": str(p.settings.gfx), "hero": hero_look()})
+	_make_3d("island", IslandScene.new(), {"island": isl, "layout": layout, "npc_engine": npc if not layout.is_empty() else null,
+		"gfx": str(p.settings.gfx), "hero": hero_look()}, "Pulau %d · %s" % [int(isl.number), str(isl.name)],
+		Color.from_string(str(isl.color), UI.PRIMARY))
 	world.interacted.connect(_on_island_interact)
 	world.place_changed.connect(_on_place)
-	hud = Hud3D.new()
-	hud.name = "Hud"
-	_root.add_child(hud)
-	hud.setup(world, "Pulau %d · %s" % [int(isl.number), str(isl.name)], Color.from_string(str(isl.color), UI.PRIMARY))
-	hud.back_pressed.connect(go_back)
 	hud.missions_pressed.connect(show_explore)
-	hud.bag_pressed.connect(func() -> void:
-		hud.show_dialog("Tas Petualang", "Koin: %d\nLevel: %d" % [int(p.rpg.coins), level()]))
-	hud.set_perf(bool(p.settings.perf))
 	hud.set_hint("Selamat datang di %s! Jelajahi pulau dan sapa penduduknya. Perahu di dermaga membawamu kembali ke peta." % str(isl.name))
-	if audio != null:
-		audio.ambient(true)
+	if at == "academy" and layout.has("academy_door"):
+		var d: Array = layout.academy_door
+		world.player.place(Vector3(float(d[0]), world.ground_y(float(d[0]), float(d[1]) + 2.0) + 0.3, float(d[1]) + 2.0), PI)
+		hud.set_hint("Akademi Tunas. Kembali kapan saja untuk belajar lagi!")
 	trail("pulau %s grafis %s" % [id, str(p.settings.gfx)])
+
+
+func show_bag() -> void:
+	if hud == null:
+		return
+	var lv := level()
+	var t: Dictionary = p.learning.totals
+	hud.show_dialog("Tas Petualang", "Level %d  (XP %d / %d)\nKoin: %d\nJawaban benar: %d dari %d" % [lv, int(p.rpg.xp),
+		SaveEngine.xp_for(lv + 1), int(p.rpg.coins), int(t.correct), int(t.answered)])
+
+
+# --- Akademi (Tahap 3) ------------------------------------------------------------------------------------------
+
+func enter_academy() -> void:
+	_sfx("buka")
+	_make_3d("academy", AcademyScene.new(), {"gfx": str(p.settings.gfx), "hero": hero_look()}, "Akademi Tunas", Color("b5443a"))
+	world.interacted.connect(_on_academy_interact)
+	hud.missions_pressed.connect(show_report)
+	hud.set_hint("Selamat datang di Akademi Tunas! Datangi guru di setiap ruang kelas untuk belajar.")
+	trail("akademi")
+
+
+func leave_academy() -> void:
+	save()
+	show_island(str(p.world.island), "academy")
+
+
+func _on_academy_interact(kind: String, id: String) -> void:
+	trail("akademi %s/%s" % [kind, id])
+	_sfx("klik")
+	match kind:
+		"teacher":
+			open_class(id)
+		"closed":
+			var r := LearningEngine.room(id)
+			hud.show_dialog(str(r.get("name", "")), "Ruang %s segera dibuka. Sementara itu, belajarlah di ruang lain dulu, ya!" % str(r.get("name", "")))
+		"exit":
+			leave_academy()
+
+
+func open_class(room_id: String) -> void:
+	if hud == null or world == null:
+		return
+	hud.visible = false
+	world.player.frozen = true
+	world.player.move_input = Vector2.ZERO
+	lesson = LessonView.new()
+	lesson.name = "Lesson"
+	_root.add_child(lesson)
+	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), room_id)
+	lesson.closed.connect(close_class)
+	lesson.changed.connect(save)
+	trail("kelas " + room_id)
+
+
+func close_class() -> void:
+	if lesson != null and is_instance_valid(lesson):
+		lesson.queue_free()
+	lesson = null
+	save()
+	if hud != null:
+		hud.visible = true
+	if world != null:
+		world.player.frozen = false
+		world.end_talk()
+
+
+## Rapor kecil (tombol MISI di akademi): bintang & materi dikuasai per ruang kelas.
+func show_report() -> void:
+	var sm: Dictionary = learning.room_summary(p, grade())
+	var rows: Array = ["Kelas %d — %s" % [grade(), str(p.profile.name)], ""]
+	for r in LearningEngine.ROOMS:
+		if not sm.has(str(r.id)):
+			continue
+		var e: Dictionary = sm[str(r.id)]
+		rows.append("%s: %d/%d bintang, %d dari %d materi dikuasai" % [str(r.name), int(e.stars), int(e.max), int(e.mastered), int(e.topics)])
+	rows.append("")
+	rows.append("Materi dikuasai bila banyak jawaban terakhir benar sejak percobaan pertama.")
+	hud.show_list("Rapor Belajar", rows)
 
 
 func _on_island_interact(kind: String, id: String) -> void:
@@ -490,7 +593,9 @@ func _on_island_interact(kind: String, id: String) -> void:
 					str(isl.intro) + "\n\nTempat di pulau ini: " + ", ".join(isl.get("places", [])))
 		"npc":
 			talk(id)
-		"gate", "boulder", "academy":
+		"academy":
+			enter_academy()
+		"gate", "boulder":
 			var sg: Dictionary = npc.layout.get("signs", {}).get(kind, {})
 			hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
 

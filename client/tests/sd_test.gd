@@ -27,6 +27,7 @@ func _initialize() -> void:
 	await _question_tests()
 	await _v3_engine_tests()
 	await _v3_npc_tests()
+	await _v3_learning_tests()
 	await _v3_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
@@ -290,6 +291,7 @@ func _answer(qv, right: bool) -> void:
 const SaveEngine := preload("res://games/education_sd/scripts/engine/save_engine.gd")
 const WorldEngine := preload("res://games/education_sd/scripts/engine/world_engine.gd")
 const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.gd")
+const LearningEngine := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
 const MODEL_DIR := "res://assets/models/"
 
 
@@ -407,6 +409,53 @@ func _v3_npc_tests() -> void:
 		if not ResourceLoader.exists(MODEL_DIR + str(n.npcs[id].model) + ".glb"):
 			models_ok = false
 	_check(models_ok, "model semua penduduk ada di APK")
+
+
+func _v3_learning_tests() -> void:
+	print("== 3.x Learning Engine (materi, latihan, penilaian, adaptasi)")
+	var d := SdData.new()
+	d.load_data()
+	var le := LearningEngine.new()
+	_check(le.setup(d), "materi singkat ada untuk semua %d topik %s" % [d.topics.size(), str(le.errors)])
+	_check(LearningEngine.band(1) == "1-2" and LearningEngine.band(4) == "3-4" and LearningEngine.band(6) == "5-6", "pita kelas 1-2 / 3-4 / 5-6")
+	_check(str(le.lesson("penjumlahan", 1).title) != str(le.lesson("penjumlahan", 5).title), "materi penjumlahan kelas 1 berbeda dengan kelas 5")
+	_check(not le.lesson("sinonim_antonim", 3).is_empty(), "pita yang tidak ada memakai materi terdekat")
+	var p := _prof(2)
+	var rooms_ok := true
+	for r in ["matematika", "bahasa", "ipas_alam", "ipas_sosial"]:
+		if le.topics(r, 2, p).is_empty():
+			rooms_ok = false
+	_check(rooms_ok and le.topics("pancasila", 2, p).is_empty(), "4 ruang punya materi kelas 2; ruang segera dibuka kosong")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var ses: Dictionary = le.start(p, "penjumlahan", 2, rng)
+	_check((ses.questions as Array).size() == 5 and str(ses.mode) == "normal", "latihan 5 soal, mode normal")
+	var coins0 := int(p.rpg.coins)
+	for q in ses.questions:
+		LearningEngine.answer(p, ses, q, true, true)
+	var res: Dictionary = LearningEngine.finish(p, ses, "Matematika")
+	_check(int(res.stars) == 3 and int(res.bonus) == 25 and bool(res.first), "semua benar: 3 bintang, bonus pertama kali")
+	_check(int(p.rpg.coins) == coins0 + 15 + 25 and int(p.rpg.xp) > 0 and int(p.learning.totals.answered) == 5, "koin, XP, dan total jawaban dicatat")
+	_check(str(LearningEngine.status(p, 2, "penjumlahan")) == "belajar", "5 jawaban belum cukup untuk dinyatakan menguasai")
+	var ses2: Dictionary = le.start(p, "penjumlahan", 2, rng)
+	for q in ses2.questions:
+		LearningEngine.answer(p, ses2, q, false, false)
+	var res2: Dictionary = LearningEngine.finish(p, ses2, "Matematika")
+	_check(int(res2.stars) == 1 and int(p.academy["2/penjumlahan"].stars) == 3 and int(p.academy["2/penjumlahan"].sessions) == 2,
+		"latihan buruk: 1 bintang, bintang terbaik tetap 3")
+	_check(int(res2.coins) > 0 and str(res2.message).contains("berusaha"), "usaha tetap dihargai, pesan positif")
+	var ses3: Dictionary = le.start(p, "penjumlahan", 2, rng)
+	_check(str(ses3.mode) == "mudah" and int(ses3.q_grade) == 1 and LearningEngine.adapt_note(ses3) != "", "sering salah: soal dari kelas lebih rendah + catatan")
+	var p2 := _prof(2)
+	var st := LearningEngine.stats(p2, 2, "pengurangan")
+	st.recent = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+	st.correct = 9
+	_check(LearningEngine.status(p2, 2, "pengurangan") == "kuasai", "banyak jawaban benar terakhir: dikuasai")
+	_check(str(le.start(p2, "pengurangan", 2, rng).mode) == "tantang", "sudah mahir: soal lebih menantang")
+	st.recent = [0, 0, 1, 0, 0, 0, 0]
+	_check(LearningEngine.status(p2, 2, "pengurangan") == "perlu_latihan", "sering salah: perlu latihan lagi")
+	var sm: Dictionary = le.room_summary(p, 2)
+	_check(sm.size() == 4 and int(sm.matematika.stars) >= 3, "ringkasan rapor per ruang")
 
 
 # --- 3.x Dunia Enam Pulau: aplikasi utuh --------------------------------------------------------------------------
@@ -610,6 +659,101 @@ func _v3_app_tests() -> void:
 	await _frames(1)
 	_check(str(app.hud._dialog_text.text).contains("TEMPAT (") and str(app.hud._dialog_text.text).contains("Pak Lurah Darmo"), "MISI: catatan jelajah tempat & penduduk")
 	app.hud.close_dialog()
+	print("== 3.x Akademi Tunas: masuk, ruang kelas, materi, latihan, hasil")
+	w.player.place(w.spot_pos("academy") + Vector3(0, 0.3, 0.6), PI)
+	await _frames(3)
+	_check(w.focus_kind() == "academy", "di depan pintu akademi: AKSI menyala")
+	app.hud.trigger_action()
+	await _frames(3)
+	_check(app.screen == "academy" and app.world != null and app.world.teachers.size() == 4, "masuk Akademi Tunas: 4 ruang kelas dengan guru")
+	var aw: Node3D = app.world
+	var tglb := true
+	for id in aw.teachers:
+		var tr = aw.teachers[id].get_meta("rig")
+		if tr == null or not tr.is_glb():
+			tglb = false
+	_check(tglb, "guru memakai model GLB")
+	var closed_n := 0
+	for sp in aw.spots:
+		if str(sp.kind) == "closed":
+			closed_n += 1
+	_check(closed_n == 3, "Pancasila, Seni, PJOK: pintu segera dibuka")
+	aw.player.move_input = Vector2(0, 1)
+	await _frames(30)
+	aw.player.move_input = Vector2.ZERO
+	_check(aw.player.global_position.z < aw.spawn_point().z - 1.0 and absf(aw.player.global_position.y) < 0.5, "berjalan di dalam aula")
+	aw.player.place(aw.spot_pos("closed", "seni") + Vector3(0, 0.2, 0), 0.0)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(1)
+	_check(app.hud.dialog_open() and str(app.hud._dialog_text.text).contains("segera dibuka"), "pintu Sanggar Seni: segera dibuka")
+	app.hud.close_dialog()
+	aw.player.place(aw.spot_pos("teacher", "matematika") + Vector3(0, 0.2, 0), 0.0)
+	await _frames(3)
+	_check(aw.focus_kind() == "teacher", "dekat Bu Guru Sinta: AKSI menyala")
+	app.hud.trigger_action()
+	await _frames(2)
+	var lv: Control = app.lesson
+	_check(lv != null and lv.phase == "kelas" and not app.hud.visible and aw.player.frozen, "ruang kelas terbuka, HUD disembunyikan, pemain berhenti")
+	var tbtns := lv.find_children("Topic_*", "Button", true, false)
+	_check(tbtns.size() >= 3, "daftar materi kelas 2 Matematika (%d materi)" % tbtns.size())
+	var tname := str(tbtns[0].name).trim_prefix("Topic_")
+	SdUI.guard_until_ms = 0
+	tbtns[0].pressed.emit()
+	await _frames(1)
+	_check(lv.phase == "materi" and _btn(lv, "StartPractice") != null, "materi singkat + tombol Mulai Latihan")
+	_press(lv, "StartPractice")
+	await _frames(1)
+	_check(lv.phase == "latihan" and lv.current_question_view() != null and (lv.session.questions as Array).size() == 5, "latihan 5 soal dimulai")
+	var xp0 := int(app.p.rpg.xp)
+	var guard := 0
+	while lv.phase == "latihan" and guard < 12:
+		guard += 1
+		var qv = lv.current_question_view()
+		_answer(qv, true)
+		await _frames(1)
+		if lv.phase == "latihan" and lv.current_question_view() == qv:
+			qv._emit_finish()
+		await _frames(1)
+	_check(lv.phase == "hasil" and int(lv.result.stars) == 3, "semua benar: 3 bintang")
+	_check(int(app.p.rpg.xp) > xp0 and int(app.p.academy["2/" + tname].stars) == 3 and int(app.p.academy["2/" + tname].sessions) == 1,
+		"XP bertambah, bintang & jumlah latihan tercatat")
+	_check(str((app.p.learning.history as Array)[0].mode) == "akademi", "riwayat belajar tercatat")
+	var sv := SaveManager.load_progress("education_sd", 3)
+	_check(sv.data.academy.has("2/" + tname), "hasil latihan tersimpan")
+	_press(lv, "Again")
+	await _frames(1)
+	_check(lv.phase == "latihan", "Ulangi latihan")
+	app.go_back()
+	await _frames(1)
+	_check(lv.phase == "berhenti", "kembali saat latihan: tanya dulu")
+	app.go_back()
+	await _frames(1)
+	_check(lv.phase == "latihan", "batal berhenti: lanjut latihan")
+	var qv2 = lv.current_question_view()
+	_answer(qv2, false)
+	await _frames(1)
+	_check(str(qv2._fb.text) != "" and qv2._fb.visible, "salah: umpan balik lembut / pembahasan tampil")
+	_press(lv, "Back")
+	await _frames(1)
+	_press(lv, "StopYes")
+	await _frames(1)
+	_check(lv.phase == "kelas", "berhenti -> daftar materi")
+	_press(lv, "Back")
+	await _frames(2)
+	_check(app.lesson == null and app.hud.visible and not aw.player.frozen, "ruang kelas ditutup, kembali berjalan di aula")
+	app.show_report()
+	await _frames(1)
+	_check(str(app.hud._dialog_text.text).contains("Ruang Matematika"), "Rapor Belajar per ruang kelas")
+	app.hud.close_dialog()
+	aw.player.place(aw.spot_pos("exit") + Vector3(0, 0.2, 0), PI)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(3)
+	_check(app.screen == "island" and app.world.player.global_position.distance_to(app.world.spot_pos("academy")) < 4.0,
+		"keluar akademi: kembali di depan pintu akademi")
+	w = app.world
+
 	w.player.place(w.spot_pos("dock") + Vector3(0, 0.2, -0.8), 0.0)
 	await _frames(3)
 	_check(w.focus_kind() == "dock", "dekat perahu: tombol AKSI menyala")

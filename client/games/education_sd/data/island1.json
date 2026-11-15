@@ -513,7 +513,7 @@
 			"lines": [
 				"Selamat datang di Dunia Pemula, {name}!",
 				"Sejak Kabut Lupa datang, Raja Goblin Kecil dan anak buahnya mencuri barang-barang warga.",
-				"Belajarlah dulu di Akademi Tunas di atas bukit utara. Bu Guru Sinta akan membantumu."
+				"Belajarlah dulu di Akademi Tunas di atas bukit utara. Para guru di sana akan membantumu."
 			],
 			"again": [
 				"Akademi Tunas ada di bukit sebelah utara desa. Semangat, {name}!",
@@ -531,13 +531,13 @@
 			],
 			"wander": 2.0,
 			"lines": [
-				"Halo {name}! Aku Bu Guru Sinta.",
-				"Di Akademi Tunas kamu belajar berhitung, membaca, dan mengenal alam.",
-				"Ilmu yang kamu pelajari akan menjadi jurus ilmu untuk mengusir goblin!"
+				"Halo {name}! Aku Bu Guru Sinta, guru Matematika di Akademi Tunas.",
+				"Di akademi kamu belajar berhitung, membaca, dan mengenal alam bersama para guru.",
+				"Ilmu yang kamu pelajari akan menjadi jurus ilmu untuk mengusir goblin! Masuklah lewat pintu akademi."
 			],
 			"again": [
-				"Ruang belajar akademi sedang dirapikan. Sebentar lagi kelas dibuka!",
-				"Sambil menunggu, jelajahi pulau dan kenali warganya."
+				"Pintu akademi selalu terbuka. Masuk dan belajarlah bersama para guru, ya!",
+				"Materi yang sudah dikuasai membuatmu semakin kuat."
 			]
 		},
 		{
@@ -658,10 +658,6 @@
 		"boulder": {
 			"title": "Batu Besar",
 			"text": "Batu besar menutup pintu Gua Goblin. Terlalu berat untuk didorong sendirian."
-		},
-		"academy": {
-			"title": "Akademi Tunas",
-			"text": "Pintu akademi masih tertutup. Bu Guru Sinta sedang menyiapkan kelas."
 		}
 	}
 }
