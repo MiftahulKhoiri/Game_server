@@ -11,6 +11,10 @@ var skin := Color("f5c9a0")
 var hair := Color("3a2a20")
 var long_hair := false
 var extra := ""  # "" / "mahkota" / "kacamata" / "topi_kapten" / "telinga" / "helm"
+var hat := ""  # dari toko kostum: petualang / mahkota / toga / pita
+var acc := ""  # kacamata / syal / ransel
+var _joints: Dictionary = {}  # pangkal lengan/tungkai -> sendi siku/lutut
+var _cur: Dictionary = {}  # sudut sendi saat ini (transisi halus)
 
 ## Fase 5: model GLB berlisensi yang SUDAH ADA di APK (res://assets/models, KayKit CC0 — lihat
 ## assets/models/LISENSI_*.txt). Bila berkas tidak ada (APK lain/lebih lama), otomatis kembali ke model primitif.
@@ -90,74 +94,142 @@ static func cyl(top: float, bottom: float, h: float, seg := 12) -> CylinderMesh:
 
 
 ## Bangun ulang model dari properti warna/gaya saat ini.
+## Versi semi-realistis (2.3.0): proporsi anak ±1,45 m (kepala ±1:6), leher, lengan & tungkai dua ruas
+## (siku/lutut), tangan, sepatu, kerah, ikat pinggang, alis, hidung, telinga, rambut berponi.
 func build() -> void:
 	for c in get_children():
 		c.queue_free()
 	_glb = null
 	_ap = null
 	_hips = null
+	_joints.clear()
 	if glb_id != "" and _build_glb():
 		return
+	var pants_c := pants
 	_hips = Node3D.new()
-	_hips.position = Vector3(0, 0.78, 0)
+	_hips.position = Vector3(0, HIP_Y, 0)
 	add_child(_hips)
 	_torso = Node3D.new()
 	_hips.add_child(_torso)
-	_torso.add_child(part(capsule(0.27, 0.78), shirt, Vector3(0, 0.3, 0)))
-	_torso.add_child(part(cyl(0.2, 0.29, 0.22), pants, Vector3(0, -0.02, 0)))
+	_torso.add_child(part(capsule(0.16, 0.5), shirt, Vector3(0, 0.25, 0), Vector3(1.0, 1.0, 0.72)))
+	_torso.add_child(part(cyl(0.135, 0.15, 0.1), shirt.darkened(0.12), Vector3(0, 0.46, 0)))
+	_torso.add_child(part(cyl(0.155, 0.16, 0.07), Color("4a3b30"), Vector3(0, 0.02, 0)))
+	_torso.add_child(part(box(Vector3(0.06, 0.05, 0.02)), Color("d9b04a"), Vector3(0, 0.02, 0.125)))
+	_torso.add_child(part(cyl(0.15, 0.16, 0.14), pants_c, Vector3(0, -0.06, 0), Vector3(1.0, 1.0, 0.78)))
+	_torso.add_child(part(cyl(0.05, 0.055, 0.1), skin, Vector3(0, 0.53, 0)))
 	_head = Node3D.new()
-	_head.position = Vector3(0, 0.88, 0)
+	_head.position = Vector3(0, 0.68, 0)
 	_torso.add_child(_head)
-	_head.add_child(part(sphere(0.3), skin))
+	_head.add_child(part(sphere(0.125), skin, Vector3.ZERO, Vector3(0.92, 1.12, 1.0)))
+	_head.add_child(part(sphere(0.06), skin, Vector3(0, -0.07, 0.04), Vector3(1.2, 0.8, 1.0)))
 	for side in [-1.0, 1.0]:
-		_head.add_child(part(sphere(0.055), Color("2b2440"), Vector3(0.11 * side, 0.03, 0.26)))
-		_head.add_child(part(sphere(0.022), Color.WHITE, Vector3(0.11 * side + 0.02, 0.05, 0.305)))
-		_head.add_child(part(sphere(0.05), Color("f29c9c"), Vector3(0.18 * side, -0.08, 0.22), Vector3(1, 0.6, 0.4)))
-	_head.add_child(part(box(Vector3(0.12, 0.03, 0.03)), Color("b0473a"), Vector3(0, -0.12, 0.27)))
-	# rambut: topi rambut + (opsional) rambut panjang di belakang
-	_head.add_child(part(sphere(0.315), hair, Vector3(0, 0.07, -0.03), Vector3(1.0, 0.85, 1.0)))
+		_head.add_child(part(sphere(0.022), Color.WHITE, Vector3(0.045 * side, 0.015, 0.105), Vector3(1.2, 0.9, 0.6)))
+		_head.add_child(part(sphere(0.013), Color("3a2a20"), Vector3(0.045 * side, 0.014, 0.117)))
+		_head.add_child(part(box(Vector3(0.04, 0.008, 0.01)), hair.darkened(0.1), Vector3(0.045 * side, 0.05, 0.112)))
+		_head.add_child(part(sphere(0.028), skin.darkened(0.06), Vector3(0.118 * side, 0.0, 0.0), Vector3(0.5, 1.0, 0.8)))
+		_head.add_child(part(sphere(0.02), Color("f2a0a0"), Vector3(0.07 * side, -0.04, 0.095), Vector3(1.2, 0.7, 0.4)))
+	_head.add_child(part(sphere(0.018), skin.darkened(0.05), Vector3(0, -0.01, 0.125), Vector3(0.9, 1.0, 1.0)))
+	_head.add_child(part(box(Vector3(0.045, 0.01, 0.01)), Color("b0473a"), Vector3(0, -0.06, 0.112)))
+	_head.add_child(part(sphere(0.132), hair, Vector3(0, 0.035, -0.012), Vector3(0.95, 0.95, 1.0)))
+	_head.add_child(part(box(Vector3(0.2, 0.045, 0.06)), hair, Vector3(0, 0.085, 0.085)))
 	if long_hair:
-		_head.add_child(part(capsule(0.2, 0.62), hair, Vector3(0, -0.2, -0.17), Vector3(1.35, 1, 0.7)))
-		_head.add_child(part(sphere(0.07), Color("ff7eb6"), Vector3(0.22, 0.2, 0.05)))
-	match extra:
-		"mahkota":
-			_head.add_child(part(cyl(0.2, 0.23, 0.16, 8), Color("f0b429"), Vector3(0, 0.33, 0)))
-			for i in 5:
-				var a := TAU * i / 5.0
-				_head.add_child(part(sphere(0.045), Color("e0453a"), Vector3(cos(a) * 0.21, 0.42, sin(a) * 0.21)))
-		"kacamata":
-			for side in [-1.0, 1.0]:
-				var ring := TorusMesh.new()
-				ring.inner_radius = 0.06
-				ring.outer_radius = 0.085
-				var rmi := part(ring, Color("2b2440"), Vector3(0.11 * side, 0.03, 0.29))
-				rmi.rotation.x = PI / 2.0
-				_head.add_child(rmi)
-			_head.add_child(part(capsule(0.12, 0.5), Color.WHITE, Vector3(0, -1.15, 0.05), Vector3(2.4, 1.4, 1.4)))
-		"topi_kapten":
-			_head.add_child(part(cyl(0.3, 0.3, 0.12), Color("1f2d50"), Vector3(0, 0.26, 0)))
-			_head.add_child(part(box(Vector3(0.36, 0.03, 0.18)), Color("1f2d50"), Vector3(0, 0.21, 0.27)))
-			_head.add_child(part(sphere(0.05), Color("f0b429"), Vector3(0, 0.3, 0.29)))
-		"telinga":
-			for side in [-1.0, 1.0]:
-				var ear := part(capsule(0.07, 0.4), skin.darkened(0.15), Vector3(0.17 * side, 0.38, -0.05))
-				ear.rotation.z = -0.4 * side
-				_head.add_child(ear)
-		"helm":
-			_head.add_child(part(sphere(0.34), Color("cfe8ff"), Vector3(0, 0.02, 0), Vector3(1, 1, 1)))
-	_arm_l = _limb(Vector3(-0.36, 0.56, 0), 0.085, 0.58, shirt, skin)
-	_arm_r = _limb(Vector3(0.36, 0.56, 0), 0.085, 0.58, shirt, skin)
+		_head.add_child(part(capsule(0.1, 0.36), hair, Vector3(0, -0.11, -0.08), Vector3(1.15, 1.0, 0.6)))
+		_head.add_child(part(sphere(0.035), Color("ff7eb6"), Vector3(0.1, 0.09, 0.03)))
+	_extras()
+	_arm_l = _arm(-1.0)
+	_arm_r = _arm(1.0)
 	_torso.add_child(_arm_l)
 	_torso.add_child(_arm_r)
-	_leg_l = _limb(Vector3(-0.13, -0.05, 0), 0.1, 0.72, pants, Color("4a3b30"))
-	_leg_r = _limb(Vector3(0.13, -0.05, 0), 0.1, 0.72, pants, Color("4a3b30"))
+	_leg_l = _leg(-1.0, pants_c)
+	_leg_r = _leg(1.0, pants_c)
 	_hips.add_child(_leg_l)
 	_hips.add_child(_leg_r)
-	# Fase 8: gabungkan bagian yang bergerak bersama (kepala, badan, tiap tungkai) -> ±8 draw call per karakter.
+	# Fase 8: gabungkan bagian yang bergerak bersama -> sedikit draw call per karakter.
 	Merge.merge(_head, [])
 	Merge.merge(_torso, [_head, _arm_l, _arm_r])
 	for limb in [_arm_l, _arm_r, _leg_l, _leg_r]:
-		Merge.merge(limb, [])
+		Merge.merge(limb, [_joints.get(limb, null)])
+		if _joints.has(limb):
+			Merge.merge(_joints[limb], [])
+
+
+const HIP_Y := 0.74
+
+
+## Lengan dua ruas: bahu -> siku -> tangan. Ruas bawah (siku) disimpan di _joints.
+func _arm(side: float) -> Node3D:
+	var sh := Node3D.new()
+	sh.position = Vector3(0.2 * side, 0.43, 0)
+	sh.add_child(part(capsule(0.052, 0.27), shirt, Vector3(0, -0.12, 0)))
+	var el := Node3D.new()
+	el.position = Vector3(0, -0.25, 0)
+	el.add_child(part(capsule(0.044, 0.25), skin, Vector3(0, -0.11, 0)))
+	el.add_child(part(sphere(0.05), skin, Vector3(0, -0.25, 0.01), Vector3(0.9, 1.1, 0.7)))
+	sh.add_child(el)
+	_joints[sh] = el
+	return sh
+
+
+## Tungkai dua ruas: pinggul -> lutut -> sepatu.
+func _leg(side: float, c: Color) -> Node3D:
+	var hp := Node3D.new()
+	hp.position = Vector3(0.085 * side, -0.07, 0)
+	hp.add_child(part(capsule(0.07, 0.36), c, Vector3(0, -0.17, 0)))
+	var kn := Node3D.new()
+	kn.position = Vector3(0, -0.34, 0)
+	kn.add_child(part(capsule(0.058, 0.33), c.darkened(0.05), Vector3(0, -0.15, 0)))
+	kn.add_child(part(box(Vector3(0.1, 0.07, 0.2)), Color("3a3040"), Vector3(0, -0.31, 0.035)))
+	kn.add_child(part(box(Vector3(0.1, 0.02, 0.2)), Color("f4efe6"), Vector3(0, -0.345, 0.035)))
+	hp.add_child(kn)
+	_joints[hp] = kn
+	return hp
+
+
+## Topi/aksesori (toko kostum lama) dan ciri khas NPC cadangan.
+func _extras() -> void:
+	match hat:
+		"petualang":
+			_head.add_child(part(cyl(0.2, 0.2, 0.015, 16), Color("8a6b3a"), Vector3(0, 0.1, 0)))
+			_head.add_child(part(cyl(0.11, 0.13, 0.1, 14), Color("a07c45"), Vector3(0, 0.15, 0)))
+		"mahkota":
+			_head.add_child(part(cyl(0.11, 0.12, 0.08, 8), Color("f0b429"), Vector3(0, 0.15, 0)))
+		"toga":
+			_head.add_child(part(cyl(0.12, 0.12, 0.06, 12), Color("2b2440"), Vector3(0, 0.13, 0)))
+			_head.add_child(part(box(Vector3(0.3, 0.02, 0.3)), Color("2b2440"), Vector3(0, 0.17, 0)))
+		"pita":
+			_head.add_child(part(sphere(0.045), Color("ff7eb6"), Vector3(-0.06, 0.13, 0.03), Vector3(1.4, 0.8, 0.6)))
+			_head.add_child(part(sphere(0.045), Color("ff7eb6"), Vector3(0.06, 0.13, 0.03), Vector3(1.4, 0.8, 0.6)))
+	match acc:
+		"kacamata":
+			for side in [-1.0, 1.0]:
+				var ring := TorusMesh.new()
+				ring.inner_radius = 0.026
+				ring.outer_radius = 0.034
+				var rmi := part(ring, Color("2b2440"), Vector3(0.045 * side, 0.015, 0.118))
+				rmi.rotation.x = PI / 2.0
+				_head.add_child(rmi)
+		"syal":
+			var sc := TorusMesh.new()
+			sc.inner_radius = 0.05
+			sc.outer_radius = 0.1
+			_torso.add_child(part(sc, Color("e05a4f"), Vector3(0, 0.5, 0)))
+		"ransel":
+			_torso.add_child(part(box(Vector3(0.24, 0.3, 0.12)), Color("8a5a2b"), Vector3(0, 0.25, -0.16)))
+	match extra:
+		"mahkota":
+			_head.add_child(part(cyl(0.11, 0.12, 0.09, 8), Color("f0b429"), Vector3(0, 0.15, 0)))
+		"kacamata":
+			_head.add_child(part(box(Vector3(0.2, 0.02, 0.01)), Color("2b2440"), Vector3(0, 0.015, 0.122)))
+		"topi_kapten":
+			_head.add_child(part(cyl(0.13, 0.13, 0.06, 12), Color("1f2d50"), Vector3(0, 0.12, 0)))
+			_head.add_child(part(box(Vector3(0.16, 0.012, 0.08)), Color("1f2d50"), Vector3(0, 0.1, 0.12)))
+		"telinga":
+			for side in [-1.0, 1.0]:
+				var ear := part(capsule(0.03, 0.18), skin.darkened(0.15), Vector3(0.08 * side, 0.17, -0.02))
+				ear.rotation.z = -0.4 * side
+				_head.add_child(ear)
+		"helm":
+			_head.add_child(part(sphere(0.15), Color("cfe8ff"), Vector3(0, 0.01, 0)))
 
 
 const MODEL_DIR := "res://assets/models/"
@@ -255,14 +327,6 @@ func _animate_glb(delta: float, speed: float) -> void:
 	_glb.rotation.x = tilt
 
 
-func _limb(at: Vector3, r: float, length: float, c: Color, tip: Color) -> Node3D:
-	var pivot := Node3D.new()
-	pivot.position = at
-	pivot.add_child(part(capsule(r, length), c, Vector3(0, -length * 0.45, 0)))
-	pivot.add_child(part(sphere(r * 1.15), tip, Vector3(0, -length * 0.88, 0.02)))
-	return pivot
-
-
 ## Animasi sekali-jalan: "interaksi" (melambai/menyentuh) atau "sorak" (menerima hadiah).
 func play_once(anim: String, dur := 1.0) -> void:
 	state = anim
@@ -270,9 +334,13 @@ func play_once(anim: String, dur := 1.0) -> void:
 
 
 ## speed: kecepatan horizontal (m/dtk); on_floor: menapak tanah.
+var _dt := 0.016
+
+
 func animate(delta: float, speed: float, on_floor: bool) -> void:
 	if _hips == null and _glb == null:
 		return
+	_dt = delta
 	_t += delta
 	if _act_t > 0.0:
 		_act_t -= delta
@@ -290,42 +358,66 @@ func animate(delta: float, speed: float, on_floor: bool) -> void:
 	_pose(speed)
 
 
+## Pose prosedural dengan transisi halus: setiap sendi mengejar sudut target (peluruhan eksponensial),
+## jadi perpindahan idle -> jalan -> lari -> lompat tidak patah.
 func _pose(speed: float) -> void:
-	var sw := 0.0
-	var bob := 0.0
-	var arm_up_l := 0.0
-	var arm_up_r := 0.0
-	var lean := 0.0
+	var tg := {"hip": 0.0, "lean": 0.0, "ll": 0.0, "lr": 0.0, "kl": 0.0, "kr": 0.0, "al": 0.0, "ar": 0.0,
+		"el": -0.15, "er": -0.15, "azl": -0.08, "azr": 0.08, "head": 0.0}
 	match state:
 		"idle":
-			bob = sin(_t * 2.2) * 0.015
-			sw = sin(_t * 1.1) * 0.05
-		"jalan":
-			sw = sin(_t * speed * 2.4) * 0.6
-			bob = absf(sin(_t * speed * 2.4)) * 0.05
-		"lari":
-			sw = sin(_t * speed * 1.9) * 0.95
-			bob = absf(sin(_t * speed * 1.9)) * 0.09
-			lean = 0.18
+			tg.hip = sin(_t * 2.0) * 0.008
+			tg.head = sin(_t * 0.7) * 0.18
+			tg.al = sin(_t * 2.0) * 0.03
+			tg.ar = -tg.al
+		"jalan", "lari":
+			var run := state == "lari"
+			var ph := _t * speed * (1.7 if run else 2.3)
+			var amp := 0.75 if run else 0.5
+			tg.ll = sin(ph) * amp
+			tg.lr = -sin(ph) * amp
+			tg.kl = maxf(0.0, -sin(ph - 0.6)) * (1.3 if run else 0.8)
+			tg.kr = maxf(0.0, sin(ph - 0.6)) * (1.3 if run else 0.8)
+			tg.al = -sin(ph) * amp * 0.8
+			tg.ar = sin(ph) * amp * 0.8
+			tg.el = -0.35 - (0.6 if run else 0.15)
+			tg.er = tg.el
+			tg.hip = absf(sin(ph)) * (0.06 if run else 0.03)
+			tg.lean = 0.2 if run else 0.05
 		"lompat":
-			sw = 0.0
-			arm_up_l = 2.4
-			arm_up_r = 2.4
+			tg.ll = -0.7
+			tg.lr = -0.2
+			tg.kl = 1.2
+			tg.kr = 0.6
+			tg.al = -2.3
+			tg.ar = -2.3
+			tg.el = -0.3
+			tg.er = -0.3
 		"interaksi":
-			arm_up_r = 1.6 + sin(_t * 12.0) * 0.4
+			tg.ar = -1.7
+			tg.er = -0.6 + sin(_t * 12.0) * 0.45
+			tg.azr = 0.3
+			tg.head = 0.1
 		"sorak":
-			arm_up_l = 2.8 + sin(_t * 14.0) * 0.3
-			arm_up_r = 2.8 - sin(_t * 14.0) * 0.3
-			bob = absf(sin(_t * 9.0)) * 0.22
-	_hips.position.y = 0.78 + bob
-	_torso.rotation.x = lean
-	_leg_l.rotation.x = sw
-	_leg_r.rotation.x = -sw
-	if state == "lompat":
-		_leg_l.rotation.x = -0.5
-		_leg_r.rotation.x = 0.3
-	_arm_l.rotation.x = -sw * 0.8 if arm_up_l == 0.0 else -arm_up_l
-	_arm_r.rotation.x = sw * 0.8 if arm_up_r == 0.0 else -arm_up_r
-	_arm_l.rotation.z = -0.12 - (0.25 if arm_up_l > 0.0 else 0.0)
-	_arm_r.rotation.z = 0.12 + (0.25 if arm_up_r > 0.0 else 0.0)
-	_head.rotation.y = sin(_t * 0.7) * 0.15 if state == "idle" else 0.0
+			tg.al = -2.8 + sin(_t * 14.0) * 0.2
+			tg.ar = -2.8 - sin(_t * 14.0) * 0.2
+			tg.el = -0.2
+			tg.er = -0.2
+			tg.hip = absf(sin(_t * 9.0)) * 0.18
+			tg.kl = absf(sin(_t * 9.0)) * 0.6
+			tg.kr = tg.kl
+	var k := 1.0 - exp(-_dt * 14.0)
+	for key in tg:
+		_cur[key] = lerpf(float(_cur.get(key, tg[key])), float(tg[key]), k)
+	_hips.position.y = HIP_Y + float(_cur.hip)
+	_torso.rotation.x = float(_cur.lean)
+	_leg_l.rotation.x = float(_cur.ll)
+	_leg_r.rotation.x = float(_cur.lr)
+	(_joints[_leg_l] as Node3D).rotation.x = float(_cur.kl)
+	(_joints[_leg_r] as Node3D).rotation.x = float(_cur.kr)
+	_arm_l.rotation.x = float(_cur.al)
+	_arm_r.rotation.x = float(_cur.ar)
+	_arm_l.rotation.z = float(_cur.azl)
+	_arm_r.rotation.z = float(_cur.azr)
+	(_joints[_arm_l] as Node3D).rotation.x = float(_cur.el)
+	(_joints[_arm_r] as Node3D).rotation.x = float(_cur.er)
+	_head.rotation.y = float(_cur.head)
