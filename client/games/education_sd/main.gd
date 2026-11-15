@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.4.1, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.4.2, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -25,12 +25,24 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.4.1"
+const VERSION := "2.4.2"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
 const TRAIL_PATH := "user://education_sd_trail.txt"
 const BASE_ID := "markas"
+const ICON := "res://games/education_sd/assets/icon/sd_icon_512.png"
+
+
+## Ikon game (gambar dari pengguna) untuk beranda & layar pengenalan.
+func _icon(size: float) -> TextureRect:
+	var t := TextureRect.new()
+	t.name = "GameIcon"
+	t.texture = load(ICON) if ResourceLoader.exists(ICON) else null
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.custom_minimum_size = Vector2(size, size)
+	return t
 const CHEST_SCORE := 70  # nilai kuis minimal untuk membuka peti pengetahuan di dunia 3D
 const NPC_KIND := {"matematika": "raja", "bahasa": "kancil", "ipa": "profesor", "ips": "nakhoda"}
 
@@ -395,6 +407,7 @@ func show_onboarding() -> void:
 	var v := _clear("onboarding")
 	var row := UI.hbox(30)
 	v.add_child(row)
+	row.add_child(_icon(220))
 	var m := SdArt.Mascot.new(Color("8a6bd8"), "profesor")
 	m.custom_minimum_size = Vector2(200, 220)
 	row.add_child(m)
@@ -447,6 +460,7 @@ func show_home() -> void:
 	var v := _clear("home")
 	var top := UI.hbox(24)
 	v.add_child(top)
+	top.add_child(_icon(170))
 	var av := SdArt.Avatar.new()
 	av.custom_minimum_size = Vector2(150, 170)
 	_apply_look(av)

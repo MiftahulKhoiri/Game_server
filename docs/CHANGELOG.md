@@ -2,6 +2,14 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.4.2 — ikon game (15 November 2026)
+
+- Ikon "Petualangan Pulau Ilmu SD" (gambar dari pengguna) di `assets/icon/sd_icon_512.png` & `sd_icon_192.png`,
+  tampil di beranda dan layar pengenalan; `game.json` mencantumkan `icon` dan katalog kini meneruskan kolom itu.
+- Catatan: kartu launcher APK 0.84.x hanya bisa memuat ikon `res://` yang sudah ada saat itu, jadi ikon game unduhan
+  baru tampil di kartu setelah paketnya dimuat (setelah dimainkan sekali per sesi). Supaya selalu tampil, launcher
+  perlu membaca ikon dari paket/servernya (perubahan APK).
+
 ## Paket education_sd v2.4.1 — warna petualangan & bangunan GLB (15 November 2026)
 
 - Warna tidak lagi pucat/terlalu terang: cahaya matahari & ambien diturunkan, ACES white 6, kontras & saturasi,

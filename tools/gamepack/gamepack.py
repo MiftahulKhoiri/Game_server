@@ -31,7 +31,7 @@ SEMVER_RE = re.compile(r"^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9
 ENGINE_FILES = {"project.binary", ".godot/uid_cache.bin", ".godot/global_script_class_cache.cfg",
                 "icon.svg.import", "icon.svg", "assets/icon/icon_512.png"}
 DISPLAY_FIELDS = ["id", "name", "description", "category", "version", "type", "entry_scene", "package", "size",
-                  "sha256", "min_launcher_version", "min_engine_version", "icon_color", "enabled", "updated"]
+                  "sha256", "min_launcher_version", "min_engine_version", "icon", "icon_color", "enabled", "updated"]
 
 
 def read_pck(path):

@@ -336,6 +336,8 @@ func _app_tests() -> void:
 	app.set_player("Ani", 1)
 	app.show_home()
 	_check(app.screen == "home" and str(app.p.player.name) == "Ani" and app.grade() == 1, "nama dan kelas tersimpan, beranda tampil")
+	var gi: TextureRect = app.page().find_child("GameIcon", true, false)
+	_check(gi != null and gi.texture != null and gi.texture.get_width() == 512, "ikon game tampil di beranda (512 px)")
 	var texts := _button_texts(app)
 	for want in ["MULAI PETUALANGAN", "PILIH PELAJARAN", "KOLEKSI", "PRESTASI", "PENGATURAN", "KEMBALI KE LAUNCHER", "MINI-GAME", "LAPORAN BELAJAR"]:
 		_check(texts.has(want), "beranda punya tombol " + want)
