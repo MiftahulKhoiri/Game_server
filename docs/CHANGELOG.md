@@ -2,6 +2,16 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.2.0 — Pulau Ilmu 3D Fase 3–8 (15 November 2026)
+
+- 20 lokasi baru (5 per pulau) dengan teka-teki, warga, museum kartu, hewan, dan mini-game; labirin, jembatan angka,
+  tata surya, danau, pasar, museum, dan lainnya.
+- Sistem misi: utama, sampingan, teka-teki, warga, eksplorasi, cari benda (5 per pulau), harian — hadiah sekali.
+- NPC, warga, penjaga wilayah, dan hewan memakai model GLB KayKit (CC0) yang ada di APK.
+- Dunia hidup: warga berjalan, hewan, burung, ikan, pohon & air bergerak, siang-malam, hujan, suara lingkungan.
+- Markas Pemain: galeri hewan 3D, museum kartu, lemari kostum, cermin karakter, piala, Buku Petualangan.
+- Info kinerja di HP dan penggabungan mesh (draw call −35%). Rincian: [SD_PULAU_ILMU_3D.md](SD_PULAU_ILMU_3D.md).
+
 ## Paket education_sd v2.1.0 — Pulau Ilmu 3D (Fase 1–2) (15 November 2026)
 
 - Mode baru "JELAJAHI PULAU 3D" di beranda: karakter 3D (laki-laki/perempuan) dengan kamera orang-ketiga,

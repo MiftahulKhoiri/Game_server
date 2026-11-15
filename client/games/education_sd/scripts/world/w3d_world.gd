@@ -15,6 +15,7 @@ const Player := preload("res://games/education_sd/scripts/world/w3d_player.gd")
 const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
 const Life := preload("res://games/education_sd/scripts/world/w3d_life.gd")
 const Base := preload("res://games/education_sd/scripts/world/w3d_base.gd")
+const Merge := preload("res://games/education_sd/scripts/world/w3d_merge.gd")
 
 const PATH_HALF := 6.0
 const HUB_HALF := 26.0
@@ -82,6 +83,7 @@ func build(c: Dictionary) -> void:
 		Base.build(self, ctx)
 		_birds()
 		_water_fx()
+		_optimize()
 		player = Player.new()
 		player.name = "Player"
 		add_child(player)
@@ -100,6 +102,7 @@ func build(c: Dictionary) -> void:
 	_items()
 	_birds()
 	_water_fx()
+	_optimize()
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
@@ -188,10 +191,15 @@ func _walls() -> void:
 
 
 func _wall(size: Vector3, pos: Vector3, color: Color) -> void:
-	var sb := _static_box(size, pos, null, false)
+	_static_box(size, pos, null, false)
 	# Tampilan: pagar rendah (0,9 m); tabrakan tetap setinggi 3 m supaya tidak bisa dilompati.
-	var vis := Rig.part(Rig.box(Vector3(size.x, 0.9, size.z)), color, Vector3(0, -1.05, 0))
-	sb.add_child(vis)
+	# Semua tampilan pagar dikumpulkan di satu node supaya digabung jadi satu draw call (Fase 8).
+	var fv := get_node_or_null("FenceVis") as Node3D
+	if fv == null:
+		fv = Node3D.new()
+		fv.name = "FenceVis"
+		add_child(fv)
+	fv.add_child(Rig.part(Rig.box(Vector3(size.x, 0.9, size.z)), color, pos + Vector3(0, -1.05, 0)))
 
 
 func _trees() -> void:
@@ -246,6 +254,7 @@ func _label(text: String, size: int, color: Color, billboard := false) -> Label3
 	l.modulate = color
 	l.outline_modulate = Color("2b2440")
 	l.pixel_size = 0.01
+	l.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED if billboard else BaseMaterial3D.BILLBOARD_DISABLED
 	l.double_sided = true
 	return l
@@ -256,11 +265,9 @@ func _block(ch: String, pos: Vector3, c: Color) -> void:
 	n.position = pos
 	n.rotation.y = _rng.randf_range(-0.4, 0.4)
 	n.add_child(Rig.part(Rig.box(Vector3(1, 1, 1)), c, Vector3(0, 0.5, 0)))
-	for f in [0.0, PI]:
-		var l := _label(ch, 72, Color.WHITE)
-		l.position = Vector3(0, 0.5, 0.51 * (1.0 if f == 0.0 else -1.0))
-		l.rotation.y = f
-		n.add_child(l)
+	var l := _label(ch, 72, Color.WHITE, true)
+	l.position = Vector3(0, 1.45, 0)
+	n.add_child(l)
 	_deco(n)
 
 
@@ -520,6 +527,7 @@ func _gate(i: int, t: Dictionary) -> void:
 	st.name = "State"
 	st.position = Vector3(0, 4.95 if kind == "gerbang" else 2.0, 0.55)
 	root.add_child(st)
+	Merge.merge(bars, [])  # jeruji/papan bergerak bersama -> satu mesh (Fase 8)
 	gates[str(t.id)] = {"node": root, "block": cs, "bars": bars, "kind": kind, "done": done}
 	var spot := Node3D.new()
 	spot.position = Vector3(0, 0, z + (2.4 if kind == "gerbang" else 3.6))
@@ -944,3 +952,33 @@ func _water_fx() -> void:
 			if not cache.has(base):
 				cache[base] = _water_mat(base)
 			mi.material_override = cache[base]
+
+
+## Fase 8: gabungkan mesh statis per bangunan/lokasi/gerbang (lihat w3d_merge.gd). Node yang dianimasikan
+## oleh Life dilewati. merged_count dipakai uji & info kinerja.
+var merged_count := 0
+
+
+func _optimize() -> void:
+	var skip: Array = []
+	for e in life.entities:
+		skip.append(e.node)
+	for n in ["Chest/Lid", "Bars"]:
+		pass
+	for c in get_children():
+		if c == life or c is WorldEnvironment or c is DirectionalLight3D or c == player:
+			continue
+		if not c is Node3D:
+			continue
+		var extra: Array = skip.duplicate()
+		var lid := c.get_node_or_null("Lid")
+		if lid != null:
+			extra.append(lid)
+		var bars := c.get_node_or_null("Bars")
+		if bars != null:
+			extra.append(bars)
+		var star := c.get_node_or_null("Star")
+		if star != null:
+			extra.append(star)
+		var rng_end := float(profile.range) + 25.0 if str(c.name).begins_with("Loc_") else 0.0
+		merged_count += Merge.merge(c, extra, rng_end)

@@ -1,4 +1,5 @@
 extends Node3D
+const Merge := preload("res://games/education_sd/scripts/world/w3d_merge.gd")
 ## Karakter 3D bergaya kartun yang dipakai bersama oleh pemain dan NPC (satu sistem karakter).
 ## Model dibuat dari mesh primitif low-poly (placeholder yang benar-benar bisa dimainkan; belum ada aset GLB
 ## berlisensi). Animasi prosedural berbasis status: idle, jalan, lari, lompat, interaksi, sorak (hadiah).
@@ -152,6 +153,11 @@ func build() -> void:
 	_leg_r = _limb(Vector3(0.13, -0.05, 0), 0.1, 0.72, pants, Color("4a3b30"))
 	_hips.add_child(_leg_l)
 	_hips.add_child(_leg_r)
+	# Fase 8: gabungkan bagian yang bergerak bersama (kepala, badan, tiap tungkai) -> ±8 draw call per karakter.
+	Merge.merge(_head, [])
+	Merge.merge(_torso, [_head, _arm_l, _arm_r])
+	for limb in [_arm_l, _arm_r, _leg_l, _leg_r]:
+		Merge.merge(limb, [])
 
 
 const MODEL_DIR := "res://assets/models/"

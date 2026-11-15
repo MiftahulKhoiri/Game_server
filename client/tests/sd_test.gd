@@ -887,6 +887,8 @@ func _base_tests(app: Node) -> void:
 	app.p.player.avatar.outfit = "warna_merah"
 	print("== Dunia 3D Fase 5: model GLB berlisensi dari APK + cadangan primitif")
 	app.show_world("matematika")
+	_check(app.world.merged_count > 100 and app.world.get_node("FenceVis").get_child_count() == 1, "Fase 8: mesh statis digabung (%d bagian), pagar = 1 mesh" % app.world.merged_count)
+	_check(app.world.player.rig._head.get_child_count() <= 2, "Fase 8: bagian kepala karakter digabung")
 	var npc_rig = app.world.find_use("npc").get_parent().get_meta("rig")
 	var boss_rig = app.world.get_node("Boss").get_meta("rig")
 	_check(npc_rig.is_glb() and boss_rig.is_glb() and npc_rig._ap != null, "NPC Raja Angka & penjaga wilayah memakai model GLB KayKit (CC0) beranimasi")

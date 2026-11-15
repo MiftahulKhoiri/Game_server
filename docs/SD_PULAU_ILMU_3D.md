@@ -1,4 +1,4 @@
-# Petualangan Pulau Ilmu 3D — audit, rancangan, dan laporan Fase 1–2
+# Petualangan Pulau Ilmu 3D — audit, rancangan, dan laporan Fase 1–8
 
 Paket `education_sd` **2.1.0**. Dunia 3D ditambahkan **di atas** game 2D yang sudah ada: semua materi, bank soal,
 penilaian, hadiah, progres, mini-game, koleksi, prestasi, dan laporan tetap dipakai apa adanya. Hanya paket PCK
@@ -92,3 +92,126 @@ grafis, tombol beranda "JELAJAHI PULAU 3D"), `scripts/sd_progress.gd` (bawaan `w
 - Fase 3: isi tiap pulau dengan lokasi tambahan (gua teka-teki, perpustakaan alam, kebun percobaan, museum).
 - Fase 4: hubungkan koleksi hewan & kartu ke objek 3D (pameran di museum/kebun).
 - Fase 6: ukur FPS di HP nyata per profil; tambah penggabungan mesh statis bila panggilan gambar terlalu banyak.
+
+
+---
+
+# Lanjutan: Fase 3–8 (paket 2.2.0)
+
+## A. Audit 2.1.0 & laporan kesenjangan
+
+| Target | Kondisi 2.1.0 | Dikerjakan di 2.2.0 |
+| --- | --- | --- |
+| Dunia luas, lokasi beraktivitas | 1 alun-alun kecil + jalan gerbang per pulau | Alun-alun diperbesar (52×41 m), 5 lokasi per pulau (20 total), semuanya punya aktivitas |
+| Misi | Hanya petunjuk tujuan | 7 jenis misi dengan hadiah sekali-klaim |
+| Model berkualitas | Semua primitif | NPC, warga, penjaga, hewan: GLB KayKit (CC0) dari APK; pemain masih primitif |
+| Dunia hidup | Statis | Warga berpatroli, hewan, burung, ikan, air & pohon bergerak, siang-malam, hujan, suara lingkungan |
+| Koleksi di 3D | Hanya layar 2D | Markas Pemain (galeri hewan 3D, museum kartu, lemari kostum, cermin karakter, piala, Buku Petualangan) |
+| Kinerja | Belum diukur | Info kinerja di HP + pengukuran di Pi + penggabungan mesh |
+
+## B. Fase 3 — lokasi tambahan
+
+| Pulau | Lokasi (aktivitas) |
+| --- | --- |
+| Kerajaan Matematika | Gua Teka-Teki Angka, Menara Matematika, Labirin Matematika (dinding nyata, teka-teki di tengah), Jembatan Angka (batu loncatan bernomor), Desa Penduduk (warga Pak Hitung) |
+| Hutan Bahasa | Perpustakaan Alam (+ kartu pengetahuan), Desa Hewan (warga Bu Rusa + koleksi hewan), Sungai Huruf, Gua Kata, Pohon Cerita |
+| Laboratorium IPA | Kebun Percobaan, Laboratorium Eksperimen, Danau Ekosistem (ikan melompat), Hutan Hewan (hewan berkeliaran, Peneliti Ana), Area Tata Surya (planet mengorbit) |
+| Negeri Penjelajah IPS | Museum Nusantara (+ kartu), Pelabuhan, Pasar Tradisional (Mbok Sari + mini-game), Desa Rumah Adat, Area Sejarah Indonesia |
+
+Setiap lokasi: zona kunjungan (tercatat saat pemain masuk) dan papan teka-teki **3 soal** dari topik wilayah sesuai
+kelas aktif (topik berputar per lokasi), lulus bila **≥ 2 benar pada percobaan pertama**. Koin per jawaban tetap dari
+`SdProgress.record_answer`. Berkas: `scripts/world/w3d_locations.gd`.
+
+## C. Fase 4 — misi (`scripts/world/w3d_missions.gd`)
+
+Setiap misi: id, kunci klaim, jenis, nama, deskripsi, tujuan (angka), progres, status selesai/diterima, hadiah, mapel.
+
+| Jenis | Misi | Hadiah |
+| --- | --- | --- |
+| Utama | Buka semua gerbang; Kalahkan Penjaga Wilayah | 30 koin+50 XP; 40+80 |
+| Sampingan / Teka-teki / Warga | Satu per lokasi (labirin & gua = teka-teki, lokasi berwarga = misi warga) | 15+20 |
+| Eksplorasi | Kunjungi 5 lokasi; tempat rahasia; kunjungi 4 pulau | 15+20; 10+10; 25+30 |
+| Benda | Temukan 5 benda tersembunyi per pulau (Bintang Angka, Gulungan Huruf, Kristal Ilmu, Artefak Kuno) | 20+25 |
+| Harian | Jawab 10 soal hari ini; selesaikan 1 teka-teki lokasi hari ini | 10+15 masing-masing |
+
+Misi **dihitung dari progres sah**, bukan dari tombol. Hadiah diberikan sekali per kunci (`world.claimed`); memuat
+ulang scene, mengulang teka-teki, atau membuka game lagi tidak membayar dua kali (diuji). Kunci harian disimpan 7 hari.
+Tombol **MISI** membuka Buku Petualangan.
+
+## D. Fase 5 — aset 3D
+
+Dipakai (sudah ada di APK, tidak menambah ukuran paket; lisensi di `client/assets/models/LISENSI_*.txt`):
+
+| Peran | Model | Sumber / lisensi |
+| --- | --- | --- |
+| Raja Angka, penjaga wilayah | `ksatria.glb` (pedang disembunyikan) | KayKit Adventurers, CC0 |
+| Kak Kancil, Pak Hitung | `petani.glb` | KayKit Adventurers, CC0 |
+| Profesor Kiko | `penyihir.glb` | KayKit Adventurers, CC0 |
+| Nakhoda Bima | `pemanah.glb` (busur disembunyikan) | KayKit Adventurers, CC0 |
+| Bu Rusa, Mbok Sari | `nenek_penjual.glb` | KayKit Adventurers, CC0 |
+| Peneliti Ana | `anak_desa.glb` | KayKit Adventurers, CC0 |
+| Hewan | `anak_ayam.glb`, `babi_hutan.glb`, `tikus_sawah.glb` | lihat LISENSI_Quaternius / OpenGameArt (CC0) |
+
+Model diskalakan dari ukuran mesh, kaki di tanah, animasi `idle`/`walk` dari berkas (+ lompat/sorak prosedural).
+Bila berkas tidak ada di APK, otomatis kembali ke model primitif (diuji).
+
+**Masih diperlukan:** karakter pemain anak laki-laki & perempuan dengan rangka sama (APK hanya punya model anak
+"Rogue" dan nenek), model bangunan bertema (istana, rumah adat, laboratorium), pohon/batu/perabot low-poly untuk
+lokasi, dan objek pembelajaran (balok angka, buku, planet bertekstur). Kandidat berlisensi jelas: KayKit (CC0),
+Quaternius (CC0), Kenney (CC0). Pemain tetap primitif sampai model anak perempuan tersedia.
+
+## E. Fase 6 — dunia hidup (`scripts/world/w3d_life.gd`)
+
+Warga berpatroli 3 titik dengan jeda + aktivitas menyapa; hewan berkeliaran di sekitar rumahnya; burung terbang
+melingkar; ikan melompat di danau; benda bergoyang, gelembung lab, planet mengorbit; pohon bergoyang dan air bergerak
+(shader, hanya profil Seimbang/Tinggi); siklus siang-malam 5 menit (malam tetap terang); hujan acak (CPUParticles3D,
+mati di Hemat); kicau burung dan suara hujan buatan kode (diputar ulang lewat `finished`, tanpa loop WAV).
+Satu `_process` memperbarui semua makhluk; yang lebih jauh dari jarak profil tidak dianimasikan dan disembunyikan.
+
+| Profil | Hewan | Burung | Hujan (partikel) | Efek shader |
+| --- | --- | --- | --- | --- |
+| Hemat | 2 | 0 | 0 | mati |
+| Seimbang | 3 | 3 | 250 | nyala |
+| Tinggi | 5 | 5 | 500 | nyala |
+
+## F. Fase 7 — koleksi & kustomisasi (`scripts/world/w3d_base.gd`)
+
+Markas Pemain (lewat portal): galeri hewan 3D (dari `animals`), museum kartu (dari `cards`), lemari kostum (hanya
+kostum di `owned`; mengganti baju karakter 3D), cermin pemilihan karakter, rak piala (dari `badges`), Buku Petualangan
+(misi semua pulau). Tidak ada mata uang atau hadiah baru.
+
+## G. Fase 8 — pengukuran & optimasi
+
+Diukur di Raspberry Pi 5 (Xvfb, **llvmpipe = GPU perangkat lunak**, 1560×720, kelas 4, 60 frame setelah dunia
+dibangun). FPS di sini **bukan** gambaran HP; draw call, objek, node, RAM, dan waktu bangun bisa dibandingkan.
+
+| Profil · pulau | Draw call sebelum → sesudah gabung mesh | Objek | Node | RAM statis | Bangun dunia | FPS rata2 / min (llvmpipe) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Hemat · Matematika | 291 → **189** | 316 | 457 | 63 MB | 94 ms | 9,7 / 8,7 |
+| Hemat · IPS | 187 → **153** | 281 | 361 | 63 MB | 91 ms | 10,2 / 9,2 |
+| Seimbang · Matematika | 399 → **262** | 389 | 469 | 66 MB | 97 ms | 6,2 / 5,8 |
+| Seimbang · IPS | 341 → **229** | 357 | 373 | 65 MB | 95 ms | 6,6 / 6,0 |
+| Tinggi · Matematika | 417 → **274** | 401 | 477 | 66 MB | 98 ms | 1,7 / 1,6 |
+| Markas · Seimbang | 165 → **146** | 281 | 174 | 63 MB | 19 ms | 6,3 / 5,9 |
+
+Optimasi yang ditambahkan karena hasil ukur: penggabungan mesh statis per bangunan/lokasi/gerbang/jeruji dan per
+bagian karakter (`w3d_merge.gd`), pagar jadi satu mesh, label tanpa bayangan, balok huruf/angka satu label.
+LOD otomatis tidak dipakai (mesh primitif tidak punya LOD); jarak gambar (`visibility_range_end`) dipakai untuk
+dekorasi, lokasi, dan pohon. Ukuran PCK 2.2.0: lihat katalog (±0,3 MB; model GLB tidak ikut paket karena sudah di APK).
+
+**Pengukuran di HP Android belum dilakukan.** Nyalakan *Pengaturan → Info kinerja* lalu kirim angka FPS
+(rata-rata/minimum), draw call, dan RAM dari Samsung A18 untuk tiap profil.
+
+## H. Pengujian 2.2.0
+
+`make sd-test`: **527 pemeriksaan LULUS** (+66 dari 2.1.0): 20 lokasi, labirin bisa dilalui & dindingnya menahan,
+kunjungan, teka-teki gagal/berhasil, misi sekali bayar (muat ulang/ulang sesi), warga berpatroli & berhenti saat
+diajak bicara, 5 benda per pulau & tidak muncul lagi, 7 jenis misi, misi harian, perpustakaan kartu, burung/hewan per
+profil, hujan, siang-malam, aktivasi jarak, info kinerja, Markas (galeri, museum, piala, buku, lemari, cermin, tanpa
+koin baru), model GLB + cadangan primitif, penggabungan mesh. `make platform-test`: LULUS.
+
+## I. Risiko
+
+- Belum diuji di HP: kinerja nyata Mali-G57, multisentuh nyata, suara hujan/kicau.
+- Draw call Seimbang ±260 masih bisa berat untuk HP kelas bawah: pakai Hemat bila FPS < 30.
+- Model GLB memakai berkas APK: bila APK masa depan menghapusnya, game memakai model primitif (aman, tapi tampilan turun).
