@@ -474,6 +474,9 @@ func _app_tests() -> void:
 		"crash terdeteksi saat dibuka lagi: jejak langkah terakhir tersimpan untuk server")
 	_check(str(app.p.diag[-2].reason).begins_with("tertutup tidak normal"), "catatan diagnosis mencatat penutupan tidak normal")
 	_check(int(app.p.safe_level) == 1 and not bool(app.p.settings.music), "mode aman 1 setelah crash: musik dimatikan")
+	var mus: AudioStreamWAV = app.audio._build_music()
+	_check(mus.loop_mode == AudioStreamWAV.LOOP_DISABLED and app.audio._music.finished.is_connected(app.audio._on_music_finished),
+		"musik diulang lewat sinyal finished, bukan loop WAV (penyebab crash di Samsung A18)")
 	app.p.erase("crash")
 	app.p.erase("safe_level")
 	app.p.settings.music = true

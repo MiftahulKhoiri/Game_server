@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.4, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.5, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -17,7 +17,7 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.0.4"
+const VERSION := "2.0.5"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
@@ -67,6 +67,16 @@ func _process(_delta: float) -> void:
 func _freeze_anim(n: Node) -> void:
 	if n is Control and n.has_method("_process") and n.get_script() != null and n != self:
 		n.set_process.call_deferred(false)
+
+
+## Mode aman 2.0.4 dipasang karena musik crash; 2.0.5 memperbaikinya, jadi musik & animasi dinyalakan lagi
+## satu kali saat versi baru pertama dibuka.
+func _reset_safe_mode() -> void:
+	if int(p.get("safe_level", 0)) > 0 and str(p.get("safe_reset", "")) != VERSION:
+		p["safe_level"] = 0
+		p["safe_reset"] = VERSION
+		p.settings.music = true
+		save()
 
 
 func _check_last_trail() -> void:
@@ -129,6 +139,7 @@ func _ready() -> void:
 		_show_error("Data pelajaran tidak bisa dimuat:\n" + "\n".join(data.errors.slice(0, 5)))
 		return
 	_load_progress()
+	_reset_safe_mode()
 	_check_last_trail()
 	_open_trail()
 	_note_event("dibuka")

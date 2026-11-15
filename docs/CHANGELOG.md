@@ -2,6 +2,15 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.0.5 — perbaikan crash musik di Samsung A18 (15 November 2026)
+
+- Penyebab terlacak: jejak 2.0.4 menunjukkan crash ±7 detik setelah musik diputar, tepat saat musik latar
+  (6,72 detik) mencapai titik ulang. Dengan musik mati game berjalan normal. Loop bawaan AudioStreamWAV pada
+  suara buatan kode membuat aplikasi crash di SM-A185G (Mali-G57 MC2, Android 16).
+- Musik kini tanpa loop WAV: diputar ulang lewat sinyal `finished`. Setiap suara diberi ekor hening 256 sampel.
+- Mode aman dari 2.0.4 di-reset sekali saat 2.0.5 dibuka: musik dan animasi menyala lagi.
+- Jejak langkah & catatan crash tetap aktif.
+
 ## Paket education_sd v2.0.4 — mode aman bertahap untuk crash di Samsung A18 (15 November 2026)
 
 - Jejak dari HP pelapor (SM-A185G, Mali-G57 MC2, layar 1560x720): aplikasi crash 2 kali berturut-turut tepat

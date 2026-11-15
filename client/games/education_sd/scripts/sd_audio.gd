@@ -4,6 +4,7 @@ extends Node
 ## petualangan pendek yang berulang. Musik dan efek suara bisa dimatikan terpisah.
 
 const RATE := 22050
+const PAD := 256  # sampel hening di ujung setiap suara
 
 var music_on := true
 var sfx_on := true
@@ -16,6 +17,7 @@ var _next := 0
 func _ready() -> void:
 	_music = AudioStreamPlayer.new()
 	_music.volume_db = -14.0
+	_music.finished.connect(_on_music_finished)
 	add_child(_music)
 	for i in 3:
 		var p := AudioStreamPlayer.new()
@@ -34,6 +36,14 @@ func apply(music: bool, sfx: bool) -> void:
 			_music.play()
 	else:
 		_music.stop()
+
+
+## Musik diulang dengan memutar ulang saat selesai, BUKAN dengan loop bawaan AudioStreamWAV: di Samsung A18
+## (Mali-G57, Android 16) loop WAV buatan kode membuat aplikasi crash tepat saat musik mencapai titik ulang
+## (~6,7 detik setelah diputar; terlacak lewat jejak langkah 2.0.3/2.0.4).
+func _on_music_finished() -> void:
+	if music_on and is_inside_tree():
+		_music.play()
 
 
 func stop_all() -> void:
@@ -76,7 +86,7 @@ func _build_music() -> AudioStreamWAV:
 	var beat := 0.42
 	var n := int(RATE * beat * melody.size())
 	var data := PackedByteArray()
-	data.resize(n * 2)
+	data.resize((n + PAD) * 2)  # ekor hening: pembaca resampler tidak pernah melewati ujung data
 	for i in n:
 		var t := float(i) / RATE
 		var k := int(t / beat)
@@ -93,8 +103,7 @@ func _build_music() -> AudioStreamWAV:
 	s.format = AudioStreamWAV.FORMAT_16_BITS
 	s.mix_rate = RATE
 	s.data = data
-	s.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	s.loop_end = n
+	s.loop_mode = AudioStreamWAV.LOOP_DISABLED
 	return s
 
 
@@ -104,7 +113,7 @@ func _tones(notes: Array, vol: float) -> AudioStreamWAV:
 		total += float(nt[1])
 	var n := int(RATE * total)
 	var data := PackedByteArray()
-	data.resize(n * 2)
+	data.resize((n + PAD) * 2)
 	var i := 0
 	for nt in notes:
 		var f: float = nt[0]
