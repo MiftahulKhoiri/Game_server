@@ -2,6 +2,12 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## v0.84.2 — Nama aplikasi "Game server" (15 November 2026)
+
+- Nama di bawah ikon HP diganti dari "Game Petualang" menjadi "Game server" (preset ekspor Android
+  `package/name`). Nama paket `com.miftahulkhoiri.gamepetualang` dan `config/name` tidak diubah, jadi APK
+  baru tetap menimpa APK lama dan data di HP (akun, game terpasang, progres) tetap utuh.
+
 ## v0.84.1 — Ikon aplikasi platform (15 November 2026)
 
 **APK baru wajib** (ikon adalah aset; patch tidak bisa membawanya).
