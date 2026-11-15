@@ -452,6 +452,7 @@ func _app_tests() -> void:
 	app.change_grade(1)
 
 	await _world_tests(app)
+	await _world_tests2(app)
 	_check(int((app.p.world.chests as Dictionary).size()) >= 1, "progres dunia 3D ikut tersimpan")
 	print("== Simpan, buka ulang, dan migrasi")
 	var coins := int(app.p.coins)
@@ -667,3 +668,168 @@ func _drag(index: int, rel: Vector2) -> InputEventScreenDrag:
 	e.relative = rel
 	e.position = Vector2(900, 300)
 	return e
+
+
+func _walk_to(app: Node, target: Vector3, max_steps := 400) -> bool:
+	var pl: CharacterBody3D = app.world.player
+	for i in max_steps:
+		var to := target - pl.global_position
+		to.y = 0
+		if to.length() < 0.45:
+			pl.move_input = Vector2.ZERO
+			return true
+		# move_input relatif kamera (yaw): maju = (-sin yaw, -cos yaw)
+		var fwd := Vector3(-sin(pl.yaw), 0, -cos(pl.yaw))
+		var right := Vector3(cos(pl.yaw), 0, -sin(pl.yaw))
+		var d := to.normalized()
+		pl.move_input = Vector2(d.dot(right), d.dot(fwd)).limit_length(1.0)
+		await physics_frame
+	pl.move_input = Vector2.ZERO
+	return false
+
+
+func _world_tests2(app: Node) -> void:
+	print("== Dunia 3D Fase 3–8: lokasi, misi, dunia hidup, kinerja")
+	app.set_player("Ani", 3)
+	var total_locs := 0
+	for rid in ["matematika", "bahasa", "ipa", "ips"]:
+		app.show_world(rid)
+		await process_frame
+		var w: Node3D = app.world
+		var ok: bool = w.locs.size() == 5
+		for lid in w.locs:
+			ok = ok and w.find_use("loc", lid) != null and w.get_node_or_null("Loc_%s/Zone_visit_%s" % [lid, lid]) != null
+			total_locs += 1
+		_check(ok, "%s: 5 lokasi dengan papan aktivitas + zona kunjungan" % rid)
+		_check(w.item_count() == 5, "%s: 5 benda tersembunyi" % rid)
+	_check(total_locs == 20, "total 20 lokasi tambahan di 4 pulau")
+	# --- Labirin bisa dilalui sampai tengah (tabrakan dinding nyata)
+	app.show_world("matematika")
+	await process_frame
+	var w: Node3D = app.world
+	var maze: Node3D = w.locs.labirin.root
+	var path := [Vector3(7.5, 0, -3.9), Vector3(3.9, 0, -3.9), Vector3(-3.9, 0, -3.9), Vector3(-3.9, 0, 3.9), Vector3(1.3, 0, 3.9), Vector3(1.3, 0, 1.3), Vector3(-1.0, 0, 1.0)]
+	w.player.place(maze.to_global(path[0]) + Vector3(0, 0.1, 0), 0.0)
+	await _steps(3)
+	var walked := true
+	for pt in path.slice(1):
+		walked = walked and await _walk_to(app, maze.to_global(pt))
+	_check(walked, "labirin matematika bisa dilalui dari pintu masuk sampai tengah")
+	await _steps(4)
+	_check(w.focus_label() == "Labirin Matematika", "papan teka-teki di tengah labirin bisa dipakai")
+	w.player.place(maze.to_global(Vector3(-3.9, 0, -3.9)) + Vector3(0, 0.1, 0), 0.0)
+	await _steps(3)
+	var blocked := not await _walk_to(app, maze.to_global(Vector3(-1.3, 0, -1.3)), 150)
+	_check(blocked, "dinding labirin tidak bisa ditembus")
+	# --- Kunjungan lokasi tercatat
+	w.player.place(w.locs.menara.root.global_position + Vector3(0, 0.1, 0) + w.locs.menara.root.global_transform.basis * Vector3(0, 0, 5), 0.0)
+	await _steps(6)
+	_check((app.p.world.visited.matematika as Dictionary).has("menara"), "masuk area lokasi: kunjungan tercatat")
+	# --- Teka-teki lokasi: gagal -> tidak selesai; berhasil -> selesai + misi sekali
+	await _go_to(app, "loc", "menara")
+	w.interact()
+	_check(_dialog_press(app, "Pecahkan teka-teki") and app.screen == "session" and str(app.session.kind) == "lokasi"
+		and (app.session.questions as Array).size() == 3, "lokasi: teka-teki 3 soal dari topik wilayah kelas aktif")
+	var qtopic := str(app.session.topic)
+	_check(app.data.topics.has(qtopic) and str(app.data.topics[qtopic].region) == "matematika" and (app.data.topics[qtopic].grades as Array).has(3.0) or (app.data.topics[qtopic].grades as Array).has(3),
+		"topik teka-teki sesuai wilayah & kelas")
+	await _play_session(app, false)
+	app.go_back()
+	_check(app.screen == "world" and not bool(app._loc_status("matematika").menara.done), "teka-teki gagal: lokasi belum selesai")
+	var coins0 := int(app.p.coins)
+	await _go_to(app, "loc", "menara")
+	app.world.interact()
+	_dialog_press(app, "Pecahkan teka-teki")
+	await _play_session(app, true)
+	app.go_back()
+	_check(bool(app._loc_status("matematika").menara.done), "teka-teki berhasil: lokasi selesai")
+	_check((app.p.world.claimed as Dictionary).has("k3/matematika/lokasi_menara"), "misi lokasi diberi hadiah")
+	var coins1 := int(app.p.coins)
+	_check(coins1 > coins0, "hadiah koin dari jawaban + misi (%d -> %d)" % [coins0, coins1])
+	app._check_missions()
+	app.show_world("matematika")
+	_check(int(app.p.coins) == coins1, "memuat ulang dunia / cek ulang misi tidak memberi hadiah dua kali")
+	await _go_to(app, "loc", "menara")
+	app.world.interact()
+	_dialog_press(app, "Pecahkan teka-teki")
+	await _play_session(app, true)
+	var coins_after_answers := int(app.p.coins)
+	app.go_back()
+	_check(int(app.p.coins) == coins_after_answers, "mengulang teka-teki: hanya koin jawaban, misi tidak dibayar lagi")
+	# --- Warga (misi NPC)
+	w = app.world
+	var vil: Node3D = w.locs.desa_angka.root.get_node("Villager")
+	_check(w.life.count("villager") >= 1, "warga desa berjalan berpatroli (dunia hidup)")
+	var vpos0 := vil.position
+	for i in 240:
+		await process_frame
+	_check(vil.position.distance_to(vpos0) > 0.3 or w.life.entities.any(func(e): return e.kind == "villager" and float(e.data.get("wait", 0)) > 0), "warga bergerak di antara titik rute")
+	w.player.place(vil.global_position + Vector3(0, 0.1, 1.5), 0.0)
+	await _steps(4)
+	w.interact()
+	_check(_dialog_text(app).contains("Pak Hitung") and w.is_talking_to(vil), "bicara dengan warga: warga berhenti dan meminta bantuan")
+	_check(_dialog_press(app, "Ya, aku bantu!") and str(app.session.loc) == "desa_angka", "misi warga dimulai")
+	await _play_session(app, true)
+	app.go_back()
+	_check((app.p.world.claimed as Dictionary).has("k3/matematika/lokasi_desa_angka"), "misi warga selesai")
+	# --- Benda tersembunyi
+	w = app.world
+	var before := int(app.p.coins)
+	for i in 5:
+		var id := "matematika_%d" % i
+		var it: Node3D = w.get_node_or_null("Item_" + id)
+		if it != null:
+			w.player.place(it.global_position - Vector3(0, 0.8, 0), 0.0)
+			await _steps(5)
+	_check(((app.p.world.items as Dictionary).get("matematika", []) as Array).size() == 5, "5 benda ditemukan dengan berjalan ke tempatnya")
+	_check((app.p.world.claimed as Dictionary).has("matematika/benda") and int(app.p.coins) >= before + 20, "misi cari benda selesai (+20 koin)")
+	app.show_world("matematika")
+	_check(app.world.item_count() == 0, "benda yang sudah diambil tidak muncul lagi")
+	# --- Daftar misi & jenisnya
+	var ms: Array = app.world_missions()
+	var types := {}
+	for m in ms:
+		types[m.type] = true
+		_check(m.has("id") and m.has("name") and m.has("desc") and m.has("goal") and m.has("reward") and m.has("done"), "misi %s punya id/nama/deskripsi/tujuan/hadiah/status" % m.id) if m.id in ["gerbang", "soal_harian"] else null
+	_check(types.size() == 7, "7 jenis misi: utama, sampingan, teka-teki, npc, eksplorasi, benda, harian (%s)" % ", ".join(types.keys()))
+	app.show_missions()
+	_check(app.hud.dialog_open() and _dialog_text(app).contains("Buku Petualangan"), "tombol MISI membuka Buku Petualangan")
+	app.hud.close_dialog()
+	var today := Time.get_date_string_from_system()
+	_check(int((app.p.daily as Dictionary).get(today, [0, 0])[1]) >= 10 and (app.p.world.claimed as Dictionary).has("harian/%s/soal" % today), "misi harian 10 soal selesai dari jawaban hari ini")
+	# --- Museum kartu / hewan
+	app.show_world("bahasa")
+	await _go_to(app, "loc", "perpustakaan")
+	app.world.interact()
+	_check(_dialog_press(app, "Lihat kartu") and _dialog_text(app).contains("Kartu Pengetahuan"), "perpustakaan alam menampilkan kartu pengetahuan wilayah")
+	app.hud.close_dialog()
+	# --- Dunia hidup & kinerja
+	var lf: Node3D = app.world.life
+	_check(lf.count("bird") == 3 and lf.count("animal") <= 3, "profil Seimbang: 3 burung, maks. 3 hewan")
+	lf.set_rain(true)
+	_check(lf.raining and lf._rain != null and lf._rain.emitting, "cuaca hujan: partikel hujan aktif")
+	lf.set_rain(false)
+	var f0: float = lf.day_factor
+	lf.cycle = 0.8
+	lf._sky(0.1)
+	_check(lf.day_factor < f0 and lf.is_night(), "siklus siang-malam: senja/malam lebih gelap")
+	app.world.player.place(Vector3(0, 0.1, app.world._end_z), 0.0)
+	lf._check_t = 0.0
+	await process_frame
+	await process_frame
+	var any_far := false
+	for e in lf.entities:
+		if e.kind == "villager" and not e.active:
+			any_far = true
+	_check(any_far, "makhluk jauh dari pemain tidak dianimasikan (aktivasi berdasarkan jarak)")
+	app.set_setting("gfx", "hemat")
+	app.show_world("ipa")
+	_check(app.world.life.count("bird") == 0 and app.world.life.count("animal") <= 2 and app.world.life.rain_amount == 0, "profil Hemat: tanpa burung & hujan, hewan maks. 2")
+	app.set_setting("gfx", "seimbang")
+	app.toggle_setting("perf")
+	app.show_world("ipa")
+	_check(app.hud._perf.visible, "info kinerja (FPS/draw call/RAM) bisa dinyalakan")
+	app.toggle_setting("perf")
+	app.go_back()
+	app.set_player("Ani", 1)
+	app.show_home()

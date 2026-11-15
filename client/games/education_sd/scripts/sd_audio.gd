@@ -12,6 +12,9 @@ var _music: AudioStreamPlayer
 var _sfx: Array[AudioStreamPlayer] = []
 var _cache: Dictionary = {}
 var _next := 0
+var _rain: AudioStreamPlayer
+var _raining := false
+var _amb_timer: Timer
 
 
 func _ready() -> void:
@@ -41,6 +44,81 @@ func apply(music: bool, sfx: bool) -> void:
 ## Musik diulang dengan memutar ulang saat selesai, BUKAN dengan loop bawaan AudioStreamWAV: di Samsung A18
 ## (Mali-G57, Android 16) loop WAV buatan kode membuat aplikasi crash tepat saat musik mencapai titik ulang
 ## (~6,7 detik setelah diputar; terlacak lewat jejak langkah 2.0.3/2.0.4).
+## Suara lingkungan dunia 3D: kicau burung acak (efek suara) dan hujan (diputar ulang lewat finished,
+## tanpa loop WAV — lihat catatan crash Samsung A18 di atas).
+func ambient(on: bool) -> void:
+	if _amb_timer == null:
+		_amb_timer = Timer.new()
+		_amb_timer.one_shot = true
+		_amb_timer.timeout.connect(_on_ambient)
+		add_child(_amb_timer)
+	if on:
+		_amb_timer.start(randf_range(3.0, 7.0))
+	else:
+		_amb_timer.stop()
+		rain(false)
+
+
+func _on_ambient() -> void:
+	if not _raining:
+		play("kicau")
+	_amb_timer.start(randf_range(5.0, 11.0))
+
+
+func rain(on: bool) -> void:
+	_raining = on
+	if _rain == null:
+		_rain = AudioStreamPlayer.new()
+		_rain.volume_db = -20.0
+		_rain.finished.connect(func() -> void:
+			if _raining and sfx_on:
+				_rain.play())
+		add_child(_rain)
+	if on and sfx_on:
+		if _rain.stream == null:
+			_rain.stream = _build_rain()
+		_rain.play()
+	else:
+		_rain.stop()
+
+
+func _build_rain() -> AudioStreamWAV:
+	var n := RATE * 2
+	var data := PackedByteArray()
+	data.resize((n + PAD) * 2)
+	var prev := 0.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for i in n:
+		prev = prev * 0.82 + rng.randf_range(-1.0, 1.0) * 0.18
+		var env := minf(1.0, minf(i, n - i) / 2000.0)
+		data.encode_s16(i * 2, int(clampf(prev * 0.9 * env, -1.0, 1.0) * 32000.0))
+	var s := AudioStreamWAV.new()
+	s.format = AudioStreamWAV.FORMAT_16_BITS
+	s.mix_rate = RATE
+	s.data = data
+	return s
+
+
+func _chirp() -> AudioStreamWAV:
+	var n := int(RATE * 0.36)
+	var data := PackedByteArray()
+	data.resize((n + PAD) * 2)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var k := fmod(t, 0.12) / 0.12
+		var f := 2600.0 + 1400.0 * sin(k * PI)
+		ph += TAU * f / RATE
+		var env := sin(k * PI) * (1.0 if t < 0.36 else 0.0)
+		data.encode_s16(i * 2, int(clampf(0.18 * env * sin(ph), -1.0, 1.0) * 32000.0))
+	var s := AudioStreamWAV.new()
+	s.format = AudioStreamWAV.FORMAT_16_BITS
+	s.mix_rate = RATE
+	s.data = data
+	return s
+
+
 func _on_music_finished() -> void:
 	if music_on and is_inside_tree():
 		_music.play()
@@ -72,6 +150,8 @@ func _build_sfx(name: String) -> AudioStreamWAV:
 			return _tones([[330.0, 0.14], [262.0, 0.2]], 0.22)  # lembut, tidak mengagetkan
 		"bintang":
 			return _tones([[1047.0, 0.07], [1319.0, 0.07], [1568.0, 0.07], [2093.0, 0.18]], 0.3)
+		"kicau":
+			return _chirp()
 		"buka":
 			return _tones([[523.0, 0.08], [659.0, 0.08], [784.0, 0.08], [1047.0, 0.22]], 0.3)
 		_:

@@ -26,8 +26,9 @@ static func default_data() -> Dictionary:
 		"history": [],
 		"daily": {},
 		"minigames": {},
-		"settings": {"music": true, "sfx": true, "hero": "laki", "gfx": "seimbang"},
-		"world": {"region": "matematika", "chests": {}, "found": {}, "seen_done": {}},
+		"settings": {"music": true, "sfx": true, "hero": "laki", "gfx": "seimbang", "perf": false},
+		"world": {"region": "matematika", "chests": {}, "found": {}, "seen_done": {}, "locs": {}, "visited": {}, "items": {},
+			"islands": {}, "claimed": {}, "daily_locs": {}},
 		"seen_intro": {},
 	}
 

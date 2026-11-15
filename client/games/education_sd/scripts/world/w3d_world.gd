@@ -8,29 +8,32 @@ extends Node3D
 
 signal interacted(kind: String, id: String)
 signal focus_changed(text: String)
+signal zone_entered(kind: String, id: String)
 
 const Rig := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const Player := preload("res://games/education_sd/scripts/world/w3d_player.gd")
+const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
+const Life := preload("res://games/education_sd/scripts/world/w3d_life.gd")
 
 const PATH_HALF := 6.0
-const HUB_HALF := 11.0
+const HUB_HALF := 26.0
 const HUB_FRONT := -7.0
-const HUB_BACK := 11.0
+const HUB_BACK := 34.0
 const GATE_GAP := 13.0
 const FIRST_GATE := -14.0
 const PLAYER_LAYER := 2
 
 ## Profil grafis: skala render 3D, bayangan, MSAA, jumlah pohon, jarak gambar dekorasi.
 const PROFILES := {
-	"hemat": {"scale": 0.6, "shadow": false, "msaa": false, "trees": 50, "range": 38.0},
-	"seimbang": {"scale": 0.8, "shadow": true, "msaa": false, "trees": 110, "range": 60.0},
-	"tinggi": {"scale": 1.0, "shadow": true, "msaa": true, "trees": 180, "range": 95.0},
+	"hemat": {"scale": 0.6, "shadow": false, "msaa": false, "trees": 60, "range": 38.0, "rain": 0, "animals": 2, "birds": 0, "fx": false, "cycle": true},
+	"seimbang": {"scale": 0.8, "shadow": true, "msaa": false, "trees": 130, "range": 60.0, "rain": 250, "animals": 3, "birds": 3, "fx": true, "cycle": true},
+	"tinggi": {"scale": 1.0, "shadow": true, "msaa": true, "trees": 220, "range": 95.0, "rain": 500, "animals": 5, "birds": 5, "fx": true, "cycle": true},
 }
 
 const THEMES := {
 	"matematika": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "3f7fd8", "sky": "8cc8ff", "npc_extra": "mahkota", "boss": "Golem Angka"},
 	"bahasa": {"ground": "6fbf5a", "path": "c9a46a", "trunk": "7a4a22", "crown": "2f8f4a", "accent": "3fae63", "sky": "9ad8ff", "npc_extra": "telinga", "boss": "Burung Hantu Penjaga Kata"},
-	"ipa": {"ground": "9ad99a", "path": "b9cfe0", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
+	"ipa": {"ground": "7cc47c", "path": "a9c3d8", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
 	"ips": {"ground": "a7d46f", "path": "d9a46a", "trunk": "8a5a2b", "crown": "5aa84a", "accent": "e0813d", "sky": "ffd9a8", "npc_extra": "topi_kapten", "boss": "Penjaga Gerbang Nusantara"},
 }
 
@@ -44,6 +47,13 @@ var _focus: Area3D
 var _rng := RandomNumberGenerator.new()
 var _end_z := 0.0
 var _sun: DirectionalLight3D
+var _env: Environment
+var sky_day_top := Color.SKY_BLUE
+var sky_day_horizon := Color.WHITE
+var life: Node3D
+var locs: Dictionary = {}  # loc_id -> {root, def}
+var _talk_node: Node3D
+var _animals := 0
 
 
 func build(c: Dictionary) -> void:
@@ -54,6 +64,10 @@ func build(c: Dictionary) -> void:
 	_rng.seed = hash(rid)
 	var n: int = (ctx.topics as Array).size()
 	_end_z = FIRST_GATE - GATE_GAP * maxi(n - 1, 0) - 14.0
+	life = Life.new()
+	life.name = "Life"
+	add_child(life)
+	life.setup(self, profile, hash(rid))
 	_environment()
 	_ground()
 	_walls()
@@ -63,6 +77,10 @@ func build(c: Dictionary) -> void:
 	for i in n:
 		_gate(i, ctx.topics[i])
 	_boss()
+	_locations()
+	_items()
+	_birds()
+	_water_fx()
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
@@ -87,6 +105,9 @@ func _environment() -> void:
 	env.ambient_light_energy = 0.45
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 0.85
+	_env = env
+	sky_day_top = sky_mat.sky_top_color
+	sky_day_horizon = sky_mat.sky_horizon_color
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -118,10 +139,11 @@ func _static_box(size: Vector3, pos: Vector3, color = null, visible_mesh := true
 func _ground() -> void:
 	var length := HUB_BACK - _end_z + 30.0
 	var mid_z := (HUB_BACK + _end_z) / 2.0
-	var g := _static_box(Vector3(70, 2, length), Vector3(0, -1, mid_z), Color.from_string(str(theme.ground), Color.GREEN))
+	var g := _static_box(Vector3(100, 2, length), Vector3(0, -1, mid_z), Color.from_string(str(theme.ground), Color.GREEN))
 	g.name = "Ground"
 	(g.get_child(1) as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var sea := Rig.part(Rig.box(Vector3(260, 0.2, length + 160)), Color("4aa3df"), Vector3(0, -1.4, mid_z))
+	var sea := Rig.part(Rig.box(Vector3(300, 0.2, length + 160)), Color("4aa3df"), Vector3(0, -1.4, mid_z))
+	sea.set_meta("water", true)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sea)
 	var path := Rig.part(Rig.box(Vector3(4.2, 0.04, HUB_FRONT - _end_z + 6.0)), Color.from_string(str(theme.path), Color.BEIGE),
@@ -167,7 +189,7 @@ func _trees() -> void:
 		guard += 1
 		var z := _rng.randf_range(_end_z - 10.0, HUB_BACK + 8.0)
 		var inner := HUB_HALF if z > HUB_FRONT else PATH_HALF
-		var x := _rng.randf_range(inner + 1.6, 30.0) * (1.0 if _rng.randf() < 0.5 else -1.0)
+		var x := _rng.randf_range(inner + 1.6, 46.0) * (1.0 if _rng.randf() < 0.5 else -1.0)
 		var s := _rng.randf_range(0.8, 1.5)
 		xs.append(Transform3D(Basis().scaled(Vector3(s, s, s)), Vector3(x, 0, z)))
 	trunk.instance_count = xs.size()
@@ -180,6 +202,8 @@ func _trees() -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = pair[0]
 		mmi.material_override = Rig.mat(Color.from_string(str(pair[1]), Color.GREEN))
+		if pair[0] == crown and bool(profile.fx):
+			mmi.material_override = _sway_mat(Color.from_string(str(pair[1]), Color.GREEN))
 		mmi.visibility_range_end = float(profile.range) + 30.0
 		mmi.name = "Trees"
 		add_child(mmi)
@@ -235,7 +259,7 @@ func _theme_props(rid: String) -> void:
 			for i in 10:
 				var z := _rng.randf_range(_end_z, HUB_FRONT)
 				_block(letters[_rng.randi_range(0, letters.length() - 1)], Vector3(_rng.randf_range(7.5, 12.0) * (1 if i % 2 == 0 else -1), 0, z), palette[i % palette.size()])
-			_treehouse(Vector3(15, 0, 3))
+			_treehouse(Vector3(32, 0, 12))
 			_treehouse(Vector3(-16, 0, _end_z + 6.0))
 		"ipa":
 			for i in 3:
@@ -250,14 +274,12 @@ func _theme_props(rid: String) -> void:
 				fl.add_child(Rig.part(Rig.cyl(0.18, 0.18, 0.7, 8), Color("dfe8ef"), Vector3(0, 1.1, 0)))
 				fl.add_child(Rig.part(Rig.sphere(0.5), palette[i % palette.size()].lightened(0.3), Vector3(0, 0.5, 0)))
 				_deco(fl)
-			var lake := Rig.part(Rig.cyl(9.0, 9.0, 0.06, 24), Color("5ab8e8"), Vector3(-20, 0.03, 6))
-			add_child(lake)
 		"ips":
 			for i in 6:
 				var z := -6.0 - i * 14.0
 				if z < _end_z:
 					break
-				_house(Vector3(13.0 * (1 if i % 2 == 0 else -1), 0, z), palette[i % palette.size()])
+				_house(Vector3(13.0 * (1 if i % 2 == 0 else -1), 0, z - 8.0), palette[i % palette.size()])
 			for i in 3:
 				var boat := Node3D.new()
 				boat.position = Vector3(-38.0 + i * 6.0, -1.3, 14.0 + i * 3.0)
@@ -265,14 +287,6 @@ func _theme_props(rid: String) -> void:
 				boat.add_child(Rig.part(Rig.cyl(0.06, 0.06, 3.0, 6), Color("5a3a1a"), Vector3(0, 1.8, 0)))
 				boat.add_child(Rig.part(Rig.box(Vector3(0.05, 1.6, 1.6)), Color.WHITE, Vector3(0, 2.0, 0.2)))
 				_deco(boat)
-			for i in 3:
-				var stall := Node3D.new()
-				stall.position = Vector3(16.0, 0, 8.0 - i * 4.0)
-				stall.add_child(Rig.part(Rig.box(Vector3(2.6, 1.0, 1.4)), Color("c98a4b"), Vector3(0, 0.5, 0)))
-				stall.add_child(Rig.part(Rig.box(Vector3(3.0, 0.12, 1.8)), palette[i], Vector3(0, 2.2, 0)))
-				for cx in [-1.3, 1.3]:
-					stall.add_child(Rig.part(Rig.cyl(0.06, 0.06, 2.2, 6), Color("5a3a1a"), Vector3(cx, 1.1, 0.6)))
-				_deco(stall)
 
 
 func _castle(at: Vector3, accent: Color) -> void:
@@ -406,7 +420,7 @@ func _hub() -> void:
 	add_child(sign)
 	# Tempat rahasia: di balik semak di pojok alun-alun (ada celah kecil).
 	var secret := Node3D.new()
-	secret.position = Vector3(-9.3, 0, 9.3)
+	secret.position = Vector3(-23.5, 0, 31.5)
 	for i in 7:
 		var a := PI * 0.25 + i * 0.22
 		secret.add_child(Rig.part(Rig.sphere(0.9), Color.from_string(str(theme.crown), Color.GREEN).darkened(0.1),
@@ -459,6 +473,7 @@ func _gate(i: int, t: Dictionary) -> void:
 		bars.position.y = -3.7 if done else 0.0
 	else:
 		var water := Rig.part(Rig.box(Vector3(PATH_HALF * 2.0 + 0.2, 0.06, 3.4)), Color("4aa3df"), Vector3(0, 0.05, 0))
+		water.set_meta("water", true)
 		water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(water)
 		for k in 7:
@@ -606,6 +621,10 @@ func interact() -> bool:
 	var owner_node := _focus.get_parent()
 	if owner_node.has_meta("rig"):
 		(owner_node.get_meta("rig")).play_once("interaksi", 1.2)
+	if str(_focus.get_meta("kind")) == "villager":
+		_talk_node = owner_node as Node3D
+		var to: Vector3 = player.global_position - (owner_node as Node3D).global_position
+		(owner_node as Node3D).rotation.y = atan2(to.x, to.z)
 	interacted.emit(str(_focus.get_meta("kind")), str(_focus.get_meta("id")))
 	return true
 
@@ -637,3 +656,253 @@ func open_chest_visual() -> void:
 	var lid := get_node_or_null("Chest/Lid")
 	if lid != null:
 		create_tween().tween_property(lid, "rotation:x", -1.6, 0.8).set_trans(Tween.TRANS_BACK)
+
+
+func is_talking_to(n: Node3D) -> bool:
+	return n == _talk_node
+
+
+func end_talk() -> void:
+	_talk_node = null
+
+
+# --- Fase 3: lokasi tambahan ----------------------------------------------------------------------
+
+func _static_box_at(root: Node3D, size: Vector3, pos: Vector3, color) -> StaticBody3D:
+	var sb := StaticBody3D.new()
+	sb.collision_layer = 1
+	sb.position = pos
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = size
+	cs.shape = bs
+	sb.add_child(cs)
+	if color != null:
+		sb.add_child(Rig.part(Rig.box(size), color))
+	root.add_child(sb)
+	return sb
+
+
+func _static_cyl_at(root: Node3D, r: float, h: float, pos: Vector3) -> StaticBody3D:
+	var sb := StaticBody3D.new()
+	sb.collision_layer = 1
+	sb.position = pos
+	var cs := CollisionShape3D.new()
+	var cy := CylinderShape3D.new()
+	cy.radius = r
+	cy.height = h
+	cs.shape = cy
+	sb.add_child(cs)
+	root.add_child(sb)
+	return sb
+
+
+func add_life(kind: String, node: Node3D, data: Dictionary = {}) -> void:
+	life.add(kind, node, data)
+
+
+func add_animal(root: Node3D, pos: Vector3, color: Color, radius: float) -> void:
+	if _animals >= int(profile.animals):
+		return
+	_animals += 1
+	var a: Node3D = Life.make_animal(color)
+	a.position = pos
+	root.add_child(a)
+	life.add("animal", a, {"radius": radius})
+
+
+func _birds() -> void:
+	for i in int(profile.birds):
+		var b: Node3D = Life.make_bird([Color("f4efe6"), Color("3f7fd8"), Color("e05a4f"), Color("f0b429"), Color("2b2440")][i % 5])
+		b.position = Vector3(_rng.randf_range(-15, 15), 11.0 + i * 1.5, _rng.randf_range(-10, 20))
+		add_child(b)
+		life.add("bird", b, {"radius": _rng.randf_range(8.0, 16.0), "speed": _rng.randf_range(0.25, 0.45)})
+
+
+func _locations() -> void:
+	var rid := str(ctx.region.id)
+	var defs: Array = Locations.for_region(rid)
+	var accent := Color.from_string(str(theme.accent), Color.BLUE)
+	var crown := Color.from_string(str(theme.crown), Color.GREEN)
+	var status: Dictionary = ctx.get("locs", {})
+	for i in mini(defs.size(), Locations.SLOTS.size()):
+		var def: Dictionary = defs[i]
+		var root := Node3D.new()
+		root.name = "Loc_" + str(def.id)
+		root.position = Locations.SLOTS[i]
+		# Bangunan menghadap ke tengah alun-alun.
+		var face := Vector3(0, 0, 8) - root.position
+		root.rotation.y = atan2(face.x, face.z)
+		add_child(root)
+		var board: Vector3 = Locations.build(self, root, def, accent, crown)
+		var done: bool = status.get(str(def.id), {}).get("done", false)
+		var sign := Node3D.new()
+		sign.position = board
+		sign.add_child(Rig.part(Rig.cyl(0.07, 0.07, 1.3, 6), Color("5a3a1a"), Vector3(0, 0.65, 0)))
+		sign.add_child(Rig.part(Rig.box(Vector3(1.1, 0.8, 0.12)), Color("8fe0a8") if done else Color("ffd166"), Vector3(0, 1.5, 0)))
+		var q := _label("✓" if done else "?", 72, Color.WHITE)
+		q.position = Vector3(0, 1.5, 0.08)
+		sign.add_child(q)
+		root.add_child(sign)
+		var title := _label(str(def.name), 56, Color.WHITE, true)
+		title.position = board + Vector3(0, 2.6, 0)
+		root.add_child(title)
+		_interactable(sign, "loc", str(def.id), str(def.name), 2.0)
+		_zone(root, "visit", str(def.id), 7.5)
+		if def.has("villager"):
+			_villager(root, def, board)
+		for c in root.find_children("*", "GeometryInstance3D", true, false):
+			if (c as GeometryInstance3D).visibility_range_end == 0.0 and not c is Label3D:
+				(c as GeometryInstance3D).visibility_range_end = float(profile.range) + 25.0
+		locs[str(def.id)] = {"root": root, "def": def, "board": board}
+
+
+func _villager(root: Node3D, def: Dictionary, board: Vector3) -> void:
+	var v := Node3D.new()
+	v.name = "Villager"
+	v.position = board + Vector3(-2.0, 0, 0.5)
+	var rig := Rig.new()
+	rig.shirt = Color.from_string(str(theme.accent), Color.BLUE).lightened(0.3)
+	rig.pants = Color("5a3a1a")
+	rig.skin = Color("e0b08a")
+	rig.hair = Color("2b2440")
+	rig.long_hair = str(def.villager).begins_with("Bu") or str(def.villager).begins_with("Mbok") or str(def.villager).ends_with("Ana")
+	v.add_child(rig)
+	rig.build()
+	var l := _label(str(def.villager), 48, Color("ffd166"), true)
+	l.position.y = 2.5
+	v.add_child(l)
+	root.add_child(v)
+	v.set_meta("rig", rig)
+	_interactable(v, "villager", str(def.id), "Bicara dengan " + str(def.villager), 2.2)
+	var pts := [v.position, v.position + Vector3(-3.0, 0, -1.5), v.position + Vector3(-1.0, 0, -3.5)]
+	life.add("villager", v, {"rig": rig, "points": pts})
+
+
+## Zona kunjungan / benda yang bisa diambil: terpicu saat pemain masuk (tidak perlu tombol).
+func _zone(n: Node3D, kind: String, id: String, radius: float) -> Area3D:
+	var a := Area3D.new()
+	a.name = "Zone_%s_%s" % [kind, id]
+	a.collision_layer = 0
+	a.collision_mask = PLAYER_LAYER
+	a.monitorable = false
+	var cs := CollisionShape3D.new()
+	var sp := SphereShape3D.new()
+	sp.radius = radius
+	cs.shape = sp
+	cs.position.y = 1.0
+	a.add_child(cs)
+	n.add_child(a)
+	a.body_entered.connect(func(b: Node3D) -> void:
+		if b == player:
+			zone_entered.emit(kind, id))
+	return a
+
+
+const ITEM_NAMES := {"matematika": "Bintang Angka", "bahasa": "Gulungan Huruf", "ipa": "Kristal Ilmu", "ips": "Artefak Kuno"}
+const ITEM_SPOTS := [Vector3(12, 0, 13), Vector3(-10, 0, 22), Vector3(23, 0, -4), Vector3(-4.5, 0, -20.5), Vector3(9.0, 0, 31)]
+
+
+func _items() -> void:
+	var got: Array = ctx.get("items", [])
+	var rid := str(ctx.region.id)
+	for i in ITEM_SPOTS.size():
+		var id := "%s_%d" % [rid, i]
+		if got.has(id):
+			continue
+		var it := Node3D.new()
+		it.name = "Item_" + id
+		it.position = ITEM_SPOTS[i] + Vector3(0, 0.9, 0)
+		match rid:
+			"matematika":
+				it.add_child(Rig.part(Rig.sphere(0.32), Color("f0b429"), Vector3.ZERO))
+				var l := _label(str(i * 2 + 1), 48, Color.WHITE, true)
+				it.add_child(l)
+			"bahasa":
+				var sc := Rig.part(Rig.cyl(0.18, 0.18, 0.8, 8), Color("fff3c4"), Vector3.ZERO)
+				sc.rotation.z = PI / 2.0
+				it.add_child(sc)
+			"ipa":
+				it.add_child(Rig.part(Rig.cyl(0.0, 0.3, 0.7, 6), Color("7ee0ff"), Vector3(0, 0.2, 0)))
+				it.add_child(Rig.part(Rig.cyl(0.3, 0.0, 0.4, 6), Color("7ee0ff"), Vector3(0, -0.35, 0)))
+			_:
+				it.add_child(Rig.part(Rig.sphere(0.3), Color("c0703a"), Vector3.ZERO, Vector3(1, 1.2, 1)))
+				it.add_child(Rig.part(Rig.cyl(0.12, 0.18, 0.3, 8), Color("c0703a"), Vector3(0, 0.4, 0)))
+		add_child(it)
+		life.add("bob", it)
+		_zone(it, "item", id, 1.3)
+
+
+func remove_item(id: String) -> void:
+	var it := get_node_or_null("Item_" + id)
+	if it != null:
+		var tw := create_tween()
+		tw.tween_property(it, "scale", Vector3.ONE * 0.01, 0.4)
+		tw.tween_callback(it.queue_free)
+	player.rig.play_once("sorak", 1.0)
+
+
+func item_count() -> int:
+	return find_children("Item_*", "Node3D", false, false).size()
+
+
+func set_loc_done(id: String) -> void:
+	if not locs.has(id):
+		return
+	player.rig.play_once("sorak", 1.5)
+
+
+# --- Efek visual ringan (profil Seimbang/Tinggi) ----------------------------------------------------
+
+func _sway_mat(c: Color) -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+uniform vec4 albedo : source_color;
+void vertex() {
+	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	float s = sin(TIME * 1.3 + wp.x * 0.3 + wp.z * 0.2) * 0.07 * max(VERTEX.y + 0.5, 0.0);
+	VERTEX.x += s;
+	VERTEX.z += s * 0.5;
+}
+void fragment() {
+	ALBEDO = albedo.rgb;
+	ROUGHNESS = 0.9;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("albedo", c)
+	return m
+
+
+func _water_mat(c: Color) -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+uniform vec4 albedo : source_color;
+varying vec3 wp;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	float w = sin(wp.x * 0.9 + TIME * 1.6) * sin(wp.z * 0.7 - TIME * 1.2);
+	ALBEDO = albedo.rgb + vec3(0.08, 0.1, 0.12) * smoothstep(0.55, 0.95, w);
+	ROUGHNESS = 0.25;
+	SPECULAR = 0.6;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("albedo", c)
+	return m
+
+
+func _water_fx() -> void:
+	if not bool(profile.fx):
+		return
+	var cache := {}
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		if mi.has_meta("water"):
+			var base: Color = (mi.material_override as StandardMaterial3D).albedo_color if mi.material_override is StandardMaterial3D else Color("4aa3df")
+			if not cache.has(base):
+				cache[base] = _water_mat(base)
+			mi.material_override = cache[base]

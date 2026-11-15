@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.1.0, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.2.0, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -13,13 +13,17 @@ const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
 const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.gd")
 const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
+const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
+const Missions := preload("res://games/education_sd/scripts/world/w3d_missions.gd")
+const LOC_QUESTIONS := 3
+const LOC_PASS := 2
 
 const GAME_ID := "education_sd"
 const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.1.0"
+const VERSION := "2.2.0"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
@@ -253,6 +257,8 @@ func grade() -> int:
 # --- Kerangka layar ------------------------------------------------------------------------------------
 
 func _clear_raw(id: String) -> void:
+	if screen == "world" and id != "world" and audio != null:
+		audio.ambient(false)
 	screen = id
 	trail("layar " + id)
 	UI.guard(350)
@@ -539,6 +545,7 @@ func _world_ctx(region_id: String) -> Dictionary:
 		"exam": {"open": all_done and not ts.is_empty(), "passed": bool(ex.get("passed", false))},
 		"chest_opened": bool((p.world.chests as Dictionary).get(_wkey(region_id), false)),
 		"found": bool((p.world.found as Dictionary).get(_wkey(region_id), false)),
+		"locs": _loc_status(region_id), "items": (p.world.items as Dictionary).get(region_id, []),
 		"minigame": _minigame_for(region_id), "gfx": str(p.settings.gfx),
 		"hero": {"shirt": outfit, "long_hair": str(p.settings.hero) == "perempuan"}}
 
@@ -570,16 +577,26 @@ func show_world(region_id: String = "") -> void:
 	vp.add_child(world)
 	world.build(ctx)
 	world.interacted.connect(_on_world_interact)
+	world.zone_entered.connect(_on_world_zone)
+	world.life.rain_changed.connect(func(on: bool) -> void:
+		if audio != null and audio.has_method("rain"):
+			audio.rain(on))
 	hud = Hud3D.new()
 	hud.name = "Hud"
 	_root.add_child(hud)
 	var r: Dictionary = ctx.region
 	hud.setup(world, "%s · Kelas %d" % [str(r.name), grade()], Color.from_string(str(r.color), UI.PRIMARY))
 	hud.back_pressed.connect(go_back)
+	hud.missions_pressed.connect(show_missions)
+	hud.set_perf(bool(p.settings.get("perf", false)))
 	hud.chips.add_child(_chip("Bintang %d" % SdProgress.total_stars(p), UI.GOLD))
 	hud.chips.add_child(_chip("Koin %d" % int(p.coins), Color("ffd166")))
 	hud.set_hint(_world_hint(ctx))
 	trail("dunia 3D %s grafis %s" % [region_id, str(ctx.gfx)])
+	(p.world.islands as Dictionary)[region_id] = true
+	_check_missions()
+	if audio != null:
+		audio.ambient(true)
 	# Gerbang yang baru selesai sejak kunjungan terakhir: animasi terbuka + sorak.
 	var seen: Dictionary = p.world.seen_done
 	for t in ctx.topics:
@@ -670,6 +687,17 @@ func _on_world_interact(kind: String, id: String) -> void:
 				if str(reg.id) != rid:
 					btns.append([str(reg.name), show_world.bind(str(reg.id)), Color.from_string(str(reg.color), UI.PRIMARY)])
 			hud.show_dialog("Portal Pulau", "Mau pergi ke pulau mana?", btns)
+		"loc":
+			_loc_dialog(rid, id)
+		"villager":
+			var d := Locations.find(rid, id)
+			var st: Dictionary = _loc_status(rid).get(id, {})
+			if st.get("done", false):
+				hud.show_dialog(str(d.villager), "Terima kasih sudah membantuku, %s! Mau membantu lagi?" % str(p.player.name),
+					[["Bantu lagi", _from_world.bind(start_loc.bind(rid, id)), UI.PRIMARY]])
+			else:
+				hud.show_dialog(str(d.villager), str(d.desc) + "\nMaukah kamu membantuku? Jawab minimal %d dari %d soal dengan benar." % [LOC_PASS, LOC_QUESTIONS],
+					[["Ya, aku bantu!", _from_world.bind(start_loc.bind(rid, id)), UI.GOOD]])
 		"secret":
 			var fact := "Kamu menemukan tempat rahasia!"
 			for t in data.topics_for(rid, grade()):
@@ -681,6 +709,141 @@ func _on_world_interact(kind: String, id: String) -> void:
 				world.mark_secret_found()
 				save()
 			hud.show_dialog("Tempat Rahasia", fact)
+			_check_missions()
+
+
+# --- Dunia 3D: lokasi, benda, misi (Fase 3–4) -----------------------------------------------------------
+
+func _loc_status(region_id: String) -> Dictionary:
+	var out := {}
+	var visited: Dictionary = (p.world.visited as Dictionary).get(region_id, {})
+	for d in Locations.for_region(region_id):
+		var lid := str(d.id)
+		out[lid] = {"done": bool((p.world.locs as Dictionary).get(_wkey(region_id) + "/" + lid, {}).get("done", false)),
+			"visited": visited.has(lid)}
+	return out
+
+
+## Teka-teki lokasi: 3 soal dari topik wilayah (kelas aktif), topik berputar sesuai urutan lokasi.
+func _loc_topic(region_id: String, loc_id: String) -> Dictionary:
+	var ts := data.topics_for(region_id, grade())
+	var i := Locations.index_of(region_id, loc_id)
+	if ts.is_empty() or i < 0:
+		return {}
+	return ts[i % ts.size()]
+
+
+func start_loc(region_id: String, loc_id: String) -> void:
+	var d := Locations.find(region_id, loc_id)
+	var t := _loc_topic(region_id, loc_id)
+	if d.is_empty() or t.is_empty():
+		toast("Belum ada teka-teki di sini untuk kelasmu.")
+		return
+	var st := SdProgress.topic_stats(p, grade(), str(t.id))
+	var picked := data.pick(str(t.id), grade(), LOC_QUESTIONS, st, rng)
+	_start_session({"kind": "lokasi", "mode": "petualangan", "region": region_id, "topic": str(t.id), "loc": loc_id,
+		"questions": picked.questions, "adapt": picked.mode, "title": str(d.name), "story": str(d.desc)})
+
+
+func _loc_dialog(rid: String, id: String) -> void:
+	var d := Locations.find(rid, id)
+	var t := _loc_topic(rid, id)
+	var st: Dictionary = _loc_status(rid).get(id, {})
+	var txt := "%s\nTeka-teki: %s (%d soal, minimal %d benar)." % [str(d.desc), str(t.get("name", "-")), LOC_QUESTIONS, LOC_PASS]
+	if st.get("done", false):
+		txt += "\nSudah kamu selesaikan. Boleh dicoba lagi untuk latihan."
+	var btns: Array = [["Pecahkan teka-teki", _from_world.bind(start_loc.bind(rid, id)), UI.GOOD]]
+	match str(d.get("extra", "")):
+		"museum":
+			btns.append(["Lihat kartu", _show_cards.bind(rid), UI.PRIMARY])
+		"hewan":
+			btns.append(["Lihat hewan", _show_animals, UI.PRIMARY])
+		"minigame":
+			var mg := _minigame_for(rid)
+			if not mg.is_empty():
+				btns.append(["Main " + str(mg.name), _from_world.bind(start_minigame.bind(str(mg.id))), Color("e0813d")])
+	hud.show_dialog(str(d.name), txt, btns)
+
+
+func _show_cards(rid: String) -> void:
+	var rows: Array = []
+	for cid in p.cards:
+		if data.topics.has(str(cid)) and str(data.topics[str(cid)].region) == rid:
+			var c: Dictionary = data.topics[str(cid)].card
+			rows.append("★ %s\n    %s" % [str(c.title), str(c.fact)])
+	if rows.is_empty():
+		rows.append("Belum ada kartu dari wilayah ini. Selesaikan area di gerbang untuk mendapatkannya!")
+	hud.show_list("Kartu Pengetahuan · %s" % str(data.region(rid).subject), rows)
+
+
+func _show_animals() -> void:
+	var facts: Dictionary = data.doc.get("animal_facts", {})
+	var rows: Array = []
+	for an in p.animals:
+		rows.append("• %s: %s" % [str(an).capitalize(), str(facts.get(str(an), ""))])
+	if rows.is_empty():
+		rows.append("Koleksi hewanmu masih kosong. Main mini-game Kelompokkan Hewan untuk mengumpulkannya!")
+	hud.show_list("Koleksi Hewan (%d/%d)" % [(p.animals as Array).size(), facts.size()], rows)
+
+
+func _on_world_zone(kind: String, id: String) -> void:
+	var rid := str(p.world.region)
+	match kind:
+		"visit":
+			var v: Dictionary = (p.world.visited as Dictionary).get(rid, {})
+			if not v.has(id):
+				v[id] = true
+				p.world.visited[rid] = v
+				var d := Locations.find(rid, id)
+				toast("Lokasi baru: %s (%d/%d)" % [str(d.get("name", id)), v.size(), Locations.for_region(rid).size()])
+				trail("3D kunjungi " + id)
+				_check_missions()
+		"item":
+			var items: Array = (p.world.items as Dictionary).get(rid, [])
+			if items.has(id):
+				return
+			items.append(id)
+			p.world.items[rid] = items
+			if world != null:
+				world.remove_item(id)
+			if audio != null:
+				audio.play("bintang")
+			toast("Kamu menemukan %s! (%d/%d)" % [str(world.ITEM_NAMES.get(rid, "benda")), items.size(), Missions.ITEMS_PER_ISLAND])
+			trail("3D benda " + id)
+			_check_missions()
+
+
+func world_missions() -> Array:
+	return Missions.build(p, data, grade(), str(p.world.region), Time.get_date_string_from_system())
+
+
+## Hitung misi dari progres sah lalu beri hadiah yang belum diterima (sekali per misi).
+func _check_missions() -> void:
+	var got := Missions.award(p, world_missions(), Time.get_date_string_from_system())
+	for m in got:
+		toast("Misi selesai: %s! +%d koin, +%d XP" % [str(m.name), int(m.reward.coins), int(m.reward.xp)])
+		trail("misi " + str(m.key))
+	if not got.is_empty():
+		_announce_badges()
+		if audio != null:
+			audio.play("bintang")
+		if hud != null:
+			for c in hud.chips.get_children():
+				c.queue_free()
+			hud.chips.add_child(_chip("Bintang %d" % SdProgress.total_stars(p), UI.GOLD))
+			hud.chips.add_child(_chip("Koin %d" % int(p.coins), Color("ffd166")))
+	save()
+
+
+func show_missions() -> void:
+	if hud == null:
+		return
+	var ms := world_missions()
+	var done := 0
+	for m in ms:
+		if m.done:
+			done += 1
+	hud.show_list("Buku Petualangan · %s (%d/%d misi)" % [str(data.region(str(p.world.region)).name), done, ms.size()], Missions.lines(ms))
 
 
 # --- Peta & wilayah --------------------------------------------------------------------------------------
@@ -903,6 +1066,18 @@ func _finish_session() -> void:
 			if _world_return != "" and score >= CHEST_SCORE:
 				(p.world.chests as Dictionary)[_wkey(region)] = true
 			SdProgress.add_history(p, "kuis", subject, "Kuis", grade(), correct, total)
+		"lokasi":
+			var ld := Locations.find(region, str(session.loc))
+			SdProgress.add_history(p, "lokasi", subject, str(ld.get("name", "Lokasi")), grade(), correct, total)
+			if correct >= LOC_PASS:
+				var lk := _wkey(region) + "/" + str(session.loc)
+				var first := not bool((p.world.locs as Dictionary).get(lk, {}).get("done", false))
+				(p.world.locs as Dictionary)[lk] = {"done": true}
+				var today := Time.get_date_string_from_system()
+				p.world.daily_locs[today] = int((p.world.daily_locs as Dictionary).get(today, 0)) + 1
+				reward = {"loc_done": true, "first": first}
+			else:
+				reward = {"loc_done": false}
 		"ujian":
 			reward = SdProgress.finish_exam(p, grade(), region, score)
 			SdProgress.add_history(p, "ujian", subject, "Ujian akhir", grade(), correct, total)
@@ -940,6 +1115,8 @@ func _show_result(correct: int, total: int, score: int, reward: Dictionary) -> v
 		lines.append("Kartu baru: %s" % str(data.topics[str(reward.card)].card.title))
 	if kind == "ujian":
 		lines.append("LULUS UJIAN!" if reward.get("passed", false) else "Belum lulus (butuh nilai 70). Coba lagi, ya!")
+	if kind == "lokasi":
+		lines.append("Lokasi selesai!" if reward.get("loc_done", false) else "Butuh %d jawaban benar. Coba lagi, ya!" % LOC_PASS)
 	var reward_lbl := UI.label("   ".join(lines), 30, UI.INK)
 	col.add_child(reward_lbl)
 	if audio != null and (int(reward.get("stars", 0)) > 0 or reward.get("passed", false)):
@@ -974,6 +1151,8 @@ func _repeat_session() -> void:
 			start_quiz(str(session.region))
 		"ujian":
 			start_exam(str(session.region))
+		"lokasi":
+			start_loc(str(session.region), str(session.loc))
 
 
 func _confirm_leave_session() -> void:
@@ -1285,6 +1464,9 @@ func show_settings() -> void:
 		UI.expand(b)
 		grow.add_child(b)
 	v.add_child(grow)
+	var perf_on := bool(p.settings.get("perf", false))
+	v.add_child(UI.button("Info kinerja di dunia 3D (FPS, draw call, RAM): %s" % ("NYALA" if perf_on else "MATI"), toggle_setting.bind("perf"),
+		UI.GOOD if perf_on else Color("cfc8dc"), 22, 70))
 	v.add_child(UI.label("Hemat: untuk HP ringan (tanpa bayangan, resolusi 3D lebih rendah). Tinggi: tampilan terbaik.", 20, UI.SOFT))
 	v.add_child(UI.button("Kembali ke Launcher", _confirm_exit.bind("tombol pengaturan"), Color("8a9bb8"), 26, 80))
 

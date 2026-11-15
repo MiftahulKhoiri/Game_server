@@ -7,6 +7,7 @@ extends Control
 const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
 
 signal back_pressed
+signal missions_pressed
 
 var world: Node3D
 var joy_vec := Vector2.ZERO
@@ -25,6 +26,11 @@ var _dialog: PanelContainer
 var _dialog_title: Label
 var _dialog_text: Label
 var _dialog_btns: HBoxContainer
+var _dialog_scroll: ScrollContainer
+var _list_mode := false
+var _perf: Label
+var perf_on := false
+var _fps: Array = []
 var _run_on := false
 var chips: HBoxContainer
 
@@ -92,6 +98,9 @@ func setup(w: Node3D, title: String, color: Color) -> void:
 	_top.add_child(tp)
 	chips = UI.hbox(8)
 	_top.add_child(chips)
+	var mb := UI.button("MISI", func() -> void: missions_pressed.emit(), Color("8a6bd8"), 22, 60)
+	mb.name = "Missions"
+	_top.add_child(mb)
 	_hint = UI.label("", 20, UI.INK)
 	var hp := UI.panel(Color(1, 1, 1, 0.8), 16)
 	hp.name = "HintPanel"
@@ -110,14 +119,23 @@ func setup(w: Node3D, title: String, color: Color) -> void:
 	_dialog_title = UI.label("", 28, UI.PRIMARY, false)
 	_dialog_text = UI.label("", 24, UI.INK)
 	_dialog_btns = UI.hbox(12)
+	_dialog_scroll = ScrollContainer.new()
+	_dialog_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_dialog_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dialog_scroll.add_child(_dialog_text)
 	dv.add_child(_dialog_title)
-	dv.add_child(_dialog_text)
+	dv.add_child(_dialog_scroll)
 	dv.add_child(_dialog_btns)
 	_dialog.add_child(dv)
 	_dialog.visible = false
 	add_child(_dialog)
 	w.focus_changed.connect(_on_focus)
 	_on_focus("")
+	_perf = UI.label("", 18, Color.WHITE, false)
+	_perf.add_theme_color_override("font_outline_color", Color("2b2440"))
+	_perf.add_theme_constant_override("outline_size", 6)
+	_perf.visible = false
+	add_child(_perf)
 	resized.connect(_layout)
 	_layout.call_deferred()
 
@@ -131,7 +149,8 @@ func _layout() -> void:
 	_btn_run.position = Vector2(s.x - 160, s.y - 330)
 	_prompt.position = Vector2(s.x - 760, s.y - 255)
 	_prompt.size = Vector2(540, 40)
-	_dialog.position = Vector2(s.x * 0.18, s.y * 0.38)
+	_dialog.position = Vector2(s.x * 0.18, s.y * (0.1 if _list_mode else 0.38))
+	_dialog_scroll.custom_minimum_size = Vector2(0, s.y * 0.5 if _list_mode else 0.0)
 	_dialog.custom_minimum_size = Vector2(s.x * 0.64, 0)
 	_dialog.size = Vector2(s.x * 0.64, 0)
 	_joy_draw.queue_redraw()
@@ -153,7 +172,18 @@ func dialog_open() -> bool:
 
 
 ## buttons: [[teks, Callable, warna], ...]. Tombol "Tutup" selalu ditambahkan.
+func show_list(title: String, rows: Array, buttons: Array = []) -> void:
+	_list_mode = true
+	_fill_dialog(title, "\n".join(rows), buttons)
+
+
 func show_dialog(title: String, text: String, buttons: Array = []) -> void:
+	_list_mode = false
+	_fill_dialog(title, text, buttons)
+
+
+func _fill_dialog(title: String, text: String, buttons: Array) -> void:
+	_layout()
 	_dialog_title.text = title
 	_dialog_text.text = text
 	for c in _dialog_btns.get_children():
@@ -175,6 +205,8 @@ func show_dialog(title: String, text: String, buttons: Array = []) -> void:
 
 func close_dialog() -> void:
 	_dialog.visible = false
+	if world != null and world.has_method("end_talk"):
+		world.end_talk()
 	_set_frozen(false)
 
 
@@ -275,3 +307,29 @@ func _input(event: InputEvent) -> void:
 			_joy_move(event.position)
 		elif _look_index == -1 or (event.button_mask & MOUSE_BUTTON_MASK_RIGHT) != 0:
 			world.player.look(event.relative)
+
+
+## Info kinerja (Pengaturan → Info kinerja): FPS rata-rata/minimum 5 detik, draw call, objek tergambar, RAM, node.
+func set_perf(on: bool) -> void:
+	perf_on = on
+	_perf.visible = on
+
+
+func _process(delta: float) -> void:
+	if not perf_on:
+		return
+	_fps.append(1.0 / maxf(delta, 0.0001))
+	if _fps.size() > 300:
+		_fps.pop_front()
+	if Engine.get_process_frames() % 15 != 0:
+		return
+	var sum := 0.0
+	var mn := 1000.0
+	for f in _fps:
+		sum += f
+		mn = minf(mn, f)
+	_perf.text = "FPS %d (rata2 %d, min %d)  draw %d  objek %d  RAM %d MB  node %d" % [Engine.get_frames_per_second(),
+		int(sum / maxf(1, _fps.size())), int(mn), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+		int(OS.get_static_memory_usage() / 1048576.0), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))]
+	_perf.position = Vector2(560, 92)
