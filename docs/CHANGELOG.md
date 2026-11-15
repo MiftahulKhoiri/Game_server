@@ -2,6 +2,15 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.0.3 — jejak langkah untuk melacak crash di HP (15 November 2026)
+
+- Di Samsung A18 Android menampilkan "Game server ditutup karena aplikasi ini memiliki bug" (aplikasi crash),
+  dan log server tidak menunjukkan langkah terakhirnya. Game SD kini menulis jejak langkah (layar, tombol, sesi,
+  mini-game, jeda/lanjut, peringatan memori, model HP, versi Android, GPU, ukuran layar) ke
+  `user://education_sd_trail.txt` dengan flush per baris.
+- Bila jejak sebelumnya tidak berakhir dengan END, saat game dibuka lagi 30 langkah terakhir disimpan di
+  `progress.crash` dan dikirim ke server bersama progres, sehingga titik crash terlihat dari Pi.
+
 ## Paket education_sd v2.0.2 — perbaikan: game tertutup sendiri di HP (Samsung A18) (15 November 2026)
 
 - Catatan diagnosis dari HP pelapor: game keluar lewat tombol "KEMBALI KE LAUNCHER" di beranda tanpa

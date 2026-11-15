@@ -461,6 +461,19 @@ func _app_tests() -> void:
 	_check(int(saved.data.coins) == coins and int(saved.data.totals.answered) == answered, "progres tersimpan saat kembali ke launcher")
 	app = await _open()
 	_check(app.screen == "home" and str(app.p.player.name) == "Ani" and int(app.p.coins) == coins, "buka ulang: progres utuh (nama, koin)")
+	_check(not app.p.has("crash"), "keluar normal tidak dianggap crash")
+	# Jejak langkah: tertutup paksa (tanpa END) -> saat dibuka lagi jejak terakhir dikirim bersama progres.
+	var tf := FileAccess.open("user://education_sd_trail.txt", FileAccess.WRITE)
+	tf.store_line("10:00:00 BUKA v-uji")
+	tf.store_line("10:00:05 layar map")
+	tf.store_line("10:00:07 tombol Kerajaan Matematika")
+	tf.close()
+	current_scene.free()
+	app = await _open()
+	_check(app.p.has("crash") and str(app.p.crash.kind) == "crash" and str(app.p.crash.trail[-1]).ends_with("Kerajaan Matematika"),
+		"crash terdeteksi saat dibuka lagi: jejak langkah terakhir tersimpan untuk server")
+	_check(str(app.p.diag[-2].reason).begins_with("tertutup tidak normal"), "catatan diagnosis mencatat penutupan tidak normal")
+	app.p.erase("crash")
 	# Data game SD lama (skema 1) di HP -> dimigrasikan saat dibuka.
 	await root.get_node("GameManager").exit_to_launcher()
 	for f in ["save.json", "save.json.bak"]:

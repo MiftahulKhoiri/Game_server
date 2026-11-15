@@ -15,6 +15,8 @@ const CARD := Color("ffffff")
 const DRAG_CANCEL_PX := 24.0
 static var guard_until_ms := 0
 static var touch_dragged := false
+## Dipanggil setiap tombol benar-benar ditekan (main.gd mencatatnya ke jejak diagnosis).
+static var on_press := Callable()
 
 
 static func guard(ms: int) -> void:
@@ -70,6 +72,8 @@ static func button(text: String, cb: Callable, color := PRIMARY, size := 28, min
 	if cb.is_valid():
 		b.pressed.connect(func() -> void:
 			if can_press():
+				if on_press.is_valid():
+					on_press.call(b.text)
 				cb.call())
 	return b
 

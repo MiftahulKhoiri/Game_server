@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.2, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.3, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -17,6 +17,11 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
+const VERSION := "2.0.3"
+## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
+## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
+## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
+const TRAIL_PATH := "user://education_sd_trail.txt"
 const NPC_KIND := {"matematika": "raja", "bahasa": "kancil", "ipa": "profesor", "ips": "nakhoda"}
 
 var game_id := GAME_ID  # dibaca uji platform
@@ -35,6 +40,7 @@ var _back_target := "home"
 var _exit_dialog: ConfirmationDialog
 var _exit_noted := false
 var _touch_start := {}  # indeks jari -> posisi awal sentuhan
+var _trail: FileAccess
 
 
 ## Catatan diagnosis (ikut tersinkron ke server): kapan dan dari layar mana game ditutup.
@@ -43,12 +49,40 @@ func _note_exit(reason: String) -> void:
 	_exit_noted = true
 
 
+func _check_last_trail() -> void:
+	if not FileAccess.file_exists(TRAIL_PATH):
+		return
+	var lines := FileAccess.get_file_as_string(TRAIL_PATH).strip_edges().split("\n")
+	if lines.is_empty() or lines[-1].ends_with(" END"):
+		return
+	var tail := Array(lines.slice(-30))
+	var last := str(tail[-1])
+	var kind := "jeda" if last.ends_with(" PAUSE") else "crash"
+	p["crash"] = {"found_at": Time.get_datetime_string_from_system(false, true), "kind": kind, "trail": tail}
+	_note_event("tertutup tidak normal (%s), langkah terakhir: %s" % [kind, last])
+	save()
+
+
+func _open_trail() -> void:
+	_trail = FileAccess.open(TRAIL_PATH, FileAccess.WRITE)
+	UI.on_press = func(text: String) -> void: trail("tombol " + text)
+	trail("BUKA v%s | %s | Android %s | %s | layar %s" % [VERSION, OS.get_model_name(), OS.get_version(),
+		RenderingServer.get_video_adapter_name(), str(get_viewport().get_visible_rect().size)])
+
+
+func trail(text: String) -> void:
+	if _trail == null:
+		return
+	_trail.store_line("%s %s" % [Time.get_time_string_from_system(), text])
+	_trail.flush()
+
+
 func _note_event(reason: String) -> void:
 	if p.is_empty():
 		return
 	var diag: Array = p.get("diag", [])
 	diag.append({"at": Time.get_datetime_string_from_system(false, true), "reason": reason, "screen": screen,
-			"ver": "2.0.2"})
+			"ver": VERSION})
 	p["diag"] = diag.slice(-10)
 
 
@@ -70,6 +104,8 @@ func _ready() -> void:
 		_show_error("Data pelajaran tidak bisa dimuat:\n" + "\n".join(data.errors.slice(0, 5)))
 		return
 	_load_progress()
+	_check_last_trail()
+	_open_trail()
 	_note_event("dibuka")
 	audio.apply.call_deferred(bool(p.settings.music), bool(p.settings.sfx))
 	if str(p.player.name) == "":
@@ -96,13 +132,25 @@ func _input(event: InputEvent) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		trail("back Android")
 		go_back()
 	elif what == NOTIFICATION_APPLICATION_PAUSED:
+		trail("PAUSE")
 		save()
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		trail("lanjut")
+	elif what == NOTIFICATION_OS_MEMORY_WARNING:
+		trail("peringatan memori")
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
+		trail("END")
+	elif what == NOTIFICATION_PREDELETE:
+		trail("END")
+		UI.on_press = Callable()
 
 
 ## Dipanggil GameManager sebelum kembali ke launcher.
 func platform_before_exit() -> void:
+	trail("keluar ke launcher END")
 	if not _exit_noted:
 		_note_exit("ditutup platform")
 	save()
@@ -159,6 +207,7 @@ func grade() -> int:
 
 func _clear(id: String) -> VBoxContainer:
 	screen = id
+	trail("layar " + id)
 	UI.guard(350)
 	_qview = null
 	for c in _root.get_children():
@@ -525,6 +574,7 @@ func start_exam(region_id: String) -> void:
 
 
 func _start_session(s: Dictionary) -> void:
+	trail("sesi %s %s %s" % [str(s.get("mode", "")), str(s.get("region", "")), str(s.get("topic", ""))])
 	session = s
 	session.index = 0
 	session.results = []
@@ -755,6 +805,7 @@ func show_minigames() -> void:
 
 
 func start_minigame(id: String) -> void:
+	trail("mini-game " + id)
 	var info := SdMini.info(id)
 	var from := screen if screen in ["region", "minigames", "minigame"] else "minigames"
 	if from == "minigame":
