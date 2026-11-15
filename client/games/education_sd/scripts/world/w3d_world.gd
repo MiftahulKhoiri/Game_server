@@ -14,6 +14,7 @@ const Rig := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const Player := preload("res://games/education_sd/scripts/world/w3d_player.gd")
 const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
 const Life := preload("res://games/education_sd/scripts/world/w3d_life.gd")
+const Base := preload("res://games/education_sd/scripts/world/w3d_base.gd")
 
 const PATH_HALF := 6.0
 const HUB_HALF := 26.0
@@ -34,8 +35,16 @@ const THEMES := {
 	"matematika": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "3f7fd8", "sky": "8cc8ff", "npc_extra": "mahkota", "boss": "Golem Angka"},
 	"bahasa": {"ground": "6fbf5a", "path": "c9a46a", "trunk": "7a4a22", "crown": "2f8f4a", "accent": "3fae63", "sky": "9ad8ff", "npc_extra": "telinga", "boss": "Burung Hantu Penjaga Kata"},
 	"ipa": {"ground": "7cc47c", "path": "a9c3d8", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
+	"markas": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "8a6bd8", "sky": "9ad8ff", "npc_extra": "", "boss": ""},
 	"ips": {"ground": "a7d46f", "path": "d9a46a", "trunk": "8a5a2b", "crown": "5aa84a", "accent": "e0813d", "sky": "ffd9a8", "npc_extra": "topi_kapten", "boss": "Penjaga Gerbang Nusantara"},
 }
+
+## Fase 5: model GLB berlisensi CC0 dari APK (KayKit) untuk NPC, warga, penjaga, dan hewan.
+const NPC_GLB := {"matematika": ["ksatria", Color(1.0, 0.92, 0.65)], "bahasa": ["petani", Color(1.0, 0.85, 0.65)],
+	"ipa": ["penyihir", Color(0.88, 0.82, 1.0)], "ips": ["pemanah", Color(0.75, 0.85, 1.0)]}
+const VILLAGER_GLB := {"Pak Hitung": "petani", "Bu Rusa": "nenek_penjual", "Peneliti Ana": "anak_desa", "Mbok Sari": "nenek_penjual"}
+const ANIMAL_GLB := [["anak_ayam", 0.55], ["babi_hutan", 0.85], ["tikus_sawah", 0.45]]
+const BOSS_TINT := {"matematika": Color(0.75, 0.85, 1.0), "bahasa": Color(0.75, 1.0, 0.8), "ipa": Color(0.8, 1.0, 1.0), "ips": Color(1.0, 0.85, 0.7)}
 
 var ctx: Dictionary = {}
 var player: CharacterBody3D
@@ -69,6 +78,16 @@ func build(c: Dictionary) -> void:
 	add_child(life)
 	life.setup(self, profile, hash(rid))
 	_environment()
+	if ctx.has("base"):
+		Base.build(self, ctx)
+		_birds()
+		_water_fx()
+		player = Player.new()
+		player.name = "Player"
+		add_child(player)
+		player.setup(ctx.get("hero", {}))
+		player.place(Vector3(0, 0.1, 9.0), 0.0)
+		return
 	_ground()
 	_walls()
 	_trees()
@@ -365,6 +384,9 @@ func _hub() -> void:
 		rig.skin = Color("c98a4b")
 		rig.hair = Color("8a5a2b")
 	rig.scale = Vector3.ONE * 1.15
+	if NPC_GLB.has(str(r.id)):
+		rig.glb_id = NPC_GLB[str(r.id)][0]
+		rig.glb_tint = NPC_GLB[str(r.id)][1]
 	npc.add_child(rig)
 	rig.build()
 	var nl := _label(str(r.npc), 64, Color.WHITE, true)
@@ -544,6 +566,9 @@ func _boss() -> void:
 	rig.skin = Color("b9b3c9") if str(ctx.region.id) != "bahasa" else Color("c98a4b")
 	rig.extra = "helm"
 	rig.scale = Vector3.ONE * 1.9
+	rig.glb_id = "ksatria"
+	rig.glb_tint = BOSS_TINT.get(str(ctx.region.id), Color.WHITE) if not passed else Color(0.8, 1.0, 0.8)
+	rig.glb_hide = ["Sword", "Badge"]
 	b.add_child(rig)
 	rig.build()
 	if passed:
@@ -704,8 +729,19 @@ func add_life(kind: String, node: Node3D, data: Dictionary = {}) -> void:
 func add_animal(root: Node3D, pos: Vector3, color: Color, radius: float) -> void:
 	if _animals >= int(profile.animals):
 		return
+	var spec: Array = ANIMAL_GLB[_animals % ANIMAL_GLB.size()]
 	_animals += 1
-	var a: Node3D = Life.make_animal(color)
+	var a: Node3D
+	if Rig.has_model(spec[0]):
+		var rig := Rig.new()
+		rig.glb_id = spec[0]
+		rig.glb_height = spec[1]
+		rig.build()
+		a = Node3D.new()
+		a.add_child(rig)
+		a.set_meta("rig", rig)
+	else:
+		a = Life.make_animal(color)
 	a.position = pos
 	root.add_child(a)
 	life.add("animal", a, {"radius": radius})
@@ -767,6 +803,8 @@ func _villager(root: Node3D, def: Dictionary, board: Vector3) -> void:
 	rig.skin = Color("e0b08a")
 	rig.hair = Color("2b2440")
 	rig.long_hair = str(def.villager).begins_with("Bu") or str(def.villager).begins_with("Mbok") or str(def.villager).ends_with("Ana")
+	rig.glb_id = VILLAGER_GLB.get(str(def.villager), "")
+	rig.glb_height = 1.75
 	v.add_child(rig)
 	rig.build()
 	var l := _label(str(def.villager), 48, Color("ffd166"), true)

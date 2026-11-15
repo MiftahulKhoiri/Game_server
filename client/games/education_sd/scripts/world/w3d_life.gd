@@ -156,6 +156,8 @@ func _wander(e: Dictionary, delta: float) -> void:
 			var r: float = data.get("radius", 4.0)
 			data.target = e.home + Vector3(_rng.randf_range(-r, r), 0, _rng.randf_range(-r, r))
 		_legs(n, 0.0)
+		if n.has_meta("rig"):
+			n.get_meta("rig").animate(delta, 0.0, true)
 		return
 	var tgt: Vector3 = data.target
 	var to := tgt - n.position
@@ -164,6 +166,8 @@ func _wander(e: Dictionary, delta: float) -> void:
 		data.erase("target")
 		data.wait = _rng.randf_range(1.0, 3.5)
 		return
+	if n.has_meta("rig"):
+		n.get_meta("rig").animate(delta, 1.1, true)
 	var step := to.normalized() * minf(1.1 * delta, to.length())
 	n.position += step
 	n.rotation.y = lerp_angle(n.rotation.y, atan2(to.x, to.z), minf(1.0, delta * 6.0))

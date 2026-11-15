@@ -28,6 +28,7 @@ const VERSION := "2.2.0"
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
 const TRAIL_PATH := "user://education_sd_trail.txt"
+const BASE_ID := "markas"
 const CHEST_SCORE := 70  # nilai kuis minimal untuk membuka peti pengetahuan di dunia 3D
 const NPC_KIND := {"matematika": "raja", "bahasa": "kancil", "ipa": "profesor", "ips": "nakhoda"}
 
@@ -553,12 +554,14 @@ func _world_ctx(region_id: String) -> Dictionary:
 func show_world(region_id: String = "") -> void:
 	if region_id == "":
 		region_id = str(p.world.region)
-	if data.region(region_id).is_empty():
+	var in_base := region_id == BASE_ID
+	if not in_base and data.region(region_id).is_empty():
 		region_id = "matematika"
-	p.world.region = region_id
+	if not in_base:
+		p.world.region = region_id
 	_world_return = ""
 	_clear_raw("world")
-	var ctx := _world_ctx(region_id)
+	var ctx := _base_ctx() if in_base else _world_ctx(region_id)
 	var prof: Dictionary = IslandWorld.PROFILES.get(str(ctx.gfx), IslandWorld.PROFILES.seimbang)
 	var box := SubViewportContainer.new()
 	box.name = "View3D"
@@ -593,6 +596,12 @@ func show_world(region_id: String = "") -> void:
 	hud.chips.add_child(_chip("Koin %d" % int(p.coins), Color("ffd166")))
 	hud.set_hint(_world_hint(ctx))
 	trail("dunia 3D %s grafis %s" % [region_id, str(ctx.gfx)])
+	if in_base:
+		hud.set_hint("Markas %s: lemari kostum, cermin karakter, Buku Petualangan, piala, museum kartu, dan galeri hewan." % str(p.player.name))
+		if audio != null:
+			audio.ambient(true)
+		save()
+		return
 	(p.world.islands as Dictionary)[region_id] = true
 	_check_missions()
 	if audio != null:
@@ -682,11 +691,48 @@ func _on_world_interact(kind: String, id: String) -> void:
 		"minigame":
 			_from_world(start_minigame.bind(id))
 		"portal":
+			var here := str(world.ctx.region.id)
 			var btns: Array = []
 			for reg in data.regions:
-				if str(reg.id) != rid:
+				if str(reg.id) != here:
 					btns.append([str(reg.name), show_world.bind(str(reg.id)), Color.from_string(str(reg.color), UI.PRIMARY)])
-			hud.show_dialog("Portal Pulau", "Mau pergi ke pulau mana?", btns)
+			if here != BASE_ID:
+				btns.append(["Markas Pemain", show_world.bind(BASE_ID), Color("8a6bd8")])
+			hud.show_dialog("Portal Pulau", "Mau pergi ke mana?", btns)
+		"wardrobe":
+			var btns: Array = []
+			for o in _owned_outfits():
+				btns.append(["Pakai " + str(o.name), _wear.bind(str(o.id)), o.color])
+			hud.show_dialog("Lemari Kostum", "Kostum yang sudah kamu miliki. Kostum baru bisa dibeli dengan koin di menu Koleksi.", btns)
+		"mirror":
+			hud.show_dialog("Cermin Karakter", "Pilih karakter petualangmu.", [
+				["Laki-laki", _pick_hero.bind("laki"), UI.PRIMARY], ["Perempuan", _pick_hero.bind("perempuan"), Color("e05a8f")]])
+		"book":
+			hud.show_list("Buku Petualangan · Kelas %d" % grade(), _book_rows())
+		"cards":
+			var rows: Array = []
+			for reg in data.regions:
+				var n := 0
+				for cid in p.cards:
+					if data.topics.has(str(cid)) and str(data.topics[str(cid)].region) == str(reg.id):
+						n += 1
+						rows.append("★ [%s] %s — %s" % [str(reg.subject), str(data.topics[str(cid)].card.title), str(data.topics[str(cid)].card.fact)])
+			if rows.is_empty():
+				rows.append("Belum ada kartu. Selesaikan area di gerbang pulau untuk mendapatkannya!")
+			hud.show_list("Museum Kartu (%d kartu)" % (p.cards as Array).size(), rows)
+		"trophies":
+			var rows: Array = []
+			for b in data.doc.get("badges", []):
+				if (p.badges as Dictionary).has(str(b.id)):
+					rows.append("🏆 %s — %s" % [str(b.name), str(b.desc)])
+			if rows.is_empty():
+				rows.append("Belum ada piala. Terus belajar untuk mendapatkan lencana prestasi!")
+			hud.show_list("Piala Prestasi", rows)
+		"animal":
+			if id == "":
+				hud.show_dialog("Galeri Hewan", "Belum ada hewan. Main mini-game Kelompokkan Hewan untuk mengumpulkannya!")
+			else:
+				hud.show_dialog(id.capitalize(), str(data.doc.get("animal_facts", {}).get(id, "")))
 		"loc":
 			_loc_dialog(rid, id)
 		"villager":
@@ -844,6 +890,84 @@ func show_missions() -> void:
 		if m.done:
 			done += 1
 	hud.show_list("Buku Petualangan · %s (%d/%d misi)" % [str(data.region(str(p.world.region)).name), done, ms.size()], Missions.lines(ms))
+
+
+# --- Markas Pemain (Fase 7) --------------------------------------------------------------------------------
+
+func _owned_outfits() -> Array:
+	var out: Array = []
+	for s in data.doc.get("shop", []):
+		if str(s.get("slot", "")) == "outfit" and (p.owned as Array).has(str(s.id)):
+			out.append({"id": str(s.id), "name": str(s.name), "color": Color.from_string(str(s.value), Color.WHITE)})
+	return out
+
+
+func _base_ctx() -> Dictionary:
+	var ctx := _world_ctx(str(p.world.region))
+	var animals: Array = []
+	var pal := [Color("c98a4b"), Color("f4efe6"), Color("8a8174"), Color("e0a060"), Color("6b5a4a"), Color("f0d890")]
+	for an in p.animals:
+		animals.append({"id": str(an), "name": str(an).capitalize(), "color": pal[absi(hash(str(an))) % pal.size()]})
+	var cards: Array = []
+	for cid in p.cards:
+		if data.topics.has(str(cid)):
+			cards.append({"title": str(data.topics[str(cid)].card.title),
+				"color": Color.from_string(str(data.region(str(data.topics[str(cid)].region)).get("color", "#3f7fd8")), UI.PRIMARY).lightened(0.3)})
+	var badges: Array = []
+	for b in data.doc.get("badges", []):
+		if (p.badges as Dictionary).has(str(b.id)):
+			badges.append(str(b.name))
+	ctx.region = {"id": BASE_ID, "name": "Markas Pemain", "color": "#8a6bd8", "npc": "", "npc_color": "#8a6bd8", "intro": ""}
+	ctx.topics = []
+	ctx.base = {"name": str(p.player.name), "outfits": _owned_outfits(), "animals": animals, "cards": cards, "badges": badges}
+	return ctx
+
+
+func _wear(id: String) -> void:
+	for o in _owned_outfits():
+		if str(o.id) == id:
+			p.player.avatar.outfit = id
+			save()
+			toast("Kostum dipakai: " + str(o.name))
+			show_world(BASE_ID)
+			return
+
+
+func _pick_hero(h: String) -> void:
+	set_setting("hero", h)
+	show_world(BASE_ID)
+
+
+func _book_rows() -> Array:
+	var rows: Array = []
+	var today := Time.get_date_string_from_system()
+	for reg in data.regions:
+		var ms := Missions.build(p, data, grade(), str(reg.id), today)
+		var done := 0
+		for m in ms:
+			if m.done:
+				done += 1
+		rows.append("%s: %d/%d misi selesai" % [str(reg.name), done, ms.size()])
+		for m in ms:
+			if m.type == "utama":
+				rows.append("    %s %s (%d/%d)" % ["✓" if m.done else "•", str(m.name), int(m.progress), int(m.goal)])
+	rows.append("Benda ditemukan: %d · Lokasi selesai: %d · Pulau dikunjungi: %d/4" % [_count_items(), _count_locs(), (p.world.islands as Dictionary).size()])
+	return rows
+
+
+func _count_items() -> int:
+	var n := 0
+	for k in p.world.items:
+		n += (p.world.items[k] as Array).size()
+	return n
+
+
+func _count_locs() -> int:
+	var n := 0
+	for k in p.world.locs:
+		if bool(p.world.locs[k].get("done", false)):
+			n += 1
+	return n
 
 
 # --- Peta & wilayah --------------------------------------------------------------------------------------

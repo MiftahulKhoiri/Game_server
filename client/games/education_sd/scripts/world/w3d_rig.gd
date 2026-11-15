@@ -11,6 +11,16 @@ var hair := Color("3a2a20")
 var long_hair := false
 var extra := ""  # "" / "mahkota" / "kacamata" / "topi_kapten" / "telinga" / "helm"
 
+## Fase 5: model GLB berlisensi yang SUDAH ADA di APK (res://assets/models, KayKit CC0 — lihat
+## assets/models/LISENSI_*.txt). Bila berkas tidak ada (APK lain/lebih lama), otomatis kembali ke model primitif.
+var glb_id := ""
+var glb_height := 1.9
+var glb_tint := Color.WHITE
+var glb_hide: Array = ["Sword", "Crossbow", "Axe", "Shield", "Badge", "Bow", "Dagger", "Staff"]
+var _glb: Node3D
+var _ap: AnimationPlayer
+var _base_y := 0.0
+
 var state := "idle"  # idle / jalan / lari / lompat / interaksi / sorak
 var _t := 0.0
 var _act_t := 0.0  # sisa waktu animasi sekali-jalan (interaksi/sorak)
@@ -82,6 +92,11 @@ static func cyl(top: float, bottom: float, h: float, seg := 12) -> CylinderMesh:
 func build() -> void:
 	for c in get_children():
 		c.queue_free()
+	_glb = null
+	_ap = null
+	_hips = null
+	if glb_id != "" and _build_glb():
+		return
 	_hips = Node3D.new()
 	_hips.position = Vector3(0, 0.78, 0)
 	add_child(_hips)
@@ -139,6 +154,101 @@ func build() -> void:
 	_hips.add_child(_leg_r)
 
 
+const MODEL_DIR := "res://assets/models/"
+
+
+static func has_model(id: String) -> bool:
+	return id != "" and ResourceLoader.exists(MODEL_DIR + id + ".glb")
+
+
+func _build_glb() -> bool:
+	if not has_model(glb_id):
+		return false
+	var ps := load(MODEL_DIR + glb_id + ".glb") as PackedScene
+	if ps == null:
+		return false
+	var inst := ps.instantiate() as Node3D
+	if inst == null:
+		return false
+	var aabb := AABB()
+	var first := true
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		var hide := false
+		for w in glb_hide:
+			if str(mi.name).contains(w):
+				hide = true
+		if hide:
+			(mi as MeshInstance3D).visible = false
+			continue
+		var xf := _xf_to(inst, mi)
+		var box: AABB = xf * (mi as MeshInstance3D).get_aabb()
+		aabb = box if first else aabb.merge(box)
+		first = false
+		if glb_tint != Color.WHITE:
+			var mesh: Mesh = (mi as MeshInstance3D).mesh
+			for s in mesh.get_surface_count():
+				var src := (mi as MeshInstance3D).get_active_material(s)
+				if src is BaseMaterial3D:
+					var dup := (src as BaseMaterial3D).duplicate() as BaseMaterial3D
+					dup.albedo_color = dup.albedo_color * glb_tint
+					(mi as MeshInstance3D).set_surface_override_material(s, dup)
+	if first or aabb.size.y <= 0.01:
+		inst.free()
+		return false
+	var k := glb_height / aabb.size.y
+	_glb = Node3D.new()
+	_glb.name = "Model"
+	_glb.scale = Vector3.ONE * k
+	_base_y = -aabb.position.y * k
+	_glb.position = Vector3(-aabb.get_center().x * k, _base_y, -aabb.get_center().z * k)
+	_glb.add_child(inst)
+	add_child(_glb)
+	var aps := inst.find_children("*", "AnimationPlayer", true, false)
+	if aps.size() > 0:
+		_ap = aps[0]
+		if _ap.has_animation("idle"):
+			_ap.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
+			_ap.play("idle")
+		if _ap.has_animation("walk"):
+			_ap.get_animation("walk").loop_mode = Animation.LOOP_LINEAR
+	return true
+
+
+static func _xf_to(root: Node, n: Node) -> Transform3D:
+	var xf := Transform3D()
+	var cur := n
+	while cur != null and cur != root:
+		if cur is Node3D:
+			xf = (cur as Node3D).transform * xf
+		cur = cur.get_parent()
+	return xf
+
+
+func is_glb() -> bool:
+	return _glb != null
+
+
+## Animasi model GLB: idle/walk dari berkas (lari = walk dipercepat); lompat, interaksi, dan sorak
+## ditambahkan secara prosedural (memantul/mengangguk) karena berkas tidak punya animasi itu.
+func _animate_glb(delta: float, speed: float) -> void:
+	if _ap != null:
+		var want := "walk" if state in ["jalan", "lari"] else "idle"
+		if _ap.has_animation(want) and _ap.current_animation != want:
+			_ap.play(want, 0.2)
+		_ap.speed_scale = clampf(speed / 2.6, 0.8, 2.2) if want == "walk" else 1.0
+	var bob := 0.0
+	var tilt := 0.0
+	match state:
+		"sorak":
+			bob = absf(sin(_t * 9.0)) * 0.3
+		"interaksi":
+			tilt = sin(_t * 10.0) * 0.12
+		"lompat":
+			tilt = -0.1
+	_glb.position.y = _base_y + bob
+	_glb.rotation.x = tilt
+
+
 func _limb(at: Vector3, r: float, length: float, c: Color, tip: Color) -> Node3D:
 	var pivot := Node3D.new()
 	pivot.position = at
@@ -155,7 +265,7 @@ func play_once(anim: String, dur := 1.0) -> void:
 
 ## speed: kecepatan horizontal (m/dtk); on_floor: menapak tanah.
 func animate(delta: float, speed: float, on_floor: bool) -> void:
-	if _hips == null:
+	if _hips == null and _glb == null:
 		return
 	_t += delta
 	if _act_t > 0.0:
@@ -168,6 +278,9 @@ func animate(delta: float, speed: float, on_floor: bool) -> void:
 		state = "jalan"
 	else:
 		state = "idle"
+	if _glb != null:
+		_animate_glb(delta, speed)
+		return
 	_pose(speed)
 
 
