@@ -180,7 +180,12 @@ static func _house(root: Node3D, at: Vector3, wall: Color, roof: Color, rot := 0
 	var pr := PrismMesh.new()
 	pr.size = Vector3(3.8, 1.6, 3.4)
 	h.add_child(_m(pr, roof, Vector3(0, 3.2, 0)))
-	h.add_child(_m(Rig.box(Vector3(0.9, 1.5, 0.1)), Color("8a5a2b"), Vector3(0, 0.75, 1.52)))
+	h.add_child(_m(Rig.box(Vector3(0.9, 1.9, 0.1)), Color("8a5a2b"), Vector3(0, 0.95, 1.52)))
+	h.add_child(_m(Rig.box(Vector3(1.1, 0.12, 0.14)), Color("6b4a2e"), Vector3(0, 1.95, 1.53)))
+	for x in [-1.05, 1.05]:
+		h.add_child(_m(Rig.box(Vector3(0.6, 0.55, 0.08)), Color("8fd0ff"), Vector3(x, 1.4, 1.52)))
+		h.add_child(_m(Rig.box(Vector3(0.7, 0.08, 0.12)), Color("f4efe6"), Vector3(x, 1.1, 1.55)))
+	h.add_child(_m(Rig.box(Vector3(0.4, 0.9, 0.4)), Color("8a6b5a"), Vector3(0.9, 3.6, -0.6)))
 	root.add_child(h)
 
 

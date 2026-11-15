@@ -1,4 +1,4 @@
-# Petualangan Pulau Ilmu 3D — audit, rancangan, dan laporan Fase 1–8 + 2.3.0
+# Petualangan Pulau Ilmu 3D — audit, rancangan, dan laporan Fase 1–8  + 2.3.0 + Fase 9–10 (2.4.0)
 
 Paket `education_sd` **2.1.0**. Dunia 3D ditambahkan **di atas** game 2D yang sudah ada: semua materi, bank soal,
 penilaian, hadiah, progres, mini-game, koleksi, prestasi, dan laporan tetap dipakai apa adanya. Hanya paket PCK
@@ -282,3 +282,76 @@ penjaga, alat/inventaris, dan lingkungan masih jarang di luar lokasi.
   (lari, lompat, interaksi) dengan lisensi jelas belum tersedia di repo.
 - Animasi GLB hanya idle/walk; lompat/interaksi/sorak untuk model GLB masih gerak prosedural sederhana.
 - Senjata tidak dibuat (sesuai usia SD); "alat petualangan" menggantikannya.
+
+
+---
+
+# Fase 9–10 (paket 2.4.0): pahlawan 3D & aset lingkungan
+
+Dasar pekerjaan: commit `4349711` (paket 2.3.0), langsung di `main` atas permintaan pengguna.
+
+## Audit
+
+- APK punya model KayKit/Quaternius (CC0) untuk dewasa, monster, dan hewan, tetapi **tidak ada model anak
+  laki-laki/perempuan berkerangka & beranimasi lengkap**. Pemain 2.3.0 = rig prosedural (bagian kaku, tanpa kulit).
+- Lingkungan 2.3.0 sebagian besar mesh primitif yang dibangun saat game jalan; belum ada folder `assets/` di paket SD.
+
+## Fase 9 — karakter
+
+Aset **buatan sendiri** (CC0) dari `tools/gamepack/sd_heroes.gd` → `assets/characters/hero/{male,female}/hero_*.glb`:
+
+| | Laki-laki | Perempuan |
+| --- | --- | --- |
+| Tinggi | ±1,47 m | ±1,47 m |
+| Gaya | anak petualang semi-realistis low-poly: rompi hijau, kemeja, celana panjang, sepatu bot, tas selempang, rambut rapi | rompi ungu, kemeja, celana, sepatu bot, ransel kecil, rambut panjang + jepit |
+| Ukuran | 11 material, ±6.200 verteks | 11 material, ±6.900 verteks |
+| Kerangka | 20 tulang, **sama** | 20 tulang, **sama** |
+
+Kerangka: Root, Pelvis, Spine, Chest, Neck, Head, Shoulder/UpperArm/LowerArm/Hand L/R, UpperLeg/LowerLeg/Foot L/R.
+Skinning kaku per bagian (low-poly) dengan bola penutup sendi (bahu, siku, lutut) — tidak bolong saat menekuk.
+
+**Animasi yang benar-benar ada di GLB (12):** idle, walk, run, jump, fall, land, interact, wave, celebrate, turn,
+hit, equip. Dipilih otomatis dengan blend 0,18 dtk: lompat/jatuh dari kecepatan vertikal, mendarat setelah > 0,3 dtk
+di udara, berbalik bila arah berubah > 130°, *hit* saat didorong pengacau/penjaga, *wave* saat bicara dengan NPC/warga,
+*equip* saat memakai alat, *celebrate* saat hadiah.
+
+Kostum: material **Baju** diwarnai sesuai kostum toko lama; topi (petualang, mahkota, toga, pita) dan aksesori
+(kacamata, syal, ransel) ditempel ke tulang Head/Chest lewat `BoneAttachment3D`, jadi ikut animasi.
+**Petualang** (KayKit `anak_desa.glb`) dipertahankan sebagai pilihan ketiga: proporsinya lebih "chibi" dan hanya
+punya idle/walk, jadi tidak seragam dengan model baru — dibiarkan sebagai gaya alternatif. Bila berkas pahlawan
+hilang, game kembali ke rig prosedural.
+
+## Fase 10 — lingkungan
+
+Aset **buatan sendiri** (CC0) dari `tools/gamepack/sd_props.gd` → `assets/environment/`:
+`vegetation/` tree_round, tree_pine, tree_palm, bush, flowers · `rocks/` rock_a, rock_b · `educational/` math_statue,
+big_book, microscope, globe, info_board · `props/` lamp_post (60–1.080 segitiga per aset, material warna tanpa tekstur).
+
+Dipakai: pohon GLB per tema lewat MultiMesh (Matematika bulat; Bahasa & IPA bulat + cemara; IPS kelapa + cemara;
+Hemat hanya cemara/kelapa yang ringan) dengan daun tetap bergoyang; batu kecil MultiMesh + 6 batu besar bertabrakan;
+semak & bunga MultiMesh; objek pendidikan di tepi jalur tiap gerbang (patung simbol matematika +,−,×,÷…, buku besar,
+mikroskop, globe) dengan tabrakan kotak; lampu jalan; 2 papan informasi per pulau berisi fakta kartu pengetahuan kelas
+aktif (bisa dibaca dengan AKSI). Istana Angka diberi gerigi benteng, gerbang, jendela, bendera, dan tabrakan; rumah
+lokasi diberi pintu ±1,9 m, kusen, jendela, cerobong. Penggabung mesh kini mendukung mesh banyak material.
+
+**Belum dikerjakan di Fase 10** (jujur): model GLB khusus untuk bangunan lokasi (menara, gua, museum, laboratorium,
+mercusuar, rumah adat, pasar) masih prosedural (diperkaya, bukan diganti); rumah adat belum mengikuti referensi
+daerah tertentu; tangga belum ada (tidak ada lantai bertingkat yang bisa dinaiki).
+
+## Pengujian & ukuran
+
+- `make sd-test`: **604 pemeriksaan LULUS, 0 gagal** (+35 dari 2.3.0): kerangka lengkap & sama, 12 animasi,
+  jalur animasi valid, kaki di tanah & tinggi ±1,47 m, pewarnaan baju, 11 pemetaan status→animasi + mendarat,
+  topi/ransel di tulang, cadangan prosedural, Petualang tetap jalan, 13 aset lingkungan termuat, pohon GLB, papan
+  informasi, batu besar bertabrakan, jalur ke gerbang tidak terhalang.
+- `make platform-test`: LULUS.
+- Ukur di Pi (llvmpipe, kelas 4, 1560×720), Matematika / IPS:
+
+| Profil | Draw call | Segitiga | RAM statis | VRAM |
+| --- | --- | --- | --- | --- |
+| Hemat | 215 / 174 | 33k / 52k | 69–73 MB | 65–75 MB |
+| Seimbang | 300 / 266 | 61k / 113k | 74 MB | 72–78 MB |
+| Tinggi | 321 / 275 | 146k / 156k | 74–75 MB | 84–90 MB |
+
+Pengujian HP sudah dinyatakan aman oleh pengguna untuk 2.3.0; 2.4.0 menambah ±5% draw call dan lebih banyak segitiga
+(pohon), jadi tetap disarankan dicek ulang FPS-nya di Samsung A18 (Pengaturan → Info kinerja).

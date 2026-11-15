@@ -1,0 +1,10 @@
+Aset lingkungan Petualangan Pulau Ilmu (vegetation/, rocks/, educational/, props/)
+
+Sumber : buatan sendiri untuk proyek Game_server, dihasilkan oleh tools/gamepack/sd_props.gd
+         (Godot 4.7.2, GLTFDocument -> glTF 2.0 biner). Tidak memakai aset pihak ketiga.
+Lisensi: CC0 1.0 (domain publik) - https://creativecommons.org/publicdomain/zero/1.0/
+Kredit : tidak wajib.
+Isi    : tree_round (642 segitiga), tree_pine (248), tree_palm (660), bush (432), flowers (672),
+         rock_a (276), rock_b (180), math_statue (144), big_book (60), microscope (396), globe (1080),
+         info_board (132), lamp_post (162). Material warna tanpa tekstur (aman untuk GL Compatibility).
+Ubah   : jalankan ulang skrip lalu `godot --headless --path client --import`.

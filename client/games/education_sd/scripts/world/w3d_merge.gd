@@ -11,16 +11,24 @@ static func merge(root: Node3D, skip: Array, range_end := 0.0) -> int:
 	for mi in root.find_children("*", "MeshInstance3D", true, false):
 		if not _mergeable(mi, root, skip):
 			continue
-		var mat: Material = (mi as MeshInstance3D).material_override
 		var mesh: Mesh = (mi as MeshInstance3D).mesh
-		if mat == null or mesh == null or mesh.get_surface_count() != 1:
+		if mesh == null:
 			continue
 		var xf := xf_to(root, mi)
-		if not groups.has(mat):
-			var st := SurfaceTool.new()
-			st.begin(Mesh.PRIMITIVE_TRIANGLES)
-			groups[mat] = st
-		(groups[mat] as SurfaceTool).append_from(mesh, 0, xf)
+		var ok := true
+		for s in mesh.get_surface_count():
+			if (mi as MeshInstance3D).get_active_material(s) == null:
+				ok = false
+		if not ok:
+			continue
+		# Tiap surface (mis. GLB aset lingkungan berbanyak material) dikelompokkan per material.
+		for s in mesh.get_surface_count():
+			var mat: Material = (mi as MeshInstance3D).get_active_material(s)
+			if not groups.has(mat):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				groups[mat] = st
+			(groups[mat] as SurfaceTool).append_from(mesh, s, xf)
 		victims.append(mi)
 	if victims.size() < 2:
 		return 0

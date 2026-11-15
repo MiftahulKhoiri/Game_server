@@ -1226,6 +1226,29 @@ func _hero_tests(app: Node) -> void:
 	app.show_world("matematika")
 	_check(app.world.player.rig.is_glb() and not app.world.player.rig.full_hero(), "pilihan Petualang (KayKit) tetap berfungsi")
 	app.set_setting("hero", "laki")
+	print("== Fase 10: aset lingkungan GLB buatan sendiri")
+	var W := load("res://games/education_sd/scripts/world/w3d_world.gd")
+	var names := ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/tree_palm", "vegetation/bush", "vegetation/flowers",
+		"rocks/rock_a", "rocks/rock_b", "educational/math_statue", "educational/big_book", "educational/microscope",
+		"educational/globe", "educational/info_board", "props/lamp_post"]
+	_check(names.all(func(nm): return W.env_mesh(nm) is ArrayMesh), "13 aset lingkungan GLB termuat (pohon, semak, bunga, batu, objek pendidikan, lampu)")
+	for rid in ["matematika", "bahasa", "ipa", "ips"]:
+		app.show_world(rid)
+		var w2: Node3D = app.world
+		var trees: Array = w2.find_children("Trees", "MultiMeshInstance3D", false, false)
+		var glb_tree: bool = trees.size() > 0 and (trees[0].multimesh.mesh as ArrayMesh).surface_get_name(0) in ["Kayu", "Daun", "Daun2", "Kelapa"]
+		_check(glb_tree and w2.get_node_or_null("Info0") != null and w2.get_node_or_null("BigRockBody0") != null
+			and w2.get_node_or_null("PathProps/Merged") != null, "%s: pohon GLB (MultiMesh), papan informasi, batu besar bertabrakan, objek pendidikan digabung" % rid)
+	app.show_world("ipa")
+	await _go_to(app, "info", "0")
+	app.world.interact()
+	_check(_dialog_text(app).contains("Papan Informasi"), "papan informasi bisa dibaca (fakta kartu pengetahuan)")
+	app.hud.close_dialog()
+	app.show_world("matematika")
+	app.world.foes.paused = true
+	app.world.player.place(Vector3(0, 0.1, 8.0), 0.0)
+	await _steps(3)
+	_check(await _walk_to(app, Vector3(-2.5, 0, app.world.gate_z(0) + 3.0), 600), "jalur dari alun-alun ke gerbang 1 tidak terhalang patung/lampu/papan")
 	app.go_back()
 	app.set_player("Ani", 1)
 	app.show_home()

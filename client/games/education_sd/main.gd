@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.3.0, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.4.0, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -25,7 +25,7 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.3.0"
+const VERSION := "2.4.0"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
@@ -549,6 +549,7 @@ func _world_ctx(region_id: String) -> Dictionary:
 		"chest_opened": bool((p.world.chests as Dictionary).get(_wkey(region_id), false)),
 		"found": bool((p.world.found as Dictionary).get(_wkey(region_id), false)),
 		"locs": _loc_status(region_id), "items": (p.world.items as Dictionary).get(region_id, []),
+		"facts": ts.map(func(t): return {"title": str(t.card.title), "fact": str(t.card.fact)}) if not ts.is_empty() else [],
 		"minigame": _minigame_for(region_id), "gfx": str(p.settings.gfx),
 		"hero": {"shirt": outfit, "long_hair": str(p.settings.hero) == "perempuan", "model": "anak_desa" if str(p.settings.hero) == "petualang" else "",
 			"model_path": _hero_path(),
@@ -767,6 +768,11 @@ func _on_world_interact(kind: String, id: String) -> void:
 				hud.show_dialog(id.capitalize(), str(data.doc.get("animal_facts", {}).get(id, "")))
 		"loc":
 			_loc_dialog(rid, id)
+		"info":
+			var facts: Array = world.ctx.get("facts", [])
+			if not facts.is_empty():
+				var f: Dictionary = facts[int(id) % facts.size()]
+				hud.show_dialog("Papan Informasi: " + str(f.title), str(f.fact))
 		"villager":
 			var d := Locations.find(rid, id)
 			var st: Dictionary = _loc_status(rid).get(id, {})

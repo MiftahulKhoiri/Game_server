@@ -36,7 +36,7 @@ const PROFILES := {
 const THEMES := {
 	"matematika": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "3f7fd8", "sky": "8cc8ff", "npc_extra": "mahkota", "boss": "Golem Angka"},
 	"bahasa": {"ground": "6fbf5a", "path": "c9a46a", "trunk": "7a4a22", "crown": "2f8f4a", "accent": "3fae63", "sky": "9ad8ff", "npc_extra": "telinga", "boss": "Burung Hantu Penjaga Kata"},
-	"ipa": {"ground": "7cc47c", "path": "a9c3d8", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
+	"ipa": {"ground": "6cb46c", "path": "8fb0c8", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
 	"markas": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "8a6bd8", "sky": "9ad8ff", "npc_extra": "", "boss": ""},
 	"ips": {"ground": "a7d46f", "path": "d9a46a", "trunk": "8a5a2b", "crown": "5aa84a", "accent": "e0813d", "sky": "ffd9a8", "npc_extra": "topi_kapten", "boss": "Penjaga Gerbang Nusantara"},
 }
@@ -105,6 +105,7 @@ func build(c: Dictionary) -> void:
 	_items()
 	_birds()
 	_scatter()
+	_env_props(rid)
 	_landmark(rid)
 	_foes()
 	_water_fx()
@@ -241,6 +242,8 @@ func _trees() -> void:
 		var inner := HUB_HALF if t.origin.z > HUB_FRONT else PATH_HALF
 		if absf(t.origin.x) < inner + 14.0:
 			_static_cyl_at(self, 0.3 * t.basis.get_scale().x, 3.0, t.origin + Vector3(0, 1.5, 0))
+	if _env_trees(xs):
+		return
 	for pair in [[trunk, theme.trunk], [crown, theme.crown]]:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = pair[0]
@@ -339,10 +342,22 @@ func _castle(at: Vector3, accent: Color) -> void:
 		var h := 9.0 if absf(x) > 5.0 else 11.0
 		c.add_child(Rig.part(Rig.cyl(1.4, 1.4, h, 12), Color("f4efff"), Vector3(x, h / 2.0, 0)))
 		c.add_child(Rig.part(Rig.cyl(0.0, 1.8, 2.6, 12), accent, Vector3(x, h + 1.3, 0)))
+	# Fase 10: benteng bergerigi, gerbang lengkung, jendela, bendera.
+	for k in 10:
+		c.add_child(Rig.part(Rig.box(Vector3(0.8, 0.8, 6.2)), Color("e8e2f2"), Vector3(-6.3 + k * 1.4, 6.4, 0)))
+	c.add_child(Rig.part(Rig.box(Vector3(3.0, 3.6, 0.3)), Color("6b4a2e"), Vector3(0, 1.8, 3.05)))
+	c.add_child(Rig.part(Rig.cyl(1.5, 1.5, 0.3, 16), Color("6b4a2e"), Vector3(0, 3.6, 3.05)))
+	for x in [-5.0, 5.0]:
+		for y in [2.5, 4.6]:
+			c.add_child(Rig.part(Rig.box(Vector3(0.8, 1.2, 0.2)), Color("8fd0ff"), Vector3(x, y, 3.05)))
+	for x in [-7.0, 7.0]:
+		c.add_child(Rig.part(Rig.cyl(0.05, 0.05, 2.4, 6), Color("5a3a1a"), Vector3(x, 12.6, 0)))
+		c.add_child(Rig.part(Rig.box(Vector3(1.2, 0.7, 0.04)), accent, Vector3(x + 0.6, 13.4, 0)))
 	var l := _label("ISTANA ANGKA", 160, Color("f0b429"))
-	l.position = Vector3(0, 7.2, 3.1)
+	l.position = Vector3(0, 7.6, 3.2)
 	c.add_child(l)
 	add_child(c)
+	_static_box_at(self, Vector3(14, 8, 6), at + Vector3(0, 4, 0), null)
 
 
 func _treehouse(at: Vector3) -> void:
@@ -1005,8 +1020,9 @@ func _optimize() -> void:
 
 ## Batu, rumpun rumput, dan bunga dengan MultiMesh (satu draw call per jenis), jumlah mengikuti profil.
 func _scatter() -> void:
+	var rock_mesh = env_mesh("rocks/rock_a")
 	var specs := [
-		["rocks", Rig.sphere(0.6), Color("9a948a"), Vector3(1.0, 0.55, 0.85), 0.15],
+		["rocks", rock_mesh if rock_mesh != null else Rig.sphere(0.6), Color("9a948a"), Vector3.ONE * 0.8 if rock_mesh != null else Vector3(1.0, 0.55, 0.85), 0.0 if rock_mesh != null else 0.15],
 		["grass", Rig.cyl(0.0, 0.12, 0.45, 5), Color.from_string(str(theme.crown), Color.GREEN).darkened(0.15), Vector3.ONE, 0.22],
 		["grass", Rig.sphere(0.09), Color("ffd166"), Vector3.ONE, 0.35],
 	]
@@ -1031,7 +1047,8 @@ func _scatter() -> void:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "Scatter%d" % i
 		mmi.multimesh = mm
-		mmi.material_override = Rig.mat(spec[2])
+		if not (spec[1] is ArrayMesh):
+			mmi.material_override = Rig.mat(spec[2])
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if i > 0 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		mmi.visibility_range_end = float(profile.range)
 		add_child(mmi)
@@ -1121,3 +1138,163 @@ func apply_tool(id: String) -> void:
 func _process(_delta: float) -> void:
 	if flashlight != null and life != null:
 		flashlight.light_energy = lerpf(1.6, 0.25, life.day_factor)
+
+
+# --- Fase 10: aset lingkungan GLB buatan sendiri (tools/gamepack/sd_props.gd) --------------------------
+
+const ENV_DIR := "res://games/education_sd/assets/environment/"
+static var _env_cache: Dictionary = {}
+
+
+## Mesh dari GLB lingkungan (dengan material bawaannya), atau null bila berkas tidak ada (pakai primitif).
+static func env_mesh(name: String):
+	if _env_cache.has(name):
+		return _env_cache[name]
+	var path := ENV_DIR + name + ".glb"
+	var mesh = null
+	if ResourceLoader.exists(path):
+		var inst := (load(path) as PackedScene).instantiate()
+		var mis := inst.find_children("*", "MeshInstance3D", true, false)
+		if mis.size() > 0:
+			mesh = (mis[0] as MeshInstance3D).mesh
+		inst.free()
+	_env_cache[name] = mesh
+	return mesh
+
+
+const TREE_SETS := {"matematika": ["tree_round"], "bahasa": ["tree_round", "tree_pine"], "ipa": ["tree_round", "tree_pine"],
+	"ips": ["tree_palm", "tree_pine"], "markas": ["tree_round"]}
+
+
+## Pohon GLB per tema (MultiMesh per jenis). Daun tetap bergoyang (shader) di profil Seimbang/Tinggi.
+func _env_trees(xs: Array[Transform3D]) -> bool:
+	var kinds: Array = TREE_SETS.get(str(ctx.region.id), ["tree_round"])
+	if str(ctx.get("gfx", "")) == "hemat":
+		kinds = ["tree_palm"] if str(ctx.region.id) == "ips" else ["tree_pine"]
+	var meshes: Array = []
+	for k in kinds:
+		var mesh = env_mesh("vegetation/" + k)
+		if mesh == null:
+			return false
+		if bool(profile.fx):
+			mesh = (mesh as ArrayMesh).duplicate()
+			for s in (mesh as ArrayMesh).get_surface_count():
+				var nm := (mesh as ArrayMesh).surface_get_name(s)
+				if nm.begins_with("Daun"):
+					var src := (mesh as ArrayMesh).surface_get_material(s) as BaseMaterial3D
+					(mesh as ArrayMesh).surface_set_material(s, _sway_mat(src.albedo_color if src != null else Color.GREEN))
+		meshes.append(mesh)
+	var buckets: Array = []
+	for k in meshes:
+		buckets.append([])
+	for i in xs.size():
+		var t: Transform3D = xs[i]
+		buckets[i % meshes.size()].append(Transform3D(t.basis.rotated(Vector3.UP, i * 1.7) * 0.85, t.origin))
+	for b in meshes.size():
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = meshes[b]
+		mm.instance_count = buckets[b].size()
+		for i in buckets[b].size():
+			mm.set_instance_transform(i, buckets[b][i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Trees"
+		mmi.multimesh = mm
+		mmi.visibility_range_end = float(profile.range) + 30.0
+		add_child(mmi)
+	return true
+
+
+## Objek pendidikan & perabot: patung simbol matematika, buku besar, mikroskop, globe, papan informasi
+## (berisi fakta kartu pengetahuan, bisa dibaca dengan AKSI), lampu jalan; semak & bunga MultiMesh;
+## batu besar bertabrakan. Semua berkas GLB buatan sendiri; bila tidak ada, bagian itu dilewati.
+func _env_props(rid: String) -> void:
+	var cards: Array = ctx.get("facts", [])
+	var edu := {"matematika": "educational/math_statue", "bahasa": "educational/big_book", "ipa": "educational/microscope", "ips": "educational/globe"}
+	var edu_mesh = env_mesh(str(edu.get(rid, "")))
+	var n: int = (ctx.topics as Array).size()
+	var symbols := ["+", "−", "×", "÷", "=", "<", ">", "%", "√"]
+	var path_props := Node3D.new()
+	path_props.name = "PathProps"
+	add_child(path_props)
+	for i in n:
+		var z := gate_z(i) + 4.5
+		if edu_mesh != null:
+			var e := MeshInstance3D.new()
+			e.name = "Edu%d" % i
+			e.mesh = edu_mesh
+			e.position = Vector3(-4.6, 0, z)
+			e.rotation.y = PI / 2.0
+			path_props.add_child(e)
+			_static_box_at(self, Vector3(1.0, 1.6, 1.0), Vector3(-4.6, 0.8, z), null)
+			if rid == "matematika":
+				var sl := _label(symbols[i % symbols.size()], 120, Color("d9a83a"), true)
+				sl.position = Vector3(-4.6, 2.3, z)
+				add_child(sl)
+		var lamp = env_mesh("props/lamp_post")
+		if lamp != null:
+			for x in [-5.5, 5.5]:
+				var lp := MeshInstance3D.new()
+				lp.mesh = lamp
+				lp.position = Vector3(x, 0, gate_z(i) + 9.0)
+				path_props.add_child(lp)
+	var board = env_mesh("educational/info_board")
+	if board != null:
+		var spots := [[Vector3(-3.5, 0, -5.8), 0.0], [Vector3(10.5, 0, 12.0), -PI / 2.0]]
+		for i in spots.size():
+			var b := Node3D.new()
+			b.name = "Info%d" % i
+			b.position = spots[i][0]
+			b.rotation.y = spots[i][1]
+			var bm := MeshInstance3D.new()
+			bm.mesh = board
+			b.add_child(bm)
+			var fact: Dictionary = cards[i % cards.size()] if not cards.is_empty() else {"title": str(ctx.region.name), "fact": ""}
+			var t := _label("%s\n%s" % [str(fact.title), str(fact.fact).left(90) + ("…" if str(fact.fact).length() > 90 else "")], 22, Color("2b2440"))
+			t.outline_size = 0
+			t.width = 270.0
+			t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			t.position = Vector3(0, 1.45, 0.06)
+			t.pixel_size = 0.0055
+			b.add_child(t)
+			add_child(b)
+			_static_box_at(self, Vector3(1.8, 2.2, 0.3), b.position + Vector3(0, 1.1, 0), null)
+			_interactable(b, "info", str(i), "Baca papan: " + str(fact.title), 2.0)
+	var bush = env_mesh("vegetation/bush")
+	var flowers = env_mesh("vegetation/flowers")
+	for pair in [[bush, int(profile.get("grass", 0)) / 8], [flowers, int(profile.get("grass", 0)) / 10 if bool(profile.fx) else 0]]:
+		if pair[0] == null or int(pair[1]) <= 0:
+			continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = pair[0]
+		mm.instance_count = int(pair[1])
+		for k in int(pair[1]):
+			var side := 1.0 if _rng.randf() < 0.5 else -1.0
+			var z := _rng.randf_range(_end_z, HUB_BACK - 2.0)
+			var inner := HUB_HALF if z > HUB_FRONT else PATH_HALF
+			var x := (inner - _rng.randf_range(0.6, 1.4)) * side if _rng.randf() < 0.6 else _rng.randf_range(inner + 1.0, inner + 10.0) * side
+			mm.set_instance_transform(k, Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * _rng.randf_range(0.7, 1.3)), Vector3(x, 0, z)))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Bushes" if pair[0] == bush else "Flowers"
+		mmi.multimesh = mm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.visibility_range_end = float(profile.range)
+		add_child(mmi)
+	var rock = env_mesh("rocks/rock_b")
+	if rock != null:
+		for k in 6:
+			var side := 1.0 if k % 2 == 0 else -1.0
+			var at := Vector3(side * _rng.randf_range(HUB_HALF + 2.0, HUB_HALF + 8.0), 0, _rng.randf_range(-4.0, HUB_BACK)) if k < 3 \
+				else Vector3(side * _rng.randf_range(PATH_HALF + 2.0, PATH_HALF + 6.0), 0, _rng.randf_range(_end_z, HUB_FRONT))
+			var s := _rng.randf_range(1.8, 2.8)
+			var r := MeshInstance3D.new()
+			r.name = "BigRock%d" % k
+			r.mesh = rock
+			r.position = at
+			r.scale = Vector3.ONE * s
+			r.rotation.y = _rng.randf() * TAU
+			r.visibility_range_end = float(profile.range) + 20.0
+			add_child(r)
+			var sb := _static_cyl_at(self, 0.55 * s, 1.1 * s, at + Vector3(0, 0.55 * s, 0))
+			sb.name = "BigRockBody%d" % k

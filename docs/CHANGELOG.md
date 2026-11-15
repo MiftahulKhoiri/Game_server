@@ -2,6 +2,14 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.4.0 — Fase 9–10: pahlawan 3D & aset lingkungan (15 November 2026)
+
+- Model pahlawan anak laki-laki & perempuan GLB buatan sendiri (CC0): kerangka sama 20 tulang, 12 animasi (idle,
+  walk, run, jump, fall, land, interact, wave, celebrate, turn, hit, equip), kostum & topi menempel di tulang.
+- Aset lingkungan GLB buatan sendiri: 3 jenis pohon, semak, bunga, 2 batu, patung matematika, buku besar,
+  mikroskop, globe, papan informasi, lampu jalan; Istana Angka & rumah lokasi lebih detail.
+- Rincian: [SD_PULAU_ILMU_3D.md](SD_PULAU_ILMU_3D.md).
+
 ## Paket education_sd v2.3.0 — semi-realistis & kamera 360° (15 November 2026)
 
 - Kamera orang-ketiga bebas 360°: batas vertikal, mengikuti halus, tidak menembus pagar/bangunan/pohon, zoom
