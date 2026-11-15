@@ -34,11 +34,11 @@ const PROFILES := {
 }
 
 const THEMES := {
-	"matematika": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "3f7fd8", "sky": "8cc8ff", "npc_extra": "mahkota", "boss": "Golem Angka"},
-	"bahasa": {"ground": "6fbf5a", "path": "c9a46a", "trunk": "7a4a22", "crown": "2f8f4a", "accent": "3fae63", "sky": "9ad8ff", "npc_extra": "telinga", "boss": "Burung Hantu Penjaga Kata"},
-	"ipa": {"ground": "6cb46c", "path": "8fb0c8", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
-	"markas": {"ground": "8fd16a", "path": "e9c47e", "trunk": "8a5a2b", "crown": "3fae63", "accent": "8a6bd8", "sky": "9ad8ff", "npc_extra": "", "boss": ""},
-	"ips": {"ground": "a7d46f", "path": "d9a46a", "trunk": "8a5a2b", "crown": "5aa84a", "accent": "e0813d", "sky": "ffd9a8", "npc_extra": "topi_kapten", "boss": "Penjaga Gerbang Nusantara"},
+	"matematika": {"ground": "4f8a36", "path": "a07a4e", "trunk": "8a5a2b", "crown": "3f8f3f", "accent": "3f7fd8", "sky": "8cc8ff", "npc_extra": "mahkota", "boss": "Golem Angka"},
+	"bahasa": {"ground": "4a8a3a", "path": "9a7a4a", "trunk": "7a4a22", "crown": "2f8f4a", "accent": "3fae63", "sky": "9ad8ff", "npc_extra": "telinga", "boss": "Burung Hantu Penjaga Kata"},
+	"ipa": {"ground": "5a9a5a", "path": "7a8a96", "trunk": "6b5a4a", "crown": "4cc0a0", "accent": "2fb3a6", "sky": "a8e0ff", "npc_extra": "kacamata", "boss": "Robot Penjaga Lab"},
+	"markas": {"ground": "5f9a3e", "path": "b08a5a", "trunk": "8a5a2b", "crown": "3fae63", "accent": "8a6bd8", "sky": "9ad8ff", "npc_extra": "", "boss": ""},
+	"ips": {"ground": "7aa04a", "path": "a8764a", "trunk": "8a5a2b", "crown": "5aa84a", "accent": "e0813d", "sky": "ffd9a8", "npc_extra": "topi_kapten", "boss": "Penjaga Gerbang Nusantara"},
 }
 
 ## Fase 5: model GLB berlisensi CC0 dari APK (KayKit) untuk NPC, warga, penjaga, dan hewan.
@@ -122,8 +122,8 @@ func build(c: Dictionary) -> void:
 func _environment() -> void:
 	var env := Environment.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color.from_string(str(theme.sky), Color.SKY_BLUE).darkened(0.15)
-	sky_mat.sky_horizon_color = Color.from_string(str(theme.sky), Color.SKY_BLUE).lightened(0.35)
+	sky_mat.sky_top_color = Color.from_string(str(theme.sky), Color.SKY_BLUE).darkened(0.4)
+	sky_mat.sky_horizon_color = Color.from_string(str(theme.sky), Color.SKY_BLUE).lightened(0.05)
 	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
 	sky_mat.ground_bottom_color = Color("4a90c8")
 	var sky := Sky.new()
@@ -131,13 +131,20 @@ func _environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.45
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.85
+	# Gradasi warna petualangan (2.4.1): ACES, kontras & saturasi lebih kuat, cahaya ambien lebih rendah
+	# sehingga warna tidak pucat/terlalu terang di layar HP.
+	env.ambient_light_energy = 0.15
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 1.0
+	env.tonemap_white = 6.0
+	env.adjustment_enabled = true
+	env.adjustment_brightness = 0.95
+	env.adjustment_contrast = 1.1
+	env.adjustment_saturation = 1.1
 	if bool(profile.get("fog", false)):
 		env.fog_enabled = true
 		env.fog_light_color = Color.from_string(str(theme.sky), Color.SKY_BLUE).lightened(0.4)
-		env.fog_density = 0.006
+		env.fog_density = 0.004
 		env.fog_sky_affect = 0.3
 	_env = env
 	sky_day_top = sky_mat.sky_top_color
@@ -147,7 +154,8 @@ func _environment() -> void:
 	add_child(we)
 	_sun = DirectionalLight3D.new()
 	_sun.rotation = Vector3(deg_to_rad(-52), deg_to_rad(-35), 0)
-	_sun.light_energy = 0.95
+	_sun.light_energy = 0.65
+	_sun.light_color = Color(1.0, 0.93, 0.82)
 	_sun.shadow_enabled = bool(profile.shadow)
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	_sun.directional_shadow_max_distance = 32.0
@@ -1068,6 +1076,20 @@ func _landmark(rid: String) -> void:
 			var l := _label("POHON BAHASA RAKSASA", 140, Color("ffd166"), true)
 			l.position.y = 24.0
 			n.add_child(l)
+		"ipa" when env_mesh("buildings/observatory") != null:
+			var ob := MeshInstance3D.new()
+			ob.mesh = env_mesh("buildings/observatory")
+			n.add_child(ob)
+			var l := _label("OBSERVATORIUM", 140, Color("ffd166"), true)
+			l.position.y = 19.0
+			n.add_child(l)
+		"ips" when env_mesh("buildings/lighthouse") != null:
+			var lh := MeshInstance3D.new()
+			lh.mesh = env_mesh("buildings/lighthouse")
+			n.add_child(lh)
+			var l := _label("MERCUSUAR NUSANTARA", 140, Color("ffd166"), true)
+			l.position.y = 23.5
+			n.add_child(l)
 		"ipa":
 			n.add_child(Rig.part(Rig.cyl(3.0, 3.6, 12.0, 16), Color("e8eef5"), Vector3(0, 6, 0)))
 			n.add_child(Rig.part(Rig.sphere(3.6), Color("9fe3ff"), Vector3(0, 12, 0)))
@@ -1157,6 +1179,10 @@ static func env_mesh(name: String):
 		var mis := inst.find_children("*", "MeshInstance3D", true, false)
 		if mis.size() > 0:
 			mesh = (mis[0] as MeshInstance3D).mesh
+			for s in (mesh as Mesh).get_surface_count():
+				var mat := (mesh as Mesh).surface_get_material(s) as BaseMaterial3D
+				if mat != null and mat.metallic < 0.3:
+					mat.metallic_specular = 0.12
 		inst.free()
 	_env_cache[name] = mesh
 	return mesh

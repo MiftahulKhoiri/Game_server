@@ -1239,6 +1239,30 @@ func _hero_tests(app: Node) -> void:
 		var glb_tree: bool = trees.size() > 0 and (trees[0].multimesh.mesh as ArrayMesh).surface_get_name(0) in ["Kayu", "Daun", "Daun2", "Kelapa"]
 		_check(glb_tree and w2.get_node_or_null("Info0") != null and w2.get_node_or_null("BigRockBody0") != null
 			and w2.get_node_or_null("PathProps/Merged") != null, "%s: pohon GLB (MultiMesh), papan informasi, batu besar bertabrakan, objek pendidikan digabung" % rid)
+	var bnames := ["cave", "math_tower", "library", "museum", "lab_dome", "market_stall", "rumah_gadang", "joglo", "tongkonan", "lighthouse", "observatory"]
+	_check(bnames.all(func(nm): return W.env_mesh("buildings/" + nm) is ArrayMesh), "11 bangunan GLB termuat (gua, menara, perpustakaan, museum, lab, kios, 3 rumah adat, mercusuar, observatorium)")
+	app.show_world("ips")
+	var adat: Node3D = app.world.locs.desa_adat.root
+	var labels := adat.find_children("*", "Label3D", true, false).map(func(l): return str(l.text))
+	var matnames := []
+	for mi in adat.find_children("*", "MeshInstance3D", true, false):
+		for s in (mi as MeshInstance3D).mesh.get_surface_count():
+			var mt := (mi as MeshInstance3D).get_active_material(s)
+			if mt != null:
+				matnames.append(mt.resource_name)
+	_check(matnames.has("Ijuk") and matnames.has("Genteng") and matnames.has("Ukiran")
+		and labels.any(func(s): return s.contains("Sumatera Barat")) and labels.any(func(s): return s.contains("Toraja")), "Desa Rumah Adat: Rumah Gadang, Joglo, Tongkonan dengan papan asal daerah")
+	_check(app.world.get_node_or_null("Landmark") != null and app.world.get_node("Landmark").get_child(0) is MeshInstance3D, "Mercusuar Nusantara memakai model GLB")
+	var env: Environment = app.world._env
+	_check(env.tonemap_mode == Environment.TONE_MAPPER_ACES and env.adjustment_enabled and env.ambient_light_energy <= 0.2, "gradasi warna petualangan: ACES, kontras/saturasi, cahaya ambien rendah")
+	app.show_world("matematika")
+	app.world.foes.paused = true
+	var tower: Node3D = app.world.locs.menara.root
+	app.world.player.place(tower.to_global(Vector3(11.8, 0.1, -0.6)), 0.0)
+	await _steps(3)
+	await _walk_to(app, tower.to_global(Vector3(3.3, 0, -0.6)), 500)
+	await _steps(10)
+	_check(app.world.player.global_position.y > 3.5, "tangga Menara Matematika bisa dinaiki sampai balkon (tinggi %.1f m)" % app.world.player.global_position.y)
 	app.show_world("ipa")
 	await _go_to(app, "info", "0")
 	app.world.interact()

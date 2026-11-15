@@ -355,3 +355,35 @@ daerah tertentu; tangga belum ada (tidak ada lantai bertingkat yang bisa dinaiki
 
 Pengujian HP sudah dinyatakan aman oleh pengguna untuk 2.3.0; 2.4.0 menambah ±5% draw call dan lebih banyak segitiga
 (pohon), jadi tetap disarankan dicek ulang FPS-nya di Samsung A18 (Pengaturan → Info kinerja).
+
+
+## 2.4.1 — gradasi warna & sisa Fase 10
+
+**Warna terlalu cerah (laporan pengguna, tangkapan layar HP):** diukur di Pi — rumput berwarna dasar (0,37; 0,60; 0,24)
+tampil (0,79; 1,0; 0,64): matahari 1,25 + ambien langit 0,3 + ACES dengan *white* 1 membuat warna jenuh ke putih.
+Perbaikan: matahari 0,65 hangat, ambien 0,15, ACES *white* 6, kontras 1,1, saturasi 1,1, kecerahan 0,95, langit
+lebih pekat, tanah/jalan lebih gelap & bersahaja, pantulan specular material diturunkan (0,12). Hasil ukur rumput
+kini (0,49–0,55; 0,78–0,82; 0,37–0,41) — hijau pekat, jalan cokelat tanah. Siklus siang-malam ikut disesuaikan.
+
+**Bangunan GLB buatan sendiri (CC0, `assets/environment/buildings/`):** gua teka-teki, menara matematika (dengan
+balkon & pagar), perpustakaan alam (rak buku, atap daun), museum (tiang, tangga, pediment, lukisan), laboratorium
+(kubah kaca, panel surya, antena), kios pasar (atap kain, keranjang buah), mercusuar (bergaris, galeri, lampu),
+observatorium (kubah & teleskop), dan 3 rumah adat:
+
+| Rumah adat | Daerah | Ciri yang dimodelkan |
+| --- | --- | --- |
+| Rumah Gadang | Minangkabau, Sumatera Barat | rumah panggung memanjang, dinding berukir merah, atap ijuk bergonjong runcing melengkung ke atas |
+| Joglo | Jawa Tengah & DI Yogyakarta | pendopo bertiang kayu, atap limas bertingkat yang menjulang di tengah |
+| Tongkonan | Toraja, Sulawesi Selatan | rumah panggung, dinding berukir merah-hitam-kuning, atap pelana melengkung seperti perahu |
+
+Bentuk disederhanakan untuk low-poly (bukan gambar arsitektur presisi); tiap rumah diberi papan nama asal daerah.
+
+**Tangga yang bisa dinaiki:** Menara Matematika punya tangga (landai bertabrakan 28°, 14 anak tangga) ke balkon
+melingkar setinggi 4 m (diuji: pemain berjalan naik sampai y > 3,5 m).
+
+**Uji:** `make sd-test` **609 pemeriksaan LULUS** (+5: 11 bangunan termuat, rumah adat + papan daerah, mercusuar GLB,
+gradasi warna, tangga menara). `make platform-test` LULUS. Ukur (llvmpipe): draw call Hemat 215/184, Seimbang 304/282,
+Tinggi 325/291; segitiga 33–162k; VRAM 64–98 MB.
+
+**Masih sederhana (tidak diganti GLB):** rumah desa biasa, rumah pohon, pelabuhan & kapal, tugu sejarah, kebun,
+danau, area tata surya, dan gerbang (gerbang tetap prosedural karena jerujinya beranimasi).

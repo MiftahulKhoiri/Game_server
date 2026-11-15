@@ -81,7 +81,7 @@ static func build(w: Node3D, root: Node3D, def: Dictionary, accent: Color, crown
 		"village":
 			return _village(w, root, accent)
 		"hall":
-			return _hall(w, root, accent)
+			return _hall(w, root, accent, str(def.id))
 		"river":
 			return _river(w, root)
 		"bigtree":
@@ -107,11 +107,29 @@ static func build(w: Node3D, root: Node3D, def: Dictionary, accent: Color, crown
 	return Vector3.ZERO
 
 
+## Bangunan GLB buatan sendiri (assets/environment/buildings, Fase 10). false bila berkas tidak ada.
+static func _glb(w: Node3D, root: Node3D, name: String, pos := Vector3.ZERO, rot := 0.0, scl := 1.0) -> bool:
+	var mesh = w.env_mesh("buildings/" + name)
+	if mesh == null:
+		return false
+	var mi := MeshInstance3D.new()
+	mi.name = "B_" + name
+	mi.mesh = mesh
+	mi.position = pos
+	mi.rotation.y = rot
+	mi.scale = Vector3.ONE * scl
+	root.add_child(mi)
+	return true
+
+
 static func _m(mesh: Mesh, c: Color, pos: Vector3, scl := Vector3.ONE) -> MeshInstance3D:
 	return Rig.part(mesh, c, pos, scl)
 
 
 static func _cave(w: Node3D, root: Node3D) -> Vector3:
+	if _glb(w, root, "cave"):
+		w._static_cyl_at(root, 5.2, 4.0, Vector3(0, 2, -1.5))
+		return Vector3(2.6, 0, 5.0)
 	root.add_child(_m(Rig.sphere(5.0), Color("8a8174"), Vector3(0, 0, -1.5), Vector3(1.3, 0.85, 1.0)))
 	root.add_child(_m(Rig.sphere(2.0), Color("2b2440"), Vector3(0, 0.6, 3.1), Vector3(1.0, 1.1, 0.5)))
 	for i in 5:
@@ -121,6 +139,13 @@ static func _cave(w: Node3D, root: Node3D) -> Vector3:
 
 
 static func _tower(w: Node3D, root: Node3D, accent: Color) -> Vector3:
+	if _glb(w, root, "math_tower"):
+		w._static_cyl_at(root, 2.8, 12.0, Vector3(0, 6, 0))
+		_tower_stairs(w, root)
+		var lt: Label3D = w._label("1 2 3 + − × ÷", 64, Color("f0b429"))
+		lt.position = Vector3(0, 8.0, 2.75)
+		root.add_child(lt)
+		return Vector3(2.2, 0, 4.2)
 	root.add_child(_m(Rig.cyl(2.4, 2.8, 12.0, 14), Color("f4efff"), Vector3(0, 6, 0)))
 	root.add_child(_m(Rig.cyl(0.0, 3.2, 3.6, 14), accent, Vector3(0, 13.8, 0)))
 	for k in 4:
@@ -131,6 +156,32 @@ static func _tower(w: Node3D, root: Node3D, accent: Color) -> Vector3:
 	l.position = Vector3(0, 8.0, 2.8)
 	root.add_child(l)
 	return Vector3(2.2, 0, 4.2)
+
+
+## Tangga menara: jalur miring (tabrakan landai 28°) + anak tangga, naik ke balkon melingkar setinggi 4 m.
+const STAIR_X0 := 11.0
+const STAIR_X1 := 3.6
+const BALCONY_Y := 4.0
+const STAIR_Z := -0.6
+
+
+static func _tower_stairs(w: Node3D, root: Node3D) -> void:
+	var run := STAIR_X0 - STAIR_X1
+	var ang := atan2(BALCONY_Y, run)
+	var len := sqrt(run * run + BALCONY_Y * BALCONY_Y)
+	var ramp: StaticBody3D = w._static_box_at(root, Vector3(len, 0.3, 1.5), Vector3((STAIR_X0 + STAIR_X1) / 2.0, BALCONY_Y / 2.0 - 0.15, STAIR_Z), null)
+	ramp.name = "TowerRamp"
+	ramp.rotation.z = -ang
+	var steps := 14
+	for k in steps:
+		var t := (k + 0.5) / steps
+		var x := lerpf(STAIR_X0, STAIR_X1, t)
+		var h := BALCONY_Y * t
+		root.add_child(_m(Rig.box(Vector3(run / steps + 0.02, maxf(0.1, h), 1.5)), Color("b3a891"), Vector3(x, h / 2.0, STAIR_Z)))
+	root.add_child(_m(Rig.box(Vector3(len, 0.06, 0.06)), Color("6b4a2e"), Vector3((STAIR_X0 + STAIR_X1) / 2.0, BALCONY_Y / 2.0 + 0.9, STAIR_Z + 0.75)))
+	(root.get_child(root.get_child_count() - 1) as Node3D).rotation.z = -ang
+	var bal: StaticBody3D = w._static_cyl_at(root, 3.7, 0.2, Vector3(0, BALCONY_Y - 0.1, 0))
+	bal.name = "TowerBalcony"
 
 
 ## Labirin 4x4 (sel 2,6 m) berdinding pagar tanaman 1,7 m. Masuk dari sisi timur sel (3,0), tujuan sel (1,2).
@@ -200,7 +251,10 @@ static func _village(w: Node3D, root: Node3D, accent: Color) -> Vector3:
 	return Vector3(2.2, 0, 2.8)
 
 
-static func _hall(w: Node3D, root: Node3D, accent: Color) -> Vector3:
+static func _hall(w: Node3D, root: Node3D, accent: Color, id := "") -> Vector3:
+	if _glb(w, root, "museum" if id == "museum" else "library"):
+		w._static_box_at(root, Vector3(10, 4.5, 0.6), Vector3(0, 2.25, -4.3), null)
+		return Vector3(0, 0, 0.5)
 	root.add_child(_m(Rig.box(Vector3(10, 0.4, 7)), Color("e8e2f2"), Vector3(0, 0.2, -1)))
 	root.add_child(_m(Rig.box(Vector3(10, 4.5, 0.4)), Color("f4efff"), Vector3(0, 2.6, -4.3)))
 	root.add_child(_m(Rig.box(Vector3(11, 0.6, 7.6)), accent, Vector3(0, 5.1, -1)))
@@ -256,9 +310,10 @@ static func _garden(w: Node3D, root: Node3D) -> Vector3:
 
 
 static func _lab(w: Node3D, root: Node3D) -> Vector3:
-	root.add_child(_m(Rig.cyl(4.5, 4.5, 3.4, 18), Color("e8eef5"), Vector3(0, 1.7, -2)))
-	root.add_child(_m(Rig.sphere(4.5), Color("9fe3ff"), Vector3(0, 3.3, -2), Vector3(1, 0.55, 1)))
-	root.add_child(_m(Rig.box(Vector3(4.0, 0.9, 1.2)), Color("dfe8ef"), Vector3(0, 0.45, 3.0)))
+	if not _glb(w, root, "lab_dome"):
+		root.add_child(_m(Rig.cyl(4.5, 4.5, 3.4, 18), Color("e8eef5"), Vector3(0, 1.7, -2)))
+		root.add_child(_m(Rig.sphere(4.5), Color("9fe3ff"), Vector3(0, 3.3, -2), Vector3(1, 0.55, 1)))
+		root.add_child(_m(Rig.box(Vector3(4.0, 0.9, 1.2)), Color("dfe8ef"), Vector3(0, 0.45, 3.0)))
 	for i in 4:
 		var fl := _m(Rig.sphere(0.32), [Color("ff7eb6"), Color("7ee0ff"), Color("b6ff7e"), Color("ffd166")][i], Vector3(-1.5 + i, 1.25, 3.0))
 		root.add_child(fl)
@@ -340,9 +395,15 @@ static func _harbor(w: Node3D, root: Node3D) -> Vector3:
 
 static func _market(w: Node3D, root: Node3D) -> Vector3:
 	var palette := [Color("e05a4f"), Color("f0b429"), Color("3fae63"), Color("3f7fd8")]
+	var use_glb = w.env_mesh("buildings/market_stall") != null
 	for i in 4:
+		var pos := Vector3(-4.8 + (i % 2) * 9.6, 0, -3.0 + (i / 2) * 4.0)
+		if use_glb:
+			_glb(w, root, "market_stall", pos, PI / 2.0 if i % 2 == 0 else -PI / 2.0)
+			w._static_box_at(root, Vector3(1.4, 1.0, 2.6), pos + Vector3(0, 0.5, 0), null)
+			continue
 		var st := Node3D.new()
-		st.position = Vector3(-4.8 + (i % 2) * 9.6, 0, -3.0 + (i / 2) * 4.0)
+		st.position = pos
 		st.rotation.y = PI / 2.0 if i % 2 == 0 else -PI / 2.0
 		st.add_child(_m(Rig.box(Vector3(2.6, 1.0, 1.4)), Color("c98a4b"), Vector3(0, 0.5, 0)))
 		st.add_child(_m(Rig.box(Vector3(3.0, 0.12, 1.8)), palette[i], Vector3(0, 2.2, 0)))
@@ -355,7 +416,23 @@ static func _market(w: Node3D, root: Node3D) -> Vector3:
 	return Vector3(0, 0, 3.0)
 
 
+## Rumah adat dengan rujukan daerah (papan nama edukatif): bentuk mengikuti ciri utama masing-masing —
+## Rumah Gadang: atap gonjong melengkung (Minangkabau, Sumatera Barat); Joglo: atap limas bertingkat menjulang
+## (Jawa Tengah & DI Yogyakarta); Tongkonan: rumah panggung beratap pelana melengkung seperti perahu (Toraja,
+## Sulawesi Selatan). Disederhanakan untuk game low-poly; bukan gambar arsitektur yang presisi.
+const ADAT := [["rumah_gadang", "Rumah Gadang\nSumatera Barat"], ["joglo", "Joglo\nJawa Tengah & DIY"], ["tongkonan", "Tongkonan\nToraja, Sulawesi Selatan"]]
+
+
 static func _houses(w: Node3D, root: Node3D) -> Vector3:
+	if w.env_mesh("buildings/joglo") != null:
+		for i in 3:
+			var at := Vector3(-5.0 + i * 5.0, 0, -2.0 - (i % 2) * 1.5)
+			_glb(w, root, ADAT[i][0], at)
+			w._static_box_at(root, Vector3(3.6, 3.0, 3.0), at + Vector3(0, 1.5, 0), null)
+			var l: Label3D = w._label(ADAT[i][1], 40, Color("ffd166"), true)
+			l.position = at + Vector3(0, 5.6, 0)
+			root.add_child(l)
+		return Vector3(0, 0, 2.8)
 	var styles := [[Color("f4e1c1"), Color("a0452e")], [Color("e8d0a0"), Color("5a3a1a")], [Color("fff3c4"), Color("3b5b9a")]]
 	for i in 3:
 		var at := Vector3(-5.0 + i * 5.0, 0, -2.0 - (i % 2) * 1.5)

@@ -51,6 +51,7 @@ static func mat(c: Color, rough := 0.85) -> StandardMaterial3D:
 		var m := StandardMaterial3D.new()
 		m.albedo_color = c
 		m.roughness = rough
+		m.metallic_specular = 0.12  # pantulan putih rendah: warna tidak pucat di bawah matahari (2.4.1)
 		_mats[key] = m
 	return _mats[key]
 
@@ -288,6 +289,12 @@ func _build_glb() -> bool:
 					var d0 := (src0 as BaseMaterial3D).duplicate() as BaseMaterial3D
 					d0.albedo_color = glb_recolor[src0.resource_name]
 					(mi as MeshInstance3D).set_surface_override_material(s, d0)
+		if glb_path != "":
+			var meshs: Mesh = (mi as MeshInstance3D).mesh
+			for s in meshs.get_surface_count():
+				var ms := meshs.surface_get_material(s) as BaseMaterial3D
+				if ms != null:
+					ms.metallic_specular = 0.12
 		if glb_tint != Color.WHITE:
 			var mesh: Mesh = (mi as MeshInstance3D).mesh
 			for s in mesh.get_surface_count():

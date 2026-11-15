@@ -8,3 +8,5 @@ Isi    : tree_round (642 segitiga), tree_pine (248), tree_palm (660), bush (432)
          rock_a (276), rock_b (180), math_statue (144), big_book (60), microscope (396), globe (1080),
          info_board (132), lamp_post (162). Material warna tanpa tekstur (aman untuk GL Compatibility).
 Ubah   : jalankan ulang skrip lalu `godot --headless --path client --import`.
+buildings/: cave, math_tower, library, museum, lab_dome, market_stall, rumah_gadang, joglo, tongkonan,
+         lighthouse, observatory (360-1.870 segitiga) - juga buatan sendiri, CC0.

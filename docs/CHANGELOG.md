@@ -2,6 +2,13 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.4.1 — warna petualangan & bangunan GLB (15 November 2026)
+
+- Warna tidak lagi pucat/terlalu terang: cahaya matahari & ambien diturunkan, ACES white 6, kontras & saturasi,
+  tanah/jalan/langit lebih pekat, pantulan specular rendah.
+- 11 bangunan GLB buatan sendiri (gua, menara bertangga, perpustakaan, museum, lab, kios pasar, Rumah Gadang,
+  Joglo, Tongkonan, mercusuar, observatorium); tangga Menara Matematika bisa dinaiki ke balkon.
+
 ## Paket education_sd v2.4.0 — Fase 9–10: pahlawan 3D & aset lingkungan (15 November 2026)
 
 - Model pahlawan anak laki-laki & perempuan GLB buatan sendiri (CC0): kerangka sama 20 tulang, 12 animasi (idle,

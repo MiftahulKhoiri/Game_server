@@ -219,10 +219,10 @@ func _sky(delta: float) -> void:
 func apply_light() -> void:
 	var dim := day_factor * (0.7 if raining else 1.0)
 	if world._sun != null:
-		world._sun.light_energy = lerpf(0.25, 0.95, dim)
-		world._sun.light_color = Color(1.0, lerpf(0.75, 1.0, day_factor), lerpf(0.6, 1.0, day_factor))
+		world._sun.light_energy = lerpf(0.22, 0.65, dim)
+		world._sun.light_color = Color(1.0, lerpf(0.72, 0.93, day_factor), lerpf(0.55, 0.82, day_factor))
 	if world._env != null:
-		world._env.ambient_light_energy = lerpf(0.3, 0.45, dim)
+		world._env.ambient_light_energy = lerpf(0.1, 0.15, dim)
 		var sky_mat: ProceduralSkyMaterial = world._env.sky.sky_material
 		var day_top: Color = world.sky_day_top
 		sky_mat.sky_top_color = day_top.lerp(Color("2b3a6b"), 1.0 - day_factor).lerp(Color("8a94a6"), 0.5 if raining else 0.0)

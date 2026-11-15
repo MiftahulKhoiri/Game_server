@@ -20,6 +20,10 @@ func _initialize() -> void:
 		["rocks", "rock_a", _rock.bind(0)], ["rocks", "rock_b", _rock.bind(1)],
 		["educational", "math_statue", _math_statue], ["educational", "big_book", _big_book], ["educational", "microscope", _microscope],
 		["educational", "globe", _globe], ["educational", "info_board", _info_board], ["props", "lamp_post", _lamp_post],
+		["buildings", "cave", _cave], ["buildings", "math_tower", _math_tower], ["buildings", "library", _library],
+		["buildings", "museum", _museum], ["buildings", "lab_dome", _lab_dome], ["buildings", "market_stall", _market_stall],
+		["buildings", "rumah_gadang", _rumah_gadang], ["buildings", "joglo", _joglo], ["buildings", "tongkonan", _tongkonan],
+		["buildings", "lighthouse", _lighthouse], ["buildings", "observatory", _observatory],
 	]:
 		ok = _save(spec[0], spec[1], spec[2]) and ok
 	print("PROPS GLB: ", "OK" if ok else "GAGAL")
@@ -67,7 +71,7 @@ func _save(group: String, name: String, build: Callable) -> bool:
 	var am := ArrayMesh.new()
 	for mname in surfaces:
 		var st: SurfaceTool = surfaces[mname]
-		if mats.has(mname) and (mname in ["Batu", "Daun", "Daun2", "Semak"]):
+		if mats.has(mname) and (mname in ["Batu", "Daun", "Daun2", "Semak", "Tebing"]):
 			st.generate_normals()
 		st.index()  # verteks kembar digabung: jauh lebih ringan untuk MultiMesh
 		st.set_material(mats[mname])
@@ -263,3 +267,213 @@ func _lamp_post() -> void:
 	_add(cyl(0.04, 0.05, 2.6, 8), "Besi", Vector3(0, 1.5, 0))
 	_add(cyl(0.18, 0.12, 0.32, 6), "Lampu", Vector3(0, 2.9, 0))
 	_add(cyl(0.0, 0.24, 0.18, 6), "Besi", Vector3(0, 3.15, 0))
+
+
+
+# --- Bangunan (Fase 10 lanjutan). Ukuran mengikuti tata letak & tabrakan lokasi yang sudah ada. -----------
+
+static func pyr(top: float, bottom: float, h: float) -> CylinderMesh:
+	return cyl(top, bottom, h, 4)  # limas segi empat (diputar 45° saat dipakai)
+
+
+func _cave() -> void:
+	_mat("Tebing", Color("6e6559"), 0.95)
+	_mat("Gelap", Color("1c1a22"), 1.0)
+	_mat("Kristal", Color("5fd0e8"), 0.2, 0.2)
+	_mat("Lumut", Color("4f6f3a"), 0.95)
+	_add(sph(5.0, 14), "Tebing", Vector3(0, 0, -1.5), Vector3(1.3, 0.85, 1.0), Vector3.ZERO, 0.35)
+	_add(sph(1.9, 12), "Gelap", Vector3(0, 0.7, 2.9), Vector3(1.05, 1.15, 0.55))
+	for k in 7:
+		var a := -1.2 + k * 0.4
+		_add(sph(0.8, 8), "Tebing", Vector3(sin(a) * 2.6, 0.25 + absf(cos(a)) * 1.6, 3.0 + cos(a) * 0.4), Vector3(1, 0.9, 0.8), Vector3.ZERO, 0.12)
+	for k in 5:
+		_add(cyl(0.0, 0.18, 0.8, 5), "Kristal", Vector3(-2.2 + k * 1.1, 0.35, 3.9 + (k % 2) * 0.4), Vector3.ONE, Vector3(0.2 * (k - 2), 0, 0))
+	_add(sph(3.0, 10), "Lumut", Vector3(0, 3.7, -1.5), Vector3(1.6, 0.25, 1.2), Vector3.ZERO, 0.15)
+
+
+func _math_tower() -> void:
+	_mat("Batu", Color("cfc6b4"), 0.9)
+	_mat("Batu2", Color("b3a891"), 0.9)
+	_mat("Atap", Color("2f5fa8"), 0.7)
+	_mat("Kaca", Color("8fd0ff"), 0.2)
+	_mat("Kayu", Color("6b4a2e"), 0.85)
+	_mat("Emas", Color("d9a83a"), 0.35, 0.6)
+	for k in 6:
+		_add(cyl(2.55 - k * 0.04, 2.7 - k * 0.04, 2.0, 16), "Batu" if k % 2 == 0 else "Batu2", Vector3(0, 1.0 + k * 2.0, 0))
+	_add(cyl(3.7, 3.7, 0.2, 20), "Batu2", Vector3(0, 4.0, 0))  # balkon (bisa dinaiki lewat tangga)
+	for k in 20:
+		var a := TAU * k / 20.0
+		_add(cyl(0.05, 0.05, 0.8, 5), "Kayu", Vector3(cos(a) * 3.55, 4.5, sin(a) * 3.55))
+	var rail := TorusMesh.new()
+	rail.inner_radius = 3.5
+	rail.outer_radius = 3.6
+	rail.rings = 24
+	rail.ring_segments = 4
+	_add(rail, "Kayu", Vector3(0, 4.9, 0))
+	_add(cyl(0.0, 3.3, 3.8, 16), "Atap", Vector3(0, 13.9, 0))
+	_add(sph(0.35, 8), "Emas", Vector3(0, 16.0, 0))
+	for k in 4:
+		for j in 4:
+			var a := TAU * j / 4.0 + k * 0.4
+			_add(box(Vector3(0.7, 1.1, 0.2)), "Kaca", Vector3(cos(a) * 2.6, 6.0 + k * 1.7, sin(a) * 2.6), Vector3.ONE, Vector3(0, -a + PI / 2.0, 0))
+	_add(box(Vector3(1.4, 2.1, 0.25)), "Kayu", Vector3(0, 1.05, 2.62))
+
+
+func _library() -> void:
+	_mat("Kayu", Color("7a5230"), 0.9)
+	_mat("Kayu2", Color("5a3a24"), 0.9)
+	_mat("Daun", Color("3f7f3a"), 0.9)
+	_mat("Buku", Color("c0503a"), 0.8)
+	_mat("Buku2", Color("3f6fb0"), 0.8)
+	_mat("Buku3", Color("d9a83a"), 0.8)
+	_add(box(Vector3(10, 0.4, 7)), "Kayu2", Vector3(0, 0.2, -1))
+	_add(box(Vector3(10, 4.5, 0.4)), "Kayu", Vector3(0, 2.6, -4.3))
+	for x in [-4.6, -1.5, 1.5, 4.6]:
+		_add(cyl(0.3, 0.42, 4.6, 8), "Kayu2", Vector3(x, 2.5, 2.0), Vector3.ONE, Vector3.ZERO, 0.04)
+	_add(box(Vector3(11, 0.4, 7.6)), "Kayu2", Vector3(0, 5.0, -1))
+	_add(sph(4.2, 12), "Daun", Vector3(0, 6.0, -1), Vector3(1.45, 0.45, 1.05), Vector3.ZERO, 0.25)
+	for row in 3:
+		_add(box(Vector3(9.0, 0.08, 0.5)), "Kayu2", Vector3(0, 0.9 + row * 1.1, -3.85))
+		for k in 22:
+			var c: String = ["Buku", "Buku2", "Buku3"][(k + row) % 3]
+			_add(box(Vector3(0.14, 0.7 + (k % 3) * 0.1, 0.4)), c, Vector3(-4.2 + k * 0.4, 1.3 + row * 1.1, -3.85))
+
+
+func _museum() -> void:
+	_mat("Marmer", Color("e9e4d8"), 0.6)
+	_mat("Marmer2", Color("cfc8b8"), 0.6)
+	_mat("Atap", Color("8a3a2e"), 0.8)
+	_mat("Emas", Color("d9a83a"), 0.35, 0.6)
+	_mat("Lukisan", Color("3f6fb0"), 0.8)
+	_mat("Lukisan2", Color("c98a3a"), 0.8)
+	for k in 3:
+		_add(box(Vector3(10.8 - k * 0.4, 0.15, 7.6 - k * 0.3)), "Marmer2", Vector3(0, 0.075 + k * 0.15, -1 + k * 0.15))
+	_add(box(Vector3(10, 4.5, 0.4)), "Marmer", Vector3(0, 2.7, -4.3))
+	for x in [-4.4, -2.2, 0.0, 2.2, 4.4]:
+		_add(cyl(0.3, 0.34, 4.3, 12), "Marmer", Vector3(x, 2.6, 2.0))
+		_add(box(Vector3(0.8, 0.2, 0.8)), "Marmer2", Vector3(x, 4.85, 2.0))
+	_add(box(Vector3(11, 0.5, 7.6)), "Marmer2", Vector3(0, 5.2, -1))
+	var tri := PrismMesh.new()
+	tri.size = Vector3(11, 1.8, 7.6)
+	_add(tri, "Atap", Vector3(0, 6.35, -1))
+	_add(sph(0.35, 8), "Emas", Vector3(0, 6.6, 2.85), Vector3(1, 1, 0.3))
+	for k in 6:
+		_add(box(Vector3(1.2, 1.5, 0.06)), "Lukisan" if k % 2 == 0 else "Lukisan2", Vector3(-3.75 + k * 1.5, 2.6, -4.07))
+
+
+func _lab_dome() -> void:
+	_mat("Dinding", Color("e3e9f0"), 0.5)
+	_mat("Kaca", Color("7fd4f0"), 0.15, 0.1)
+	_mat("Biru", Color("2f6fb0"), 0.6)
+	_mat("Logam", Color("aab4be"), 0.3, 0.7)
+	_mat("Panel", Color("1f2f4a"), 0.3, 0.3)
+	_add(cyl(4.5, 4.6, 3.4, 24), "Dinding", Vector3(0, 1.7, -2))
+	_add(cyl(4.62, 4.62, 0.3, 24), "Biru", Vector3(0, 1.2, -2))
+	_add(sph(4.4, 20), "Kaca", Vector3(0, 3.3, -2), Vector3(1, 0.62, 1))
+	_add(box(Vector3(1.6, 2.4, 0.4)), "Biru", Vector3(0, 1.2, 2.5))
+	_add(cyl(0.06, 0.06, 2.5, 6), "Logam", Vector3(2.5, 6.4, -2.5))
+	_add(sph(0.18, 8), "Biru", Vector3(2.5, 7.7, -2.5))
+	for k in 3:
+		_add(box(Vector3(1.6, 0.06, 1.0)), "Panel", Vector3(-3.2 + k * 1.7, 0.6, -6.8), Vector3.ONE, Vector3(-0.5, 0, 0))
+	_add(box(Vector3(4.0, 0.9, 1.2)), "Dinding", Vector3(0, 0.45, 3.0))
+
+
+func _market_stall() -> void:
+	_mat("Kayu", Color("8a5a30"), 0.9)
+	_mat("Kain", Color("c0503a"), 0.85)
+	_mat("Kain2", Color("f4e6c4"), 0.85)
+	_mat("Keranjang", Color("b08a50"), 0.95)
+	_mat("Buah", Color("e0a020"), 0.6)
+	_mat("Buah2", Color("5aa84a"), 0.6)
+	_add(box(Vector3(2.6, 0.9, 1.3)), "Kayu", Vector3(0, 0.45, 0))
+	for x in [-1.25, 1.25]:
+		for z in [-0.6, 0.6]:
+			_add(cyl(0.05, 0.06, 2.4, 6), "Kayu", Vector3(x, 1.2, z))
+	for k in 6:
+		_add(box(Vector3(0.45, 0.04, 1.7)), "Kain" if k % 2 == 0 else "Kain2", Vector3(-1.13 + k * 0.45, 2.4, 0.1), Vector3.ONE, Vector3(0.18, 0, 0))
+	for k in 3:
+		_add(cyl(0.28, 0.22, 0.18, 10), "Keranjang", Vector3(-0.8 + k * 0.8, 1.0, 0))
+		for j in 4:
+			_add(sph(0.09, 6), "Buah" if k != 1 else "Buah2", Vector3(-0.8 + k * 0.8 + (j % 2) * 0.12 - 0.06, 1.13, (j / 2) * 0.12 - 0.06))
+
+
+## Rumah Gadang (Minangkabau, Sumatera Barat): rumah panggung memanjang, atap bergonjong melengkung ke atas.
+func _rumah_gadang() -> void:
+	_mat("Kayu", Color("6b3a24"), 0.85)
+	_mat("Ukiran", Color("b0302a"), 0.8)
+	_mat("Ijuk", Color("2a2622"), 0.95)
+	_mat("Emas", Color("d9a83a"), 0.4, 0.5)
+	for x in [-1.6, -0.5, 0.5, 1.6]:
+		for z in [-1.1, 1.1]:
+			_add(cyl(0.1, 0.12, 1.0, 6), "Kayu", Vector3(x, 0.5, z))
+	_add(box(Vector3(3.8, 1.6, 2.6)), "Ukiran", Vector3(0, 1.8, 0))
+	_add(box(Vector3(3.9, 0.15, 2.7)), "Emas", Vector3(0, 1.05, 0))
+	for side in [-1.0, 1.0]:
+		_add(box(Vector3(4.6, 0.12, 1.8)), "Ijuk", Vector3(0, 3.1, 0.75 * side), Vector3.ONE, Vector3(0.6 * side, 0, 0))
+	for x in [-2.2, -1.1, 1.1, 2.2]:
+		_add(cyl(0.0, 0.22, 1.4, 6), "Ijuk", Vector3(x, 3.95 + absf(x) * 0.25, 0), Vector3.ONE, Vector3(0, 0, -0.55 * signf(x)))
+
+
+## Joglo (Jawa Tengah / Yogyakarta): pendopo kayu terbuka, atap limas bertingkat menjulang di tengah.
+func _joglo() -> void:
+	_mat("Kayu", Color("7a4a26"), 0.85)
+	_mat("Genteng", Color("9a4a2e"), 0.8)
+	_mat("Lantai", Color("c9b28a"), 0.9)
+	_add(box(Vector3(3.8, 0.35, 3.4)), "Lantai", Vector3(0, 0.18, 0))
+	for x in [-1.5, -0.5, 0.5, 1.5]:
+		for z in [-1.3, 1.3]:
+			_add(cyl(0.09, 0.1, 2.2, 6), "Kayu", Vector3(x, 1.45, z))
+	_add(box(Vector3(2.4, 1.8, 0.12)), "Kayu", Vector3(0, 1.3, -1.25))
+	_add(pyr(1.6, 3.0, 0.7), "Genteng", Vector3(0, 2.9, 0), Vector3(1.0, 1, 0.9), Vector3(0, PI / 4.0, 0))
+	_add(pyr(0.25, 1.6, 1.5), "Genteng", Vector3(0, 4.0, 0), Vector3(1.0, 1, 0.9), Vector3(0, PI / 4.0, 0))
+
+
+## Tongkonan (Toraja, Sulawesi Selatan): rumah panggung, atap pelana berbentuk perahu melengkung tinggi di ujung.
+func _tongkonan() -> void:
+	_mat("Kayu", Color("5a3020"), 0.85)
+	_mat("Ukiran", Color("8a2a20"), 0.8)
+	_mat("Hitam", Color("1f1a18"), 0.9)
+	_mat("Kuning", Color("d9b04a"), 0.7)
+	for x in [-1.2, 0, 1.2]:
+		for z in [-0.9, 0.9]:
+			_add(cyl(0.12, 0.14, 1.3, 6), "Kayu", Vector3(x, 0.65, z))
+	_add(box(Vector3(3.0, 1.3, 2.0)), "Ukiran", Vector3(0, 1.95, 0))
+	for k in 4:
+		_add(box(Vector3(3.0, 0.08, 0.04)), "Kuning", Vector3(0, 1.5 + k * 0.3, 1.02))
+	for k in 9:
+		var t := (k - 4) / 4.0
+		var y := 3.0 + t * t * 1.4
+		_add(box(Vector3(0.62, 0.15, 2.6)), "Hitam", Vector3(t * 2.4, y, 0), Vector3.ONE, Vector3(0, 0, -t * 0.55))
+	_add(cyl(0.08, 0.08, 1.6, 6), "Kayu", Vector3(2.4, 3.1, 0), Vector3.ONE, Vector3(0, 0, 0.0))
+	_add(cyl(0.08, 0.08, 1.6, 6), "Kayu", Vector3(-2.4, 3.1, 0))
+
+
+func _lighthouse() -> void:
+	_mat("Merah", Color("b8352a"), 0.7)
+	_mat("Putih", Color("f2efe8"), 0.7)
+	_mat("Besi", Color("2f3640"), 0.5, 0.5)
+	_mat("Kaca", Color("ffe08a"), 0.2)
+	_mat("Batu", Color("8f8a80"), 0.95)
+	_add(cyl(2.4, 2.8, 1.2, 16), "Batu", Vector3(0, 0.6, 0))
+	for k in 6:
+		_add(cyl(1.6 - k * 0.12, 1.72 - k * 0.12, 3.0, 16), "Merah" if k % 2 == 0 else "Putih", Vector3(0, 2.7 + k * 3.0, 0))
+	_add(cyl(1.6, 1.6, 0.25, 16), "Besi", Vector3(0, 19.4, 0))
+	for k in 16:
+		var a := TAU * k / 16.0
+		_add(cyl(0.03, 0.03, 0.7, 4), "Besi", Vector3(cos(a) * 1.5, 19.85, sin(a) * 1.5))
+	_add(cyl(0.8, 0.8, 1.2, 12), "Kaca", Vector3(0, 20.2, 0))
+	_add(cyl(0.0, 1.0, 0.9, 12), "Merah", Vector3(0, 21.25, 0))
+	_add(box(Vector3(0.9, 1.8, 0.2)), "Besi", Vector3(0, 2.0, 1.72))
+
+
+func _observatory() -> void:
+	_mat("Dinding", Color("e3e9f0"), 0.5)
+	_mat("Kubah", Color("b8c4d0"), 0.3, 0.6)
+	_mat("Celah", Color("1f2f4a"), 0.4)
+	_mat("Logam", Color("6b5f86"), 0.4, 0.5)
+	_add(cyl(3.0, 3.6, 12.0, 20), "Dinding", Vector3(0, 6, 0))
+	for k in 3:
+		_add(cyl(3.05, 3.05, 0.3, 20), "Logam", Vector3(0, 3.0 + k * 3.5, 0))
+	_add(sph(3.6, 20), "Kubah", Vector3(0, 12, 0), Vector3(1, 0.9, 1))
+	_add(box(Vector3(1.0, 3.0, 0.4)), "Celah", Vector3(0, 13.4, 2.8), Vector3.ONE, Vector3(-0.5, 0, 0))
+	_add(cyl(0.45, 0.65, 4.5, 12), "Logam", Vector3(0, 14.3, 2.2), Vector3.ONE, Vector3(-0.9, 0, 0))
