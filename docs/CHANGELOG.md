@@ -2,6 +2,18 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.0.2 — perbaikan: game tertutup sendiri di HP (Samsung A18) (15 November 2026)
+
+- Catatan diagnosis dari HP pelapor: game keluar lewat tombol "KEMBALI KE LAUNCHER" di beranda tanpa
+  disengaja. Di HP layar beranda lebih tinggi dari layar, jadi pemain menggulir; jari yang mulai menggeser di atas
+  tombol itu lalu dilepas dihitung sebagai tekan.
+- Pengaman sentuhan: tombol tidak bereaksi bila jari sudah bergeser lebih dari 24 px (menggulir), dan selama
+  0,35 detik setelah layar baru dibangun (sentuhan nyasar dari layar sebelumnya). ScrollContainer memakai
+  zona mati gulir 24 px.
+- Tombol "KEMBALI KE LAUNCHER" di beranda dan "Kembali ke Launcher" di pengaturan kini juga bertanya dulu.
+- Diagnosis lebih rinci: mencatat saat game dibuka, sumber keluar (back Android / tombol beranda / pengaturan),
+  dan versi paket.
+
 ## Paket education_sd v2.0.1 — perbaikan: game langsung kembali ke launcher (15 November 2026)
 
 - Log server menunjukkan game SD tertutup 4 detik setelah dibuka, saat masih di layar pengenalan: sinyal tombol

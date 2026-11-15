@@ -10,6 +10,20 @@ const SOFT_BAD := Color("e0813d")  # jawaban belum tepat: jingga lembut, bukan m
 const GOLD := Color("f0b429")
 const CARD := Color("ffffff")
 
+## Pengaman sentuhan (HP): tombol tidak bereaksi bila jari baru saja menggeser layar (menggulir),
+## atau sesaat setelah layar baru dibangun (sentuhan "nyasar" dari layar sebelumnya).
+const DRAG_CANCEL_PX := 24.0
+static var guard_until_ms := 0
+static var touch_dragged := false
+
+
+static func guard(ms: int) -> void:
+	guard_until_ms = Time.get_ticks_msec() + ms
+
+
+static func can_press() -> bool:
+	return not touch_dragged and Time.get_ticks_msec() >= guard_until_ms
+
 
 static func box(c: Color, radius := 18, border := Color(0, 0, 0, 0), bw := 0) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
@@ -54,7 +68,9 @@ static func button(text: String, cb: Callable, color := PRIMARY, size := 28, min
 	b.add_theme_stylebox_override("disabled", box(color.lerp(Color("cfc8dc"), 0.6)))
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if cb.is_valid():
-		b.pressed.connect(cb)
+		b.pressed.connect(func() -> void:
+			if can_press():
+				cb.call())
 	return b
 
 

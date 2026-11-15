@@ -9,6 +9,7 @@ const SdGen := preload("res://games/education_sd/scripts/sd_gen.gd")
 const SdProgress := preload("res://games/education_sd/scripts/sd_progress.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
+const SdUI := preload("res://games/education_sd/scripts/sd_ui.gd")
 const SaveManager := preload("res://core/save_manager.gd")
 
 const SCENE := "res://games/education_sd/main.tscn"
@@ -27,6 +28,13 @@ func _initialize() -> void:
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
 	quit(1 if _failed else 0)
+
+
+func _find_button(app: Node, text: String) -> Button:
+	for b in app.page().find_children("*", "Button", true, false):
+		if (b as Button).text == text:
+			return b
+	return null
 
 
 func _check(cond: bool, label: String) -> void:
@@ -331,6 +339,25 @@ func _app_tests() -> void:
 	var texts := _button_texts(app)
 	for want in ["MULAI PETUALANGAN", "PILIH PELAJARAN", "KOLEKSI", "PRESTASI", "PENGATURAN", "KEMBALI KE LAUNCHER", "MINI-GAME", "LAPORAN BELAJAR"]:
 		_check(texts.has(want), "beranda punya tombol " + want)
+	# Pengaman sentuhan HP (2.0.2): tombol keluar di beranda bertanya dulu; sentuhan nyasar dan geseran
+	# (menggulir) tidak boleh menekan tombol.
+	app.show_home()
+	var exit_btn := _find_button(app, "KEMBALI KE LAUNCHER")
+	exit_btn.pressed.emit()
+	_check(current_scene == app and (app._exit_dialog == null or not app._exit_dialog.visible),
+		"sentuhan nyasar sesaat setelah layar dibangun diabaikan")
+	SdUI.guard_until_ms = 0
+	SdUI.touch_dragged = true
+	exit_btn.pressed.emit()
+	_check(current_scene == app and (app._exit_dialog == null or not app._exit_dialog.visible),
+		"tombol yang dilepas setelah layar digulir tidak ditekan")
+	SdUI.touch_dragged = false
+	exit_btn.pressed.emit()
+	await process_frame
+	_check(current_scene == app and app._exit_dialog.visible, "tombol KEMBALI KE LAUNCHER di beranda bertanya dulu")
+	app._exit_dialog.hide()
+	var diag: Array = app.p.get("diag", [])
+	_check(diag.size() > 0 and str(diag[0].reason) == "dibuka", "catatan diagnosis mencatat game dibuka")
 
 	print("== Mode petualangan: seluruh area Kerajaan Matematika kelas 1 + ujian akhir")
 	app.show_map()

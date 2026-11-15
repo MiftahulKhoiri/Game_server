@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.0, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.0.2, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -34,16 +34,22 @@ var _qview: Node
 var _back_target := "home"
 var _exit_dialog: ConfirmationDialog
 var _exit_noted := false
+var _touch_start := {}  # indeks jari -> posisi awal sentuhan
 
 
 ## Catatan diagnosis (ikut tersinkron ke server): kapan dan dari layar mana game ditutup.
 func _note_exit(reason: String) -> void:
+	_note_event(reason)
+	_exit_noted = true
+
+
+func _note_event(reason: String) -> void:
 	if p.is_empty():
 		return
 	var diag: Array = p.get("diag", [])
-	diag.append({"at": Time.get_datetime_string_from_system(false, true), "reason": reason, "screen": screen})
+	diag.append({"at": Time.get_datetime_string_from_system(false, true), "reason": reason, "screen": screen,
+			"ver": "2.0.2"})
 	p["diag"] = diag.slice(-10)
-	_exit_noted = true
 
 
 func _ready() -> void:
@@ -64,6 +70,7 @@ func _ready() -> void:
 		_show_error("Data pelajaran tidak bisa dimuat:\n" + "\n".join(data.errors.slice(0, 5)))
 		return
 	_load_progress()
+	_note_event("dibuka")
 	audio.apply.call_deferred(bool(p.settings.music), bool(p.settings.sfx))
 	if str(p.player.name) == "":
 		show_onboarding()
@@ -71,6 +78,20 @@ func _ready() -> void:
 		show_home()
 	if int(p.totals.answered) == 0:
 		_try_restore()
+
+
+## Lacak geseran jari: tombol yang dilepas setelah layar digulir tidak dianggap ditekan.
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_touch_start[event.index] = event.position
+			UI.touch_dragged = false
+		else:
+			_touch_start.erase(event.index)
+	elif event is InputEventScreenDrag:
+		var s: Vector2 = _touch_start.get(event.index, event.position)
+		if event.position.distance_to(s) > UI.DRAG_CANCEL_PX:
+			UI.touch_dragged = true
 
 
 func _notification(what: int) -> void:
@@ -138,6 +159,7 @@ func grade() -> int:
 
 func _clear(id: String) -> VBoxContainer:
 	screen = id
+	UI.guard(350)
 	_qview = null
 	for c in _root.get_children():
 		_root.remove_child(c)
@@ -145,6 +167,7 @@ func _clear(id: String) -> VBoxContainer:
 	var scroll := ScrollContainer.new()
 	scroll.name = "Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.scroll_deadzone = int(UI.DRAG_CANCEL_PX)
 	_root.add_child(scroll)
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var m := MarginContainer.new()
@@ -197,12 +220,12 @@ func go_back() -> void:
 		"error":
 			_exit_to_launcher("kembali dari layar galat")
 		"home":
-			_confirm_exit()
+			_confirm_exit("back Android di beranda")
 		"onboarding":
 			if str(p.player.name) != "":
 				show_home()
 			else:
-				_confirm_exit()
+				_confirm_exit("back Android di pengenalan")
 		"session":
 			_confirm_leave_session()
 		"region":
@@ -221,15 +244,17 @@ func go_back() -> void:
 					show_home()
 
 
-func _confirm_exit() -> void:
+func _confirm_exit(source: String = "kembali") -> void:
 	if _exit_dialog != null and is_instance_valid(_exit_dialog) and _exit_dialog.visible:
 		return
+	if _exit_dialog != null and is_instance_valid(_exit_dialog):
+		_exit_dialog.queue_free()
 	_exit_dialog = ConfirmationDialog.new()
 	_exit_dialog.dialog_text = "Kembali ke daftar game?\nProgres belajarmu sudah tersimpan."
 	_exit_dialog.ok_button_text = "Ya, kembali"
 	_exit_dialog.cancel_button_text = "Tetap bermain"
 	add_child(_exit_dialog)
-	_exit_dialog.confirmed.connect(_exit_to_launcher.bind("kembali (dikonfirmasi)"))
+	_exit_dialog.confirmed.connect(_exit_to_launcher.bind(source + " (dikonfirmasi)"))
 	_exit_dialog.popup_centered(Vector2i(640, 220))
 
 
@@ -352,7 +377,7 @@ func show_home() -> void:
 	var g := UI.grid(3, 14)
 	for item in [["MINI-GAME", show_minigames, Color("e0813d")], ["KOLEKSI", show_collection.bind("kostum"), Color("8a6bd8")],
 			["PRESTASI", show_badges, UI.GOLD], ["LAPORAN BELAJAR", show_report, Color("2fb3a6")],
-			["PENGATURAN", show_settings, Color("8a9bb8")], ["KEMBALI KE LAUNCHER", _exit_to_launcher, Color("cfc8dc")]]:
+			["PENGATURAN", show_settings, Color("8a9bb8")], ["KEMBALI KE LAUNCHER", _confirm_exit.bind("tombol beranda"), Color("cfc8dc")]]:
 		var b := UI.button(item[0], item[1], item[2], 24, 84)
 		UI.expand(b)
 		g.add_child(b)
@@ -948,7 +973,7 @@ func show_settings() -> void:
 		UI.expand(b)
 		arow.add_child(b)
 	v.add_child(arow)
-	v.add_child(UI.button("Kembali ke Launcher", _exit_to_launcher, Color("8a9bb8"), 26, 80))
+	v.add_child(UI.button("Kembali ke Launcher", _confirm_exit.bind("tombol pengaturan"), Color("8a9bb8"), 26, 80))
 
 
 func change_grade(k: int) -> void:
