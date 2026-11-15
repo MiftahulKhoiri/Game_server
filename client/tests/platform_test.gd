@@ -308,21 +308,16 @@ func _phase_install() -> void:
 	await _wait(0.3)
 	var game = current_scene
 	_check(GM.active_game_id == "education_sd", "game aktif tercatat")
-	_check(game != null and str(game.get("game_id")) == "education_sd" and game.data.regions.size() == 4 and game.data.questions.size() >= 200,
-		"skrip game + bank soal dari paket termuat (4 wilayah, %d soal)" % (game.data.questions.size() if game != null else 0))
-	# Pulau Ilmu: isi nama & kelas, lalu kuis Bahasa kelas 1 dengan semua jawaban benar.
-	game.set_player("Uji", 1)
-	game.start_quiz("bahasa")
-	var guard := 0
-	while game.screen == "session" and guard < 30:
-		guard += 1
-		_answer_right(game.current_question_view())
-		await _wait(0.05)
-	_check(game.screen == "result", "kuis Pulau Ilmu selesai")
-	_check(int(game.p.grades["1"].quiz.bahasa.best) == 100, "nilai 100 tercatat")
-	_check((game.p.history as Array).size() >= 1, "riwayat belajar tercatat")
-	var saved := SaveManager.load_progress("education_sd", 2)
-	_check(int(saved.data.grades["1"].quiz.bahasa.best) == 100, "progres tersimpan di user_data/progress/education_sd")
+	_check(game != null and str(game.get("game_id")) == "education_sd" and game.worlds.islands.size() == 6 and game.data.questions.size() >= 200,
+		"skrip game + data enam pulau + bank soal dari paket termuat (%d soal)" % (game.data.questions.size() if game != null else 0))
+	# Dunia Enam Pulau: buat profil petualang, masuk peta, lalu masuk Pulau 1.
+	game.set_profile({"name": "Uji", "grade": 1, "hero": "laki", "outfit": "warna_merah"})
+	game.close_modal()
+	game.arrive("pulau1")
+	await _wait(0.3)
+	_check(game.screen == "island" and game.world != null, "dunia 3D Pulau 1 berjalan dari paket PCK")
+	var saved := SaveManager.load_progress("education_sd", 3)
+	_check(str(saved.data.profile.name) == "Uji" and str(saved.data.world.island) == "pulau1", "progres tersimpan di user_data/progress/education_sd")
 	_check(SaveManager.load_progress("education_smp", 1).is_empty(), "progres SMP tidak tercampur")
 	await GM.exit_to_launcher()
 	_check(await _wait_scene("res://launcher/scenes/main_menu.tscn"), "kembali ke launcher")
@@ -414,19 +409,19 @@ func _phase_update() -> void:
 	var reg = JSON.parse_string((res[3] as PackedByteArray).get_string_from_utf8())
 	_check(int(res[1]) == 201 and typeof(reg) == TYPE_DICTIONARY and str(reg.get("token", "")) != "", "akun uji dibuat")
 	api.token = str(reg.get("token", ""))
-	var sd := SaveManager.load_progress("education_sd", 2)
-	GM.save_progress("education_sd", sd.data, 2)
+	var sd := SaveManager.load_progress("education_sd", 3)
+	GM.save_progress("education_sd", sd.data, 3)
 	await _wait(1.5)
 	_check(not FileAccess.get_file_as_string("user://user_data/registry/sync_pending.json").contains("education_sd"), "progres SD terkirim ke server")
 	var srv: Dictionary = await GM.api.progress_get("education_sd")
-	_check(srv.ok and int(srv.data.data.grades["1"].quiz.bahasa.best) == 100, "server menyimpan progres SD akun ini")
+	_check(srv.ok and str(srv.data.data.profile.name) == "Uji", "server menyimpan progres SD akun ini")
 	# HP baru: progres lokal kosong -> dipulihkan dari server.
 	for f in ["save.json", "save.json.bak"]:
 		DirAccess.remove_absolute(SaveManager.dir_for("education_sd") + "/" + f)
-	var restored: Dictionary = await GM.restore_progress_from_server("education_sd", 2)
-	_check(int(restored.grades["1"].quiz.bahasa.best) == 100, "progres dipulihkan dari server ke HP")
+	var restored: Dictionary = await GM.restore_progress_from_server("education_sd", 3)
+	_check(str(restored.get("profile", {}).get("name", "")) == "Uji", "progres dipulihkan dari server ke HP")
 	var smp_srv: Dictionary = await GM.api.progress_get("education_smp")
-	_check(smp_srv.ok and not (smp_srv.data.get("data", {}) as Dictionary).has("grades"), "progres SMP di server terpisah dari SD")
+	_check(smp_srv.ok and not (smp_srv.data.get("data", {}) as Dictionary).has("profile"), "progres SMP di server terpisah dari SD")
 	api.token = ""
 	req.queue_free()
 
@@ -451,33 +446,12 @@ func _phase_offline() -> void:
 	_check(await _wait_scene("res://games/education_sd/main.tscn"), "game unduhan dimainkan offline")
 	await _wait(0.3)
 	var g = current_scene
-	_check(int(g.p.grades["1"].quiz.bahasa.best) == 100, "progres lokal terbaca offline")
-	g.start_practice("huruf")
-	var qv = g.current_question_view()
-	_answer_right(qv)
-	_check(qv._next.visible and str(qv._fb.text).begins_with("Hebat"), "mode latihan memberi pembahasan")
+	_check(str(g.p.profile.name) == "Uji", "progres lokal terbaca offline")
+	g.arrive("pulau1")
+	await _wait(0.2)
+	_check(g.screen == "island", "Pulau 1 bisa dijelajahi offline")
 	g.save()
 	_check(FileAccess.file_exists("user://user_data/registry/sync_pending.json"), "progres ditandai untuk sinkron saat online")
 	await GM.exit_to_launcher()
 	_check(await _wait_scene("res://launcher/scenes/main_menu.tscn"), "kembali ke launcher saat offline")
 
-
-## Jawab benar soal Pulau Ilmu yang sedang tampil (semua tipe), lalu lanjut.
-func _answer_right(qv) -> void:
-	if qv == null:
-		return
-	match str(qv.q.type):
-		"mc", "logic", "fill", "pick_image", "tf", "count":
-			qv._choose(qv._answer)
-		"order_letters", "order_words", "sort_numbers":
-			for x in qv._target.duplicate():
-				qv._place(qv._pool.find(x))
-		"match":
-			for i in (qv.q.pairs as Array).size():
-				qv._pick_left(i)
-				qv._pick_right(qv._right_vals.find(str(qv.q.pairs[i][1])))
-		"classify":
-			while not qv._done:
-				qv._put(int(qv._items[qv._item_i][1]))
-	if qv._next.visible:
-		qv._emit_finish()

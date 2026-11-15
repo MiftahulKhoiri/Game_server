@@ -124,3 +124,50 @@ Prinsip: aturan permainan (engine) **terpisah dari tampilan**, sehingga bisa diu
 - HP Samsung A18 → profil grafis Hemat/Normal/Tinggi dipertahankan.
 - Membuang layar lama membuat banyak uji `sd_test.gd` tidak berlaku → uji ditulis ulang per tahap; uji
   bank soal & tipe soal yang masih dipakai dipertahankan.
+
+---
+
+## Tahap 1 — Fondasi (paket 3.0.0, 15 Nov 2026)
+
+### Hasil
+
+| Bagian | Berkas | Isi |
+|---|---|---|
+| Data enam pulau | `data/islands.json` | 6 pulau (kelas 1–6): nama, tema, warna, posisi di peta, materi, tempat, bos (model dari APK), cerita "Kabut Lupa". Hanya Pulau 1 `available` |
+| World Engine | `scripts/engine/world_engine.gd` | Validasi data; status pulau `open/locked/soon`; pulau terbuka bila kelas pulau ≤ kelas petualang **atau** bos pulau sebelumnya kalah; `start_island`, `travel` (mencatat kunjungan & jumlah pelayaran) |
+| Save Engine | `scripts/engine/save_engine.gd` | Skema 3 (`profile`, `rpg`, `world`, `learning`, `quests`, `academy`, `settings`); migrasi 1→2→3 lewat GameManager **dan** dikenali dari isi (data pulihan server); angka JSON dirapikan; data aneh dibersihkan |
+| Menu utama | `scripts/ui/title_screen.gd` | Laut + enam pulau + perahu bergerak; Mulai / Lanjutkan Petualangan, Ganti Petualang, Pengaturan, Keluar |
+| Profil petualang | `scripts/ui/profile_screen.gd`, `hero_preview.gd` | Nama, kelas 1–6, pahlawan laki-laki/perempuan, warna baju (koleksi), pratinjau 3D berputar |
+| Peta enam pulau | `scripts/ui/world_map.gd`, `sea_art.gd` | Pulau bernomor, jalur pelayaran, gembok "Segera hadir/Terkunci", panel info (materi, bos), perahu berlayar ke pulau tujuan |
+| Dunia 3D pulau | `scripts/world/island_scene.gd` | Pulau bulat dengan pantai, laut, bukit, pohon GLB, dermaga + perahu (kembali ke peta), papan nama; batas pulau; memakai ulang pemain, kamera, joystick, HUD 2.x |
+| Pengatur layar | `main.gd` (1840 → ±520 baris) | Hanya navigasi layar, simpan, diagnosis (jejak langkah & mode aman dipertahankan) |
+
+Alur pemain baru: menu utama → profil → cerita pembuka → peta → Pulau 1 (3D) → dermaga → peta.
+Pemain lama (save 2.x): dikenali, disambut pesan "Petualangan Baru!", koin/kostum/catatan belajar terbawa.
+
+### Berkas lama
+
+`main.gd` lama (menu kuis) diganti. Skrip 2.x lain (`sd_minigames.gd`, `sd_art.gd`, `w3d_locations.gd`,
+`w3d_missions.gd`, `w3d_items.gd`, `w3d_base.gd`, `w3d_foes.gd`, `w3d_life.gd`) belum dipanggil lagi tetapi
+**belum dihapus**: tahap 2–6 memutuskan mana yang dipakai ulang (mis. dunia hidup, pengacau) dan mana yang dibuang.
+`sd_question.gd`, `sd_gen.gd`, `sd_data.gd`, `sd_progress.gd` (migrasi), `sd_audio.gd`, `w3d_player/hud/rig.gd` tetap dipakai.
+
+### Pengujian (dijalankan di Pi 5, 15 Nov 2026)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **409 pemeriksaan LULUS** — bank soal, 11 tipe soal, progres 1→2, data pulau, aturan buka/pindah pulau, Save Engine + migrasi, menu, profil, peta, berlayar antarpulau, dunia 3D (gerak, batas pulau, papan, perahu), pengaturan, simpan & buka ulang, save 2.x di HP |
+| `make platform-test` | **LULUS** (109 ok) — paket PCK SD baru: unduh, main, masuk Pulau 1, sinkron progres skema 3 ke server & pulihkan, main offline; SMP & launcher tidak terganggu |
+| `make client-test` (The Last Dragon) | **LULUS** (1162 ok, sama dengan sebelumnya) |
+
+Jumlah pemeriksaan SD turun dari 610 karena uji layar menu kuis & dunia lorong 2.x dihapus bersama fiturnya;
+uji bank soal dan tipe soal tetap.
+
+Tangkapan layar (Xvfb, 1280×720) diperiksa: menu utama, profil, cerita pembuka, peta, Pulau 1.
+
+### Belum / catatan
+
+- Paket 3.0.0 **belum diterbitkan** ke katalog: isinya baru fondasi (belum ada belajar, misi, monster).
+  Anak-anak masih memakai 2.4.3 sampai Pulau 1 percontohan bisa dimainkan.
+- Isi Pulau 1 (desa, akademi, hutan, sungai, gua, benteng) = Tahap 2.
+- Belum diuji di HP sungguhan.
