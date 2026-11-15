@@ -455,6 +455,7 @@ func _app_tests() -> void:
 	await _world_tests2(app)
 	await _base_tests(app)
 	await _v23_tests(app)
+	await _hero_tests(app)
 	_check(int((app.p.world.chests as Dictionary).size()) >= 1, "progres dunia 3D ikut tersimpan")
 	print("== Simpan, buka ulang, dan migrasi")
 	var coins := int(app.p.coins)
@@ -889,7 +890,11 @@ func _base_tests(app: Node) -> void:
 	print("== Dunia 3D Fase 5: model GLB berlisensi dari APK + cadangan primitif")
 	app.show_world("matematika")
 	_check(app.world.merged_count > 100 and app.world.get_node("FenceVis").get_child_count() == 1, "Fase 8: mesh statis digabung (%d bagian), pagar = 1 mesh" % app.world.merged_count)
-	_check(app.world.player.rig._head.get_child_count() <= 2, "Fase 8: bagian kepala karakter digabung")
+	var R8 := load("res://games/education_sd/scripts/world/w3d_rig.gd")
+	var pr = R8.new()
+	pr.build()
+	_check(pr._head.get_child_count() <= 2, "Fase 8: bagian kepala karakter (rig prosedural) digabung")
+	pr.free()
 	var npc_rig = app.world.find_use("npc").get_parent().get_meta("rig")
 	var boss_rig = app.world.get_node("Boss").get_meta("rig")
 	_check(npc_rig.is_glb() and boss_rig.is_glb() and npc_rig._ap != null, "NPC Raja Angka & penjaga wilayah memakai model GLB KayKit (CC0) beranimasi")
@@ -985,8 +990,9 @@ func _v23_tests(app: Node) -> void:
 	for i in [1, 2, 3]:
 		hud._input(_touch(i, Vector2.ZERO, false))
 	_check(pl.move_input == Vector2.ZERO, "lepas semua jari: berhenti")
-	# Karakter semi-realistis
-	var rig = pl.rig
+	# Karakter semi-realistis (rig prosedural cadangan / NPC)
+	var rig = load("res://games/education_sd/scripts/world/w3d_rig.gd").new()
+	rig.build()
 	_check(rig._joints.size() == 4 and rig._joints.has(rig._leg_l) and rig._joints.has(rig._arm_r), "lengan & tungkai dua ruas (siku & lutut)")
 	rig._cur.clear()
 	rig.animate(0.016, 0.0, true)
@@ -1002,6 +1008,7 @@ func _v23_tests(app: Node) -> void:
 		prev = rig._leg_l.rotation.x
 	_check(max_knee > 0.3, "lutut menekuk saat berjalan (%.2f rad)" % max_knee)
 	_check(steps_changed == 0, "transisi pose halus (tidak ada lompatan sudut > 0,25 rad per frame)")
+	rig.free()
 	app.set_setting("hero", "petualang")
 	app.show_world("matematika")
 	_check(app.world.player.rig.is_glb(), "karakter Petualang memakai model 3D KayKit beranimasi")
@@ -1123,6 +1130,102 @@ func _v23_tests(app: Node) -> void:
 	app.show_bag()
 	_check(_dialog_text(app).contains("Tas Petualangan") and _dialog_text(app).contains("Kompas Penjelajah"), "TAS menampilkan alat & kostum")
 	app.hud.close_dialog()
+	app.go_back()
+	app.set_player("Ani", 1)
+	app.show_home()
+
+
+
+func _hero_tests(app: Node) -> void:
+	print("== Fase 9: pahlawan anak 3D (GLB buatan sendiri, kerangka sama, 12 animasi)")
+	var R := load("res://games/education_sd/scripts/world/w3d_rig.gd")
+	var need := ["Root", "Pelvis", "Spine", "Chest", "Neck", "Head", "Shoulder_L", "UpperArm_L", "LowerArm_L", "Hand_L",
+		"UpperLeg_L", "LowerLeg_L", "Foot_L", "Shoulder_R", "UpperArm_R", "LowerArm_R", "Hand_R", "UpperLeg_R", "LowerLeg_R", "Foot_R"]
+	var anims := ["idle", "walk", "run", "jump", "fall", "land", "interact", "wave", "celebrate", "turn", "hit", "equip"]
+	var bone_lists := []
+	for k in ["male", "female"]:
+		var path: String = R.hero_path(k)
+		_check(ResourceLoader.exists(path), "model %s ada (%s)" % [k, path])
+		var s: Node = (load(path) as PackedScene).instantiate()
+		var sk: Skeleton3D = s.find_children("*", "Skeleton3D", true, false)[0]
+		var ap: AnimationPlayer = s.find_children("*", "AnimationPlayer", true, false)[0]
+		var names := []
+		for i in sk.get_bone_count():
+			names.append(sk.get_bone_name(i))
+		bone_lists.append(names)
+		_check(need.all(func(b): return names.has(b)), "%s: kerangka lengkap (root, pelvis, spine, chest, neck, head, bahu, lengan atas/bawah, tangan, paha, betis, kaki)" % k)
+		_check(anims.all(func(a): return ap.has_animation(a)), "%s: 12 animasi tersedia" % k)
+		var bad := 0
+		for a in anims:
+			var an: Animation = ap.get_animation(a)
+			for tr in an.get_track_count():
+				if sk.find_bone(str(an.track_get_path(tr)).get_slice(":", 1)) < 0:
+					bad += 1
+		_check(bad == 0, "%s: semua jalur animasi menunjuk tulang yang ada" % k)
+		s.free()
+	_check(bone_lists[0] == bone_lists[1], "laki-laki & perempuan memakai kerangka yang sama (animasi bisa dipakai bersama)")
+	app.set_setting("hero", "laki")
+	app.show_world("matematika")
+	var rig = app.world.player.rig
+	_check(rig.is_glb() and rig.full_hero() and str(rig.glb_path).ends_with("hero_male.glb"), "karakter Laki-laki memakai model pahlawan GLB")
+	var aabb := AABB()
+	var first := true
+	for mi in rig.find_children("*", "MeshInstance3D", true, false):
+		if mi.visible and mi.get_parent() is Skeleton3D:
+			var b: AABB = (mi as MeshInstance3D).global_transform * (mi as MeshInstance3D).get_aabb()
+			aabb = b if first else aabb.merge(b)
+			first = false
+	var base_y: float = app.world.player.global_position.y
+	_check(absf(aabb.position.y - base_y) < 0.06 and absf(aabb.size.y - 1.47) < 0.08, "kaki di tanah (tidak melayang/tenggelam), tinggi ±1,47 m (%.2f / %.2f)" % [aabb.position.y - base_y, aabb.size.y])
+	var baju_ok := false
+	for mi in rig.find_children("*", "MeshInstance3D", true, false):
+		var m3 := mi as MeshInstance3D
+		for s in m3.mesh.get_surface_count():
+			var mat := m3.get_active_material(s)
+			if mat != null and mat.resource_name == "Baju" and (mat as BaseMaterial3D).albedo_color.is_equal_approx(rig.shirt):
+				baju_ok = true
+	_check(baju_ok, "warna kostum mewarnai baju model (material Baju)")
+	var cases := [["idle", 0.0, true, "", "idle"], ["jalan", 3.0, true, "", "walk"], ["lari", 7.0, true, "", "run"],
+		["lompat+", 0.0, false, "", "jump"], ["lompat-", 0.0, false, "", "fall"], ["interaksi", 0.0, true, "interaksi", "interact"],
+		["sorak", 0.0, true, "sorak", "celebrate"], ["lambai", 0.0, true, "lambai", "wave"], ["kena", 0.0, true, "kena", "hit"],
+		["pakai", 0.0, true, "pakai", "equip"], ["putar", 0.0, true, "putar", "turn"]]
+	for c in cases:
+		rig._act_t = 0.0
+		rig._air = 0.0
+		rig.vy = 3.0 if c[0] == "lompat+" else -3.0
+		if c[3] != "":
+			rig.play_once(c[3], 0.5)
+		rig.animate(0.016, c[1], c[2])
+		_check(rig._ap.current_animation == c[4], "status %s -> animasi %s" % [c[0], c[4]])
+	rig._act_t = 0.0
+	rig._air = 0.5
+	rig.animate(0.016, 0.0, true)
+	_check(rig._ap.current_animation == "land", "mendarat setelah di udara -> animasi land")
+	app.set_setting("hero", "perempuan")
+	app.show_world("matematika")
+	_check(str(app.world.player.rig.glb_path).ends_with("hero_female.glb") and app.world.player.rig.full_hero(), "karakter Perempuan memakai model pahlawan GLB")
+	if not (app.p.owned as Array).has("topi_mahkota"):
+		(app.p.owned as Array).append("topi_mahkota")
+	if not (app.p.owned as Array).has("aks_ransel"):
+		(app.p.owned as Array).append("aks_ransel")
+	app._wear_extra("hat", "topi_mahkota")
+	app._wear_extra("acc", "aks_ransel")
+	var r2 = app.world.player.rig
+	var att: Array = r2.find_children("*", "BoneAttachment3D", true, false)
+	var head_ok: bool = att.any(func(a): return a.bone_name == "Head" and a.get_child_count() > 0 and a.get_child(0).get_child_count() > 0)
+	var chest_ok: bool = att.any(func(a): return a.bone_name == "Chest" and a.get_child(0).get_child_count() > 0)
+	_check(head_ok and chest_ok, "mahkota menempel di tulang kepala, ransel di tulang dada (ikut animasi)")
+	app._wear_extra("hat", "")
+	app._wear_extra("acc", "")
+	var fb = R.new()
+	fb.glb_path = "res://games/education_sd/assets/characters/hero/tidak_ada.glb"
+	fb.build()
+	_check(not fb.is_glb() and fb._hips != null, "berkas pahlawan hilang: kembali ke rig prosedural")
+	fb.free()
+	app.set_setting("hero", "petualang")
+	app.show_world("matematika")
+	_check(app.world.player.rig.is_glb() and not app.world.player.rig.full_hero(), "pilihan Petualang (KayKit) tetap berfungsi")
+	app.set_setting("hero", "laki")
 	app.go_back()
 	app.set_player("Ani", 1)
 	app.show_home()

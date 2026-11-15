@@ -50,12 +50,19 @@ func setup(look: Dictionary) -> void:
 	rig.hair = Color("6b3a1e") if rig.long_hair else Color("3a2a20")
 	rig.hat = str(look.get("hat", ""))
 	rig.acc = str(look.get("acc", ""))
-	if str(look.get("model", "")) != "":
+	if str(look.get("model_path", "")) != "":
+		# Pahlawan anak buatan sendiri (Fase 9): baju diwarnai sesuai kostum, topi/aksesori ditempel ke tulang.
+		rig.glb_path = str(look.model_path)
+		rig.glb_height = 1.47
+		rig.glb_recolor = {"Baju": rig.shirt}
+	elif str(look.get("model", "")) != "":
 		rig.glb_id = str(look.model)
 		rig.glb_height = 1.45
 		rig.glb_tint = rig.shirt.lerp(Color.WHITE, 0.55)
 	add_child(rig)
 	rig.build()
+	if rig.is_glb():
+		rig.attach_costume()
 	var disc := Rig.part(Rig.cyl(0.42, 0.42, 0.02, 16), Color(0, 0, 0, 0.25), Vector3(0, 0.03, 0))
 	var dm := StandardMaterial3D.new()
 	dm.albedo_color = Color(0, 0, 0, 0.22)
@@ -139,8 +146,11 @@ func _physics_process(delta: float) -> void:
 	_jump_req = false
 	move_and_slide()
 	var hv := Vector2(velocity.x, velocity.z)
+	rig.vy = velocity.y
 	if hv.length() > 0.3:
 		var want := atan2(velocity.x, velocity.z)
+		if is_on_floor() and absf(angle_difference(rig.rotation.y, want)) > 2.3 and rig._act_t <= 0.0:
+			rig.play_once("putar", 0.3)  # berbalik arah
 		rig.rotation.y = lerp_angle(rig.rotation.y, want, minf(1.0, delta * 12.0))
 	rig.animate(delta, hv.length(), is_on_floor())
 	if global_position.y < -8.0:

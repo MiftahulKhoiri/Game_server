@@ -666,7 +666,8 @@ func interact() -> bool:
 	_refresh_focus()
 	if _focus == null:
 		return false
-	player.rig.play_once("interaksi", 0.7)
+	var kind0 := str(_focus.get_meta("kind"))
+	player.rig.play_once("lambai" if kind0 in ["npc", "villager"] else "interaksi", 1.0 if kind0 in ["npc", "villager"] else 0.7)
 	var owner_node := _focus.get_parent()
 	if owner_node.has_meta("rig"):
 		(owner_node.get_meta("rig")).play_once("interaksi", 1.2)

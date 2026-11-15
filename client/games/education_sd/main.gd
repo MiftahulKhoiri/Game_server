@@ -16,6 +16,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
 const Missions := preload("res://games/education_sd/scripts/world/w3d_missions.gd")
 const Items := preload("res://games/education_sd/scripts/world/w3d_items.gd")
+const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const LOC_QUESTIONS := 3
 const LOC_PASS := 2
 
@@ -550,7 +551,17 @@ func _world_ctx(region_id: String) -> Dictionary:
 		"locs": _loc_status(region_id), "items": (p.world.items as Dictionary).get(region_id, []),
 		"minigame": _minigame_for(region_id), "gfx": str(p.settings.gfx),
 		"hero": {"shirt": outfit, "long_hair": str(p.settings.hero) == "perempuan", "model": "anak_desa" if str(p.settings.hero) == "petualang" else "",
+			"model_path": _hero_path(),
 			"hat": _shop_value(str(p.player.avatar.get("hat", ""))), "acc": _shop_value(str(p.player.avatar.get("acc", "")))}}
+
+
+## Model pahlawan anak (Fase 9): laki-laki / perempuan dari GLB buatan sendiri bila ada, kalau tidak "" (rig primitif).
+func _hero_path() -> String:
+	var kind: String = {"laki": "male", "perempuan": "female"}.get(str(p.settings.hero), "")
+	if kind == "":
+		return ""
+	var path: String = Rig3D.hero_path(kind)
+	return path if ResourceLoader.exists(path) else ""
 
 
 func _shop_value(id: String) -> String:
@@ -1037,6 +1048,8 @@ func _equip_tool(id: String) -> void:
 		save()
 		toast("Alat dipakai: " + Items.tool_name(id))
 		show_world(str(world.ctx.region.id) if world != null else "")
+		if world != null:
+			world.player.rig.play_once("pakai", 0.9)
 
 
 func _wear_extra(slot: String, id: String) -> void:

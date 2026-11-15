@@ -1,0 +1,11 @@
+Pahlawan anak Petualangan Pulau Ilmu (hero_male.glb, hero_female.glb)
+
+Sumber : buatan sendiri untuk proyek Game_server, dihasilkan oleh tools/gamepack/sd_heroes.gd
+         (Godot 4.7.2, GLTFDocument -> glTF 2.0 biner). Tidak memakai aset pihak ketiga.
+Lisensi: CC0 1.0 (domain publik) - https://creativecommons.org/publicdomain/zero/1.0/
+Kredit : tidak wajib.
+Isi    : 20 tulang (Root, Pelvis, Spine, Chest, Neck, Head, Shoulder/UpperArm/LowerArm/Hand L/R,
+         UpperLeg/LowerLeg/Foot L/R; L = kiri anatomis, karakter menghadap +Z), kerangka sama untuk
+         kedua model; 11 material warna (tanpa tekstur); +-6.200 (laki-laki) / +-6.900 (perempuan) verteks;
+         12 animasi: idle, walk, run, jump, fall, land, interact, wave, celebrate, turn, hit, equip.
+Ubah   : jalankan ulang skrip lalu `godot --headless --path client --import`.

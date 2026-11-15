@@ -100,6 +100,7 @@ func push_player(from: Vector3, force: float) -> void:
 	if d.length() < 0.01:
 		d = Vector3(0, 0, 1)
 	pl.velocity = d.normalized() * force + Vector3(0, 4.0, 0)
+	pl.rig.play_once("kena", 0.45)
 
 
 func active_foes() -> int:

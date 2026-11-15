@@ -19,6 +19,11 @@ var _cur: Dictionary = {}  # sudut sendi saat ini (transisi halus)
 ## Fase 5: model GLB berlisensi yang SUDAH ADA di APK (res://assets/models, KayKit CC0 — lihat
 ## assets/models/LISENSI_*.txt). Bila berkas tidak ada (APK lain/lebih lama), otomatis kembali ke model primitif.
 var glb_id := ""
+var glb_path := ""  # jalur GLB lengkap (pahlawan buatan sendiri, Fase 9); bila kosong: MODEL_DIR + glb_id
+var glb_recolor: Dictionary = {}  # nama material -> warna (mis. "Baju" -> warna kostum)
+var vy := 0.0  # kecepatan vertikal (diisi pemain) untuk memilih lompat/jatuh
+var _air := 0.0
+var _anims: PackedStringArray = []
 var glb_height := 1.9
 var glb_tint := Color.WHITE
 var glb_hide: Array = ["Sword", "Crossbow", "Axe", "Shield", "Badge", "Bow", "Dagger", "Staff"]
@@ -103,7 +108,7 @@ func build() -> void:
 	_ap = null
 	_hips = null
 	_joints.clear()
-	if glb_id != "" and _build_glb():
+	if (glb_id != "" or glb_path != "") and _build_glb():
 		return
 	var pants_c := pants
 	_hips = Node3D.new()
@@ -239,10 +244,23 @@ static func has_model(id: String) -> bool:
 	return id != "" and ResourceLoader.exists(MODEL_DIR + id + ".glb")
 
 
+## Pahlawan anak buatan sendiri (tools/gamepack/sd_heroes.gd): kerangka sama untuk laki-laki & perempuan.
+const HERO_DIR := "res://games/education_sd/assets/characters/hero/"
+## Animasi pahlawan: status rig -> nama animasi di GLB.
+const HERO_ANIMS := {"idle": "idle", "jalan": "walk", "lari": "run", "interaksi": "interact", "sorak": "celebrate",
+	"lambai": "wave", "kena": "hit", "pakai": "equip", "putar": "turn", "mendarat": "land"}
+const LOOPED := ["idle", "walk", "run", "fall", "wave", "celebrate"]
+
+
+static func hero_path(kind: String) -> String:
+	return HERO_DIR + "%s/hero_%s.glb" % [kind, kind]
+
+
 func _build_glb() -> bool:
-	if not has_model(glb_id):
+	var path := glb_path if glb_path != "" else MODEL_DIR + glb_id + ".glb"
+	if not ResourceLoader.exists(path):
 		return false
-	var ps := load(MODEL_DIR + glb_id + ".glb") as PackedScene
+	var ps := load(path) as PackedScene
 	if ps == null:
 		return false
 	var inst := ps.instantiate() as Node3D
@@ -262,6 +280,14 @@ func _build_glb() -> bool:
 		var box: AABB = xf * (mi as MeshInstance3D).get_aabb()
 		aabb = box if first else aabb.merge(box)
 		first = false
+		if not glb_recolor.is_empty():
+			var mesh0: Mesh = (mi as MeshInstance3D).mesh
+			for s in mesh0.get_surface_count():
+				var src0 := (mi as MeshInstance3D).get_active_material(s)
+				if src0 != null and glb_recolor.has(src0.resource_name):
+					var d0 := (src0 as BaseMaterial3D).duplicate() as BaseMaterial3D
+					d0.albedo_color = glb_recolor[src0.resource_name]
+					(mi as MeshInstance3D).set_surface_override_material(s, d0)
 		if glb_tint != Color.WHITE:
 			var mesh: Mesh = (mi as MeshInstance3D).mesh
 			for s in mesh.get_surface_count():
@@ -284,6 +310,10 @@ func _build_glb() -> bool:
 	var aps := inst.find_children("*", "AnimationPlayer", true, false)
 	if aps.size() > 0:
 		_ap = aps[0]
+		_anims = _ap.get_animation_list()
+		for an in LOOPED:
+			if _ap.has_animation(an):
+				_ap.get_animation(an).loop_mode = Animation.LOOP_LINEAR
 		if _ap.has_animation("idle"):
 			_ap.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
 			_ap.play("idle")
@@ -306,9 +336,58 @@ func is_glb() -> bool:
 	return _glb != null
 
 
+## Kerangka GLB (untuk menempelkan topi/aksesori lewat BoneAttachment3D).
+func skeleton() -> Skeleton3D:
+	if _glb == null:
+		return null
+	var s := _glb.find_children("*", "Skeleton3D", true, false)
+	return s[0] if s.size() > 0 else null
+
+
+func full_hero() -> bool:
+	return _anims.has("run") and _anims.has("jump") and _anims.has("land")
+
+
+## Topi & aksesori toko kostum pada pahlawan GLB: ditempel ke tulang Head / Chest.
+func attach_costume() -> void:
+	var sk := skeleton()
+	if sk == null or (hat == "" and acc == "" and extra == ""):
+		return
+	var k := 1.0 / maxf(0.001, _glb.scale.x)
+	var head_at := BoneAttachment3D.new()
+	head_at.bone_name = "Head"
+	sk.add_child(head_at)
+	var chest_at := BoneAttachment3D.new()
+	chest_at.bone_name = "Chest"
+	sk.add_child(chest_at)
+	_head = Node3D.new()
+	_head.name = "CostumeHead"
+	_head.position = Vector3(0, 0.1, 0)
+	_head.scale = Vector3.ONE * 0.92 * k
+	head_at.add_child(_head)
+	_torso = Node3D.new()
+	_torso.name = "CostumeChest"
+	_torso.position = Vector3(0, -0.29, 0)
+	_torso.scale = Vector3.ONE * k
+	chest_at.add_child(_torso)
+	_extras()
+
+
 ## Animasi model GLB: idle/walk dari berkas (lari = walk dipercepat); lompat, interaksi, dan sorak
 ## ditambahkan secara prosedural (memantul/mengangguk) karena berkas tidak punya animasi itu.
 func _animate_glb(delta: float, speed: float) -> void:
+	if _ap != null and full_hero():
+		var want := "idle"
+		if state == "lompat":
+			want = "jump" if vy > 0.5 else "fall"
+		else:
+			want = str(HERO_ANIMS.get(state, "idle"))
+		if not _ap.has_animation(want):
+			want = "idle"
+		if _ap.current_animation != want:
+			_ap.play(want, 0.18)
+		_ap.speed_scale = clampf(speed / (2.4 if want == "walk" else 5.0), 0.7, 1.6) if want in ["walk", "run"] else 1.0
+		return
 	if _ap != null:
 		var want := "walk" if state in ["jalan", "lari"] else "idle"
 		if _ap.has_animation(want) and _ap.current_animation != want:
@@ -342,6 +421,12 @@ func animate(delta: float, speed: float, on_floor: bool) -> void:
 		return
 	_dt = delta
 	_t += delta
+	if not on_floor:
+		_air += delta
+	else:
+		if _air > 0.3 and _act_t <= 0.0:
+			play_once("mendarat", 0.3)
+		_air = 0.0
 	if _act_t > 0.0:
 		_act_t -= delta
 	elif not on_floor:
@@ -392,7 +477,7 @@ func _pose(speed: float) -> void:
 			tg.ar = -2.3
 			tg.el = -0.3
 			tg.er = -0.3
-		"interaksi":
+		"interaksi", "lambai":
 			tg.ar = -1.7
 			tg.er = -0.6 + sin(_t * 12.0) * 0.45
 			tg.azr = 0.3
