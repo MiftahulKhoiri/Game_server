@@ -9,9 +9,8 @@ import (
 
 // Jarak jalan kaki di dalam peta (v0.77.0, sisa audit G-2): server kini mengenal bentuk petak (tiles_gen.go, dibuat
 // dari maps.gd), jadi jarak gerakan dihitung menyusuri petak yang bisa diinjak, bukan garis lurus yang menembus
-// tembok, air, atau lava. Jalur 8 arah (diagonal = √2) dan boleh memotong sudut, jadi selalu sedikit lebih
-// pendek atau sama dengan jalan pemain sungguhan (aman untuk pemain jujur). NPC dan peti tidak dihitung
-// sebagai penghalang.
+// tembok, air, atau lava. Jalur 8 arah (diagonal = √2), tetapi diagonal hanya boleh melewati sudut bila
+// kedua petak ortogonal pembentuk sudut juga bisa diinjak. NPC dan peti tidak dihitung sebagai penghalang.
 
 // Walkable: petak (x, y) di peta bisa diinjak? false untuk peta tanpa data petak atau di luar peta.
 func Walkable(mapID string, x, y int) bool {
@@ -48,6 +47,12 @@ func distField(mapID string, sx, sy int) []float32 {
 		for _, s := range steps8 {
 			nx, ny := x+s.dx, y+s.dy
 			if !Walkable(mapID, nx, ny) {
+				continue
+			}
+			// Gerakan diagonal tidak boleh menyelinap melalui sudut dua tembok.
+			// Kedua petak ortogonal yang membentuk sisi diagonal harus bisa diinjak.
+			if s.dx != 0 && s.dy != 0 &&
+				(!Walkable(mapID, x+s.dx, y) || !Walkable(mapID, x, y+s.dy)) {
 				continue
 			}
 			j := ny*w + nx

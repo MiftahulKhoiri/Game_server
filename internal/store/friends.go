@@ -20,11 +20,17 @@ func (s *Store) PlayerName(ctx context.Context, name string) (id, realName strin
 	return id, realName, err
 }
 
-// RecentPlayers: nama pemain lain yang datanya berubah sejak `since` (yang terbaru dulu), paling banyak limit.
+// RecentPlayers: nama pemain lain yang memiliki sesi aktif sejak `since` (yang terbaru dulu), paling banyak limit.
+// Aktivitas diukur dari sessions.last_used, bukan players.updated_at yang hanya berubah saat state ditulis.
 func (s *Store) RecentPlayers(ctx context.Context, exceptID string, since time.Time, limit int) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT name FROM players WHERE id != ? AND updated_at >= ? ORDER BY updated_at DESC LIMIT ?`,
-		exceptID, since.UTC().Format(time.RFC3339), limit)
+		`SELECT p.name
+		 FROM players p JOIN sessions s ON s.player_id = p.id
+		 WHERE p.id != ? AND julianday(s.last_used) >= julianday(?)
+		 GROUP BY p.id, p.name
+		 ORDER BY MAX(julianday(s.last_used)) DESC
+		 LIMIT ?`,
+		exceptID, stampOf(since), limit)
 	if err != nil {
 		return nil, err
 	}
