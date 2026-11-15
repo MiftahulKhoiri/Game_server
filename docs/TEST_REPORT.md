@@ -54,3 +54,34 @@ Pesan `ERROR` yang muncul di log uji dan memang diharapkan: "Parse JSON failed" 
 | Unduhan lewat data seluler sungguhan / HTTPS Tailscale dari HP | idem |
 | Pemakaian RAM di berbagai HP | Pengaturan > "Tampilkan FPS & memori" (sudah ada) |
 | Ruang penyimpanan penuh | Logika ada (cek `get_space_left` sebelum unduh) tetapi tidak disimulasikan |
+
+## Game Pembelajaran SD "Petualangan Pulau Ilmu" (paket education_sd v2.0.0)
+
+Dijalankan 15 November 2026 di Raspberry Pi 5, Godot 4.7.2 headless, di cabang `feature/pulau-ilmu-sd`.
+
+| Rangkaian | Perintah | Hasil |
+|---|---|---|
+| Server Go | `make check` | **LULUS** |
+| Validator bank soal (Python) | `python3 tools/gamepack/make_sd_bank.py` | **sah**: 213 soal, 35 topik, 4 wilayah |
+| Uji SD | `make sd-test` | **LULUS** — 409 pemeriksaan, 0 gagal, 0 galat skrip |
+| Paket | `make game-pack GAMES=education_sd` (ke folder katalog uji) | **sah** — 27 berkas, semuanya di `games/education_sd/` |
+| Uji platform (paket SD baru dari "APK" tanpa `games/`) | `make platform-test` | **LULUS** — 107 pemeriksaan di 3 fase, 0 galat skrip |
+| Uji The Last Dragon | `make client-test` | **LULUS** — 1162 pemeriksaan |
+| Tangkapan layar (Xvfb + OpenGL, 1280×720) | manual | diperiksa: pengenalan, beranda, peta, wilayah, 6 tipe soal, hasil, 2 mini-game, laporan, koleksi; 5 cacat tampilan diperbaiki (kolom nama gelap, bilah progres bawaan, topi avatar terpotong, label pulau menutupi pulau, soal kembar di sesi) |
+
+`make sd-test` memeriksa: data termuat & sah; 11 contoh tidak sah ditolak validator; ±800 soal buatan sah dan
+kunci hitungan sama dengan `Expression`; adaptif (sering salah → kelas lebih rendah, sering benar → soal sulit,
+data sedikit → tidak disimpulkan, soal belum dilihat didahulukan); migrasi skema 1 → 2 dan simpan-muat JSON;
+**11 tipe soal × 3 mode × (benar / salah dulu)**: jawaban & penjelasan tidak tampil sebelum menjawab, hasil
+percobaan pertama benar, ada penjelasan; petunjuk di setiap tipe, tanpa petunjuk di kuis; seluruh area Kerajaan
+Matematika kelas 1 + ujian akhir; kuis & latihan; keluar di tengah sesi; 4 mini-game dimainkan sampai selesai;
+beli/pakai kostum, koin kurang ditolak; 8 layar & 3 tab koleksi terbuka; musik/efek suara dimatikan; ganti
+kelas mempertahankan progres kelas lain; progres tersimpan saat kembali ke launcher dan utuh saat dibuka ulang;
+save skema 1 di HP dimigrasikan otomatis.
+
+Bug yang ditemukan uji dan sudah diperbaiki: koin/XP kembali ke 0 setiap kali progres dimuat (angka JSON
+terbaca float dan dianggap tipe salah); daftar area kosong (kelas di JSON bertipe float); uji platform lama
+lulus walau ada galat skrip (kini dianggap gagal).
+
+Ukuran paket: **207 KB (v1.0.0) → 258 KB (v2.0.0)** (212.560 → 263.924 byte; bank soal 80 KB, skrip, tanpa
+berkas gambar/suara). Belum diuji di HP sungguhan.

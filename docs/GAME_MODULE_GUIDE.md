@@ -51,6 +51,9 @@ launcher (kecuali berkas mesin yang selalu ikut ekspor; lihat `PCK_PACKAGE_FORMA
 - Naikkan `version` (semver) setiap terbit. Versi yang sudah terbit dengan isi lain ditolak alat terbit.
 - Ubah `schema_version` save dan sediakan migrasi bila bentuk data progres berubah.
 
+Contoh game lengkap yang tidak memakai mesin kuis bersama: `client/games/education_sd/` ("Petualangan Pulau
+Ilmu", lihat [SD_PULAU_ILMU.md](SD_PULAU_ILMU.md)) — banyak skrip, data, dan uji sendiri di dalam namespace-nya.
+
 ## 3. Game pembelajaran (cara cepat)
 
 Game kuis cukup mewarisi mesin bersama:

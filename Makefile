@@ -1,4 +1,4 @@
-.PHONY: maps build run test vet fmt check client-test patch game-pack game-keys platform-test install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
+.PHONY: maps build run test vet fmt check client-test patch game-pack game-keys platform-test sd-test install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -57,6 +57,10 @@ game-pack:
 # Uji platform multi-game ujung-ke-ujung (launcher, unduh, verifikasi, update, offline). Butuh Godot 4.7.
 platform-test:
 	GODOT=$(GODOT) bash scripts/platform-test.sh
+
+# Uji Game Pembelajaran SD "Petualangan Pulau Ilmu" (bank soal + semua tipe soal, mode, mini-game, progres).
+sd-test:
+	GODOT=$(GODOT) bash scripts/sd-test.sh
 
 # Buat (sekali) pasangan kunci penerbit paket game; kunci privat di ~/.config/game_server/.
 game-keys:

@@ -21,6 +21,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Versi paket SD sekarang dan versi "update" uji (patch + 1).
+SD_V1="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$GJ")"
+SD_V2="$(python3 -c 'import sys;a=sys.argv[1].split(".");a[2]=str(int(a[2])+1);print(".".join(a))' "$SD_V1")"
+export TEST_SD_V1="$SD_V1" TEST_SD_V2="$SD_V2"
+
 openssl genrsa -out "$TMP/key.pem" 2048 2>/dev/null
 openssl rsa -in "$TMP/key.pem" -pubout -out "$TMP/pub.pem" 2>/dev/null
 export GAME_SIGNING_KEY="$TMP/key.pem" PUBLISHER_PUB="$TMP/pub.pem" CATALOG_DIR="$TMP/catalog" GODOT
@@ -45,9 +50,11 @@ run_phase() {
 	GAME_URL="http://127.0.0.1:$PORT" TEST_PUB="$TMP/pub.pem" TEST_PHASE="$1" TEST_CATALOG="$TMP/catalog" \
 		"$GODOT" --headless --path "$SIM" -s res://tests/platform_test.gd 2>&1 | tee "$TMP/fase$1.log" | grep -E '^(==|  ok|  GAGAL|HASIL|SCRIPT ERROR|ERROR)' || true
 	grep -q '^HASIL: LULUS' "$TMP/fase$1.log"
+	# Galat skrip menghentikan fungsi uji di tengah jalan tanpa "GAGAL": anggap gagal.
+	! grep -q 'SCRIPT ERROR' "$TMP/fase$1.log"
 }
 run_phase 1
-sed -i 's/"version": "1.0.0"/"version": "1.0.1"/' "$GJ"
+sed -i "s/\"version\": \"$SD_V1\"/\"version\": \"$SD_V2\"/" "$GJ"
 bash scripts/build-game-pack.sh education_sd
 cp "$TMP/game.json.asli" "$GJ"
 run_phase 2

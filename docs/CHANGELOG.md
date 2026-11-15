@@ -2,6 +2,21 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.0.0 — "Petualangan Pulau Ilmu" (tanpa APK baru)
+
+Update paket game unduhan saja (launcher menampilkan UPDATE); APK, SMP, The Last Dragon, launcher, dan server
+tidak berubah. Rincian: [SD_PULAU_ILMU.md](SD_PULAU_ILMU.md).
+
+- Game SD baru: pengenalan nama & kelas, beranda (avatar, level, bintang, koin, progres per mapel), peta 4 pulau
+  dengan NPC, area berurutan, ujian akhir wilayah; kelas 1–6 terpisah.
+- 11 tipe soal (pilihan ganda, benar/salah, lengkapi, pilih gambar, hitung gambar, susun huruf, susun
+  kalimat/urutan, urutkan angka, pasangkan, kelompokkan, teka-teki logika), mode Latihan/Petualangan/Kuis,
+  petunjuk, pembahasan, pemilihan soal adaptif.
+- 213 soal bank tervalidasi + soal matematika terhitung per kelas, 35 kartu pengetahuan, 4 mini-game,
+  koleksi kostum/kartu/hewan, 12 lencana, laporan belajar, audio dan gambar buatan kode.
+- Progres skema 2 dengan migrasi otomatis dari skema 1 (game SD lama).
+- Uji: `make sd-test` (baru); `make platform-test` disesuaikan dan kini gagal bila ada galat skrip.
+
 ## v0.84.2 — Nama aplikasi "Game server" (15 November 2026)
 
 - Nama di bawah ikon HP diganti dari "Game Petualang" menjadi "Game server" (preset ekspor Android

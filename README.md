@@ -79,7 +79,7 @@ internet, tetapi tetap dilindungi login, batas laju, dan pemeriksaan gerakan (li
 ## Dokumen
 
 - [Arsitektur, audit server, Android & performa](docs/ARCHITECTURE.md)
-- Platform multi-game: [audit](docs/AUDIT_REPORT.md) · [panduan modul game](docs/GAME_MODULE_GUIDE.md) · [format paket PCK](docs/PCK_PACKAGE_FORMAT.md) · [API katalog](docs/API_DOCUMENTATION.md) · [sistem unduh](docs/DOWNLOAD_SYSTEM.md) · [keamanan paket](docs/SECURITY.md) · [build Android](docs/ANDROID_BUILD.md) · [laporan uji](docs/TEST_REPORT.md) · [CHANGELOG](docs/CHANGELOG.md)
+- Platform multi-game: [audit](docs/AUDIT_REPORT.md) · [panduan modul game](docs/GAME_MODULE_GUIDE.md) · [format paket PCK](docs/PCK_PACKAGE_FORMAT.md) · [API katalog](docs/API_DOCUMENTATION.md) · [sistem unduh](docs/DOWNLOAD_SYSTEM.md) · [keamanan paket](docs/SECURITY.md) · [build Android](docs/ANDROID_BUILD.md) · [laporan uji](docs/TEST_REPORT.md) · [CHANGELOG](docs/CHANGELOG.md) · [Game SD Pulau Ilmu](docs/SD_PULAU_ILMU.md)
 - [Kontrak API](docs/API.md)
 - [Pengujian](docs/TESTING.md)
 - [Cadangan & pemulihan](docs/BACKUP.md)
