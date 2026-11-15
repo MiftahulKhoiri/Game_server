@@ -171,3 +171,48 @@ Tangkapan layar (Xvfb, 1280×720) diperiksa: menu utama, profil, cerita pembuka,
   Anak-anak masih memakai 2.4.3 sampai Pulau 1 percontohan bisa dimainkan.
 - Isi Pulau 1 (desa, akademi, hutan, sungai, gua, benteng) = Tahap 2.
 - Belum diuji di HP sungguhan.
+
+---
+
+## Tahap 2 — Pulau 1 "Dunia Pemula" bisa dijelajahi (paket 3.1.0, 15 Nov 2026)
+
+### Hasil
+
+Pulau dibangun dari data **`data/island1.json`** (tata letak), sehingga pulau 2–6 nanti cukup dibuat
+berkas datanya. `islands.json` menunjuk berkas itu lewat kolom `layout`.
+
+| Tempat | Isi |
+|---|---|
+| Dermaga | perahu kembali ke peta, Pak Udin (penjaga dermaga), papan nama |
+| Desa Pemula | alun-alun, rumah joglo / rumah gadang / tongkonan, 2 lapak pasar, lampu jalan, papan desa; Pak Lurah Darmo, Nenek Ijah, Dodi, Bu Wati |
+| Ladang Pak Budi | petak tanah, 5 baris tanaman (sebagian hilang dicuri goblin), pagar; Pak Budi |
+| Akademi Tunas | bukit landai (bisa didaki), gedung perpustakaan, menara, kubah lab, patung angka, buku besar, globe; Bu Guru Sinta; pintu akademi (dibuka di tahap belajar) |
+| Sungai Jernih | sungai melintang pulau, tepi tak bisa diterobos, jembatan kayu; Kak Laras penjaga jembatan |
+| Hutan Kecil | hutan lebat (pinus & pohon bulat, semak) + pohon jarang di seluruh pulau |
+| Gua Goblin | gua + bebatuan; pintu tertutup **batu besar** (kait misi berikutnya) |
+| Benteng Raja Goblin | tembok batu, 4 menara beratap merah, gerbang terkunci, bendera goblin; **Raja Goblin Kecil** di singgasana, 2 goblin penjaga |
+
+Sistem baru:
+- **NPC Engine** (`scripts/engine/npc_engine.gd`): dialog per penduduk — perkenalan pertama berbeda dengan
+  kalimat berikutnya, nama pemain disisipkan, pertemuan dicatat (`world.met`); tempat dikenali dari posisi dan
+  dicatat saat pertama ditemukan (`world.found`).
+- **Dialog berhalaman**: satu kalimat per halaman, tombol *Lanjut*; penduduk berhenti dan menghadap pemain.
+- **Penduduk hidup**: berjalan-jalan di sekitar rumahnya; yang jauh (>40 m) tidak diperbarui/digambar.
+- **Penemuan tempat**: masuk wilayah baru → "Tempat baru ditemukan!" + nama tempat di petunjuk layar.
+- Tombol **MISI** sementara menampilkan catatan jelajah (tempat ditemukan & penduduk dikenal).
+- Kinerja: pohon memakai MultiMesh per jenis; jumlah pohon, bayangan, kabut, jarak gambar mengikuti profil
+  grafis Hemat/Seimbang/Tinggi.
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **451 pemeriksaan LULUS** (+42): tata letak & NPC Engine, semua bangunan/model ada, mendaki bukit, menyeberang jembatan, tepi sungai & gerbang benteng menahan pemain, batas pulau, dialog 3 halaman, kalimat kedua berbeda, penduduk berjalan-jalan, catatan jelajah, perahu |
+| `make platform-test` | **LULUS** (109 ok) |
+
+Tangkapan layar diperiksa: desa dari dermaga, akademi di bukit, jembatan & benteng, gua.
+
+### Catatan
+
+- FPS di HP belum diukur (perlu HP). Profil Hemat disarankan untuk HP lama.
+- Paket 3.1.0 belum diterbitkan (menunggu belajar, misi, pertarungan).

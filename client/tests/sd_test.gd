@@ -26,6 +26,7 @@ func _initialize() -> void:
 	await _data_tests()
 	await _question_tests()
 	await _v3_engine_tests()
+	await _v3_npc_tests()
 	await _v3_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
@@ -288,6 +289,7 @@ func _answer(qv, right: bool) -> void:
 
 const SaveEngine := preload("res://games/education_sd/scripts/engine/save_engine.gd")
 const WorldEngine := preload("res://games/education_sd/scripts/engine/world_engine.gd")
+const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.gd")
 const MODEL_DIR := "res://assets/models/"
 
 
@@ -382,6 +384,31 @@ func _v3_engine_tests() -> void:
 		and str(bad.profile.name).length() <= 16, "data aneh dirapikan (kelas, pahlawan, koin, grafis, nama)")
 
 
+func _v3_npc_tests() -> void:
+	print("== 3.x NPC Engine (tata letak Pulau 1)")
+	var n := NpcEngine.new()
+	_check(n.load_layout("island1.json"), "island1.json termuat tanpa galat %s" % str(n.errors))
+	_check(n.npcs.size() == 8 and n.places.size() == 8, "8 penduduk, 8 tempat")
+	_check(not n.load_layout("tidak_ada.json") and n.load_layout("island1.json"), "tata letak yang tidak ada ditolak")
+	var d := _prof(1)
+	d.profile.name = "Sari"
+	var t1: Dictionary = n.talk(d, "pulau1", "pak_lurah")
+	_check(t1.first and (t1.lines as Array).size() == 3 and str(t1.lines[0]).contains("Sari"), "perkenalan pertama: 3 kalimat, nama pemain diisi")
+	var t2: Dictionary = n.talk(d, "pulau1", "pak_lurah")
+	_check(not t2.first and str(t2.lines[0]) != str(t1.lines[0]) and int(d.world.met["pulau1/pak_lurah"]) == 2, "bicara lagi: kalimat lain, pertemuan dihitung")
+	_check(n.talk(d, "pulau1", "tidak_ada").is_empty(), "penduduk tak dikenal: tidak ada dialog")
+	_check(n.place_at(0, 72) == "dermaga" and n.place_at(0, 42) == "desa" and n.place_at(-38, -38) == "hutan" and n.place_at(60, 10) == "",
+		"tempat dikenali dari posisi")
+	_check(n.place_at(0, -21) == "sungai" and n.place_at(0, 5) == "akademi", "Sungai Jernih & Akademi Tunas dikenali")
+	_check(n.discover(d, "pulau1", "hutan") and not n.discover(d, "pulau1", "hutan") and n.found_count(d, "pulau1") == 1, "penemuan tempat hanya sekali")
+	_check(not n.discover(d, "pulau1", "tidak_ada"), "tempat tak dikenal tidak dicatat")
+	var models_ok := true
+	for id in n.npcs:
+		if not ResourceLoader.exists(MODEL_DIR + str(n.npcs[id].model) + ".glb"):
+			models_ok = false
+	_check(models_ok, "model semua penduduk ada di APK")
+
+
 # --- 3.x Dunia Enam Pulau: aplikasi utuh --------------------------------------------------------------------------
 
 func _open() -> Node:
@@ -466,32 +493,122 @@ func _v3_app_tests() -> void:
 	await _frames(3)
 	_check(app.screen == "island" and app.world != null and app.hud != null, "masuk dunia 3D Pulau 1")
 
-	print("== 3.x Dunia 3D pulau")
+	print("== 3.x Pulau 1: dunia 3D dari tata letak")
 	var w: Node3D = app.world
 	_check(w.player != null and w.player.rig.is_glb() and w.player.rig.long_hair, "pahlawan perempuan (GLB) di pulau")
-	_check(w.get_node_or_null("Sea") != null and w.get_node_or_null("Beach") != null and w.get_node_or_null("Dock") != null
-		and w.get_node_or_null("Boat") != null, "laut, pantai, dermaga, perahu ada")
-	var trees := 0
+	for nm in ["Sea", "Beach", "Ground", "Dock", "Boat", "River", "Bridge", "Farm", "Fort", "Boulder", "Hill_bukit_akademi"]:
+		_check(w.find_child(nm, true, false) != null, "ada " + nm)
+	var objs := 0
 	for ch in w.get_children():
-		if str(ch.name).begins_with("Tree"):
-			trees += 1
-	_check(trees >= 20, "pepohonan GLB tersebar (%d)" % trees)
+		if str(ch.name).begins_with("Obj"):
+			objs += 1
+	_check(objs >= 20, "bangunan & benda GLB desa, akademi, gua terpasang (%d)" % objs)
+	_check(w.tree_count() >= 40, "hutan + pohon tersebar (MultiMesh, %d pohon)" % w.tree_count())
+	_check(w.npcs.size() == 8 and app.npc.npcs.size() == 8, "8 penduduk dengan model berangka")
+	var npc_glb := true
+	for e in w.npcs:
+		if e.rig == null or not e.rig.is_glb():
+			npc_glb = false
+	_check(npc_glb, "semua penduduk memakai model GLB dari APK")
+	_check(w.find_child("Boss", true, false) != null and w.find_child("Guard", true, false) != null, "Raja Goblin Kecil di benteng + goblin penjaga di gerbang")
+	_check(absf(w.ground_y(0, 5) - 2.2) < 0.01 and w.ground_y(0, 40) == 0.0 and w.ground_y(0, 23) > 0.0 and w.ground_y(0, 23) < 2.2,
+		"bukit akademi: puncak 2,2 m, lereng landai, desa datar")
 	await _frames(10)
 	var start: Vector3 = w.player.global_position
 	_check(absf(start.y) < 0.6, "pemain berdiri di dermaga (y=%.2f)" % start.y)
 	w.player.move_input = Vector2(0, 1)
 	await _frames(40)
 	w.player.move_input = Vector2.ZERO
-	_check(w.player.global_position.distance_to(start) > 1.5 and w.player.global_position.z < start.z, "joystick maju: berjalan dari dermaga ke tengah pulau")
-	w.player.place(Vector3(70, 0.3, 0), 0.0)
+	_check(w.player.global_position.z < start.z - 1.5, "joystick maju: berjalan dari dermaga ke desa")
+	await _frames(15)
+	_check(app.p.world.found.has("pulau1/dermaga") and w.place == "dermaga", "masuk wilayah Dermaga: tempat ditemukan otomatis")
+
+	print("== 3.x Pulau 1: mendaki bukit, jembatan, sungai, batas pulau")
+	w.player.place(Vector3(0, 0.3, 30), 0.0)
+	w.player.move_input = Vector2(0, 1)
+	await _frames(240)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.y > 1.8 and w.player.global_position.z < 20.0, "berjalan mendaki lereng sampai puncak bukit akademi (y=%.2f)" % w.player.global_position.y)
+	await _frames(15)
+	_check(app.p.world.found.has("pulau1/akademi"), "Akademi Tunas ditemukan")
+	w.player.place(Vector3(0, 0.3, -15), 0.0)
+	w.player.move_input = Vector2(0, 1)
+	await _frames(240)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.z < -27.0 and w.player.global_position.y > -0.3, "menyeberang lewat jembatan (z=%.1f)" % w.player.global_position.z)
+	w.player.place(Vector3(20, 0.3, -14), 0.0)
+	w.player.move_input = Vector2(0, 1)
+	await _frames(120)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.z > -17.6, "tepi sungai tidak bisa diterobos (z=%.1f)" % w.player.global_position.z)
+	w.player.place(Vector3(120, 0.3, 0), 0.0)
 	await _frames(4)
-	_check(Vector2(w.player.global_position.x, w.player.global_position.z).length() <= w.WALK_R + 0.5, "batas pulau: tidak bisa masuk laut")
-	w.player.place(w.spot_pos("sign") + Vector3(0.8, 0.2, 0.8), 0.0)
+	_check(Vector2(w.player.global_position.x, w.player.global_position.z).length() <= w.radius + 4.5, "batas pulau: tidak bisa masuk laut")
+	var fortz: float = w.layout.fort.pos[1] + w.layout.fort.half
+	w.player.place(Vector3(0, 0.3, fortz + 4.0), 0.0)
+	w.player.move_input = Vector2(0, 1)
+	await _frames(90)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.z > fortz, "gerbang benteng menahan pemain (masih terkunci)")
+
+	print("== 3.x Pulau 1: penduduk & dialog")
+	var lurah: Node3D = w.npc_node("pak_lurah")
+	w.player.place(lurah.position + Vector3(1.2, 0.3, 0), 0.0)
 	await _frames(3)
-	_check(w.focus_kind() == "sign", "dekat papan: tombol AKSI menyala")
+	_check(w.focus_kind() == "npc", "dekat Pak Lurah: tombol AKSI menyala")
+	app.hud.trigger_action()
+	await _frames(2)
+	_check(app.hud.dialog_open() and str(app.hud._dialog_title.text).begins_with("Pak Lurah Darmo") and str(app.hud._dialog_text.text).contains("Ana"),
+		"dialog perkenalan menyebut nama pemain")
+	_check(w.npcs[0].talking, "Pak Lurah berhenti dan menghadap pemain")
+	var pages := 1
+	while true:
+		var nb: Button = null
+		for b in app.hud.find_children("*", "Button", true, false):
+			if (b as Button).text == "Lanjut" and b.is_visible_in_tree():
+				nb = b
+		if nb == null:
+			break
+		SdUI.guard_until_ms = 0
+		nb.pressed.emit()
+		await _frames(1)
+		pages += 1
+	_check(pages == 3 and str(app.hud._dialog_text.text).contains("Akademi Tunas"), "dialog 3 halaman dengan tombol Lanjut")
+	_check(w.npcs[0].talking, "penduduk tetap menghadap pemain di antara halaman")
+	app.hud.close_dialog()
+	await _frames(30)
+	_check(not w.npcs[0].talking, "selesai bicara: penduduk berjalan lagi")
+	_check(app.p.world.met.has("pulau1/pak_lurah"), "pertemuan dicatat")
+	app.hud.trigger_action()
+	await _frames(2)
+	_check(str(app.hud._dialog_text.text).contains("Akademi Tunas ada di bukit"), "bicara lagi: kalimat berbeda (tidak mengulang perkenalan)")
+	app.hud.close_dialog()
+	var moved := false
+	var e_d: Dictionary = {}
+	for e in w.npcs:
+		if str(e.id) == "dodi":
+			e_d = e
+	var d0: Vector3 = e_d.node.position
+	w.player.place(d0 + Vector3(6, 0.3, 0), 0.0)
+	for i in 16:
+		await _wait(0.5)
+		if (e_d.node as Node3D).position.distance_to(d0) > 0.3:
+			moved = true
+			break
+	_check(moved, "Dodi berjalan-jalan di sekitar rumahnya")
+	w.player.place(w.spot_pos("gate") + Vector3(0, 0.3, 0.5), 0.0)
+	await _frames(3)
 	app.hud.trigger_action()
 	await _frames(1)
-	_check(app.hud.dialog_open() and w.player.frozen, "papan dibaca, pemain berhenti saat dialog")
+	_check(app.hud.dialog_open() and str(app.hud._dialog_text.text).contains("Raja Goblin"), "gerbang benteng: pesan terkunci")
+	app.hud.close_dialog()
+	w.player.place(w.spot_pos("boulder") + Vector3(0, 0.3, 0), 0.0)
+	await _frames(3)
+	_check(w.focus_kind() == "boulder", "batu besar di pintu gua bisa diperiksa")
+	app.hud.close_dialog()
+	app.show_explore()
+	await _frames(1)
+	_check(str(app.hud._dialog_text.text).contains("TEMPAT (") and str(app.hud._dialog_text.text).contains("Pak Lurah Darmo"), "MISI: catatan jelajah tempat & penduduk")
 	app.hud.close_dialog()
 	w.player.place(w.spot_pos("dock") + Vector3(0, 0.2, -0.8), 0.0)
 	await _frames(3)

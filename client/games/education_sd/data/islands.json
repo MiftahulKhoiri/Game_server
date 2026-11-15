@@ -7,7 +7,7 @@
 		{
 			"id": "pulau1", "number": 1, "grade": 1, "name": "Dunia Pemula",
 			"theme": "Mengenal dunia dan lingkungan", "color": "#7cc95a", "sand": "#f3dfa2",
-			"map_pos": [0.17, 0.66], "map_size": 0.105, "available": true,
+			"map_pos": [0.17, 0.66], "map_size": 0.105, "available": true, "layout": "island1.json",
 			"boss": {"name": "Raja Goblin Kecil", "model": "raja_goblin"},
 			"learn": ["Angka 1–100", "Tambah & kurang", "Huruf & suku kata", "Hewan & tumbuhan", "Anggota tubuh", "Keluarga & aturan"],
 			"places": ["Desa Pemula", "Akademi Tunas", "Hutan Kecil", "Sungai Jernih", "Gua Goblin", "Benteng Raja Goblin"],

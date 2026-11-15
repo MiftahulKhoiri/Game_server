@@ -1,49 +1,111 @@
 extends Node3D
-## Dunia 3D satu pulau (Dunia Enam Pulau). Tahap 1: pulau bulat dengan pantai, laut, pohon, dermaga, dan
-## perahu untuk kembali ke peta; papan selamat datang. Tahap 2 mengisi Pulau 1 (desa, akademi, hutan,
-## sungai, gua, benteng). Antarmuka yang dipakai HUD (w3d_hud.gd): player, interact(), focus_changed.
+## Dunia 3D satu pulau (Dunia Enam Pulau), dibangun dari data tata letak (data/islandN.json):
+## tanah + bukit (landai, bisa didaki), pantai, laut, sungai + jembatan, jalan setapak, bangunan GLB,
+## ladang, hutan, benteng bos, batu penutup gua, papan nama tempat, penduduk yang berjalan-jalan,
+## dermaga + perahu kembali ke peta. Pulau tanpa tata letak memakai pulau bulat sederhana (Tahap 1).
+## Antarmuka untuk HUD (w3d_hud.gd): player, interact(), end_talk(), sinyal focus_changed.
 
 signal interacted(kind: String, id: String)
 signal focus_changed(text: String)
+signal place_changed(id: String)
 
 const Player := preload("res://games/education_sd/scripts/world/w3d_player.gd")
 const Rig := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.gd")
 
-const GROUND_R := 36.0
-const BEACH_R := 41.0
-const WALK_R := 40.0
-const DOCK_Z0 := 39.0
-const DOCK_Z1 := 50.0
-const DOCK_HALF := 1.6
 const FOCUS_RANGE := 2.8
+const NPC_SPEED := 1.1
+const NPC_ACTIVE := 40.0
+const C_PATH := Color("c9a26b")
+const C_STONE := Color("8a8174")
+const C_WOOD := Color("8a5a2b")
 
 var ctx: Dictionary
 var island: Dictionary
+var layout: Dictionary
+var npc_engine  # NpcEngine (place_at)
 var profile: Dictionary
 var player: CharacterBody3D
-var spots: Array = []  # [{pos: Vector3, kind, id, text}]
+var radius := 36.0
+var spots: Array = []  # [{pos: Vector3, kind, id, text, node}]
+var npcs: Array = []  # [{id, node, rig, home, wander, target, wait, talking}]
+var hills: Array = []
+var place := ""
+var dock_z0 := 0.0
+var dock_z1 := 0.0
 var _focus := -1
+var _talk: Dictionary = {}
+var _talk_release := -1.0
+var _place_t := 0.0
 var _rng := RandomNumberGenerator.new()
+var _river: Dictionary = {}
+
+const DOCK_HALF := 1.6
 
 
-## c: {island: {...dari islands.json}, gfx: "hemat|seimbang|tinggi", hero: look Dictionary}
+## c: {island, layout (Dictionary, boleh kosong), npc_engine, gfx, hero}
 func build(c: Dictionary) -> void:
 	ctx = c
 	island = c.island
+	layout = c.get("layout", {})
+	npc_engine = c.get("npc_engine")
 	profile = IslandWorld.PROFILES.get(str(c.get("gfx", "seimbang")), IslandWorld.PROFILES.seimbang)
 	_rng.seed = hash(str(island.id))
+	radius = float(layout.get("radius", 36.0))
+	hills = layout.get("hills", [])
+	_river = layout.get("river", {})
+	dock_z0 = radius + 3.0
+	dock_z1 = radius + 14.0
 	_environment()
 	_sea()
 	_ground()
 	_dock()
-	_trees()
-	_sign()
+	if layout.is_empty():
+		_trees_simple()
+		_signpost(Vector3(-2.4, 0, dock_z0 - 5.0), "Pulau %d\n%s" % [int(island.number), str(island.name)], "sign", "selamat_datang", "AKSI: baca papan")
+	else:
+		_river_and_bridge()
+		_paths()
+		_places()
+		_objects()
+		_farm()
+		_fort()
+		_boulder()
+		_academy_door()
+		_forest()
+		_npcs()
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
 	player.setup(c.get("hero", {}))
-	player.place(Vector3(0, 0.15, DOCK_Z0 + 2.0), 0.0)
+	player.place(spawn_point(), 0.0)
+
+
+func spawn_point() -> Vector3:
+	return Vector3(0, 0.25, dock_z0 + 2.0)
+
+
+# --- Tanah & ketinggian -------------------------------------------------------------------------------------
+
+## Tinggi tanah di (x, z): 0 di dataran, naik landai di bukit.
+func ground_y(x: float, z: float) -> float:
+	var y := 0.0
+	for h in hills:
+		var d := Vector2(x - float(h.pos[0]), z - float(h.pos[1])).length()
+		var top := float(h.top)
+		var bottom := float(h.bottom)
+		var hh := float(h.height)
+		if d <= top:
+			y = maxf(y, hh)
+		elif d < bottom:
+			y = maxf(y, hh * (bottom - d) / (bottom - top))
+	return y
+
+
+func _v(xz, extra_y := 0.0) -> Vector3:
+	var x := float(xz[0])
+	var z := float(xz[1])
+	return Vector3(x, ground_y(x, z) + extra_y, z)
 
 
 func _environment() -> void:
@@ -83,43 +145,46 @@ func _environment() -> void:
 	add_child(sun)
 
 
-func _mesh(mesh: Mesh, col: Color, pos := Vector3.ZERO, rough := 0.9) -> MeshInstance3D:
+func _mesh(mesh: Mesh, col: Color, pos := Vector3.ZERO, rough := 0.9, parent: Node = null) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = Rig.mat(col, rough)
 	mi.position = pos
-	add_child(mi)
+	(parent if parent != null else self).add_child(mi)
 	return mi
 
 
-func _static_box(size: Vector3, pos: Vector3) -> void:
+func _body(shape: Shape3D, xf: Transform3D) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.collision_layer = 1
 	var cs := CollisionShape3D.new()
-	var bs := BoxShape3D.new()
-	bs.size = size
-	cs.shape = bs
-	body.add_child(cs)
-	body.position = pos
-	add_child(body)
-
-
-func _static_cyl(radius: float, height: float, pos: Vector3) -> void:
-	var body := StaticBody3D.new()
-	body.collision_layer = 1
-	var cs := CollisionShape3D.new()
-	var shape := CylinderShape3D.new()
-	shape.radius = radius
-	shape.height = height
 	cs.shape = shape
 	body.add_child(cs)
-	body.position = pos
+	body.transform = xf
 	add_child(body)
+	return body
+
+
+func _static_box(size: Vector3, pos: Vector3, rot_y := 0.0) -> StaticBody3D:
+	var bs := BoxShape3D.new()
+	bs.size = size
+	return _body(bs, Transform3D(Basis(Vector3.UP, rot_y), pos))
+
+
+func _static_cyl(r: float, height: float, pos: Vector3) -> StaticBody3D:
+	var shape := CylinderShape3D.new()
+	shape.radius = r
+	shape.height = height
+	return _body(shape, Transform3D(Basis(), pos))
+
+
+func _far(n: GeometryInstance3D, extra := 25.0) -> void:
+	n.visibility_range_end = float(profile.get("range", 60.0)) + extra
 
 
 func _sea() -> void:
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(500, 500)
+	pm.size = Vector2(600, 600)
 	var sea := MeshInstance3D.new()
 	sea.mesh = pm
 	var sm := StandardMaterial3D.new()
@@ -128,59 +193,78 @@ func _sea() -> void:
 	sm.metallic_specular = 0.25
 	sea.material_override = sm
 	sea.position = Vector3(0, -0.55, 0)
+	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sea)
 	sea.name = "Sea"
-	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func _ground() -> void:
 	var green := Color.from_string(str(island.get("color", "#7cc95a")), Color("7cc95a"))
 	var sand := Color.from_string(str(island.get("sand", "#f3dfa2")), Color("f3dfa2"))
-	var beach := _mesh(Rig.cyl(BEACH_R, BEACH_R + 3.0, 1.2, 64), sand.darkened(0.12), Vector3(0, -0.8, 0))
+	var beach := _mesh(Rig.cyl(radius + 5.0, radius + 8.0, 1.2, 72), sand.darkened(0.12), Vector3(0, -0.62, 0))
 	beach.name = "Beach"
-	var ground := _mesh(Rig.cyl(GROUND_R, GROUND_R + 2.0, 1.0, 64), green.darkened(0.15), Vector3(0, -0.5, 0))
+	var ground := _mesh(Rig.cyl(radius, radius + 1.5, 1.0, 72), green.darkened(0.15), Vector3(0, -0.5, 0))
 	ground.name = "Ground"
-	_static_cyl(BEACH_R + 1.0, 1.0, Vector3(0, -0.7, 0))
-	_static_cyl(GROUND_R + 1.0, 1.0, Vector3(0, -0.5, 0))
-	# Bukit kecil di tengah pulau (tempat Tahap 2 meletakkan akademi).
-	var hill := _mesh(Rig.cyl(7.0, 12.0, 1.4, 40), green, Vector3(0, -0.2, -10))
-	hill.name = "Hill"
-	_static_cyl(10.0, 1.4, Vector3(0, -0.2, -10))
+	# Satu permukaan rata y=0 untuk rumput + pantai: tidak ada anak tangga yang menahan pemain.
+	_static_cyl(radius + 6.0, 1.0, Vector3(0, -0.5, 0))
+	for h in hills:
+		var hm := Rig.cyl(float(h.top), float(h.bottom), float(h.height), 48)
+		var mi := _mesh(hm, green, Vector3(float(h.pos[0]), float(h.height) / 2.0, float(h.pos[1])))
+		mi.name = "Hill_" + str(h.get("id", ""))
+		_body(hm.create_trimesh_shape(), Transform3D(Basis(), mi.position))
+	if layout.is_empty():
+		var hill := _mesh(Rig.cyl(7.0, 12.0, 1.4, 40), green, Vector3(0, -0.2, -10))
+		hill.name = "Hill"
 
 
 func _dock() -> void:
-	var len := DOCK_Z1 - DOCK_Z0 + 4.0
-	var zc := (DOCK_Z0 + DOCK_Z1) / 2.0 - 2.0
-	var deck := _mesh(Rig.box(Vector3(DOCK_HALF * 2.0, 0.25, len)), Color("a0764a"), Vector3(0, -0.02, zc))
+	var len := dock_z1 - dock_z0 + 6.0
+	var zc := (dock_z0 + dock_z1) / 2.0 - 3.0
+	var deck := _mesh(Rig.box(Vector3(DOCK_HALF * 2.0, 0.25, len)), Color("a0764a"), Vector3(0, -0.07, zc))
 	deck.name = "Dock"
-	_static_box(Vector3(DOCK_HALF * 2.0, 0.3, len), Vector3(0, -0.05, zc))
-	for z in range(int(DOCK_Z0), int(DOCK_Z1) + 1, 3):
+	_static_box(Vector3(DOCK_HALF * 2.0, 0.3, len), Vector3(0, -0.1, zc))
+	for z in range(int(dock_z0), int(dock_z1) + 1, 3):
 		for x in [-DOCK_HALF, DOCK_HALF]:
 			_mesh(Rig.cyl(0.14, 0.14, 1.4, 8), Color("6b4a2a"), Vector3(x, -0.6, z))
 	var boat := Node3D.new()
 	boat.name = "Boat"
-	boat.position = Vector3(2.6, -0.45, DOCK_Z1 - 1.5)
+	boat.position = Vector3(2.6, -0.45, dock_z1 - 1.5)
 	add_child(boat)
-	var hull := MeshInstance3D.new()
-	hull.mesh = Rig.box(Vector3(1.8, 0.7, 4.2))
-	hull.material_override = Rig.mat(Color("8a5a2b"))
-	hull.position.y = 0.25
-	boat.add_child(hull)
-	var mast := MeshInstance3D.new()
-	mast.mesh = Rig.cyl(0.07, 0.07, 3.4, 8)
-	mast.material_override = Rig.mat(Color("5a3a1a"))
-	mast.position.y = 2.2
-	boat.add_child(mast)
-	var sail := MeshInstance3D.new()
-	sail.mesh = Rig.box(Vector3(0.05, 2.2, 1.8))
-	sail.material_override = Rig.mat(Color("fdf6e3"))
-	sail.position = Vector3(0, 2.4, 0.4)
-	boat.add_child(sail)
-	spots.append({"pos": Vector3(0, 0, DOCK_Z1 - 1.0), "kind": "dock", "id": "perahu",
+	_mesh(Rig.box(Vector3(1.8, 0.7, 4.2)), C_WOOD, Vector3(0, 0.25, 0), 0.9, boat)
+	_mesh(Rig.cyl(0.07, 0.07, 3.4, 8), Color("5a3a1a"), Vector3(0, 2.2, 0), 0.9, boat)
+	_mesh(Rig.box(Vector3(0.05, 2.2, 1.8)), Color("fdf6e3"), Vector3(0, 2.4, 0.4), 0.9, boat)
+	spots.append({"pos": Vector3(0, 0, dock_z1 - 1.0), "kind": "dock", "id": "perahu",
 		"text": "AKSI: naik perahu ke Peta Dunia"})
 
 
-func _trees() -> void:
+func _label3d(text: String, size: int, col: Color, pos: Vector3, parent: Node = null, billboard := true) -> Label3D:
+	var lbl := Label3D.new()
+	lbl.text = text
+	lbl.font_size = size
+	lbl.outline_size = 10
+	lbl.modulate = col
+	lbl.outline_modulate = Color("2b2440")
+	lbl.pixel_size = 0.006
+	lbl.position = pos
+	if billboard:
+		lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lbl.visibility_range_end = 22.0
+	(parent if parent != null else self).add_child(lbl)
+	return lbl
+
+
+func _signpost(pos: Vector3, text: String, kind: String, id: String, prompt: String) -> void:
+	var post := _mesh(Rig.cyl(0.1, 0.1, 1.6, 8), Color("6b4a2a"), pos + Vector3(0, 0.8, 0))
+	post.name = "Sign_" + id
+	_far(post)
+	_mesh(Rig.box(Vector3(1.9, 0.9, 0.12)), Color("e8c88a"), pos + Vector3(0, 1.6, 0))
+	var lbl := _label3d(text, 40, Color("2b2440"), pos + Vector3(0, 1.62, 0.08), null, false)
+	lbl.outline_modulate = Color("fdf6e3")
+	lbl.visibility_range_end = 30.0
+	spots.append({"pos": pos, "kind": kind, "id": id, "text": prompt})
+
+
+func _trees_simple() -> void:
 	var kinds := ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/bush"]
 	var n := clampi(int(profile.get("trees", 130)) / 3, 20, 70)
 	var placed := 0
@@ -188,65 +272,446 @@ func _trees() -> void:
 	while placed < n and tries < n * 6:
 		tries += 1
 		var a := _rng.randf() * TAU
-		var d := _rng.randf_range(14.0, GROUND_R - 2.0)
+		var d := _rng.randf_range(14.0, radius - 2.0)
 		var pos := Vector3(cos(a) * d, 0, sin(a) * d)
-		if absf(pos.x) < 5.0 and pos.z > 8.0:  # jalan dari dermaga tetap lapang
+		if absf(pos.x) < 5.0 and pos.z > 8.0:
 			continue
-		var kind: String = kinds[_rng.randi() % kinds.size()]
-		var mesh = IslandWorld.env_mesh(kind)
-		var mi := MeshInstance3D.new()
-		if mesh != null:
-			mi.mesh = mesh
-			mi.scale = Vector3.ONE * _rng.randf_range(0.9, 1.3)
-		else:
-			mi.mesh = Rig.sphere(1.2)
-			mi.material_override = Rig.mat(Color("3f8f3f"))
-			pos.y = 1.4
-		mi.position = pos
-		mi.rotation.y = _rng.randf() * TAU
-		mi.name = "Tree%d" % placed
-		add_child(mi)
-		if kind != "vegetation/bush":
-			_static_cyl(0.35, 2.0, pos + Vector3(0, 1.0, 0))
+		_tree_node(kinds[_rng.randi() % kinds.size()], pos, "Tree%d" % placed)
 		placed += 1
 
 
-func _sign() -> void:
-	var sp := Vector3(-2.4, 0, DOCK_Z0 - 5.0)
-	var post := _mesh(Rig.cyl(0.1, 0.1, 1.6, 8), Color("6b4a2a"), sp + Vector3(0, 0.8, 0))
-	post.name = "SignPost"
-	_mesh(Rig.box(Vector3(1.6, 0.9, 0.12)), Color("e8c88a"), sp + Vector3(0, 1.6, 0))
-	var lbl := Label3D.new()
-	lbl.text = "Pulau %d\n%s" % [int(island.number), str(island.name)]
-	lbl.font_size = 44
-	lbl.outline_size = 10
-	lbl.modulate = Color("2b2440")
-	lbl.outline_modulate = Color("fdf6e3")
-	lbl.position = sp + Vector3(0, 1.62, 0.08)
-	lbl.pixel_size = 0.006
-	add_child(lbl)
-	spots.append({"pos": sp, "kind": "sign", "id": "selamat_datang", "text": "AKSI: baca papan"})
+func _tree_node(kind: String, pos: Vector3, name_: String) -> void:
+	var mesh = IslandWorld.env_mesh(kind)
+	var mi := MeshInstance3D.new()
+	if mesh != null:
+		mi.mesh = mesh
+		mi.scale = Vector3.ONE * _rng.randf_range(0.9, 1.3)
+	else:
+		mi.mesh = Rig.sphere(1.2)
+		mi.material_override = Rig.mat(Color("3f8f3f"))
+		pos.y += 1.4
+	mi.position = pos
+	mi.rotation.y = _rng.randf() * TAU
+	mi.name = name_
+	_far(mi)
+	add_child(mi)
+	if kind != "vegetation/bush":
+		_static_cyl(0.35, 2.0, pos + Vector3(0, 1.0, 0))
 
+
+# --- Sungai, jalan, tempat ---------------------------------------------------------------------------------
+
+func _river_and_bridge() -> void:
+	if _river.is_empty():
+		return
+	var z := float(_river.z)
+	var hw := float(_river.half_width)
+	var bh := float(_river.bridge_half)
+	var span := (radius + 8.0) * 2.0
+	var water := MeshInstance3D.new()
+	water.name = "River"
+	water.mesh = Rig.box(Vector3(span, 0.06, hw * 2.0))
+	var wm := StandardMaterial3D.new()
+	wm.albedo_color = Color("2a8fd8")
+	wm.roughness = 0.2
+	wm.metallic_specular = 0.4
+	water.material_override = wm
+	water.position = Vector3(0, 0.03, z)
+	add_child(water)
+	for side in [-1.0, 1.0]:
+		var bank := _mesh(Rig.box(Vector3(span, 0.08, 0.7)), Color("b39b6a"), Vector3(0, 0.04, z + side * (hw + 0.3)))
+		bank.name = "Bank"
+		# Dinding tak terlihat di tepi sungai (kecuali jembatan): pemain tidak tercebur.
+		var seg := (span / 2.0) - bh
+		for sx in [-1.0, 1.0]:
+			_static_box(Vector3(seg, 2.0, 0.4), Vector3(sx * (bh + seg / 2.0), 1.0, z + side * (hw + 0.2)))
+	var deck := _mesh(Rig.box(Vector3(bh * 2.0, 0.12, hw * 2.0 + 2.0)), Color("a0764a"), Vector3(0, 0.08, z))
+	deck.name = "Bridge"
+	for sx in [-1.0, 1.0]:
+		_mesh(Rig.box(Vector3(0.18, 0.9, hw * 2.0 + 2.0)), Color("7a4a22"), Vector3(sx * (bh - 0.1), 0.55, z))
+		_static_box(Vector3(0.25, 2.0, hw * 2.0 + 2.0), Vector3(sx * (bh - 0.1), 1.0, z))
+		for k in [-1.0, 0.0, 1.0]:
+			_mesh(Rig.cyl(0.12, 0.12, 1.2, 8), Color("6b4a2a"), Vector3(sx * (bh - 0.1), 0.6, z + k * hw))
+
+
+func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+	return p.distance_to(a + ab * t)
+
+
+func _paths() -> void:
+	for seg in layout.get("paths", []):
+		var a := Vector2(float(seg[0][0]), float(seg[0][1]))
+		var b := Vector2(float(seg[1][0]), float(seg[1][1]))
+		var a3 := Vector3(a.x, ground_y(a.x, a.y) + 0.03, a.y)
+		var b3 := Vector3(b.x, ground_y(b.x, b.y) + 0.03, b.y)
+		var len := a3.distance_to(b3)
+		var mi := _mesh(Rig.box(Vector3(3.0, 0.03, len + (3.0 if is_equal_approx(a3.y, b3.y) else 0.4))), C_PATH, (a3 + b3) / 2.0)
+		# Jalan di lereng bukit ikut miring (sumbu Z lokal = arah jalan).
+		mi.rotation = Vector3(-asin((b3.y - a3.y) / maxf(len, 0.001)), atan2(b.x - a.x, b.y - a.y), 0)
+		mi.name = "Path"
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+func near_path(x: float, z: float, margin: float) -> bool:
+	for seg in layout.get("paths", []):
+		if _seg_dist(Vector2(x, z), Vector2(float(seg[0][0]), float(seg[0][1])), Vector2(float(seg[1][0]), float(seg[1][1]))) < margin:
+			return true
+	return false
+
+
+func _places() -> void:
+	for pl in layout.get("places", []):
+		if pl.has("plaza"):
+			var plaza := _mesh(Rig.cyl(float(pl.plaza), float(pl.plaza), 0.04, 40), C_PATH.lightened(0.1), _v(pl.pos, 0.02))
+			plaza.name = "Plaza_" + str(pl.id)
+		if pl.has("sign"):
+			_signpost(_v(pl.sign), str(pl.name), "sign", str(pl.id), "AKSI: baca papan " + str(pl.name))
+
+
+func _objects() -> void:
+	var i := 0
+	for o in layout.get("objects", []):
+		i += 1
+		var mesh = IslandWorld.env_mesh(str(o.asset))
+		if mesh == null:
+			continue
+		var scl := float(o.get("scale", 1.0))
+		var rot := deg_to_rad(float(o.get("rot", 0.0)))
+		var mi := MeshInstance3D.new()
+		mi.name = "Obj%d_%s" % [i, str(o.asset).get_file()]
+		mi.mesh = mesh
+		mi.position = _v(o.pos)
+		mi.rotation.y = rot
+		mi.scale = Vector3.ONE * scl
+		_far(mi, 45.0)
+		add_child(mi)
+		if not bool(o.get("solid", true)):
+			continue
+		if o.has("radius"):
+			_static_cyl(float(o.radius), 4.0, mi.position + Vector3(0, 2.0, 0))
+			continue
+		var bb: AABB = (mesh as Mesh).get_aabb()
+		var c := bb.get_center() * scl
+		c = Basis(Vector3.UP, rot) * Vector3(c.x, 0, c.z)
+		var h := maxf(bb.size.y * scl, 1.5)
+		_static_box(Vector3(bb.size.x * scl * 0.92, h, bb.size.z * scl * 0.92), mi.position + c + Vector3(0, h / 2.0, 0), rot)
+
+
+func _farm() -> void:
+	var f: Dictionary = layout.get("farm", {})
+	if f.is_empty():
+		return
+	var c := _v(f.pos)
+	var sx := float(f.size[0])
+	var sz := float(f.size[1])
+	var soil := _mesh(Rig.box(Vector3(sx, 0.06, sz)), Color("7a5232"), c + Vector3(0, 0.03, 0))
+	soil.name = "Farm"
+	var rows := int(f.get("rows", 5))
+	var bush = IslandWorld.env_mesh("vegetation/bush")
+	for r in rows:
+		var z := c.z - sz / 2.0 + sz * (r + 0.5) / rows
+		_mesh(Rig.box(Vector3(sx - 1.0, 0.18, 0.6)), Color("5e3d22"), Vector3(c.x, 0.1, z))
+		var k := 0
+		var x := c.x - sx / 2.0 + 1.0
+		while x < c.x + sx / 2.0 - 0.8:
+			if (r + k) % 3 != 1:  # sebagian bibit hilang dicuri goblin
+				var plant := MeshInstance3D.new()
+				if bush != null:
+					plant.mesh = bush
+					plant.scale = Vector3(0.35, 0.6, 0.35)
+				else:
+					plant.mesh = Rig.cyl(0.05, 0.25, 0.6, 6)
+					plant.material_override = Rig.mat(Color("3f9a3f"))
+				plant.position = Vector3(x, 0.15, z)
+				_far(plant)
+				add_child(plant)
+			x += 1.5
+			k += 1
+	for side in [-1.0, 1.0]:
+		_mesh(Rig.box(Vector3(sx + 1.0, 0.12, 0.12)), Color("8a6a3a"), Vector3(c.x, 0.7, c.z + side * (sz / 2.0 + 0.5)))
+		_mesh(Rig.box(Vector3(0.12, 0.12, sz + 1.0)), Color("8a6a3a"), Vector3(c.x + side * (sx / 2.0 + 0.5), 0.7, c.z))
+
+
+func _fort() -> void:
+	var f: Dictionary = layout.get("fort", {})
+	if f.is_empty():
+		return
+	var c := _v(f.pos)
+	var hf := float(f.half)
+	var wh := float(f.wall_h)
+	var gh := float(f.gate_half)
+	var root := Node3D.new()
+	root.name = "Fort"
+	add_child(root)
+	var walls := [
+		[Vector3(0, wh / 2.0, -hf), Vector3(hf * 2.0, wh, 1.2)],
+		[Vector3(-hf, wh / 2.0, 0), Vector3(1.2, wh, hf * 2.0)],
+		[Vector3(hf, wh / 2.0, 0), Vector3(1.2, wh, hf * 2.0)],
+		[Vector3(-(hf + gh) / 2.0, wh / 2.0, hf), Vector3(hf - gh, wh, 1.2)],
+		[Vector3((hf + gh) / 2.0, wh / 2.0, hf), Vector3(hf - gh, wh, 1.2)],
+	]
+	for w in walls:
+		var m := _mesh(Rig.box(w[1]), C_STONE, c + w[0], 0.95, root)
+		_far(m, 45.0)
+		_static_box(w[1], c + w[0])
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var tp := c + Vector3(sx * hf, 0, sz * hf)
+			_far(_mesh(Rig.cyl(1.8, 2.0, wh + 2.2, 16), C_STONE.darkened(0.1), tp + Vector3(0, (wh + 2.2) / 2.0, 0), 0.95, root), 45.0)
+			_far(_mesh(Rig.cyl(0.0, 2.3, 2.0, 16), Color("b5443a"), tp + Vector3(0, wh + 3.2, 0), 0.9, root), 45.0)
+			_static_cyl(1.9, wh + 2.2, tp + Vector3(0, (wh + 2.2) / 2.0, 0))
+	var gate := _mesh(Rig.box(Vector3(gh * 2.0, wh - 0.4, 0.5)), C_WOOD.darkened(0.15), c + Vector3(0, (wh - 0.4) / 2.0, hf), 0.9, root)
+	gate.name = "Gate"
+	_static_box(Vector3(gh * 2.0, wh, 0.6), c + Vector3(0, wh / 2.0, hf))
+	for k in [-1.0, 1.0]:
+		_mesh(Rig.box(Vector3(0.15, wh - 0.6, 0.6)), Color("5a5a66"), c + Vector3(k * gh * 0.5, (wh - 0.4) / 2.0, hf + 0.05), 0.5, root)
+	var flag := _mesh(Rig.box(Vector3(1.4, 0.9, 0.05)), Color("6b8f2a"), c + Vector3(0, wh + 1.6, hf), 0.9, root)
+	flag.name = "GoblinFlag"
+	spots.append({"pos": c + Vector3(0, 0, hf + 1.4), "kind": "gate", "id": "benteng", "text": "AKSI: periksa gerbang benteng"})
+	var b: Dictionary = layout.get("boss", {})
+	if not b.is_empty():
+		var bp := _v(b.pos)
+		_mesh(Rig.box(Vector3(2.4, 0.8, 1.6)), Color("6b4a2a"), bp + Vector3(0, 0.4, -0.4), 0.9, root)
+		_mesh(Rig.box(Vector3(2.4, 2.4, 0.4)), Color("b5443a"), bp + Vector3(0, 1.6, -1.1), 0.9, root)
+		var boss := _figure(str(b.model), 1.7 * float(b.get("scale", 1.0)), bp + Vector3(0, 0.8, 0), 0.0, root)
+		boss.name = "Boss"
+		_label3d(str(b.name), 56, Color("ff8a6a"), Vector3(0, 3.2, 0), boss)
+	for g in layout.get("guards", []):
+		var gn := _figure(str(g.model), 1.15, _v(g.pos), 0.0, root)
+		gn.name = "Guard"
+		_label3d(str(g.name), 40, Color("ffd166"), Vector3(0, 1.9, 0), gn)
+
+
+## Model berangka dari APK (res://assets/models) di posisi pos, menghadap yaw.
+func _figure(model: String, height: float, pos: Vector3, yaw: float, parent: Node = null) -> Node3D:
+	var n := Node3D.new()
+	n.position = pos
+	n.rotation.y = yaw
+	var rig := Rig.new()
+	rig.glb_id = model
+	rig.glb_height = height
+	n.add_child(rig)
+	(parent if parent != null else self).add_child(n)
+	rig.build()
+	n.set_meta("rig", rig)
+	return n
+
+
+func _boulder() -> void:
+	var b: Dictionary = layout.get("boulder", {})
+	if b.is_empty():
+		return
+	var p := _v(b.pos)
+	var mesh = IslandWorld.env_mesh("rocks/rock_a")
+	var mi := MeshInstance3D.new()
+	mi.name = "Boulder"
+	mi.mesh = mesh if mesh != null else Rig.sphere(1.0)
+	if mesh == null:
+		mi.material_override = Rig.mat(C_STONE)
+	mi.scale = Vector3.ONE * float(b.get("scale", 2.5))
+	mi.position = p
+	add_child(mi)
+	_static_cyl(1.0 * float(b.get("scale", 2.5)), 3.0, p + Vector3(0, 1.5, 0))
+	var to_center := Vector3(-p.x, 0, -p.z).normalized()
+	spots.append({"pos": p + to_center * (1.2 * float(b.get("scale", 2.5))), "kind": "boulder", "id": "gua", "text": "AKSI: periksa batu besar"})
+
+
+func _academy_door() -> void:
+	if not layout.has("academy_door"):
+		return
+	var p := _v(layout.academy_door)
+	spots.append({"pos": p, "kind": "academy", "id": "akademi", "text": "AKSI: masuk Akademi Tunas"})
+	var lbl := _label3d("Akademi Tunas", 64, Color("ffd166"), p + Vector3(0, 6.2, -2.0))
+	lbl.visibility_range_end = 60.0
+
+
+func _blocked(x: float, z: float, forest_ok: bool) -> bool:
+	if Vector2(x, z).length() > radius - 2.5:
+		return true
+	if near_path(x, z, 3.5):
+		return true
+	if not _river.is_empty() and absf(z - float(_river.z)) < float(_river.half_width) + 2.5:
+		return true
+	for h in hills:
+		if Vector2(x - float(h.pos[0]), z - float(h.pos[1])).length() < float(h.bottom) + 1.0:
+			return true
+	var f: Dictionary = layout.get("fort", {})
+	if not f.is_empty() and Vector2(x - float(f.pos[0]), z - float(f.pos[1])).length() < float(f.half) * 1.6 + 3.0:
+		return true
+	for pl in layout.get("places", []):
+		if str(pl.id) == "hutan" and forest_ok:
+			continue
+		if Vector2(x - float(pl.pos[0]), z - float(pl.pos[1])).length() < float(pl.radius) + 1.0:
+			return true
+	if absf(x) < 4.0 and z > radius - 4.0:
+		return true
+	return false
+
+
+## Hutan lebat + pohon jarang di seluruh pulau. MultiMesh per jenis (hemat draw call), batang bertabrakan.
+func _forest() -> void:
+	var f: Dictionary = layout.get("forest", {})
+	var dense := clampi(int(int(profile.get("trees", 130)) * 0.6), 30, 130)
+	var sparse := clampi(int(int(profile.get("trees", 130)) * 0.3), 15, 70)
+	var kinds := ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/bush", "vegetation/flowers"]
+	var xfs := {}
+	for k in kinds:
+		xfs[k] = []
+	var trunks := 0
+	var tries := 0
+	var placed := 0
+	var fc := Vector2(float(f.pos[0]), float(f.pos[1])) if not f.is_empty() else Vector2.ZERO
+	var fr := float(f.get("radius", 0.0))
+	while placed < dense + sparse and tries < (dense + sparse) * 8:
+		tries += 1
+		var in_forest := placed < dense and fr > 0.0
+		var pt: Vector2
+		if in_forest:
+			var a := _rng.randf() * TAU
+			pt = fc + Vector2(cos(a), sin(a)) * sqrt(_rng.randf()) * fr
+		else:
+			var a2 := _rng.randf() * TAU
+			pt = Vector2(cos(a2), sin(a2)) * sqrt(_rng.randf()) * (radius - 3.0)
+		if _blocked(pt.x, pt.y, in_forest):
+			continue
+		var r := _rng.randf()
+		var kind: String = (kinds[1] if r < 0.55 else kinds[0]) if in_forest else (kinds[0] if r < 0.5 else (kinds[2] if r < 0.8 else kinds[3]))
+		if in_forest and _rng.randf() < 0.25:
+			kind = kinds[2]
+		var s := _rng.randf_range(0.9, 1.35)
+		var y := ground_y(pt.x, pt.y)
+		(xfs[kind] as Array).append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(pt.x, y, pt.y)))
+		if kind in [kinds[0], kinds[1]]:
+			_static_cyl(0.35, 2.0, Vector3(pt.x, y + 1.0, pt.y))
+			trunks += 1
+		placed += 1
+	for k in kinds:
+		var arr: Array = xfs[k]
+		var mesh = IslandWorld.env_mesh(k)
+		if arr.is_empty() or mesh == null:
+			continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = arr.size()
+		for i in arr.size():
+			mm.set_instance_transform(i, arr[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Trees_" + k.get_file()
+		mmi.multimesh = mm
+		add_child(mmi)
+	set_meta("trunks", trunks)
+
+
+func tree_count() -> int:
+	var n := 0
+	for c in get_children():
+		if c is MultiMeshInstance3D and str(c.name).begins_with("Trees_tree"):
+			n += (c as MultiMeshInstance3D).multimesh.instance_count
+		elif str(c.name).begins_with("Tree"):
+			n += 1
+	return n
+
+
+# --- Penduduk -----------------------------------------------------------------------------------------------
+
+func _npcs() -> void:
+	for d in layout.get("npcs", []):
+		var home := _v(d.pos)
+		var n := _figure(str(d.model), float(d.get("height", 1.75)), home, _rng.randf() * TAU)
+		n.name = "Npc_" + str(d.id)
+		_label3d(str(d.name), 44, Color("ffd166"), Vector3(0, float(d.get("height", 1.75)) + 0.55, 0), n)
+		_label3d(str(d.role), 30, Color.WHITE, Vector3(0, float(d.get("height", 1.75)) + 0.25, 0), n)
+		npcs.append({"id": str(d.id), "node": n, "rig": n.get_meta("rig"), "home": home, "wander": float(d.get("wander", 0.0)),
+			"target": home, "wait": _rng.randf_range(0.3, 1.5), "talking": false})
+		spots.append({"pos": home, "kind": "npc", "id": str(d.id), "text": "AKSI: bicara dengan " + str(d.name), "node": n})
+
+
+func npc_node(id: String) -> Node3D:
+	for e in npcs:
+		if str(e.id) == id:
+			return e.node
+	return null
+
+
+func _update_npcs(delta: float) -> void:
+	var pp := player.global_position
+	for e in npcs:
+		var n: Node3D = e.node
+		var far := n.position.distance_to(pp) > NPC_ACTIVE
+		n.visible = not far
+		if far:
+			continue
+		var rig = e.rig
+		var speed := 0.0
+		if bool(e.talking):
+			var to := pp - n.position
+			n.rotation.y = lerp_angle(n.rotation.y, atan2(to.x, to.z), minf(delta * 8.0, 1.0))
+		elif float(e.wander) > 0.0:
+			var t: Vector3 = e.target
+			var flat := Vector3(t.x - n.position.x, 0, t.z - n.position.z)
+			if flat.length() < 0.2:
+				e.wait = float(e.wait) - delta
+				if float(e.wait) <= 0.0:
+					var a := _rng.randf() * TAU
+					var rr := _rng.randf() * float(e.wander)
+					var h: Vector3 = e.home
+					e.target = Vector3(h.x + cos(a) * rr, 0, h.z + sin(a) * rr)
+					e.wait = _rng.randf_range(2.0, 5.0)
+			else:
+				var step := minf(NPC_SPEED * delta, flat.length())
+				n.position += flat.normalized() * step
+				n.rotation.y = lerp_angle(n.rotation.y, atan2(flat.x, flat.z), minf(delta * 6.0, 1.0))
+				speed = NPC_SPEED
+			n.position.y = ground_y(n.position.x, n.position.z)
+		if rig != null:
+			rig.animate(delta, speed, true)
+	for s in spots:
+		if s.has("node"):
+			s.pos = (s.node as Node3D).position
+
+
+func end_talk() -> void:
+	_talk_release = 0.3
+
+
+## Penduduk `id` berhenti dan menghadap pemain (dipanggil saat dialog dimulai/berlanjut).
+func hold_talk(id: String) -> void:
+	_talk_release = -1.0
+	for e in npcs:
+		e.talking = str(e.id) == id
+
+
+# --- Tiap bingkai ---------------------------------------------------------------------------------------------
 
 func _physics_process(_delta: float) -> void:
 	if player == null:
 		return
-	# Batas pulau: pemain tidak bisa berjalan ke laut, kecuali di atas dermaga.
 	var p := player.global_position
-	var on_dock := absf(p.x) <= DOCK_HALF + 0.2 and p.z >= DOCK_Z0 - 2.0 and p.z <= DOCK_Z1 + 1.0
+	var on_dock := absf(p.x) <= DOCK_HALF + 0.2 and p.z >= dock_z0 - 3.0 and p.z <= dock_z1 + 1.0
 	var flat := Vector2(p.x, p.z)
-	if not on_dock and flat.length() > WALK_R:
-		flat = flat.normalized() * WALK_R
+	var limit := radius + 4.0
+	if not on_dock and flat.length() > limit:
+		flat = flat.normalized() * limit
 		player.global_position = Vector3(flat.x, p.y, flat.y)
 	if on_dock:
-		player.global_position.z = minf(p.z, DOCK_Z1 - 0.6)
+		player.global_position.z = minf(p.z, dock_z1 - 0.6)
 	if p.y < -3.0:
-		player.place(Vector3(0, 0.15, DOCK_Z0 + 2.0), 0.0)
+		player.place(spawn_point(), 0.0)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if player == null:
 		return
+	if not npcs.is_empty():
+		_update_npcs(delta)
+	if _talk_release >= 0.0:
+		_talk_release -= delta
+		if _talk_release < 0.0:
+			for e in npcs:
+				e.talking = false
 	var best := -1
 	var best_d := FOCUS_RANGE
 	for i in spots.size():
@@ -257,6 +722,13 @@ func _process(_delta: float) -> void:
 	if best != _focus:
 		_focus = best
 		focus_changed.emit(str(spots[best].text) if best >= 0 else "")
+	_place_t -= delta
+	if _place_t <= 0.0 and npc_engine != null:
+		_place_t = 0.4
+		var now: String = npc_engine.place_at(player.global_position.x, player.global_position.z)
+		if now != place:
+			place = now
+			place_changed.emit(now)
 
 
 func focus_kind() -> String:
@@ -266,14 +738,19 @@ func focus_kind() -> String:
 func interact() -> bool:
 	if _focus < 0:
 		return false
-	player.rig.play_once("interaksi", 0.7)
-	interacted.emit(str(spots[_focus].kind), str(spots[_focus].id))
+	var s: Dictionary = spots[_focus]
+	player.rig.play_once("lambai" if str(s.kind) == "npc" else "interaksi", 0.8)
+	if str(s.kind) == "npc":
+		hold_talk(str(s.id))
+		var rig = (s.node as Node3D).get_meta("rig")
+		if rig != null:
+			rig.play_once("interaksi", 1.0)
+	interacted.emit(str(s.kind), str(s.id))
 	return true
 
 
-## Pindahkan pemain ke dekat titik interaksi `kind` (dipakai uji & tombol bantuan).
-func spot_pos(kind: String) -> Vector3:
+func spot_pos(kind: String, id := "") -> Vector3:
 	for s in spots:
-		if str(s.kind) == kind:
+		if str(s.kind) == kind and (id == "" or str(s.id) == id):
 			return s.pos
 	return Vector3.ZERO

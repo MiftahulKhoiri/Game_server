@@ -20,7 +20,7 @@ static func default_data() -> Dictionary:
 		"profile": {"name": "", "grade": 1, "hero": "laki", "outfit": "warna_merah", "hat": "", "acc": "",
 			"created": ""},
 		"rpg": {"xp": 0, "coins": 0, "owned": ["warna_merah", "warna_biru"]},
-		"world": {"island": "pulau1", "visited": {}, "bosses": {}, "sailed": 0},
+		"world": {"island": "pulau1", "visited": {}, "bosses": {}, "sailed": 0, "met": {}, "found": {}},
 		"learning": {"totals": {"answered": 0, "correct": 0, "wrong": 0, "streak": 0, "best_streak": 0},
 			"topics": {}, "grades": {}, "history": [], "cards": [], "animals": [], "badges": {}, "daily": {},
 			"minigames": {}},

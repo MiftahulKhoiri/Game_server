@@ -1,0 +1,667 @@
+{
+	"schema": 1,
+	"island": "pulau1",
+	"radius": 70,
+	"spawn": [
+		0,
+		78
+	],
+	"hills": [
+		{
+			"id": "bukit_akademi",
+			"pos": [
+				0,
+				5
+			],
+			"top": 14,
+			"bottom": 22,
+			"height": 2.2
+		}
+	],
+	"river": {
+		"z": -21,
+		"half_width": 3.4,
+		"bridge_half": 2.6
+	},
+	"paths": [
+		[
+			[
+				0,
+				72
+			],
+			[
+				0,
+				50
+			]
+		],
+		[
+			[
+				0,
+				34
+			],
+			[
+				0,
+				27
+			]
+		],
+		[
+			[
+				0,
+				27
+			],
+			[
+				0,
+				19
+			]
+		],
+		[
+			[
+				0,
+				19
+			],
+			[
+				0,
+				10
+			]
+		],
+		[
+			[
+				0,
+				-9
+			],
+			[
+				0,
+				-17
+			]
+		],
+		[
+			[
+				0,
+				-17
+			],
+			[
+				0,
+				-44
+			]
+		],
+		[
+			[
+				0,
+				-31
+			],
+			[
+				-24,
+				-36
+			]
+		],
+		[
+			[
+				0,
+				-31
+			],
+			[
+				30,
+				-37
+			]
+		],
+		[
+			[
+				6,
+				40
+			],
+			[
+				24,
+				40
+			]
+		]
+	],
+	"places": [
+		{
+			"id": "dermaga",
+			"name": "Dermaga",
+			"pos": [
+				0,
+				70
+			],
+			"radius": 7,
+			"sign": [
+				-3.2,
+				66
+			]
+		},
+		{
+			"id": "desa",
+			"name": "Desa Pemula",
+			"pos": [
+				0,
+				42
+			],
+			"radius": 17,
+			"sign": [
+				-3.2,
+				58
+			],
+			"plaza": 8
+		},
+		{
+			"id": "ladang",
+			"name": "Ladang Pak Budi",
+			"pos": [
+				30,
+				40
+			],
+			"radius": 10,
+			"sign": [
+				22,
+				45
+			]
+		},
+		{
+			"id": "akademi",
+			"name": "Akademi Tunas",
+			"pos": [
+				0,
+				5
+			],
+			"radius": 14,
+			"sign": [
+				-3.4,
+				25
+			]
+		},
+		{
+			"id": "sungai",
+			"name": "Sungai Jernih",
+			"pos": [
+				0,
+				-21
+			],
+			"radius": 7,
+			"sign": [
+				-3.6,
+				-14.5
+			]
+		},
+		{
+			"id": "hutan",
+			"name": "Hutan Kecil",
+			"pos": [
+				-38,
+				-38
+			],
+			"radius": 22,
+			"sign": [
+				-21,
+				-32
+			]
+		},
+		{
+			"id": "gua",
+			"name": "Gua Goblin",
+			"pos": [
+				42,
+				-42
+			],
+			"radius": 13,
+			"sign": [
+				25,
+				-33
+			]
+		},
+		{
+			"id": "benteng",
+			"name": "Benteng Raja Goblin",
+			"pos": [
+				0,
+				-56
+			],
+			"radius": 13,
+			"sign": [
+				-4,
+				-40
+			]
+		}
+	],
+	"objects": [
+		{
+			"asset": "buildings/joglo",
+			"pos": [
+				-13,
+				36
+			],
+			"rot": 90,
+			"scale": 1.5
+		},
+		{
+			"asset": "buildings/rumah_gadang",
+			"pos": [
+				13,
+				34
+			],
+			"rot": -90,
+			"scale": 1.4
+		},
+		{
+			"asset": "buildings/tongkonan",
+			"pos": [
+				-13,
+				50
+			],
+			"rot": 90,
+			"scale": 1.4
+		},
+		{
+			"asset": "buildings/joglo",
+			"pos": [
+				13,
+				50
+			],
+			"rot": -90,
+			"scale": 1.5
+		},
+		{
+			"asset": "buildings/market_stall",
+			"pos": [
+				-6,
+				47
+			],
+			"rot": 0,
+			"scale": 1.3
+		},
+		{
+			"asset": "buildings/market_stall",
+			"pos": [
+				6,
+				47
+			],
+			"rot": 0,
+			"scale": 1.3
+		},
+		{
+			"asset": "educational/info_board",
+			"pos": [
+				3.4,
+				31
+			],
+			"rot": 180
+		},
+		{
+			"asset": "buildings/library",
+			"pos": [
+				0,
+				0
+			],
+			"rot": 0,
+			"scale": 1.0
+		},
+		{
+			"asset": "buildings/math_tower",
+			"pos": [
+				-9.5,
+				-1
+			],
+			"rot": 0,
+			"scale": 0.6
+		},
+		{
+			"asset": "buildings/lab_dome",
+			"pos": [
+				9.5,
+				-1
+			],
+			"rot": 0,
+			"scale": 0.55
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				-5,
+				10
+			]
+		},
+		{
+			"asset": "educational/big_book",
+			"pos": [
+				5,
+				10
+			],
+			"rot": 180
+		},
+		{
+			"asset": "educational/globe",
+			"pos": [
+				8,
+				8
+			]
+		},
+		{
+			"asset": "educational/microscope",
+			"pos": [
+				-8,
+				8
+			],
+			"rot": 180,
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-4,
+				36
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				4,
+				36
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-4,
+				54
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				4,
+				54
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-2.4,
+				66
+			],
+			"solid": false
+		},
+		{
+			"asset": "buildings/cave",
+			"pos": [
+				44,
+				-45
+			],
+			"rot": -135,
+			"scale": 1.0,
+			"radius": 5.6
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				36,
+				-48
+			],
+			"scale": 1.6
+		},
+		{
+			"asset": "rocks/rock_b",
+			"pos": [
+				50,
+				-36
+			],
+			"scale": 1.8
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				48,
+				-52
+			],
+			"scale": 2.0
+		},
+		{
+			"asset": "rocks/rock_b",
+			"pos": [
+				-6,
+				-38
+			],
+			"scale": 1.2
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				7,
+				-36
+			],
+			"scale": 1.0
+		}
+	],
+	"farm": {
+		"pos": [
+			30,
+			40
+		],
+		"size": [
+			14,
+			10
+		],
+		"rows": 5
+	},
+	"forest": {
+		"pos": [
+			-38,
+			-38
+		],
+		"radius": 22
+	},
+	"fort": {
+		"pos": [
+			0,
+			-56
+		],
+		"half": 11,
+		"wall_h": 3.6,
+		"gate_half": 2.6
+	},
+	"boulder": {
+		"pos": [
+			38.5,
+			-38.5
+		],
+		"scale": 2.6
+	},
+	"boss": {
+		"model": "raja_goblin",
+		"name": "Raja Goblin Kecil",
+		"pos": [
+			0,
+			-61
+		],
+		"scale": 1.5
+	},
+	"guards": [
+		{
+			"model": "goblin_penjaga",
+			"name": "Goblin Penjaga",
+			"pos": [
+				-4.5,
+				-43.5
+			]
+		},
+		{
+			"model": "goblin_penjaga",
+			"name": "Goblin Penjaga",
+			"pos": [
+				4.5,
+				-43.5
+			]
+		}
+	],
+	"academy_door": [
+		0,
+		6.5
+	],
+	"npcs": [
+		{
+			"id": "pak_lurah",
+			"name": "Pak Lurah Darmo",
+			"role": "Kepala Desa",
+			"model": "warga_bapak2",
+			"pos": [
+				3,
+				39
+			],
+			"wander": 2.5,
+			"lines": [
+				"Selamat datang di Dunia Pemula, {name}!",
+				"Sejak Kabut Lupa datang, Raja Goblin Kecil dan anak buahnya mencuri barang-barang warga.",
+				"Belajarlah dulu di Akademi Tunas di atas bukit utara. Bu Guru Sinta akan membantumu."
+			],
+			"again": [
+				"Akademi Tunas ada di bukit sebelah utara desa. Semangat, {name}!",
+				"Warga desa butuh bantuanmu. Ajak mereka bicara, ya."
+			]
+		},
+		{
+			"id": "bu_guru",
+			"name": "Bu Guru Sinta",
+			"role": "Guru Akademi",
+			"model": "warga_ibu",
+			"pos": [
+				3,
+				11.5
+			],
+			"wander": 2.0,
+			"lines": [
+				"Halo {name}! Aku Bu Guru Sinta.",
+				"Di Akademi Tunas kamu belajar berhitung, membaca, dan mengenal alam.",
+				"Ilmu yang kamu pelajari akan menjadi jurus ilmu untuk mengusir goblin!"
+			],
+			"again": [
+				"Ruang belajar akademi sedang dirapikan. Sebentar lagi kelas dibuka!",
+				"Sambil menunggu, jelajahi pulau dan kenali warganya."
+			]
+		},
+		{
+			"id": "pak_budi",
+			"name": "Pak Budi",
+			"role": "Petani",
+			"model": "petani",
+			"pos": [
+				24,
+				37
+			],
+			"wander": 3.0,
+			"lines": [
+				"Aduh, goblin mencuri bibit jagungku!",
+				"Ladangku jadi kosong sebagian. Kalau kamu pandai berhitung, bantu aku menghitung bibit yang tersisa, ya."
+			],
+			"again": [
+				"Tanaman butuh air dan cahaya matahari supaya tumbuh."
+			]
+		},
+		{
+			"id": "nenek_ijah",
+			"name": "Nenek Ijah",
+			"role": "Penjual Kue",
+			"model": "nenek_penjual",
+			"pos": [
+				-6,
+				44.5
+			],
+			"wander": 0.0,
+			"lines": [
+				"Kue! Kue manis! Eh, keranjang kueku hilang...",
+				"Goblin nakal membawanya lari ke Hutan Kecil di seberang sungai."
+			],
+			"again": [
+				"Hati-hati di Hutan Kecil, ya, Nak."
+			]
+		},
+		{
+			"id": "dodi",
+			"name": "Dodi",
+			"role": "Anak Desa",
+			"model": "anak_desa",
+			"pos": [
+				-5,
+				52
+			],
+			"wander": 4.0,
+			"height": 1.3,
+			"lines": [
+				"Kak {name}! Aku pernah melihat gua di timur laut pulau.",
+				"Ada suara goblin di dalamnya! Tapi pintunya tertutup batu besar."
+			],
+			"again": [
+				"Aku ingin jadi petualang seperti Kakak!"
+			]
+		},
+		{
+			"id": "bu_wati",
+			"name": "Bu Wati",
+			"role": "Warga Desa",
+			"model": "warga_ibu2",
+			"pos": [
+				9,
+				44
+			],
+			"wander": 3.0,
+			"lines": [
+				"Pagi, {name}! Di desa ini kami saling membantu.",
+				"Kalau ada tetangga kesusahan, kita tolong bersama-sama. Itu namanya gotong royong."
+			],
+			"again": [
+				"Jangan lupa makan dan minum yang cukup, ya."
+			]
+		},
+		{
+			"id": "pak_udin",
+			"name": "Pak Udin",
+			"role": "Penjaga Dermaga",
+			"model": "warga_bapak",
+			"pos": [
+				3.2,
+				63
+			],
+			"wander": 1.5,
+			"lines": [
+				"Perahumu aman di dermaga, {name}.",
+				"Kalau ingin berlayar ke pulau lain, naik saja perahunya."
+			],
+			"again": [
+				"Laut sedang tenang hari ini."
+			]
+		},
+		{
+			"id": "kak_laras",
+			"name": "Kak Laras",
+			"role": "Penjaga Jembatan",
+			"model": "pemanah",
+			"pos": [
+				4.6,
+				-14.6
+			],
+			"wander": 1.0,
+			"lines": [
+				"Berhenti sebentar, {name}! Di seberang sungai banyak goblin berkeliaran.",
+				"Hutan Kecil ada di barat, Gua Goblin di timur, dan Benteng Raja Goblin di ujung utara."
+			],
+			"again": [
+				"Benteng Raja Goblin terkunci rapat. Kamu harus lebih kuat dulu."
+			]
+		}
+	],
+	"signs": {
+		"gate": {
+			"title": "Gerbang Benteng",
+			"text": "Gerbang terkunci rapat. Dari dalam terdengar tawa Raja Goblin Kecil: \"Hahaha! Tidak ada yang bisa masuk ke bentengku!\""
+		},
+		"boulder": {
+			"title": "Batu Besar",
+			"text": "Batu besar menutup pintu Gua Goblin. Terlalu berat untuk didorong sendirian."
+		},
+		"academy": {
+			"title": "Akademi Tunas",
+			"text": "Pintu akademi masih tertutup. Bu Guru Sinta sedang menyiapkan kelas."
+		}
+	}
+}

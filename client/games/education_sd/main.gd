@@ -10,6 +10,7 @@ const SdData := preload("res://games/education_sd/scripts/sd_data.gd")
 const SdAudio := preload("res://games/education_sd/scripts/sd_audio.gd")
 const SaveEngine := preload("res://games/education_sd/scripts/engine/save_engine.gd")
 const WorldEngine := preload("res://games/education_sd/scripts/engine/world_engine.gd")
+const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.gd")
 const TitleScreen := preload("res://games/education_sd/scripts/ui/title_screen.gd")
 const ProfileScreen := preload("res://games/education_sd/scripts/ui/profile_screen.gd")
 const WorldMap := preload("res://games/education_sd/scripts/ui/world_map.gd")
@@ -19,7 +20,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.0.0"
+const VERSION := "3.1.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -27,6 +28,7 @@ const TRAIL_PATH := "user://education_sd_trail.txt"
 var game_id := GAME_ID  # dibaca uji platform
 var data := SdData.new()  # bank soal & toko (dipakai Learning Engine di tahap berikutnya)
 var worlds := WorldEngine.new()
+var npc := NpcEngine.new()  # isi pulau yang sedang dikunjungi (penduduk, tempat, papan)
 var p: Dictionary = {}
 var audio: Node
 var screen := ""
@@ -443,22 +445,29 @@ func show_island(id: String) -> void:
 	vp.msaa_3d = Viewport.MSAA_2X if bool(prof.msaa) else Viewport.MSAA_DISABLED
 	vp.handle_input_locally = false
 	box.add_child(vp)
+	var layout := {}
+	if str(isl.get("layout", "")) != "":
+		if npc.load_layout(str(isl.layout)):
+			layout = npc.layout
+		else:
+			trail("tata letak pulau gagal: " + ", ".join(npc.errors.slice(0, 3)))
 	world = IslandScene.new()
 	world.name = "World"
 	vp.add_child(world)
-	world.build({"island": isl, "gfx": str(p.settings.gfx), "hero": hero_look()})
+	world.build({"island": isl, "layout": layout, "npc_engine": npc if not layout.is_empty() else null,
+		"gfx": str(p.settings.gfx), "hero": hero_look()})
 	world.interacted.connect(_on_island_interact)
+	world.place_changed.connect(_on_place)
 	hud = Hud3D.new()
 	hud.name = "Hud"
 	_root.add_child(hud)
 	hud.setup(world, "Pulau %d · %s" % [int(isl.number), str(isl.name)], Color.from_string(str(isl.color), UI.PRIMARY))
 	hud.back_pressed.connect(go_back)
-	hud.missions_pressed.connect(func() -> void:
-		hud.show_dialog("Misi", "Misi pulau ini akan muncul setelah kamu bertemu penduduk desa.\n(Tahap berikutnya)"))
+	hud.missions_pressed.connect(show_explore)
 	hud.bag_pressed.connect(func() -> void:
 		hud.show_dialog("Tas Petualang", "Koin: %d\nLevel: %d" % [int(p.rpg.coins), level()]))
 	hud.set_perf(bool(p.settings.perf))
-	hud.set_hint("Selamat datang di %s! Jelajahi pulau. Kembali ke perahu di dermaga untuk membuka peta." % str(isl.name))
+	hud.set_hint("Selamat datang di %s! Jelajahi pulau dan sapa penduduknya. Perahu di dermaga membawamu kembali ke peta." % str(isl.name))
 	if audio != null:
 		audio.ambient(true)
 	trail("pulau %s grafis %s" % [id, str(p.settings.gfx)])
@@ -466,13 +475,83 @@ func show_island(id: String) -> void:
 
 func _on_island_interact(kind: String, id: String) -> void:
 	trail("aksi %s/%s" % [kind, id])
+	_sfx("klik")
+	var isl := worlds.island(str(p.world.island))
 	match kind:
 		"dock":
 			hud.show_dialog("Perahu", "Mau berlayar ke pulau lain?", [["Buka Peta Dunia", leave_island, UI.PRIMARY]])
 		"sign":
-			var isl := worlds.island(str(p.world.island))
-			hud.show_dialog("Pulau %d — %s" % [int(isl.number), str(isl.name)],
-				str(isl.intro) + "\n\nTempat di pulau ini: " + ", ".join(isl.get("places", [])))
+			if npc.places.has(id):
+				_discover(id)
+				var pl: Dictionary = npc.places[id]
+				hud.show_dialog(str(pl.name), "Kamu berada di %s, %s." % [str(pl.name), str(isl.name)])
+			else:
+				hud.show_dialog("Pulau %d — %s" % [int(isl.number), str(isl.name)],
+					str(isl.intro) + "\n\nTempat di pulau ini: " + ", ".join(isl.get("places", [])))
+		"npc":
+			talk(id)
+		"gate", "boulder", "academy":
+			var sg: Dictionary = npc.layout.get("signs", {}).get(kind, {})
+			hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
+
+
+## Percakapan dengan penduduk: satu kalimat per halaman, tombol Lanjut sampai habis.
+func talk(id: String) -> void:
+	var d: Dictionary = npc.talk(p, str(p.world.island), id)
+	if d.is_empty():
+		return
+	save()
+	_talk_page(id, d, 0)
+
+
+func _talk_page(id: String, d: Dictionary, i: int) -> void:
+	if hud == null or world == null:
+		return
+	world.hold_talk(id)
+	var lines: Array = d.lines
+	var title := "%s · %s" % [str(d.name), str(d.role)]
+	if i < lines.size() - 1:
+		hud.show_dialog(title, str(lines[i]), [["Lanjut", _talk_page.bind(id, d, i + 1), UI.PRIMARY]])
+	else:
+		hud.show_dialog(title, str(lines[i]))
+
+
+func _on_place(id: String) -> void:
+	if id == "" or hud == null:
+		return
+	var pl: Dictionary = npc.places.get(id, {})
+	hud.set_hint("Tempat: %s" % str(pl.get("name", "")))
+	if _discover(id):
+		toast("Tempat baru ditemukan: %s!" % str(pl.get("name", "")))
+		_sfx("bintang")
+
+
+func _discover(id: String) -> bool:
+	var fresh: bool = npc.discover(p, str(p.world.island), id)
+	if fresh:
+		trail("temukan " + id)
+		save()
+	return fresh
+
+
+## Catatan jelajah pulau (tombol MISI): tempat yang sudah ditemukan dan penduduk yang sudah dikenal.
+func show_explore() -> void:
+	var iid := str(p.world.island)
+	var rows: Array = []
+	if npc.places.is_empty():
+		rows.append("Pulau ini masih sepi. Jelajahi pantainya!")
+	else:
+		rows.append("TEMPAT (%d/%d)" % [npc.found_count(p, iid), npc.places.size()])
+		for pid in npc.places:
+			var got := (p.world.found as Dictionary).has(iid + "/" + pid)
+			rows.append(("  ✓ " if got else "  ? ") + (str(npc.places[pid].name) if got else "belum ditemukan"))
+		rows.append("")
+		rows.append("PENDUDUK (%d/%d)" % [npc.met_count(p, iid), npc.npcs.size()])
+		for nid in npc.npcs:
+			var met := (p.world.met as Dictionary).has(iid + "/" + nid)
+			var n: Dictionary = npc.npcs[nid]
+			rows.append(("  ✓ %s (%s)" % [str(n.name), str(n.role)]) if met else "  ? belum dikenal")
+	hud.show_list("Jelajah %s" % str(worlds.island(iid).get("name", "")), rows)
 
 
 func leave_island() -> void:
