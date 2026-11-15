@@ -2,6 +2,15 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## v0.84.1 — Ikon aplikasi platform (15 November 2026)
+
+**APK baru wajib** (ikon adalah aset; patch tidak bisa membawanya).
+
+- Ikon aplikasi baru (rak server berisi tiga game + gamepad) untuk ikon proyek, ikon peluncur lama, dan
+  ikon adaptif Android; dibuat ulang dengan `python3 tools/gen_ikon_platform.py`.
+- Ikon lama (ksatria & pemanah) dipindah ke `assets/icon/last_dragon_512.png` dan tetap dipakai kartu
+  The Last Dragon di launcher.
+
 ## v0.84.0 — Platform Multi-Game (15 November 2026)
 
 **APK baru wajib** (adegan utama dan autoload berubah; patch tidak bisa membawanya).
