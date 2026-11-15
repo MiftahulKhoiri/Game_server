@@ -16,6 +16,7 @@ const Locations := preload("res://games/education_sd/scripts/world/w3d_locations
 const Life := preload("res://games/education_sd/scripts/world/w3d_life.gd")
 const Base := preload("res://games/education_sd/scripts/world/w3d_base.gd")
 const Merge := preload("res://games/education_sd/scripts/world/w3d_merge.gd")
+const Foes := preload("res://games/education_sd/scripts/world/w3d_foes.gd")
 
 const PATH_HALF := 6.0
 const HUB_HALF := 26.0
@@ -27,9 +28,9 @@ const PLAYER_LAYER := 2
 
 ## Profil grafis: skala render 3D, bayangan, MSAA, jumlah pohon, jarak gambar dekorasi.
 const PROFILES := {
-	"hemat": {"scale": 0.6, "shadow": false, "msaa": false, "trees": 60, "range": 38.0, "rain": 0, "animals": 2, "birds": 0, "fx": false, "cycle": true},
-	"seimbang": {"scale": 0.8, "shadow": true, "msaa": false, "trees": 130, "range": 60.0, "rain": 250, "animals": 3, "birds": 3, "fx": true, "cycle": true},
-	"tinggi": {"scale": 1.0, "shadow": true, "msaa": true, "trees": 220, "range": 95.0, "rain": 500, "animals": 5, "birds": 5, "fx": true, "cycle": true},
+	"hemat": {"foes": 2, "rocks": 40, "grass": 120, "fog": false, "scale": 0.6, "shadow": false, "msaa": false, "trees": 60, "range": 38.0, "rain": 0, "animals": 2, "birds": 0, "fx": false, "cycle": true},
+	"seimbang": {"foes": 3, "rocks": 80, "grass": 300, "fog": true, "scale": 0.8, "shadow": true, "msaa": false, "trees": 130, "range": 60.0, "rain": 250, "animals": 3, "birds": 3, "fx": true, "cycle": true},
+	"tinggi": {"foes": 4, "rocks": 120, "grass": 600, "fog": true, "scale": 1.0, "shadow": true, "msaa": true, "trees": 220, "range": 95.0, "rain": 500, "animals": 5, "birds": 5, "fx": true, "cycle": true},
 }
 
 const THEMES := {
@@ -64,6 +65,8 @@ var life: Node3D
 var locs: Dictionary = {}  # loc_id -> {root, def}
 var _talk_node: Node3D
 var _animals := 0
+var foes: Node3D
+var flashlight: OmniLight3D
 
 
 func build(c: Dictionary) -> void:
@@ -101,6 +104,9 @@ func build(c: Dictionary) -> void:
 	_locations()
 	_items()
 	_birds()
+	_scatter()
+	_landmark(rid)
+	_foes()
 	_water_fx()
 	_optimize()
 	player = Player.new()
@@ -127,6 +133,11 @@ func _environment() -> void:
 	env.ambient_light_energy = 0.45
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 0.85
+	if bool(profile.get("fog", false)):
+		env.fog_enabled = true
+		env.fog_light_color = Color.from_string(str(theme.sky), Color.SKY_BLUE).lightened(0.4)
+		env.fog_density = 0.006
+		env.fog_sky_affect = 0.3
 	_env = env
 	sky_day_top = sky_mat.sky_top_color
 	sky_day_horizon = sky_mat.sky_horizon_color
@@ -225,6 +236,11 @@ func _trees() -> void:
 		var t := xs[i]
 		trunk.set_instance_transform(i, t.translated_local(Vector3(0, 0.8, 0)))
 		crown.set_instance_transform(i, t.translated_local(Vector3(0, 2.2, 0)))
+	# Batang pohon dekat pagar diberi tabrakan statis supaya kamera (SpringArm3D) tidak menembusnya.
+	for t in xs:
+		var inner := HUB_HALF if t.origin.z > HUB_FRONT else PATH_HALF
+		if absf(t.origin.x) < inner + 14.0:
+			_static_cyl_at(self, 0.3 * t.basis.get_scale().x, 3.0, t.origin + Vector3(0, 1.5, 0))
 	for pair in [[trunk, theme.trunk], [crown, theme.crown]]:
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = pair[0]
@@ -982,3 +998,125 @@ func _optimize() -> void:
 			extra.append(star)
 		var rng_end := float(profile.range) + 25.0 if str(c.name).begins_with("Loc_") else 0.0
 		merged_count += Merge.merge(c, extra, rng_end)
+
+
+# --- 2.3.0: lingkungan lebih kaya, landmark, pengacau, alat ------------------------------------------
+
+## Batu, rumpun rumput, dan bunga dengan MultiMesh (satu draw call per jenis), jumlah mengikuti profil.
+func _scatter() -> void:
+	var specs := [
+		["rocks", Rig.sphere(0.6), Color("9a948a"), Vector3(1.0, 0.55, 0.85), 0.15],
+		["grass", Rig.cyl(0.0, 0.12, 0.45, 5), Color.from_string(str(theme.crown), Color.GREEN).darkened(0.15), Vector3.ONE, 0.22],
+		["grass", Rig.sphere(0.09), Color("ffd166"), Vector3.ONE, 0.35],
+	]
+	for i in specs.size():
+		var spec: Array = specs[i]
+		var count := int(profile.get(spec[0], 0)) / (2 if i == 2 else 1)
+		if count <= 0:
+			continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = spec[1]
+		mm.instance_count = count
+		for k in count:
+			var z := _rng.randf_range(_end_z - 8.0, HUB_BACK - 1.0)
+			var inner := HUB_HALF if z > HUB_FRONT else PATH_HALF
+			var x := _rng.randf_range(-inner + 0.8, inner - 0.8) if _rng.randf() < 0.55 else _rng.randf_range(inner + 1.0, inner + 14.0) * (1.0 if _rng.randf() < 0.5 else -1.0)
+			if absf(x) < 2.6 and z < HUB_FRONT:
+				x = 3.4 * signf(x + 0.01)
+			var s := _rng.randf_range(0.6, 1.4)
+			var b := Basis(Vector3.UP, _rng.randf() * TAU).scaled((spec[3] as Vector3) * s)
+			mm.set_instance_transform(k, Transform3D(b, Vector3(x, float(spec[4]) * s, z)))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Scatter%d" % i
+		mmi.multimesh = mm
+		mmi.material_override = Rig.mat(spec[2])
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if i > 0 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mmi.visibility_range_end = float(profile.range)
+		add_child(mmi)
+
+
+## Landmark tinggi di ujung jalan (terlihat dari alun-alun) sebagai penunjuk arah ke Penjaga Wilayah.
+func _landmark(rid: String) -> void:
+	var at := Vector3(0, 0, _end_z - 16.0)
+	var n := Node3D.new()
+	n.name = "Landmark"
+	n.position = at
+	match rid:
+		"bahasa":
+			n.add_child(Rig.part(Rig.cyl(1.8, 2.8, 16.0, 12), Color("7a4a22"), Vector3(0, 8, 0)))
+			for pt in [Vector3(0, 18, 0), Vector3(-4, 15.5, 1), Vector3(4, 16, -1), Vector3(0, 15, 3.5)]:
+				n.add_child(Rig.part(Rig.sphere(5.0), Color.from_string(str(theme.crown), Color.GREEN), pt))
+			var l := _label("POHON BAHASA RAKSASA", 140, Color("ffd166"), true)
+			l.position.y = 24.0
+			n.add_child(l)
+		"ipa":
+			n.add_child(Rig.part(Rig.cyl(3.0, 3.6, 12.0, 16), Color("e8eef5"), Vector3(0, 6, 0)))
+			n.add_child(Rig.part(Rig.sphere(3.6), Color("9fe3ff"), Vector3(0, 12, 0)))
+			var tele := Rig.part(Rig.cyl(0.5, 0.7, 5.0, 10), Color("6b5f86"), Vector3(1.5, 14.5, 0))
+			tele.rotation.z = -0.8
+			n.add_child(tele)
+			var l := _label("OBSERVATORIUM", 140, Color("ffd166"), true)
+			l.position.y = 19.0
+			n.add_child(l)
+		"ips":
+			for k in 6:
+				n.add_child(Rig.part(Rig.cyl(1.6 - k * 0.12, 1.72 - k * 0.12, 3.0, 14), Color("e05a4f") if k % 2 == 0 else Color.WHITE, Vector3(0, 1.5 + k * 3.0, 0)))
+			var lamp := Rig.part(Rig.sphere(1.0), Color("ffd166"), Vector3(0, 19.3, 0))
+			var lm := StandardMaterial3D.new()
+			lm.albedo_color = Color("ffd166")
+			lm.emission_enabled = true
+			lm.emission = Color("ffb020")
+			lamp.material_override = lm
+			n.add_child(lamp)
+			var l := _label("MERCUSUAR NUSANTARA", 140, Color("ffd166"), true)
+			l.position.y = 22.0
+			n.add_child(l)
+		_:
+			return  # Kerajaan Matematika sudah punya Istana Angka.
+	add_child(n)
+
+
+func _foes() -> void:
+	foes = Foes.new()
+	foes.name = "Foes"
+	add_child(foes)
+	foes.setup(self, hash(str(ctx.region.id)) + 7)
+	var tint := Color.from_string(str(theme.accent), Color.BLUE).lightened(0.35)
+	var spots := [Vector3(14, 0, 12), Vector3(-12, 0, 27), Vector3(0, 0, gate_z(0) - 6.0), Vector3(0, 0, gate_z(1) - 6.0)]
+	for i in mini(int(profile.foes), spots.size()):
+		if spots[i].z < _end_z + 4.0:
+			continue
+		foes.spawn(spots[i], Vector3(3.0, 0, 0) if i >= 2 else Vector3(2.5, 0, 2.0), tint)
+	var ex: Dictionary = ctx.get("exam", {})
+	var b := get_node_or_null("Boss")
+	if b != null:
+		foes.set_boss(b, b.get_meta("rig"), bool(ex.get("open", false)) and not bool(ex.get("passed", false)))
+
+
+## Efek alat yang sedang dipakai (w3d_items.gd).
+func apply_tool(id: String) -> void:
+	match id:
+		"senter":
+			flashlight = OmniLight3D.new()
+			flashlight.name = "Senter"
+			flashlight.position = Vector3(0, 1.3, 0.4)
+			flashlight.omni_range = 9.0
+			flashlight.light_color = Color("fff3c4")
+			flashlight.shadow_enabled = false
+			player.add_child(flashlight)
+		"kaca_pembesar":
+			for it in find_children("Item_*", "Node3D", false, false):
+				(it as Node3D).scale = Vector3.ONE * 1.8
+				var glow: Label3D = _label("✦", 96, Color("ffe680"), true)
+				glow.position.y = 0.8
+				it.add_child(glow)
+		"teropong":
+			player.zoom_max = 12.0
+		"sepatu":
+			player.speed_bonus = 1.15
+
+
+func _process(_delta: float) -> void:
+	if flashlight != null and life != null:
+		flashlight.light_energy = lerpf(1.6, 0.25, life.day_factor)

@@ -1,5 +1,5 @@
 extends Control
-## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.2.0, paket unduhan).
+## Game Pembelajaran SD — "Petualangan Pulau Ilmu" (v2.3.0, paket unduhan).
 ## Semua berkas ada di res://games/education_sd/ (namespace game ini). Kontrak platform yang dipakai:
 ## GameManager.load_progress / save_progress / restore_progress_from_server / exit_to_launcher dan
 ## platform_before_exit(). Mesin kuis bersama (res://shared/edu/quiz_app.gd, dipakai SMP) tidak diubah.
@@ -15,6 +15,7 @@ const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.g
 const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
 const Missions := preload("res://games/education_sd/scripts/world/w3d_missions.gd")
+const Items := preload("res://games/education_sd/scripts/world/w3d_items.gd")
 const LOC_QUESTIONS := 3
 const LOC_PASS := 2
 
@@ -23,7 +24,7 @@ const AREA_QUESTIONS := 5
 const QUIZ_QUESTIONS := 10
 const EXAM_QUESTIONS := 10
 const PRACTICE_QUESTIONS := 6
-const VERSION := "2.2.0"
+const VERSION := "2.3.0"
 ## Jejak langkah (breadcrumb) di HP: setiap layar/tombol ditulis dan di-flush ke berkas. Bila aplikasi
 ## tertutup paksa (crash), jejak tidak berakhir dengan END; saat game dibuka lagi, 30 langkah terakhir
 ## dikirim ke server bersama progres (p["crash"]) supaya penyebabnya bisa dilacak tanpa kabel.
@@ -548,7 +549,15 @@ func _world_ctx(region_id: String) -> Dictionary:
 		"found": bool((p.world.found as Dictionary).get(_wkey(region_id), false)),
 		"locs": _loc_status(region_id), "items": (p.world.items as Dictionary).get(region_id, []),
 		"minigame": _minigame_for(region_id), "gfx": str(p.settings.gfx),
-		"hero": {"shirt": outfit, "long_hair": str(p.settings.hero) == "perempuan"}}
+		"hero": {"shirt": outfit, "long_hair": str(p.settings.hero) == "perempuan", "model": "anak_desa" if str(p.settings.hero) == "petualang" else "",
+			"hat": _shop_value(str(p.player.avatar.get("hat", ""))), "acc": _shop_value(str(p.player.avatar.get("acc", "")))}}
+
+
+func _shop_value(id: String) -> String:
+	for s in data.doc.get("shop", []):
+		if str(s.id) == id:
+			return str(s.value)
+	return ""
 
 
 func show_world(region_id: String = "") -> void:
@@ -591,6 +600,15 @@ func show_world(region_id: String = "") -> void:
 	hud.setup(world, "%s · Kelas %d" % [str(r.name), grade()], Color.from_string(str(r.color), UI.PRIMARY))
 	hud.back_pressed.connect(go_back)
 	hud.missions_pressed.connect(show_missions)
+	hud.bag_pressed.connect(show_bag)
+	hud.dialog_closed.connect(func() -> void: _foe_cancel.call_deferred())
+	if world.foes != null:
+		world.foes.foe_touched.connect(_on_foe)
+	var tool := Items.equipped(p)
+	if tool != "":
+		world.apply_tool(tool)
+		if tool == "kompas":
+			hud.compass_target = _objective_pos()
 	hud.set_perf(bool(p.settings.get("perf", false)))
 	hud.chips.add_child(_chip("Bintang %d" % SdProgress.total_stars(p), UI.GOLD))
 	hud.chips.add_child(_chip("Koin %d" % int(p.coins), Color("ffd166")))
@@ -676,7 +694,9 @@ func _on_world_interact(kind: String, id: String) -> void:
 				hud.show_dialog(str(t.name), str(topic.story) + "\nJawab %d soal untuk membukanya!" % AREA_QUESTIONS,
 					[["Mulai!", _from_world.bind(start_area.bind(rid, id)), UI.GOOD]])
 		"boss":
-			if ctx.exam.open:
+			if ctx.exam.open and not ctx.exam.passed and not world.foes.boss_tired():
+				hud.show_dialog("Penjaga Wilayah", "Awas, ia sedang berjaga dan bisa menghentak! Tunggu sampai ia lelah (duduk membungkuk), lalu tantang dia.")
+			elif ctx.exam.open:
 				hud.show_dialog(str(IslandWorld.THEMES.get(rid, {}).get("boss", "Penjaga Wilayah")),
 					"Kalahkan aku dengan ujian akhir: %d soal, nilai 70 ke atas berarti menang!" % EXAM_QUESTIONS,
 					[["Mulai ujian", _from_world.bind(start_exam.bind(rid)), UI.GOLD]])
@@ -706,7 +726,8 @@ func _on_world_interact(kind: String, id: String) -> void:
 			hud.show_dialog("Lemari Kostum", "Kostum yang sudah kamu miliki. Kostum baru bisa dibeli dengan koin di menu Koleksi.", btns)
 		"mirror":
 			hud.show_dialog("Cermin Karakter", "Pilih karakter petualangmu.", [
-				["Laki-laki", _pick_hero.bind("laki"), UI.PRIMARY], ["Perempuan", _pick_hero.bind("perempuan"), Color("e05a8f")]])
+				["Laki-laki", _pick_hero.bind("laki"), UI.PRIMARY], ["Perempuan", _pick_hero.bind("perempuan"), Color("e05a8f")],
+				["Petualang", _pick_hero.bind("petualang"), Color("3fae63")]])
 		"book":
 			hud.show_list("Buku Petualangan · Kelas %d" % grade(), _book_rows())
 		"cards":
@@ -867,7 +888,8 @@ func world_missions() -> Array:
 func _check_missions() -> void:
 	var got := Missions.award(p, world_missions(), Time.get_date_string_from_system())
 	for m in got:
-		toast("Misi selesai: %s! +%d koin, +%d XP" % [str(m.name), int(m.reward.coins), int(m.reward.xp)])
+		toast("Misi selesai: %s! +%d koin, +%d XP%s" % [str(m.name), int(m.reward.coins), int(m.reward.xp),
+			(", alat baru: " + Items.tool_name(str(m.item))) if str(m.get("item", "")) != "" else ""])
 		trail("misi " + str(m.key))
 	if not got.is_empty():
 		_announce_badges()
@@ -968,6 +990,136 @@ func _count_locs() -> int:
 		if bool(p.world.locs[k].get("done", false)):
 			n += 1
 	return n
+
+
+# --- 2.3.0: tas, alat, pengacau ---------------------------------------------------------------------------
+
+## Posisi tujuan berikutnya (untuk Kompas): gerbang pertama yang belum selesai, lalu penjaga wilayah.
+func _objective_pos():
+	if world == null or not world.ctx.has("topics"):
+		return null
+	for t in world.ctx.topics:
+		if not t.done and world.gates.has(str(t.id)):
+			return (world.gates[str(t.id)].node as Node3D).global_position
+	var b := world.get_node_or_null("Boss")
+	return b.global_position if b != null else null
+
+
+func show_bag() -> void:
+	if hud == null:
+		return
+	var btns: Array = []
+	var rows: Array = ["ALAT PETUALANGAN (pakai satu):"]
+	var cur := Items.equipped(p)
+	for id in Items.TOOLS:
+		var t: Dictionary = Items.TOOLS[id]
+		if (p.world.inventory as Dictionary).has(id):
+			rows.append("%s %s — %s" % ["▶" if id == cur else "•", str(t.name), str(t.desc)])
+			if id != cur:
+				btns.append(["Pakai " + str(t.name), _equip_tool.bind(id), UI.PRIMARY])
+		else:
+			rows.append("🔒 %s — didapat dari: %s" % [str(t.name), str(t.from)])
+	rows.append("")
+	rows.append("KOSTUM & AKSESORI (beli di menu Koleksi dengan koin):")
+	for s in data.doc.get("shop", []):
+		if (p.owned as Array).has(str(s.id)) and str(s.slot) in ["hat", "acc"]:
+			var on := str(p.player.avatar.get(str(s.slot), "")) == str(s.id)
+			rows.append("%s %s" % ["▶" if on else "•", str(s.name)])
+			btns.append([("Lepas " if on else "Pakai ") + str(s.name), _wear_extra.bind(str(s.slot), "" if on else str(s.id)), Color("c98a4b")])
+	rows.append("")
+	rows.append("Pengacau dijinakkan: %d · Benda ditemukan: %d" % [int(p.world.get("tamed", 0)), _count_items()])
+	hud.show_list("Tas Petualangan", rows, btns.slice(0, 4))
+
+
+func _equip_tool(id: String) -> void:
+	if (p.world.inventory as Dictionary).has(id):
+		p.world.equip["alat"] = id
+		save()
+		toast("Alat dipakai: " + Items.tool_name(id))
+		show_world(str(world.ctx.region.id) if world != null else "")
+
+
+func _wear_extra(slot: String, id: String) -> void:
+	if id != "" and not (p.owned as Array).has(id):
+		return
+	p.player.avatar[slot] = id
+	save()
+	show_world(str(world.ctx.region.id) if world != null else "")
+
+
+## Pengacau Lupa menyentuh pemain: soal cepat (pilihan ganda / benar-salah) dari topik wilayah kelas aktif.
+var _foe: Node3D
+var _foe_q: Dictionary = {}
+
+
+func _quick_question(rid: String) -> Dictionary:
+	var ts := data.topics_for(rid, grade())
+	ts.shuffle()
+	for t in ts:
+		var picked := data.pick(str(t.id), grade(), 6, SdProgress.topic_stats(p, grade(), str(t.id)), rng)
+		for q in picked.questions:
+			if str(q.type) in ["mc", "tf"]:
+				return q
+	return {}
+
+
+func _on_foe(n: Node3D) -> void:
+	if hud == null or hud.dialog_open():
+		world.foes.retreat(n)
+		return
+	var q := _quick_question(str(world.ctx.region.id))
+	if q.is_empty():
+		world.foes.tame(n)
+		return
+	_foe = n
+	_foe_q = q
+	world.foes.paused = true
+	trail("3D pengacau " + str(q.get("id", "")))
+	var opts: Array = []
+	var right := 0
+	if str(q.type) == "tf":
+		opts = ["Benar", "Salah"]
+		right = 0 if bool(q.answer) else 1
+	else:
+		opts = (q.options as Array).duplicate()
+		right = int(q.answer)
+	var order: Array = range(opts.size())
+	if Items.equipped(p) == "jaring" and opts.size() > 2:
+		var wrong: Array = order.filter(func(i): return i != right)
+		order.erase(wrong[rng.randi_range(0, wrong.size() - 1)])
+	var btns: Array = []
+	for i in order:
+		btns.append([str(opts[i]), _foe_answer.bind(i == right), UI.PRIMARY])
+	hud.show_dialog("Pengacau Lupa!", "Ia mengacak ingatanmu! Jawab dengan benar untuk menjinakkannya:\n" + str(q.q), btns)
+
+
+## Dialog ditutup tanpa menjawab: pengacau mundur (tanpa hadiah, tanpa catatan jawaban).
+func _foe_cancel() -> void:
+	if _foe != null and is_instance_valid(_foe) and world != null:
+		world.foes.paused = false
+		world.foes.retreat(_foe)
+	_foe = null
+
+
+func _foe_answer(correct: bool) -> void:
+	if _foe == null or not is_instance_valid(_foe):
+		return
+	SdProgress.record_answer(p, grade(), _foe_q, correct, true)
+	world.foes.paused = false
+	if correct:
+		p.world.tamed = int(p.world.get("tamed", 0)) + 1
+		world.foes.tame(_foe)
+		toast("Pengacau jinak! (%d dijinakkan)" % int(p.world.tamed))
+		if audio != null:
+			audio.play("benar")
+	else:
+		world.foes.retreat(_foe)
+		toast("Belum tepat. %s" % str(_foe_q.get("explain", "Coba lagi nanti!")))
+		if audio != null:
+			audio.play("salah")
+	_foe = null
+	_announce_badges()
+	_check_missions()
 
 
 # --- Peta & wilayah --------------------------------------------------------------------------------------
@@ -1577,7 +1729,7 @@ func show_settings() -> void:
 	v.add_child(arow)
 	v.add_child(UI.label("Dunia 3D", 26, UI.INK))
 	var hrow := UI.hbox(12)
-	for h in [["laki", "Karakter: Laki-laki"], ["perempuan", "Karakter: Perempuan"]]:
+	for h in [["laki", "Karakter: Laki-laki"], ["perempuan", "Karakter: Perempuan"], ["petualang", "Karakter: Petualang (model 3D)"]]:
 		var b := UI.button(h[1], set_setting.bind("hero", h[0]), UI.GOLD if str(p.settings.hero) == h[0] else Color("e8e2f2"), 24, 76)
 		UI.expand(b)
 		hrow.add_child(b)

@@ -8,6 +8,8 @@ extends RefCounted
 
 const Locations := preload("res://games/education_sd/scripts/world/w3d_locations.gd")
 const SdProgress := preload("res://games/education_sd/scripts/sd_progress.gd")
+const Items := preload("res://games/education_sd/scripts/world/w3d_items.gd")
+const TAME_GOAL := 5
 
 const ITEMS_PER_ISLAND := 5
 const DAILY_ANSWERS := 10
@@ -36,8 +38,10 @@ static func build(p: Dictionary, data, grade: int, rid: String, today: String) -
 	out.append(_m("gerbang", k + "/gerbang", "utama", "Buka semua gerbang",
 		"Selesaikan semua area belajar %s kelas %d." % [str(region.get("name", "")), grade], subject, done, ts.size(), 30, 50, claimed))
 	var ex: Dictionary = SdProgress.grade_rec(p, grade).exams.get(rid, {})
-	out.append(_m("penjaga", k + "/penjaga", "utama", "Kalahkan Penjaga Wilayah",
-		"Lulus ujian akhir wilayah (nilai 70 ke atas). Syarat: semua gerbang terbuka.", subject, 1 if ex.get("passed", false) else 0, 1, 40, 80, claimed))
+	var boss := _m("penjaga", k + "/penjaga", "utama", "Kalahkan Penjaga Wilayah",
+		"Lulus ujian akhir wilayah (nilai 70 ke atas) saat penjaga lelah. Syarat: semua gerbang terbuka.", subject, 1 if ex.get("passed", false) else 0, 1, 40, 80, claimed)
+	boss.item = Items.BOSS_TOOL.get(rid, "")
+	out.append(boss)
 	var locs: Dictionary = w.locs
 	for d in Locations.for_region(rid):
 		var lid := str(d.id)
@@ -57,8 +61,14 @@ static func build(p: Dictionary, data, grade: int, rid: String, today: String) -
 	var items: Array = (w.items as Dictionary).get(rid, [])
 	out.append(_m("benda", rid + "/benda", "benda", "Pengumpul benda", "Temukan %d benda tersembunyi di pulau ini." % ITEMS_PER_ISLAND,
 		subject, items.size(), ITEMS_PER_ISLAND, 20, 25, claimed))
-	out.append(_m("empat_pulau", "global/empat_pulau", "eksplorasi", "Penjelajah Nusantara Ilmu", "Kunjungi keempat pulau.",
-		"", (w.islands as Dictionary).size(), 4, 25, 30, claimed))
+	var four := _m("empat_pulau", "global/empat_pulau", "eksplorasi", "Penjelajah Nusantara Ilmu", "Kunjungi keempat pulau.",
+		"", (w.islands as Dictionary).size(), 4, 25, 30, claimed)
+	four.item = "sepatu"
+	out.append(four)
+	var tame := _m("jinak", "global/jinak", "tantangan", "Penjinak Pengacau", "Jinakkan %d Pengacau Lupa dengan menjawab soal." % TAME_GOAL,
+		"", int(w.get("tamed", 0)), TAME_GOAL, 20, 30, claimed)
+	tame.item = "jaring"
+	out.append(tame)
 	var day: Array = (p.daily as Dictionary).get(today, [0, 0])
 	out.append(_m("soal_harian", "harian/%s/soal" % today, "harian", "Rajin hari ini", "Jawab %d soal hari ini (mode apa saja)." % DAILY_ANSWERS,
 		"", int(day[1]), DAILY_ANSWERS, 10, 15, claimed))
@@ -76,6 +86,8 @@ static func award(p: Dictionary, missions: Array, today: String) -> Array:
 			claimed[m.key] = today
 			p.coins = int(p.coins) + int(m.reward.coins)
 			p.xp = int(p.xp) + int(m.reward.xp)
+			if str(m.get("item", "")) != "":
+				Items.give(p, str(m.item))
 			m.claimed = true
 			got.append(m)
 	_prune(claimed, today)
@@ -100,7 +112,7 @@ static func _prune(claimed: Dictionary, today: String) -> void:
 
 static func type_name(t: String) -> String:
 	return {"utama": "Misi utama", "sampingan": "Misi sampingan", "teka-teki": "Teka-teki", "npc": "Misi warga",
-		"eksplorasi": "Eksplorasi", "benda": "Cari benda", "harian": "Misi harian"}.get(t, t)
+		"eksplorasi": "Eksplorasi", "benda": "Cari benda", "harian": "Misi harian", "tantangan": "Tantangan"}.get(t, t)
 
 
 static func lines(missions: Array) -> Array:
@@ -108,6 +120,8 @@ static func lines(missions: Array) -> Array:
 	for m in missions:
 		var mark := "✓" if m.done else "•"
 		var rw := "+%d koin, +%d XP" % [int(m.reward.coins), int(m.reward.xp)]
+		if str(m.get("item", "")) != "":
+			rw += ", alat: " + Items.tool_name(str(m.item))
 		out.append("%s [%s] %s — %d/%d\n    %s  (%s%s)" % [mark, type_name(str(m.type)), str(m.name), int(m.progress), int(m.goal),
 			str(m.desc), rw, ", sudah diterima" if m.claimed else ""])
 	return out
