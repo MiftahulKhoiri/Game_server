@@ -159,10 +159,20 @@ func _exit_tree() -> void:
 		get_tree().quit_on_go_back = true
 
 
-## Tombol kembali Android: dari halaman dalam kembali ke Beranda (di Beranda keluar dari aplikasi).
+## Tombol kembali Android: dari halaman dalam kembali ke Beranda. Di Beranda: kembali ke launcher platform
+## multi-game (v0.84.0) bila ada, selain itu keluar dari aplikasi seperti dulu.
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_GO_BACK_REQUEST and _page != "home":
+	if what != NOTIFICATION_WM_GO_BACK_REQUEST:
+		return
+	if _page != "home":
 		_show_page("home")
+	elif _platform() != null:
+		_platform().exit_to_launcher()
+
+
+## Launcher platform multi-game (autoload GameManager); null di APK lama tanpa platform.
+func _platform() -> Node:
+	return get_node_or_null("/root/GameManager")
 
 
 # --- Membangun halaman -------------------------------------------------------------------
@@ -228,7 +238,13 @@ func _build_home() -> void:
 	b_reg.pressed.connect(func() -> void: _open_form("register"))
 	_btn_settings = _make_button("Pengaturan")
 	_btn_settings.pressed.connect(func() -> void: _show_page("settings"))
-	for b: Button in [_btn_continue, b_login, b_reg, _btn_settings]:
+	var home_buttons: Array[Button] = [_btn_continue, b_login, b_reg, _btn_settings]
+	if _platform() != null:
+		# Platform multi-game (v0.84.0): kembali ke daftar semua game.
+		var b_games := _make_button("Semua Game")
+		b_games.pressed.connect(func() -> void: _platform().exit_to_launcher())
+		home_buttons.insert(0, b_games)
+	for b: Button in home_buttons:
 		_style_home_button(b)
 		b.custom_minimum_size = Vector2(0, 64 if _judul_gambar else 78)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -521,7 +537,7 @@ func _show_page(id: String) -> void:
 		(_pages[k] as Control).visible = (k == id)
 	_scroll.scroll_vertical = 0
 	if is_inside_tree():
-		get_tree().quit_on_go_back = (id == "home")
+		get_tree().quit_on_go_back = id == "home" and _platform() == null
 	for e: LineEdit in [_pass_edit, _rpass_edit, _rpass2_edit]:
 		e.text = ""  # kata sandi tidak terbawa antar halaman
 	_login_status.text = ""

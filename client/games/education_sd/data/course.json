@@ -1,0 +1,862 @@
+{
+	"title": "Belajar SD",
+	"subtitle": "Matematika, Bahasa Indonesia, IPA, dan IPS untuk kelas 1–6. Pilih Latihan untuk pembahasan tiap soal, atau Kuis untuk nilai.",
+	"pass_score": 70,
+	"questions_per_session": 8,
+	"subjects": [
+		{
+			"id": "matematika",
+			"name": "Matematika",
+			"color": "#2f5d8a",
+			"levels": [
+				{
+					"id": "k12",
+					"name": "Kelas 1–2 · Penjumlahan & Pengurangan",
+					"generator": {
+						"type": "arith",
+						"ops": [
+							"+",
+							"-"
+						],
+						"min": 1,
+						"max": 20,
+						"count": 10
+					}
+				},
+				{
+					"id": "k34",
+					"name": "Kelas 3–4 · Perkalian & Pembagian",
+					"generator": {
+						"type": "arith",
+						"ops": [
+							"x",
+							":"
+						],
+						"min": 2,
+						"max": 10,
+						"count": 10
+					}
+				},
+				{
+					"id": "k56",
+					"name": "Kelas 5–6 · Bilangan Dua Angka",
+					"generator": {
+						"type": "arith",
+						"ops": [
+							"+",
+							"-",
+							"x"
+						],
+						"min": 10,
+						"max": 99,
+						"count": 10
+					}
+				},
+				{
+					"id": "pecahan",
+					"name": "Kelas 5–6 · Membandingkan Pecahan",
+					"generator": {
+						"type": "fraction_compare",
+						"count": 8
+					}
+				}
+			]
+		},
+		{
+			"id": "bahasa_indonesia",
+			"name": "Bahasa Indonesia",
+			"color": "#8a4b2f",
+			"levels": [
+				{
+					"id": "k12",
+					"name": "Kelas 1–2",
+					"questions": [
+						{
+							"q": "Huruf vokal adalah …",
+							"options": [
+								"a, i, u, e, o",
+								"b, c, d, f, g",
+								"k, l, m, n, p",
+								"r, s, t, w, y"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata \"buku\" terdiri atas berapa suku kata?",
+							"options": [
+								"2",
+								"1",
+								"3",
+								"4"
+							],
+							"answer": 0,
+							"explain": "bu-ku"
+						},
+						{
+							"q": "Lawan kata \"besar\" adalah …",
+							"options": [
+								"kecil",
+								"tinggi",
+								"panjang",
+								"berat"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kalimat yang diakhiri tanda tanya (?) adalah kalimat …",
+							"options": [
+								"tanya",
+								"perintah",
+								"berita",
+								"seru"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Huruf pertama nama orang ditulis dengan huruf …",
+							"options": [
+								"kapital (besar)",
+								"kecil",
+								"miring",
+								"angka"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Persamaan kata (sinonim) \"pandai\" adalah …",
+							"options": [
+								"pintar",
+								"malas",
+								"lambat",
+								"lupa"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Lawan kata \"siang\" adalah …",
+							"options": [
+								"malam",
+								"pagi",
+								"sore",
+								"terang"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Ibu memasak nasi di …",
+							"options": [
+								"dapur",
+								"garasi",
+								"atap",
+								"kamar mandi"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k34",
+					"name": "Kelas 3–4",
+					"questions": [
+						{
+							"q": "Ide pokok paragraf biasanya terdapat pada …",
+							"options": [
+								"kalimat utama",
+								"kalimat penjelas",
+								"judul buku",
+								"tanda baca"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata baku yang benar adalah …",
+							"options": [
+								"apotek",
+								"apotik",
+								"aktip",
+								"nasehat"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata dasar \"tulis\" mendapat imbuhan me- menjadi …",
+							"options": [
+								"menulis",
+								"metulis",
+								"mentulis",
+								"menyulis"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Tanda baca yang tepat untuk kalimat perintah \"Tutup pintu itu …\" adalah …",
+							"options": [
+								"!",
+								"?",
+								",",
+								":"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Cerita tentang binatang yang berperilaku seperti manusia disebut …",
+							"options": [
+								"fabel",
+								"legenda",
+								"mite",
+								"sage"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Lawan kata \"rajin\" adalah …",
+							"options": [
+								"malas",
+								"giat",
+								"tekun",
+								"cermat"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Surat kepada teman atau keluarga termasuk surat …",
+							"options": [
+								"pribadi",
+								"resmi",
+								"dinas",
+								"niaga"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pada kalimat \"Adik membaca buku.\", subjeknya adalah …",
+							"options": [
+								"Adik",
+								"membaca",
+								"buku",
+								"membaca buku"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k56",
+					"name": "Kelas 5–6",
+					"questions": [
+						{
+							"q": "Kalimat yang berisi pendapat seseorang disebut kalimat …",
+							"options": [
+								"opini",
+								"fakta",
+								"perintah",
+								"seru"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Majas yang membandingkan dua hal memakai kata \"seperti\" atau \"bagai\" disebut …",
+							"options": [
+								"perumpamaan (simile)",
+								"personifikasi",
+								"hiperbola",
+								"litotes"
+							],
+							"answer": 0
+						},
+						{
+							"q": "\"Daun melambai-lambai ditiup angin\" mengandung majas …",
+							"options": [
+								"personifikasi",
+								"hiperbola",
+								"litotes",
+								"simile"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Penulisan kata serapan yang benar adalah …",
+							"options": [
+								"kualitas",
+								"kwalitas",
+								"kwalitet",
+								"qualitas"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bagian akhir cerita yang berisi penyelesaian masalah disebut …",
+							"options": [
+								"resolusi",
+								"orientasi",
+								"komplikasi",
+								"klimaks"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Teks yang berisi langkah-langkah melakukan sesuatu disebut teks …",
+							"options": [
+								"prosedur",
+								"narasi",
+								"deskripsi",
+								"eksposisi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata \"mengatasi\" berasal dari kata dasar …",
+							"options": [
+								"atas",
+								"mengatas",
+								"atasi",
+								"tas"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sampiran pantun terletak pada baris …",
+							"options": [
+								"1 dan 2",
+								"3 dan 4",
+								"1 dan 3",
+								"2 dan 4"
+							],
+							"answer": 0
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "ipa",
+			"name": "IPA",
+			"color": "#2f7d4f",
+			"levels": [
+				{
+					"id": "k12",
+					"name": "Kelas 1–2",
+					"questions": [
+						{
+							"q": "Alat indra untuk melihat adalah …",
+							"options": [
+								"mata",
+								"telinga",
+								"hidung",
+								"lidah"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Alat indra untuk mencium bau adalah …",
+							"options": [
+								"hidung",
+								"mata",
+								"kulit",
+								"telinga"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hewan yang hidup di air dan bernapas dengan insang adalah …",
+							"options": [
+								"ikan",
+								"kucing",
+								"ayam",
+								"sapi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Agar tumbuh, tanaman membutuhkan …",
+							"options": [
+								"air dan cahaya matahari",
+								"gula dan garam",
+								"susu",
+								"minyak goreng"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Benda yang memancarkan cahaya sendiri adalah …",
+							"options": [
+								"matahari",
+								"bulan",
+								"cermin",
+								"meja"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Es batu yang dibiarkan di luar kulkas akan …",
+							"options": [
+								"mencair",
+								"membeku",
+								"mengeras",
+								"menjadi batu"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hewan yang berkembang biak dengan bertelur adalah …",
+							"options": [
+								"ayam",
+								"kambing",
+								"kucing",
+								"sapi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bagian tumbuhan yang menyerap air dari tanah adalah …",
+							"options": [
+								"akar",
+								"daun",
+								"bunga",
+								"buah"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k34",
+					"name": "Kelas 3–4",
+					"questions": [
+						{
+							"q": "Perubahan wujud dari cair menjadi gas disebut …",
+							"options": [
+								"menguap",
+								"membeku",
+								"mencair",
+								"mengembun"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hewan pemakan tumbuhan disebut …",
+							"options": [
+								"herbivora",
+								"karnivora",
+								"omnivora",
+								"insektivora"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Proses tumbuhan membuat makanan sendiri disebut …",
+							"options": [
+								"fotosintesis",
+								"respirasi",
+								"evaporasi",
+								"metamorfosis"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Urutan metamorfosis sempurna kupu-kupu adalah …",
+							"options": [
+								"telur – ulat – kepompong – kupu-kupu",
+								"telur – kepompong – ulat – kupu-kupu",
+								"ulat – telur – kepompong – kupu-kupu",
+								"telur – kupu-kupu – ulat – kepompong"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Gaya yang membuat benda jatuh ke bawah adalah gaya …",
+							"options": [
+								"gravitasi",
+								"magnet",
+								"gesek",
+								"pegas"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Planet yang paling dekat dengan Matahari adalah …",
+							"options": [
+								"Merkurius",
+								"Venus",
+								"Bumi",
+								"Mars"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Benda yang dapat ditarik magnet adalah …",
+							"options": [
+								"paku besi",
+								"karet penghapus",
+								"kertas",
+								"kayu"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sumber energi panas terbesar bagi Bumi adalah …",
+							"options": [
+								"Matahari",
+								"Bulan",
+								"api unggun",
+								"listrik"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k56",
+					"name": "Kelas 5–6",
+					"questions": [
+						{
+							"q": "Organ pernapasan utama manusia adalah …",
+							"options": [
+								"paru-paru",
+								"jantung",
+								"lambung",
+								"ginjal"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Organ yang memompa darah ke seluruh tubuh adalah …",
+							"options": [
+								"jantung",
+								"paru-paru",
+								"hati",
+								"usus"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bunglon mengubah warna kulitnya untuk …",
+							"options": [
+								"menyamar dari musuh (mimikri)",
+								"mencari makan di air",
+								"bernapas",
+								"bertelur"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Rangkaian listrik yang lampunya tetap menyala walau satu lampu putus adalah rangkaian …",
+							"options": [
+								"paralel",
+								"seri",
+								"terbuka",
+								"pendek"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bulan menutupi Matahari bila dilihat dari Bumi disebut …",
+							"options": [
+								"gerhana matahari",
+								"gerhana bulan",
+								"pasang surut",
+								"rotasi bumi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Perputaran Bumi pada porosnya yang menyebabkan siang dan malam disebut …",
+							"options": [
+								"rotasi",
+								"revolusi",
+								"gravitasi",
+								"evolusi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Garam yang larut merata di dalam air membentuk …",
+							"options": [
+								"larutan",
+								"endapan",
+								"suspensi",
+								"lumpur"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Peristiwa makan dan dimakan antarmakhluk hidup disebut …",
+							"options": [
+								"rantai makanan",
+								"simbiosis",
+								"adaptasi",
+								"fotosintesis"
+							],
+							"answer": 0
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "ips",
+			"name": "IPS",
+			"color": "#7a5a1f",
+			"levels": [
+				{
+					"id": "k12",
+					"name": "Kelas 1–2",
+					"questions": [
+						{
+							"q": "Keluarga inti terdiri atas …",
+							"options": [
+								"ayah, ibu, dan anak",
+								"kakek dan nenek",
+								"paman dan bibi",
+								"tetangga"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Tempat penjual dan pembeli bertemu disebut …",
+							"options": [
+								"pasar",
+								"sekolah",
+								"rumah sakit",
+								"perpustakaan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Orang yang bekerja mengobati orang sakit adalah …",
+							"options": [
+								"dokter",
+								"petani",
+								"nelayan",
+								"pilot"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Orang yang menangkap ikan di laut disebut …",
+							"options": [
+								"nelayan",
+								"petani",
+								"pedagang",
+								"guru"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sampah sebaiknya dibuang …",
+							"options": [
+								"di tempat sampah",
+								"di sungai",
+								"di jalan",
+								"di halaman tetangga"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hari Kemerdekaan Indonesia diperingati setiap tanggal …",
+							"options": [
+								"17 Agustus",
+								"1 Juni",
+								"2 Mei",
+								"28 Oktober"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sikap yang baik kepada tetangga adalah …",
+							"options": [
+								"saling menolong",
+								"bertengkar",
+								"mengejek",
+								"tidak peduli"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Lambang negara Indonesia adalah …",
+							"options": [
+								"Garuda Pancasila",
+								"bendera Merah Putih",
+								"Monas",
+								"rumah gadang"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k34",
+					"name": "Kelas 3–4",
+					"questions": [
+						{
+							"q": "Gambar permukaan bumi pada bidang datar disebut …",
+							"options": [
+								"peta",
+								"globe",
+								"foto",
+								"lukisan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Arah mata angin yang berlawanan dengan utara adalah …",
+							"options": [
+								"selatan",
+								"timur",
+								"barat",
+								"tenggara"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kegiatan menghasilkan barang atau jasa disebut …",
+							"options": [
+								"produksi",
+								"konsumsi",
+								"distribusi",
+								"promosi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kegiatan menyalurkan barang dari produsen ke konsumen disebut …",
+							"options": [
+								"distribusi",
+								"produksi",
+								"konsumsi",
+								"investasi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Ibu kota Provinsi Jawa Barat adalah …",
+							"options": [
+								"Bandung",
+								"Semarang",
+								"Surabaya",
+								"Serang"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Alat transportasi air adalah …",
+							"options": [
+								"kapal",
+								"kereta api",
+								"pesawat",
+								"bus"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Semboyan negara Indonesia adalah …",
+							"options": [
+								"Bhinneka Tunggal Ika",
+								"Tut Wuri Handayani",
+								"Gotong Royong",
+								"Merdeka atau Mati"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sumber daya alam yang dapat diperbarui adalah …",
+							"options": [
+								"hutan",
+								"minyak bumi",
+								"batu bara",
+								"emas"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k56",
+					"name": "Kelas 5–6",
+					"questions": [
+						{
+							"q": "Teks Proklamasi Kemerdekaan Indonesia dibacakan oleh …",
+							"options": [
+								"Soekarno (didampingi Mohammad Hatta)",
+								"Soeharto",
+								"Ki Hajar Dewantara",
+								"Jenderal Sudirman"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Organisasi negara-negara Asia Tenggara disebut …",
+							"options": [
+								"ASEAN",
+								"PBB",
+								"NATO",
+								"OPEC"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sumpah Pemuda diikrarkan pada tanggal …",
+							"options": [
+								"28 Oktober 1928",
+								"17 Agustus 1945",
+								"20 Mei 1908",
+								"1 Juni 1945"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Indonesia terletak di antara dua benua, yaitu …",
+							"options": [
+								"Asia dan Australia",
+								"Asia dan Eropa",
+								"Afrika dan Asia",
+								"Amerika dan Australia"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Indonesia terletak di antara dua samudra, yaitu …",
+							"options": [
+								"Hindia dan Pasifik",
+								"Atlantik dan Pasifik",
+								"Hindia dan Atlantik",
+								"Arktik dan Pasifik"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hari Kebangkitan Nasional (20 Mei) berawal dari berdirinya …",
+							"options": [
+								"Budi Utomo",
+								"Sarekat Islam",
+								"PNI",
+								"Taman Siswa"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Ekspor adalah …",
+							"options": [
+								"menjual barang ke luar negeri",
+								"membeli barang dari luar negeri",
+								"menabung di bank",
+								"membayar pajak"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Tambahan uang yang diberikan bank atas tabungan disebut …",
+							"options": [
+								"bunga",
+								"pajak",
+								"denda",
+								"diskon"
+							],
+							"answer": 0
+						}
+					]
+				}
+			]
+		}
+	]
+}

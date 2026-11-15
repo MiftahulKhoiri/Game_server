@@ -6,9 +6,9 @@ config_version=5
 [application]
 
 config/name="Game Petualang"
-config/version="0.83.0"
-config/description="Klien RPG 2D untuk server Game_server"
-run/main_scene="res://scenes/login.tscn"
+config/version="0.84.0"
+config/description="Platform multi-game Android (launcher + The Last Dragon + game unduhan) untuk server Game_server"
+run/main_scene="res://launcher/scenes/main_menu.tscn"
 run/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/icon/icon_512.png"
@@ -19,6 +19,7 @@ Patcher="*res://scripts/patcher.gd"
 Api="*res://scripts/api.gd"
 Session="*res://scripts/session.gd"
 Sound="*res://scripts/sound.gd"
+GameManager="*res://core/game_manager.gd"
 
 [display]
 

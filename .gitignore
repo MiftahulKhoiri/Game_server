@@ -4,6 +4,8 @@
 # Data runtime (database pemain, dll.)
 /data/
 /patches/
+# Katalog game platform (paket .pck + manifest bertanda tangan, dibuat scripts/build-game-pack.sh)
+/catalog/
 
 # Go
 *.test
@@ -30,5 +32,7 @@ client/export/
 # Rahasia
 .env
 *.pem
+# Kunci PUBLIK penerbit paket game (ikut APK). Kunci privat ada di ~/.config/game_server/, bukan di repo.
+!client/config/publisher_public.pem
 coverage.out
 __pycache__/

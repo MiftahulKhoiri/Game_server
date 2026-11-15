@@ -33,11 +33,13 @@ dan bisa diotomatisasi lewat GitHub Actions (Android SDK tidak perlu dipasang di
 | `internal/game/` | Aturan dan model game; tidak tahu HTTP/DB |
 | `internal/store/` | Penyimpanan SQLite |
 | `internal/api/` | Handler HTTP, autentikasi, validasi |
-| `client/` | Proyek Godot 4.7 (klien Android) |
+| `internal/catalog/` | Katalog game platform (manifest + paket bertanda tangan) |
+| `client/` | Proyek Godot 4.7 (klien Android = launcher platform multi-game) |
 | `assets/` | Gambar mentah/sumber dari ilustrator |
 | `docs/` | Dokumen desain dan kontrak API |
 | `deploy/` | Menjalankan di Pi (systemd) dan kunci debug APK |
-| `scripts/` | Skrip bantu (uji klien <-> server) |
+| `scripts/` | Skrip bantu (uji klien <-> server, patch, paket game, kunci penerbit) |
+| `tools/gamepack/` | Alat paket game: periksa PCK, manifest, katalog, tanda tangan, bank soal |
 
 Aturan arah ketergantungan: `api` -> `store` -> `game`. Paket `game` tidak
 boleh mengimpor paket lain di proyek ini.
@@ -125,3 +127,55 @@ Token yang ditolak (kedaluwarsa/dicabut) membawa pemain ke beranda untuk masuk l
   harus stabil. Uji ini menemukan kebocoran node "body" pada setiap model pahlawan (sudah diperbaiki).
 - **Aset:** gambar judul (`judul.jpg`) diimpor lossy (dulu lossless ~2 MB di dalam APK); animasi model
   diimpor dengan `trimming` agar kunci diam di awal/akhir dibuang.
+
+## Platform Multi-Game (v0.84.0)
+
+Satu APK = **launcher** + game bawaan + mesin bersama. Game tambahan diunduh sebagai paket `.pck` per game,
+diverifikasi, lalu bisa dimainkan tanpa internet. Audit sebelum perubahan: [AUDIT_REPORT.md](AUDIT_REPORT.md).
+
+```
+client/
+├── launcher/scenes/main_menu.tscn   layar pertama aplikasi (run/main_scene)
+├── launcher/scripts/launcher.gd     daftar game, status, MAINKAN/DOWNLOAD/UPDATE/BATAL/HAPUS
+├── core/                            mesin platform (dimuat lewat preload, tanpa class_name)
+│   ├── game_manager.gd              autoload GameManager: katalog, unduh, pasang, main, keluar, sinkron
+│   ├── game_registry.gd             bawaan + katalog bertanda tangan + terpasang -> status
+│   ├── package_manager.gd           pasang atomik, muat (replace_files=false), rollback, hapus
+│   ├── pck_reader.gd                baca header/direktori PCK tanpa memuat (cek path & mesin)
+│   ├── download_manager.gd          unduh streaming + HTTP Range + batal + cek ruang
+│   ├── security_manager.gd          RSA-SHA256, SHA-256 berkas, validasi manifest/id/path
+│   ├── version_manager.gd           semver + kecocokan launcher/mesin
+│   ├── save_manager.gd              progres per game, atomik, .bak, skema + migrasi
+│   └── api_client.gd                HTTP katalog & progres (server dan token sama dengan Api)
+├── config/games.json                game bawaan (Petualangan)
+├── config/platform.json             lokasi data platform
+├── config/publisher_public.pem      kunci PUBLIK penerbit paket
+├── shared/edu/                      mesin game pembelajaran (ikut APK)
+├── games/education_sd/              game unduhan (TIDAK ikut APK)
+├── games/education_smp/             game unduhan (TIDAK ikut APK)
+└── scripts/, scenes/, assets/       Game Petualangan — tidak dipindah
+```
+
+**Game Petualangan** tetap di `res://scripts` dan `res://scenes` (memindahkannya akan memutus patch, uji, dan
+semua path lama). Ia didaftarkan sebagai game bawaan dengan `entry_scene = res://scenes/login.tscn`. Perubahan
+pada game ini hanya: tombol "Semua Game" + tombol kembali Android di beranda kembali ke launcher, dan musik
+desa dijeda di luar game ini.
+
+**Siklus hidup** (`GameManager`): `play(id)` → (paket unduhan: verifikasi SHA-256 + direktori PCK, muat
+dengan `replace_files=false`, bila gagal dan ada versi lama → rollback otomatis) → `change_scene_to_file(entry)`.
+`exit_to_launcher()` → sinyal `game_exiting` + `platform_before_exit()` milik game (simpan progres) → hentikan
+suara → ganti ke adegan launcher (adegan game dilepas). Hanya satu game aktif. Game hanya dimuat saat
+dipilih (lazy). Paket yang sudah dimuat tidak bisa dilepas oleh Godot 4.7; versi lain dari game yang sama
+butuh aplikasi dibuka ulang.
+
+**Data di HP** (`user://user_data/`): `registry/` (catalog.json + .sig, installed.json + .bak, launcher.cfg,
+sync_pending.json), `packages/<id>/<versi>-<sha8>.pck` (versi aktif + satu sebelumnya), `progress/<id>/save.json`
+(+ .bak), `cache/downloads/*.part`.
+
+**Server**: endpoint `/v1/games...` (lihat [API_DOCUMENTATION.md](API_DOCUMENTATION.md)) melayani berkas dari
+folder katalog (`GAME_CATALOG_DIR`, bawaan `catalog/`). Server tidak memegang kunci privat. Progres game
+selain Petualangan disimpan di tabel `game_progress` (skema v5), satu baris per (pemain, game).
+
+Dokumen terkait: [GAME_MODULE_GUIDE.md](GAME_MODULE_GUIDE.md), [PCK_PACKAGE_FORMAT.md](PCK_PACKAGE_FORMAT.md),
+[DOWNLOAD_SYSTEM.md](DOWNLOAD_SYSTEM.md), [SECURITY.md](SECURITY.md), [ANDROID_BUILD.md](ANDROID_BUILD.md),
+[TEST_REPORT.md](TEST_REPORT.md), [CHANGELOG.md](CHANGELOG.md).

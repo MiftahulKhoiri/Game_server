@@ -711,3 +711,7 @@ menang mudah >= 75% tanpa kalah -> +10 permil; kalah > 50% -> -20 permil; selain
 selalu 900..1150 dan hanya mengubah **HP dan serangan musuh biasa**. Hadiah (XP, emas, jarahan) tidak pernah berubah;
 bos, musuh raid, dan musuh sasaran cerita tidak disesuaikan. Kabur tidak menurunkan kesulitan (supaya tidak bisa
 dipakai melemahkan musuh dengan gratis). Klien tidak bisa mengubah `state.adapt` (simpan hanya menerapkan posisi).
+
+## Platform multi-game (v0.84.0)
+
+Katalog game unduhan dan progres per game: lihat [API_DOCUMENTATION.md](API_DOCUMENTATION.md).

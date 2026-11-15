@@ -26,6 +26,9 @@ type Config struct {
 	UpdateURL string
 	// PatchDir: folder patch konten klien (latest.json + *.pck); kosong = tanpa patch.
 	PatchDir string
+	// CatalogDir: folder katalog game platform multi-game (catalog.json + <id>/manifest.json + paket .pck,
+	// dibuat scripts/build-game-pack.sh); kosong = katalog kosong.
+	CatalogDir string
 	// Cadangan otomatis database (roadmap no. 235): folder, jarak antar cadangan, jumlah yang disimpan.
 	BackupDir   string
 	BackupEvery time.Duration
@@ -45,6 +48,7 @@ type Config struct {
 //	GAME_LATEST_CLIENT  versi klien terbaru       (bawaan dari paket version)
 //	GAME_UPDATE_URL     alamat unduh APK          (bawaan halaman Releases)
 //	GAME_PATCH_DIR      folder patch konten klien (bawaan "patches")
+//	GAME_CATALOG_DIR    folder katalog game platform (bawaan "catalog")
 //	GAME_BACKUP_DIR     folder cadangan database  (bawaan "data/backup"; "off" = mati)
 //	GAME_BACKUP_HOURS   jarak antar cadangan, jam (bawaan 24)
 //	GAME_BACKUP_KEEP    jumlah cadangan disimpan  (bawaan 7)
@@ -62,6 +66,7 @@ func Load() Config {
 		LatestClient: env("GAME_LATEST_CLIENT", version.DefaultLatestClient),
 		UpdateURL:    env("GAME_UPDATE_URL", version.DefaultUpdateURL),
 		PatchDir:     env("GAME_PATCH_DIR", "patches"),
+		CatalogDir:   env("GAME_CATALOG_DIR", "catalog"),
 		BackupDir:    backupDir(env("GAME_BACKUP_DIR", "data/backup")),
 		BackupEvery:  time.Duration(envInt("GAME_BACKUP_HOURS", 24)) * time.Hour,
 		BackupKeep:   envInt("GAME_BACKUP_KEEP", 7),

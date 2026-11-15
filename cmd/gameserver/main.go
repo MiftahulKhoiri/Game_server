@@ -68,7 +68,7 @@ func run(log *slog.Logger) error {
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           api.New(st, log, info, api.PatchDir(cfg.PatchDir)),
+		Handler:           api.New(st, log, info, api.PatchDir(cfg.PatchDir), api.CatalogDir(cfg.CatalogDir)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

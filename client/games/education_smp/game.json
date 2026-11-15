@@ -1,0 +1,11 @@
+{
+	"id": "education_smp",
+	"name": "Game Pembelajaran SMP",
+	"description": "Latihan dan kuis Matematika, Bahasa Indonesia, IPA, dan IPS untuk kelas 7–9: bilangan bulat, persamaan linear, pangkat & akar, teks, sains, dan sejarah. Bisa dimainkan tanpa internet setelah diunduh.",
+	"category": "Pendidikan",
+	"version": "1.0.0",
+	"entry_scene": "res://games/education_smp/main.tscn",
+	"min_launcher_version": "0.84.0",
+	"icon_color": "#5a3f8a",
+	"enabled": true
+}

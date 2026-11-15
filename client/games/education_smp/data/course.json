@@ -1,0 +1,846 @@
+{
+	"title": "Belajar SMP",
+	"subtitle": "Matematika, Bahasa Indonesia, IPA, dan IPS untuk kelas 7–9. Latihan memberi pembahasan; Kuis memberi nilai dan membuka level berikutnya.",
+	"pass_score": 70,
+	"questions_per_session": 8,
+	"subjects": [
+		{
+			"id": "matematika",
+			"name": "Matematika",
+			"color": "#2f5d8a",
+			"levels": [
+				{
+					"id": "k7",
+					"name": "Kelas 7 · Bilangan Bulat",
+					"generator": {
+						"type": "arith",
+						"ops": [
+							"+",
+							"-",
+							"x"
+						],
+						"min": -20,
+						"max": 20,
+						"negative": true,
+						"count": 10
+					}
+				},
+				{
+					"id": "k8",
+					"name": "Kelas 8 · Persamaan Linear Satu Variabel",
+					"generator": {
+						"type": "linear",
+						"min": -10,
+						"max": 10,
+						"count": 10
+					}
+				},
+				{
+					"id": "k9",
+					"name": "Kelas 9 · Pangkat, Akar, Pythagoras",
+					"generator": {
+						"type": "power",
+						"max": 15,
+						"count": 10
+					}
+				}
+			]
+		},
+		{
+			"id": "bahasa_indonesia",
+			"name": "Bahasa Indonesia",
+			"color": "#8a4b2f",
+			"levels": [
+				{
+					"id": "k7",
+					"name": "Kelas 7",
+					"questions": [
+						{
+							"q": "Teks yang menggambarkan objek secara rinci sehingga pembaca seolah melihatnya disebut teks …",
+							"options": [
+								"deskripsi",
+								"prosedur",
+								"eksposisi",
+								"negosiasi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Struktur teks cerita fantasi adalah …",
+							"options": [
+								"orientasi – komplikasi – resolusi",
+								"resolusi – orientasi – komplikasi",
+								"komplikasi – orientasi – resolusi",
+								"tesis – argumen – penegasan ulang"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Puisi lama yang setiap baitnya terdiri atas dua baris disebut …",
+							"options": [
+								"gurindam",
+								"pantun",
+								"syair",
+								"soneta"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Rima akhir syair adalah …",
+							"options": [
+								"a-a-a-a",
+								"a-b-a-b",
+								"a-a-b-b",
+								"a-b-b-a"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Ani berkata, \"Saya akan datang.\" Kalimat tersebut termasuk kalimat …",
+							"options": [
+								"langsung",
+								"tidak langsung",
+								"pasif",
+								"perintah"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata \"wisatawan\" termasuk kelas kata …",
+							"options": [
+								"benda (nomina)",
+								"kerja (verba)",
+								"sifat (adjektiva)",
+								"keterangan (adverbia)"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Fabel adalah cerita yang tokoh-tokohnya …",
+							"options": [
+								"binatang",
+								"dewa",
+								"pahlawan sejarah",
+								"raja dan ratu"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Surat dari sekolah kepada dinas pendidikan termasuk surat …",
+							"options": [
+								"dinas (resmi)",
+								"pribadi",
+								"pembaca",
+								"elektronik pribadi"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k8",
+					"name": "Kelas 8",
+					"questions": [
+						{
+							"q": "Teks yang menyampaikan informasi faktual tentang suatu peristiwa disebut teks …",
+							"options": [
+								"berita",
+								"cerpen",
+								"puisi",
+								"drama"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pada unsur berita 5W+1H, huruf H berarti …",
+							"options": [
+								"how (bagaimana)",
+								"hari",
+								"hasil",
+								"hukum"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Teks yang membujuk pembaca agar memakai suatu produk disebut teks …",
+							"options": [
+								"iklan",
+								"eksposisi",
+								"laporan",
+								"prosedur"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata \"mencontoh\" dibentuk dengan imbuhan …",
+							"options": [
+								"meN-",
+								"ber-",
+								"di-",
+								"ter-"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Teks eksposisi berisi …",
+							"options": [
+								"gagasan atau pendapat yang didukung fakta",
+								"cerita khayalan",
+								"langkah membuat sesuatu",
+								"percakapan tokoh drama"
+							],
+							"answer": 0
+						},
+						{
+							"q": "\"Buku itu dibaca oleh Rina.\" termasuk kalimat …",
+							"options": [
+								"pasif",
+								"aktif",
+								"perintah",
+								"tanya"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Puisi yang terikat aturan jumlah baris, rima, dan suku kata disebut puisi …",
+							"options": [
+								"lama",
+								"bebas",
+								"kontemporer",
+								"prosa"
+							],
+							"answer": 0
+						},
+						{
+							"q": "\"Menurut saya, setiap sekolah sebaiknya menanam pohon.\" Pernyataan tersebut adalah …",
+							"options": [
+								"opini",
+								"fakta",
+								"data",
+								"berita"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k9",
+					"name": "Kelas 9",
+					"questions": [
+						{
+							"q": "Bagian teks laporan percobaan adalah …",
+							"options": [
+								"tujuan, alat dan bahan, langkah, hasil, simpulan",
+								"orientasi, komplikasi, resolusi",
+								"tesis, argumen, penegasan ulang",
+								"salam pembuka, isi, salam penutup"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bagian pidato yang berisi salam dan sapaan kepada hadirin disebut …",
+							"options": [
+								"pembuka",
+								"isi",
+								"penutup",
+								"lampiran"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Cerpen termasuk karya sastra berbentuk …",
+							"options": [
+								"prosa",
+								"puisi",
+								"drama",
+								"pantun"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Teks yang berisi penilaian (kelebihan dan kekurangan) terhadap suatu karya disebut teks …",
+							"options": [
+								"ulasan",
+								"prosedur",
+								"deskripsi",
+								"biografi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Teks diskusi menyajikan …",
+							"options": [
+								"pendapat pro dan kontra tentang suatu isu",
+								"langkah-langkah kerja",
+								"riwayat hidup tokoh",
+								"cerita fantasi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kata baku yang benar adalah …",
+							"options": [
+								"analisis",
+								"analisa",
+								"analise",
+								"analisys"
+							],
+							"answer": 0
+						},
+						{
+							"q": "\"Jika hujan, kami tidak jadi berangkat.\" Kata \"jika\" adalah konjungsi …",
+							"options": [
+								"syarat",
+								"waktu",
+								"tujuan",
+								"perlawanan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Unsur intrinsik cerpen yang menunjukkan tempat, waktu, dan suasana disebut …",
+							"options": [
+								"latar",
+								"alur",
+								"tema",
+								"amanat"
+							],
+							"answer": 0
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "ipa",
+			"name": "IPA",
+			"color": "#2f7d4f",
+			"levels": [
+				{
+					"id": "k7",
+					"name": "Kelas 7",
+					"questions": [
+						{
+							"q": "Satuan SI untuk massa adalah …",
+							"options": [
+								"kilogram",
+								"gram",
+								"newton",
+								"liter"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Alat untuk mengukur suhu adalah …",
+							"options": [
+								"termometer",
+								"barometer",
+								"neraca",
+								"stopwatch"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Zat tunggal yang tersusun atas satu jenis atom disebut …",
+							"options": [
+								"unsur",
+								"senyawa",
+								"campuran",
+								"larutan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Contoh senyawa adalah …",
+							"options": [
+								"air (H₂O)",
+								"oksigen (O₂)",
+								"besi (Fe)",
+								"emas (Au)"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Suhu 100 °C sama dengan … kelvin.",
+							"options": [
+								"373",
+								"100",
+								"212",
+								"273"
+							],
+							"answer": 0,
+							"explain": "K = °C + 273"
+						},
+						{
+							"q": "Sistem tata nama ganda (binomial nomenklatur) diperkenalkan oleh …",
+							"options": [
+								"Carolus Linnaeus",
+								"Charles Darwin",
+								"Gregor Mendel",
+								"Robert Hooke"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bagian sel tumbuhan yang tidak dimiliki sel hewan adalah …",
+							"options": [
+								"dinding sel dan kloroplas",
+								"membran sel",
+								"inti sel",
+								"sitoplasma"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Lapisan atmosfer tempat terjadinya cuaca adalah …",
+							"options": [
+								"troposfer",
+								"stratosfer",
+								"mesosfer",
+								"termosfer"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k8",
+					"name": "Kelas 8",
+					"questions": [
+						{
+							"q": "Hukum II Newton dirumuskan sebagai …",
+							"options": [
+								"F = m × a",
+								"F = m : a",
+								"F = a : m",
+								"F = m + a"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Usaha adalah hasil kali gaya dengan …",
+							"options": [
+								"perpindahan",
+								"waktu",
+								"massa",
+								"kecepatan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Satuan tekanan dalam SI adalah …",
+							"options": [
+								"pascal (Pa)",
+								"newton (N)",
+								"joule (J)",
+								"watt (W)"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Penyerapan sari makanan terbanyak terjadi di …",
+							"options": [
+								"usus halus",
+								"lambung",
+								"kerongkongan",
+								"usus besar"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pembuluh darah yang membawa darah dari jantung ke seluruh tubuh adalah …",
+							"options": [
+								"arteri (nadi)",
+								"vena (balik)",
+								"trakea",
+								"bronkus"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pengungkit dengan titik tumpu di antara beban dan kuasa adalah pengungkit golongan …",
+							"options": [
+								"pertama",
+								"kedua",
+								"ketiga",
+								"keempat"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Fotosintesis terutama berlangsung di …",
+							"options": [
+								"daun",
+								"akar",
+								"batang",
+								"bunga"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bayangan pada cermin datar bersifat …",
+							"options": [
+								"maya, tegak, sama besar",
+								"nyata, terbalik",
+								"maya, diperbesar",
+								"nyata, diperkecil"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k9",
+					"name": "Kelas 9",
+					"questions": [
+						{
+							"q": "Ilmu yang mempelajari pewarisan sifat disebut …",
+							"options": [
+								"genetika",
+								"ekologi",
+								"anatomi",
+								"astronomi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bagian sel yang membawa informasi genetik adalah …",
+							"options": [
+								"kromosom (DNA)",
+								"ribosom",
+								"vakuola",
+								"dinding sel"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hukum Ohm dirumuskan sebagai …",
+							"options": [
+								"V = I × R",
+								"P = V × I",
+								"F = m × a",
+								"W = F × s"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Satuan kuat arus listrik adalah …",
+							"options": [
+								"ampere",
+								"volt",
+								"ohm",
+								"watt"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Dua kutub magnet senama yang didekatkan akan …",
+							"options": [
+								"tolak-menolak",
+								"tarik-menarik",
+								"menyatu",
+								"tidak berpengaruh"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Alat untuk menaikkan atau menurunkan tegangan listrik bolak-balik (AC) adalah …",
+							"options": [
+								"transformator",
+								"generator",
+								"baterai",
+								"amperemeter"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pembelahan sel yang menghasilkan sel kelamin (gamet) adalah …",
+							"options": [
+								"meiosis",
+								"mitosis",
+								"fotosintesis",
+								"respirasi"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Contoh bioteknologi konvensional adalah pembuatan …",
+							"options": [
+								"tempe",
+								"insulin rekayasa genetika",
+								"tanaman transgenik",
+								"kloning domba"
+							],
+							"answer": 0
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "ips",
+			"name": "IPS",
+			"color": "#7a5a1f",
+			"levels": [
+				{
+					"id": "k7",
+					"name": "Kelas 7",
+					"questions": [
+						{
+							"q": "Letak Indonesia berdasarkan garis lintang dan bujur disebut letak …",
+							"options": [
+								"astronomis",
+								"geografis",
+								"geologis",
+								"sosial"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Syarat terjadinya interaksi sosial adalah …",
+							"options": [
+								"kontak sosial dan komunikasi",
+								"uang dan pasar",
+								"produksi dan distribusi",
+								"ekspor dan impor"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kebutuhan primer manusia adalah …",
+							"options": [
+								"sandang, pangan, dan papan",
+								"mobil dan televisi",
+								"perhiasan",
+								"wisata ke luar negeri"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Fosil manusia purba banyak ditemukan di situs …",
+							"options": [
+								"Sangiran",
+								"Borobudur",
+								"Trowulan",
+								"Prambanan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kerajaan Hindu tertua di Indonesia adalah …",
+							"options": [
+								"Kutai",
+								"Majapahit",
+								"Singasari",
+								"Mataram Islam"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kelangkaan terjadi karena …",
+							"options": [
+								"kebutuhan tidak terbatas, alat pemuas terbatas",
+								"semua barang murah",
+								"penduduk sedikit",
+								"uang terlalu banyak"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Kegiatan menggunakan barang untuk memenuhi kebutuhan disebut …",
+							"options": [
+								"konsumsi",
+								"produksi",
+								"distribusi",
+								"ekspor"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pelaku ekonomi yang menghasilkan barang dan jasa adalah …",
+							"options": [
+								"rumah tangga produsen (perusahaan)",
+								"rumah tangga konsumen",
+								"pembeli",
+								"penabung"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k8",
+					"name": "Kelas 8",
+					"questions": [
+						{
+							"q": "Mobilitas sosial adalah …",
+							"options": [
+								"perpindahan posisi seseorang dalam struktur sosial",
+								"perpindahan barang",
+								"pergantian musim",
+								"perpindahan antarpulau"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Bangsa Eropa yang pertama kali tiba di Kepulauan Maluku (1512) adalah …",
+							"options": [
+								"Portugis",
+								"Belanda",
+								"Inggris",
+								"Prancis"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Persekutuan dagang Belanda di Hindia Timur bernama …",
+							"options": [
+								"VOC",
+								"EIC",
+								"KNIL",
+								"NHM"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Sistem tanam paksa (cultuurstelsel) diterapkan oleh …",
+							"options": [
+								"Van den Bosch",
+								"Daendels",
+								"Raffles",
+								"Jan Pieterszoon Coen"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pasar tempat penjual dan pembeli bertemu langsung dan tawar-menawar disebut pasar …",
+							"options": [
+								"tradisional",
+								"modern",
+								"faktor produksi",
+								"modal"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Letak geografis Indonesia menguntungkan karena berada di …",
+							"options": [
+								"jalur perdagangan internasional",
+								"kutub utara",
+								"tengah benua Afrika",
+								"gurun pasir"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Pajak digunakan pemerintah untuk …",
+							"options": [
+								"membiayai pembangunan dan layanan umum",
+								"keuntungan pribadi pegawai",
+								"membeli barang mewah",
+								"disimpan tanpa digunakan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Perlawanan Pangeran Diponegoro terhadap Belanda dikenal sebagai Perang …",
+							"options": [
+								"Jawa (1825–1830)",
+								"Padri",
+								"Aceh",
+								"Banjar"
+							],
+							"answer": 0
+						}
+					]
+				},
+				{
+					"id": "k9",
+					"name": "Kelas 9",
+					"questions": [
+						{
+							"q": "Peristiwa Rengasdengklok terjadi menjelang …",
+							"options": [
+								"Proklamasi Kemerdekaan 1945",
+								"Sumpah Pemuda",
+								"Reformasi 1998",
+								"Konferensi Meja Bundar"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Konferensi Asia Afrika tahun 1955 diselenggarakan di …",
+							"options": [
+								"Bandung",
+								"Jakarta",
+								"Bogor",
+								"Yogyakarta"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Era Reformasi di Indonesia dimulai tahun …",
+							"options": [
+								"1998",
+								"1945",
+								"1966",
+								"2004"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Globalisasi adalah …",
+							"options": [
+								"proses mendunia yang membuat hubungan antarnegara makin terbuka",
+								"kembali ke kehidupan purba",
+								"menutup diri dari dunia luar",
+								"perang antarnegara"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Lembaga yang berwenang mengeluarkan dan mengedarkan rupiah adalah …",
+							"options": [
+								"Bank Indonesia",
+								"bank swasta",
+								"koperasi",
+								"pegadaian"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Perdagangan internasional terjadi karena …",
+							"options": [
+								"perbedaan sumber daya alam antarnegara",
+								"semua negara menghasilkan barang yang sama",
+								"larangan pemerintah",
+								"tidak ada kebutuhan"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Negara-negara Asia Tenggara bergabung dalam …",
+							"options": [
+								"ASEAN",
+								"Uni Eropa",
+								"Liga Arab",
+								"NAFTA"
+							],
+							"answer": 0
+						},
+						{
+							"q": "Hasil Konferensi Meja Bundar (1949) adalah …",
+							"options": [
+								"pengakuan kedaulatan Indonesia oleh Belanda",
+								"Sumpah Pemuda",
+								"Dekrit Presiden",
+								"Supersemar"
+							],
+							"answer": 0
+						}
+					]
+				}
+			]
+		}
+	]
+}

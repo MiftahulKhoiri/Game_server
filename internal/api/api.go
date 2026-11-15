@@ -72,8 +72,9 @@ var (
 type Option func(*options)
 
 type options struct {
-	patchDir string
-	patches  bool
+	patchDir   string
+	patches    bool
+	catalogDir string
 }
 
 // PatchDir memasang endpoint patch konten klien (lihat patch.go) di dalam server, sehingga ikut middleware
@@ -181,6 +182,7 @@ func newServer(st *store.Store, log *slog.Logger, info version.Info, rng game.Ra
 	if o.patches {
 		registerPatches(mux, o.patchDir)
 	}
+	s.registerGames(mux, o.catalogDir)
 	// Jalur yang tidak dikenal dijawab JSON (bukan teks bawaan Go) supaya klien selalu bisa membacanya.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "jalur tidak dikenal: "+r.Method+" "+r.URL.Path)

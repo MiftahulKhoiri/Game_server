@@ -67,6 +67,13 @@ func apply_settings() -> void:
 		_music.stop()
 
 
+## Platform multi-game (v0.84.0): jeda/lanjutkan musik desa. Launcher dan game lain menjedanya; Game
+## Petualangan melanjutkannya. Pengaturan volume/bisu tetap dari apply_settings().
+func set_music_paused(paused: bool) -> void:
+	if _music != null:
+		_music.stream_paused = paused
+
+
 static func _set_bus(bus_name: String, linear: float, mute: bool) -> void:
 	var i := AudioServer.get_bus_index(bus_name)
 	if i < 0:

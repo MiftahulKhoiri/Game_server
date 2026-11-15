@@ -1,4 +1,4 @@
-.PHONY: maps build run test vet fmt check client-test patch install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
+.PHONY: maps build run test vet fmt check client-test patch game-pack game-keys platform-test install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -47,6 +47,20 @@ patch:
 
 client-test:
 	GODOT=$(GODOT) bash scripts/client-test.sh
+
+# Platform multi-game (docs/PCK_PACKAGE_FORMAT.md): bangun, tandatangani, dan terbitkan paket game unduhan.
+#   make game-pack GODOT=/path/ke/godot GAMES="education_sd education_smp"
+GAMES ?= education_sd education_smp
+game-pack:
+	GODOT=$(GODOT) bash scripts/build-game-pack.sh $(GAMES)
+
+# Uji platform multi-game ujung-ke-ujung (launcher, unduh, verifikasi, update, offline). Butuh Godot 4.7.
+platform-test:
+	GODOT=$(GODOT) bash scripts/platform-test.sh
+
+# Buat (sekali) pasangan kunci penerbit paket game; kunci privat di ~/.config/game_server/.
+game-keys:
+	bash scripts/game-keys.sh
 
 # Uji asap server yang sedang berjalan (hanya membaca):  make smoke [URL=http://ip:8090]
 smoke:

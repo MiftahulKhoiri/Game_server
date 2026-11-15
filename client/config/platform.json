@@ -1,0 +1,10 @@
+{
+	"schema_version": 1,
+	"name": "Game Platform",
+	"catalog_path": "/v1/games",
+	"public_key": "res://config/publisher_public.pem",
+	"packages_dir": "user://user_data/packages",
+	"progress_dir": "user://user_data/progress",
+	"registry_dir": "user://user_data/registry",
+	"cache_dir": "user://user_data/cache"
+}

@@ -1,6 +1,9 @@
 # Game_server
 
-Game RPG 3D bergaya fantasi untuk Android (Godot 4.7) dengan **server utama di Raspberry Pi 5** (Go + SQLite).
+Platform multi-game Android (Godot 4.7) dengan **server utama di Raspberry Pi 5** (Go + SQLite). Satu APK berisi
+launcher dan game RPG 3D bergaya fantasi **The Last Dragon**; game tambahan (Pembelajaran SD dan SMP) diunduh
+dari server, diverifikasi tanda tangannya, lalu bisa dimainkan tanpa internet (sejak v0.84.0, lihat
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#platform-multi-game-v0840)).
 Server adalah sumber kebenaran: level, emas, barang, pertarungan, misi, dan dagang antarpemain dihitung di server.
 
 [![CI](https://github.com/MiftahulKhoiri/Game_server/actions/workflows/ci.yml/badge.svg)](https://github.com/MiftahulKhoiri/Game_server/actions/workflows/ci.yml)
@@ -68,12 +71,15 @@ internet, tetapi tetap dilindungi login, batas laju, dan pemeriksaan gerakan (li
 | `make bench` / `make cover` | tolok ukur endpoint & database / cakupan tes |
 | `make smoke` | uji asap server yang sedang berjalan (hanya membaca) |
 | `make patch GODOT=...` | patch skrip klien tanpa APK baru (lihat [docs/PATCH.md](docs/PATCH.md)) |
+| `make game-pack GODOT=...` | bangun, tandatangani & terbitkan paket game unduhan ([docs/PCK_PACKAGE_FORMAT.md](docs/PCK_PACKAGE_FORMAT.md)) |
+| `make platform-test GODOT=...` | uji platform multi-game: launcher, unduh, verifikasi, update, offline |
 | `make backup` / `make restore FILE=...` | cadangkan / pulihkan database |
 | `make backup-all` / `make install-backup-timer` | cadangan lengkap kode + database (mingguan otomatis) |
 
 ## Dokumen
 
 - [Arsitektur, audit server, Android & performa](docs/ARCHITECTURE.md)
+- Platform multi-game: [audit](docs/AUDIT_REPORT.md) · [panduan modul game](docs/GAME_MODULE_GUIDE.md) · [format paket PCK](docs/PCK_PACKAGE_FORMAT.md) · [API katalog](docs/API_DOCUMENTATION.md) · [sistem unduh](docs/DOWNLOAD_SYSTEM.md) · [keamanan paket](docs/SECURITY.md) · [build Android](docs/ANDROID_BUILD.md) · [laporan uji](docs/TEST_REPORT.md) · [CHANGELOG](docs/CHANGELOG.md)
 - [Kontrak API](docs/API.md)
 - [Pengujian](docs/TESTING.md)
 - [Cadangan & pemulihan](docs/BACKUP.md)

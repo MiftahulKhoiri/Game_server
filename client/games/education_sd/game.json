@@ -1,0 +1,11 @@
+{
+	"id": "education_sd",
+	"name": "Game Pembelajaran SD",
+	"description": "Latihan dan kuis Matematika, Bahasa Indonesia, IPA, dan IPS untuk kelas 1–6. Nilai terbaik, level per kelas, dan riwayat latihan tersimpan di HP (bisa dimainkan tanpa internet setelah diunduh).",
+	"category": "Pendidikan",
+	"version": "1.0.0",
+	"entry_scene": "res://games/education_sd/main.tscn",
+	"min_launcher_version": "0.84.0",
+	"icon_color": "#2f6f8a",
+	"enabled": true
+}

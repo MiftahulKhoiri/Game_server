@@ -37,7 +37,8 @@ var (
 //	2 = akun: email + password_hash di players, token pindah ke tabel sessions
 //	3 = tabel trades (perdagangan antarpemain, roadmap no. 176)
 //	4 = sessions.last_used (masa berlaku token, roadmap no. 223)
-const schemaVersion = 4
+//	5 = tabel game_progress (progres per game platform multi-game, v0.84.0)
+const schemaVersion = 5
 
 // playersDDL dipakai dua kali: tabel baru dan tabel bangun-ulang saat migrasi.
 const playersDDL = `CREATE TABLE %s (
@@ -63,7 +64,7 @@ CREATE TABLE IF NOT EXISTS battles (
 	player_id  TEXT PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
 	state      TEXT NOT NULL,
 	updated_at TEXT NOT NULL
-);` + tradesDDL
+);` + tradesDDL + ";" + gameProgressDDL
 
 // tradesDDL: tawaran dagang. Barangnya sudah dikeluarkan dari ransel penjual (dititipkan) selama pending.
 const tradesDDL = `
@@ -144,7 +145,7 @@ func migrate(db *sql.DB) error {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('players') WHERE name = 'token_hash'`).Scan(&legacy); err != nil {
 		return err
 	}
-	if ver == 2 || ver == 3 {
+	if ver >= 2 {
 		return migrateUp(db, ver)
 	}
 	if legacy == 0 { // database baru
@@ -176,6 +177,7 @@ func migrateUp(db *sql.DB, ver int) error {
 		2: tradesDDL, // v2 -> v3
 		3: `ALTER TABLE sessions ADD COLUMN last_used TEXT NOT NULL DEFAULT '';
 			UPDATE sessions SET last_used = created_at;`, // v3 -> v4
+		4: gameProgressDDL, // v4 -> v5
 	}
 	for ; ver < schemaVersion; ver++ {
 		if ver == 3 {

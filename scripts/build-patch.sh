@@ -28,7 +28,9 @@ if [ -z "$min_apk" ]; then
 	want="$(git rev-parse HEAD:client/assets)"
 	# (c) pengaturan layar APK sama (ukuran dasar + orientasi; v0.68.0 pindah ke layar mendatar), karena
 	# project.godot tidak ikut patch.
-	layar() { git show "$1:client/project.godot" 2>/dev/null | grep -E '^window/(size/viewport_|handheld/orientation)'; }
+	# v0.84.0: adegan utama (launcher) dan daftar autoload (GameManager) juga harus sama, karena skrip patch
+	# bergantung padanya.
+	layar() { git show "$1:client/project.godot" 2>/dev/null | grep -E '^window/(size/viewport_|handheld/orientation)|^run/main_scene=|^[A-Za-z]+="\*res://'; }
 	want_layar="$(layar HEAD)"
 	for tag in $(git tag --sort=v:refname); do
 		git cat-file -e "$tag:client/scripts/patcher.gd" 2>/dev/null || continue
