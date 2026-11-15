@@ -9,6 +9,13 @@ const RUN := 7.2
 const GRAVITY := 22.0
 const JUMP := 8.2
 const LOOK_SENS := 0.006
+## Kamera orang-ketiga bebas 360° (2.3.0): yaw tanpa batas (dibungkus 0..TAU), pitch dibatasi supaya kamera
+## tidak terbalik / masuk tanah, jarak bisa diatur (scroll mouse / cubit dua jari), mengikuti halus di _process.
+const PITCH_MIN := -1.2  # menunduk paling dalam (kamera tinggi di atas)
+const PITCH_MAX := 0.35  # mendongak (kamera rendah, tetap di atas tanah)
+const ZOOM_MIN := 2.2
+const ZOOM_MAX := 8.0
+const CAM_HEIGHT := 1.25
 
 var move_input := Vector2.ZERO  # x kanan, y maju (dari HUD)
 var run := false
@@ -21,6 +28,9 @@ var frozen := false  # saat dialog/menu terbuka
 var _jump_req := false
 var _pivot: Node3D
 var _arm: SpringArm3D
+var distance := 4.4
+var zoom_max := ZOOM_MAX
+var speed_bonus := 1.0
 
 
 func setup(look: Dictionary) -> void:
@@ -29,15 +39,21 @@ func setup(look: Dictionary) -> void:
 	floor_snap_length = 0.3
 	var shape := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
-	cap.radius = 0.36
-	cap.height = 1.7
+	cap.radius = 0.32
+	cap.height = 1.5
 	shape.shape = cap
-	shape.position.y = 0.85
+	shape.position.y = 0.75
 	add_child(shape)
 	rig = Rig.new()
 	rig.shirt = look.get("shirt", Color("e05a4f"))
 	rig.long_hair = bool(look.get("long_hair", false))
 	rig.hair = Color("6b3a1e") if rig.long_hair else Color("3a2a20")
+	rig.hat = str(look.get("hat", ""))
+	rig.acc = str(look.get("acc", ""))
+	if str(look.get("model", "")) != "":
+		rig.glb_id = str(look.model)
+		rig.glb_height = 1.45
+		rig.glb_tint = rig.shirt.lerp(Color.WHITE, 0.55)
 	add_child(rig)
 	rig.build()
 	var disc := Rig.part(Rig.cyl(0.42, 0.42, 0.02, 16), Color(0, 0, 0, 0.25), Vector3(0, 0.03, 0))
@@ -52,9 +68,12 @@ func setup(look: Dictionary) -> void:
 	_pivot.top_level = true
 	add_child(_pivot)
 	_arm = SpringArm3D.new()
-	_arm.spring_length = 4.6
-	_arm.collision_mask = 1
-	_arm.margin = 0.2
+	_arm.spring_length = distance
+	_arm.collision_mask = 1  # dinding, bangunan, batu, batang pohon, tanah
+	_arm.margin = 0.25
+	var probe := SphereShape3D.new()
+	probe.radius = 0.25
+	_arm.shape = probe
 	_pivot.add_child(_arm)
 	cam = Camera3D.new()
 	cam.fov = 62.0
@@ -73,8 +92,12 @@ func place(pos: Vector3, face_yaw: float) -> void:
 
 
 func look(rel: Vector2) -> void:
-	yaw -= rel.x * LOOK_SENS
-	pitch = clampf(pitch - rel.y * LOOK_SENS, -1.1, 0.25)
+	yaw = fposmod(yaw - rel.x * LOOK_SENS, TAU)
+	pitch = clampf(pitch - rel.y * LOOK_SENS, PITCH_MIN, PITCH_MAX)
+
+
+func zoom(step: float) -> void:
+	distance = clampf(distance + step, ZOOM_MIN, zoom_max)
 
 
 func jump() -> void:
@@ -103,7 +126,7 @@ func _physics_process(delta: float) -> void:
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 	var right := Vector3(cos(yaw), 0, -sin(yaw))
 	var dir := (right * inp.x + fwd * inp.y)
-	var spd := (RUN if running else WALK) * minf(1.0, inp.length())
+	var spd := (RUN if running else WALK) * minf(1.0, inp.length()) * speed_bonus
 	var target := dir.normalized() * spd if dir.length() > 0.01 else Vector3.ZERO
 	var accel := 14.0 if is_on_floor() else 5.0
 	velocity.x = move_toward(velocity.x, target.x, accel * delta * maxf(spd, WALK))
@@ -123,13 +146,19 @@ func _physics_process(delta: float) -> void:
 	if global_position.y < -8.0:
 		global_position = spawn
 		velocity = Vector3.ZERO
+
+
+## Kamera diperbarui di _process (laju layar), bukan di langkah fisika, supaya tidak tersendat/bergetar.
+func _process(delta: float) -> void:
 	_update_camera(false, delta)
 
 
 func _update_camera(snap: bool, delta := 0.016) -> void:
-	var target := global_position + Vector3(0, 1.45, 0)
-	_pivot.global_position = target if snap else _pivot.global_position.lerp(target, minf(1.0, delta * 10.0))
+	var target := global_position + Vector3(0, CAM_HEIGHT, 0)
+	var k := 1.0 if snap else 1.0 - exp(-delta * 12.0)
+	_pivot.global_position = _pivot.global_position.lerp(target, k)
 	_pivot.rotation = Vector3(pitch, yaw, 0)
+	_arm.spring_length = distance if snap else lerpf(_arm.spring_length, distance, 1.0 - exp(-delta * 8.0))
 
 
 ## Arah hadap karakter (untuk memilih objek interaksi yang ada di depan).

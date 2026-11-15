@@ -8,6 +8,8 @@ const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
 
 signal back_pressed
 signal missions_pressed
+signal bag_pressed
+signal dialog_closed
 
 var world: Node3D
 var joy_vec := Vector2.ZERO
@@ -15,6 +17,8 @@ var _joy_center := Vector2.ZERO
 var _joy_radius := 105.0
 var _joy_index := -2
 var _look_index := -2
+var _pinch_index := -2  # jari kedua di sisi kanan: cubit untuk zoom kamera
+var _touch_pos: Dictionary = {}
 var _joy_draw: Control
 var _btn_action: Control
 var _btn_jump: Control
@@ -33,6 +37,19 @@ var perf_on := false
 var _fps: Array = []
 var _run_on := false
 var chips: HBoxContainer
+var compass_target = null  # Vector3 tujuan (alat Kompas) atau null
+var _compass: Control
+
+
+class Arrow extends Control:
+	var angle := 0.0
+
+	func _draw() -> void:
+		var c := size / 2.0
+		draw_circle(c, 34.0, Color(1, 1, 1, 0.75))
+		var dir := Vector2(sin(angle), -cos(angle))
+		var side := Vector2(-dir.y, dir.x)
+		draw_colored_polygon(PackedVector2Array([c + dir * 26.0, c - dir * 12.0 + side * 13.0, c - dir * 4.0, c - dir * 12.0 - side * 13.0]), Color("e05a4f"))
 
 
 class RoundBtn extends Control:
@@ -101,6 +118,9 @@ func setup(w: Node3D, title: String, color: Color) -> void:
 	var mb := UI.button("MISI", func() -> void: missions_pressed.emit(), Color("8a6bd8"), 22, 60)
 	mb.name = "Missions"
 	_top.add_child(mb)
+	var bag := UI.button("TAS", func() -> void: bag_pressed.emit(), Color("c98a4b"), 22, 60)
+	bag.name = "Bag"
+	_top.add_child(bag)
 	_hint = UI.label("", 20, UI.INK)
 	var hp := UI.panel(Color(1, 1, 1, 0.8), 16)
 	hp.name = "HintPanel"
@@ -131,6 +151,12 @@ func setup(w: Node3D, title: String, color: Color) -> void:
 	add_child(_dialog)
 	w.focus_changed.connect(_on_focus)
 	_on_focus("")
+	_compass = Arrow.new()
+	_compass.name = "Compass"
+	_compass.size = Vector2(76, 76)
+	_compass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_compass.visible = false
+	add_child(_compass)
 	_perf = UI.label("", 18, Color.WHITE, false)
 	_perf.add_theme_color_override("font_outline_color", Color("2b2440"))
 	_perf.add_theme_constant_override("outline_size", 6)
@@ -205,6 +231,7 @@ func _fill_dialog(title: String, text: String, buttons: Array) -> void:
 
 func close_dialog() -> void:
 	_dialog.visible = false
+	dialog_closed.emit()
 	if world != null and world.has_method("end_talk"):
 		world.end_talk()
 	_set_frozen(false)
@@ -250,7 +277,10 @@ func _press(p: Vector2, index: int) -> bool:
 		_joy_move(p)
 		return true
 	if p.x > size.x * 0.4:
-		_look_index = index
+		if _look_index != -2 and _look_index != index and _pinch_index == -2:
+			_pinch_index = index
+		else:
+			_look_index = index
 		return true
 	return false
 
@@ -267,7 +297,11 @@ func _release(index: int) -> void:
 		joy_vec = Vector2.ZERO
 		_push_move()
 	if index == _look_index:
-		_look_index = -2
+		_look_index = _pinch_index
+		_pinch_index = -2
+	elif index == _pinch_index:
+		_pinch_index = -2
+	_touch_pos.erase(index)
 
 
 func trigger_action() -> void:
@@ -287,15 +321,27 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			_touch_pos[event.index] = event.position
 			if not _over_ui(event.position):
 				_press(event.position, event.index)
 		else:
 			_release(event.index)
 	elif event is InputEventScreenDrag:
+		var before: Vector2 = _touch_pos.get(event.index, event.position - event.relative)
+		_touch_pos[event.index] = event.position
 		if event.index == _joy_index:
 			_joy_move(event.position)
+		elif _pinch_index != -2 and (event.index == _look_index or event.index == _pinch_index):
+			var other := _pinch_index if event.index == _look_index else _look_index
+			var op: Vector2 = _touch_pos.get(other, event.position)
+			var d_now: float = (event.position as Vector2).distance_to(op)
+			var d_before: float = before.distance_to(op)
+			world.player.zoom((d_before - d_now) * 0.02)
 		elif event.index == _look_index:
 			world.player.look(event.relative * 1.2)
+	elif event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION and event.pressed \
+			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		world.player.zoom(-0.5 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.5)
 	elif event is InputEventMouseButton and event.device != InputEvent.DEVICE_ID_EMULATION and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if not _over_ui(event.position):
@@ -316,6 +362,13 @@ func set_perf(on: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	_compass.visible = compass_target != null and world != null and world.player != null
+	if _compass.visible:
+		var to: Vector3 = (compass_target as Vector3) - world.player.global_position
+		var cam_fwd := Vector2(-sin(world.player.yaw), -cos(world.player.yaw))
+		(_compass as Arrow).angle = cam_fwd.angle_to(Vector2(to.x, to.z))
+		_compass.position = Vector2(size.x - 100, 96)
+		_compass.queue_redraw()
 	if not perf_on:
 		return
 	_fps.append(1.0 / maxf(delta, 0.0001))
