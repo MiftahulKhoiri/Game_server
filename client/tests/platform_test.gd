@@ -17,6 +17,9 @@ const State := GameRegistry.State
 
 var _failed := false
 var GM: Node
+## Versi paket SD sebelum dan sesudah "update" (diisi scripts/platform-test.sh).
+var V1 := OS.get_environment("TEST_SD_V1") if OS.get_environment("TEST_SD_V1") != "" else "1.0.0"
+var V2 := OS.get_environment("TEST_SD_V2") if OS.get_environment("TEST_SD_V2") != "" else "1.0.1"
 
 
 func _initialize() -> void:
@@ -220,7 +223,7 @@ func _phase_install() -> void:
 	GM.install("education_sd")
 	var e: Dictionary = await _wait_idle("education_sd")
 	_check(e.state == State.ERROR and str(e.reason).contains("terputus"), "unduhan putus -> ERROR (" + str(e.reason) + ")")
-	var part := "user://user_data/cache/downloads/education_sd-1.0.0.part"
+	var part := "user://user_data/cache/downloads/education_sd-%s.part" % V1
 	var have := SecurityManager.file_size(part)
 	_check(have >= 60000, "berkas sementara disimpan untuk dilanjutkan (%d byte)" % have)
 	_check(not GM.registry.installed.has("education_sd"), "belum tercatat terpasang setelah unduhan putus")
@@ -292,22 +295,21 @@ func _phase_install() -> void:
 	await _wait(0.3)
 	var game = current_scene
 	_check(GM.active_game_id == "education_sd", "game aktif tercatat")
-	_check(game != null and str(game.get("game_id")) == "education_sd" and (game.course.subjects as Array).size() == 4,
-		"skrip game + data pelajaran dari paket termuat (4 mata pelajaran)")
-	# Mainkan satu kuis Bahasa Indonesia level 1: jawab semua benar.
-	var subj: Dictionary = game.course.subjects[1]
-	game._start(subj, subj.levels[0], "kuis")
-	var n: int = game._questions.size()
-	for i in n:
-		game._choose(int(game._questions[game._index].answer))
-		await _wait(0.45)
-	_check(game._screen == "result", "kuis selesai (%d soal)" % n)
-	var lv: Dictionary = game.progress.levels.get("bahasa_indonesia/k12", {})
-	_check(int(lv.get("best", 0)) == 100, "nilai 100 tercatat")
-	_check(game._unlocked(subj, 1), "level berikutnya terbuka")
-	_check((game.progress.history as Array).size() >= 1, "riwayat latihan tercatat")
-	var saved := SaveManager.load_progress("education_sd", 1)
-	_check(int(saved.data.levels["bahasa_indonesia/k12"].best) == 100, "progres tersimpan di user_data/progress/education_sd")
+	_check(game != null and str(game.get("game_id")) == "education_sd" and game.data.regions.size() == 4 and game.data.questions.size() >= 200,
+		"skrip game + bank soal dari paket termuat (4 wilayah, %d soal)" % (game.data.questions.size() if game != null else 0))
+	# Pulau Ilmu: isi nama & kelas, lalu kuis Bahasa kelas 1 dengan semua jawaban benar.
+	game.set_player("Uji", 1)
+	game.start_quiz("bahasa")
+	var guard := 0
+	while game.screen == "session" and guard < 30:
+		guard += 1
+		_answer_right(game.current_question_view())
+		await _wait(0.05)
+	_check(game.screen == "result", "kuis Pulau Ilmu selesai")
+	_check(int(game.p.grades["1"].quiz.bahasa.best) == 100, "nilai 100 tercatat")
+	_check((game.p.history as Array).size() >= 1, "riwayat belajar tercatat")
+	var saved := SaveManager.load_progress("education_sd", 2)
+	_check(int(saved.data.grades["1"].quiz.bahasa.best) == 100, "progres tersimpan di user_data/progress/education_sd")
 	_check(SaveManager.load_progress("education_smp", 1).is_empty(), "progres SMP tidak tercampur")
 	await GM.exit_to_launcher()
 	_check(await _wait_scene("res://launcher/scenes/main_menu.tscn"), "kembali ke launcher")
@@ -352,30 +354,30 @@ func _phase_update() -> void:
 	var before_smp: Dictionary = GM.registry.installed.education_smp.duplicate(true)
 	await GM.refresh_catalog()
 	var e: Dictionary = GM.game("education_sd")
-	_check(e.state == State.UPDATE_AVAILABLE and e.installed_version == "1.0.0" and e.latest_version == "1.0.1",
-		"SD: UPDATE_AVAILABLE 1.0.0 -> 1.0.1")
+	_check(e.state == State.UPDATE_AVAILABLE and e.installed_version == V1 and e.latest_version == V2,
+		"SD: UPDATE_AVAILABLE %s -> %s" % [V1, V2])
 	_check(GM.game("education_smp").state == State.INSTALLED, "SMP tidak ikut berubah (tetap INSTALLED)")
 	_check(GM.game("adventure").state == State.INSTALLED, "Petualangan tidak ikut berubah")
-	var progress_before := SaveManager.load_progress("education_sd", 1)
+	var progress_before := SaveManager.load_progress("education_sd", 2)
 	GM.install("education_sd")
 	e = await _wait_idle("education_sd")
-	_check(e.state == State.INSTALLED and e.installed_version == "1.0.1", "SD diperbarui ke 1.0.1")
-	_check(GM.registry.installed.education_sd.previous.version == "1.0.0", "versi 1.0.0 disimpan untuk rollback")
-	_check(FileAccess.file_exists(str(GM.registry.installed.education_sd.previous.package_path)), "berkas 1.0.0 masih ada")
+	_check(e.state == State.INSTALLED and e.installed_version == V2, "SD diperbarui ke " + V2)
+	_check(GM.registry.installed.education_sd.previous.version == V1, "versi %s disimpan untuk rollback" % V1)
+	_check(FileAccess.file_exists(str(GM.registry.installed.education_sd.previous.package_path)), "berkas %s masih ada" % V1)
 	_check(GM.registry.installed.education_smp.sha256 == before_smp.sha256, "paket SMP tidak diunduh ulang")
-	var progress_after := SaveManager.load_progress("education_sd", 1)
+	var progress_after := SaveManager.load_progress("education_sd", 2)
 	_check(JSON.stringify(progress_after.data) == JSON.stringify(progress_before.data) and not progress_before.is_empty(), "progres SD utuh setelah update")
 	GM.play("education_sd")
-	_check(await _wait_scene("res://games/education_sd/main.tscn"), "SD 1.0.1 berjalan")
+	_check(await _wait_scene("res://games/education_sd/main.tscn"), "SD %s berjalan" % V2)
 	var gj = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/game.json"))
-	_check(typeof(gj) == TYPE_DICTIONARY and str(gj.version) == "1.0.1", "isi paket yang dimuat adalah versi 1.0.1")
+	_check(typeof(gj) == TYPE_DICTIONARY and str(gj.version) == V2, "isi paket yang dimuat adalah versi " + V2)
 	await GM.exit_to_launcher()
 	await _wait_scene("res://launcher/scenes/main_menu.tscn")
 
 	print("== Rollback")
 	var rb: Dictionary = GM.packages.rollback("education_sd")
-	_check(rb.ok and GM.registry.installed.education_sd.version == "1.0.0", "rollback ke 1.0.0")
-	_check(GM.game("education_sd").state == State.UPDATE_AVAILABLE, "setelah rollback, update 1.0.1 ditawarkan lagi")
+	_check(rb.ok and GM.registry.installed.education_sd.version == V1, "rollback ke " + V1)
+	_check(GM.game("education_sd").state == State.UPDATE_AVAILABLE, "setelah rollback, update %s ditawarkan lagi" % V2)
 	var lr: Dictionary = GM.packages.load_game("education_sd")
 	_check(not lr.ok and lr.restart_required, "versi lain sudah dimuat di sesi ini -> minta buka ulang aplikasi")
 
@@ -399,20 +401,19 @@ func _phase_update() -> void:
 	var reg = JSON.parse_string((res[3] as PackedByteArray).get_string_from_utf8())
 	_check(int(res[1]) == 201 and typeof(reg) == TYPE_DICTIONARY and str(reg.get("token", "")) != "", "akun uji dibuat")
 	api.token = str(reg.get("token", ""))
-	var sd := SaveManager.load_progress("education_sd", 1)
-	GM.save_progress("education_sd", sd.data, 1)
+	var sd := SaveManager.load_progress("education_sd", 2)
+	GM.save_progress("education_sd", sd.data, 2)
 	await _wait(1.5)
 	_check(not FileAccess.get_file_as_string("user://user_data/registry/sync_pending.json").contains("education_sd"), "progres SD terkirim ke server")
 	var srv: Dictionary = await GM.api.progress_get("education_sd")
-	_check(srv.ok and int(srv.data.data.levels["bahasa_indonesia/k12"].best) == 100, "server menyimpan progres SD akun ini")
+	_check(srv.ok and int(srv.data.data.grades["1"].quiz.bahasa.best) == 100, "server menyimpan progres SD akun ini")
 	# HP baru: progres lokal kosong -> dipulihkan dari server.
 	for f in ["save.json", "save.json.bak"]:
 		DirAccess.remove_absolute(SaveManager.dir_for("education_sd") + "/" + f)
-	var restored: Dictionary = await GM.restore_progress_from_server("education_sd", 1)
-	_check(int(restored.levels["bahasa_indonesia/k12"].best) == 100, "progres dipulihkan dari server ke HP")
+	var restored: Dictionary = await GM.restore_progress_from_server("education_sd", 2)
+	_check(int(restored.grades["1"].quiz.bahasa.best) == 100, "progres dipulihkan dari server ke HP")
 	var smp_srv: Dictionary = await GM.api.progress_get("education_smp")
-	var smp_levels: Dictionary = (smp_srv.data.get("data", {}) as Dictionary).get("levels", {})
-	_check(smp_srv.ok and not smp_levels.has("bahasa_indonesia/k12"), "progres SMP di server terpisah dari SD")
+	_check(smp_srv.ok and not (smp_srv.data.get("data", {}) as Dictionary).has("grades"), "progres SMP di server terpisah dari SD")
 	api.token = ""
 	req.queue_free()
 
@@ -437,12 +438,33 @@ func _phase_offline() -> void:
 	_check(await _wait_scene("res://games/education_sd/main.tscn"), "game unduhan dimainkan offline")
 	await _wait(0.3)
 	var g = current_scene
-	_check(int(g.progress.levels.get("bahasa_indonesia/k12", {}).get("best", 0)) == 100, "progres lokal terbaca offline")
-	var subj: Dictionary = g.course.subjects[0]
-	g._start(subj, subj.levels[0], "latihan")
-	g._choose(int(g._questions[0].answer))
-	_check(g._next_btn.visible and str(g._feedback.text).begins_with("Benar"), "mode latihan memberi pembahasan")
-	g._save()
+	_check(int(g.p.grades["1"].quiz.bahasa.best) == 100, "progres lokal terbaca offline")
+	g.start_practice("huruf")
+	var qv = g.current_question_view()
+	_answer_right(qv)
+	_check(qv._next.visible and str(qv._fb.text).begins_with("Hebat"), "mode latihan memberi pembahasan")
+	g.save()
 	_check(FileAccess.file_exists("user://user_data/registry/sync_pending.json"), "progres ditandai untuk sinkron saat online")
 	await GM.exit_to_launcher()
 	_check(await _wait_scene("res://launcher/scenes/main_menu.tscn"), "kembali ke launcher saat offline")
+
+
+## Jawab benar soal Pulau Ilmu yang sedang tampil (semua tipe), lalu lanjut.
+func _answer_right(qv) -> void:
+	if qv == null:
+		return
+	match str(qv.q.type):
+		"mc", "logic", "fill", "pick_image", "tf", "count":
+			qv._choose(qv._answer)
+		"order_letters", "order_words", "sort_numbers":
+			for x in qv._target.duplicate():
+				qv._place(qv._pool.find(x))
+		"match":
+			for i in (qv.q.pairs as Array).size():
+				qv._pick_left(i)
+				qv._pick_right(qv._right_vals.find(str(qv.q.pairs[i][1])))
+		"classify":
+			while not qv._done:
+				qv._put(int(qv._items[qv._item_i][1]))
+	if qv._next.visible:
+		qv._emit_finish()
