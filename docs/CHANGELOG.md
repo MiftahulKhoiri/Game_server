@@ -2,6 +2,14 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd v2.0.1 — perbaikan: game langsung kembali ke launcher (15 November 2026)
+
+- Log server menunjukkan game SD tertutup 4 detik setelah dibuka, saat masih di layar pengenalan: sinyal tombol
+  kembali Android (bisa terkirim saat menutup papan ketik / usap dari tepi layar) langsung menutup game.
+  Kini dari layar pengenalan dan beranda pemain ditanya dulu ("Kembali ke daftar game?").
+- Enter pada kolom nama = tombol Mulai.
+- Catatan diagnosis `diag` (alasan & layar saat game ditutup, 10 terakhir) ikut progres dan tersinkron ke server.
+
 ## Paket education_sd v2.0.0 — "Petualangan Pulau Ilmu" (tanpa APK baru)
 
 Update paket game unduhan saja (launcher menampilkan UPDATE); APK, SMP, The Last Dragon, launcher, dan server

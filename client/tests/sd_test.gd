@@ -308,6 +308,23 @@ func _app_tests() -> void:
 	print("== Aplikasi: pengenalan & beranda")
 	var app := await _open()
 	_check(app != null and app.screen == "onboarding", "pemain baru melihat layar pengenalan (nama + kelas)")
+	# Sinyal kembali Android (mis. saat menutup papan ketik) tidak boleh langsung menutup game.
+	app.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	await process_frame
+	_check(current_scene == app and app.screen == "onboarding" and app._exit_dialog != null and app._exit_dialog.visible,
+		"kembali di layar pengenalan: game TIDAK tertutup, pemain ditanya dulu")
+	app.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	await process_frame
+	_check(current_scene == app, "kembali dua kali tetap tidak menutup game tanpa konfirmasi")
+	app._exit_dialog.hide()
+	var ne: LineEdit = app.page().find_child("NameEdit", true, false)
+	ne.text = "Budi"
+	ne.text_submitted.emit("Budi")
+	_check(app.screen == "home" and str(app.p.player.name) == "Budi", "Enter pada kolom nama = Mulai")
+	app.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	await process_frame
+	_check(current_scene == app and app._exit_dialog.visible, "kembali di beranda: ditanya dulu")
+	app._exit_dialog.hide()
 	app.set_player("Ani", 1)
 	app.show_home()
 	_check(app.screen == "home" and str(app.p.player.name) == "Ani" and app.grade() == 1, "nama dan kelas tersimpan, beranda tampil")

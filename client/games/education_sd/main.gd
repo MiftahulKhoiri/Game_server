@@ -32,6 +32,18 @@ var _toast_lbl: Label
 var session: Dictionary = {}
 var _qview: Node
 var _back_target := "home"
+var _exit_dialog: ConfirmationDialog
+var _exit_noted := false
+
+
+## Catatan diagnosis (ikut tersinkron ke server): kapan dan dari layar mana game ditutup.
+func _note_exit(reason: String) -> void:
+	if p.is_empty():
+		return
+	var diag: Array = p.get("diag", [])
+	diag.append({"at": Time.get_datetime_string_from_system(false, true), "reason": reason, "screen": screen})
+	p["diag"] = diag.slice(-10)
+	_exit_noted = true
 
 
 func _ready() -> void:
@@ -70,6 +82,8 @@ func _notification(what: int) -> void:
 
 ## Dipanggil GameManager sebelum kembali ke launcher.
 func platform_before_exit() -> void:
+	if not _exit_noted:
+		_note_exit("ditutup platform")
 	save()
 	if audio != null:
 		audio.stop_all()
@@ -173,17 +187,22 @@ func _chip(text: String, color: Color) -> PanelContainer:
 	return c
 
 
+## Tombol kembali Android / tombol Kembali. Dari beranda dan layar pengenalan TIDAK langsung keluar:
+## sinyal kembali Android bisa terkirim tanpa sengaja (menutup papan ketik, usap dari tepi layar),
+## jadi pemain ditanya dulu.
 func go_back() -> void:
 	if audio != null:
 		audio.play("klik")
 	match screen:
-		"home", "error":
-			_exit_to_launcher()
+		"error":
+			_exit_to_launcher("kembali dari layar galat")
+		"home":
+			_confirm_exit()
 		"onboarding":
 			if str(p.player.name) != "":
 				show_home()
 			else:
-				_exit_to_launcher()
+				_confirm_exit()
 		"session":
 			_confirm_leave_session()
 		"region":
@@ -202,7 +221,20 @@ func go_back() -> void:
 					show_home()
 
 
-func _exit_to_launcher() -> void:
+func _confirm_exit() -> void:
+	if _exit_dialog != null and is_instance_valid(_exit_dialog) and _exit_dialog.visible:
+		return
+	_exit_dialog = ConfirmationDialog.new()
+	_exit_dialog.dialog_text = "Kembali ke daftar game?\nProgres belajarmu sudah tersimpan."
+	_exit_dialog.ok_button_text = "Ya, kembali"
+	_exit_dialog.cancel_button_text = "Tetap bermain"
+	add_child(_exit_dialog)
+	_exit_dialog.confirmed.connect(_exit_to_launcher.bind("kembali (dikonfirmasi)"))
+	_exit_dialog.popup_centered(Vector2i(640, 220))
+
+
+func _exit_to_launcher(reason: String = "tombol kembali ke launcher") -> void:
+	_note_exit(reason)
 	save()
 	var gm := _gm()
 	if gm != null:
@@ -249,13 +281,15 @@ func show_onboarding() -> void:
 				btns[j].add_theme_stylebox_override("normal", UI.box(Color("ffd166") if j + 1 == k else Color("e8e2f2")))
 			audio.play("klik"))
 	col.add_child(g)
-	var go := UI.button("Mulai!", func() -> void:
+	var start := func() -> void:
 		var n := name_edit.text.strip_edges()
 		if n == "":
 			toast("Tulis namamu dulu, ya.")
 			return
 		set_player(n, chosen[0])
-		show_home(), UI.GOOD, 34, 90)
+		show_home()
+	name_edit.text_submitted.connect(func(_t: String) -> void: start.call())
+	var go := UI.button("Mulai!", start, UI.GOOD, 34, 90)
 	go.name = "Start"
 	col.add_child(go)
 
