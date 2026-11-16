@@ -427,3 +427,33 @@ gizi). Tetap perlu ditinjau guru (Tahap 9).
 | `make platform-test` | **LULUS** |
 
 Untuk revisi: warna tanah Pulau 6 masih kemerahan dan gunung api belum menyala; tampilan tiap pulau perlu dicek di HP.
+
+---
+
+## Tahap 9 — Uji menyeluruh & perapian (paket 4.0.1, 16 Nov 2026)
+
+### Perbaikan
+
+| Bagian | Isi |
+|---|---|
+| Warna tanah | Tanah pulau tidak lagi memakai warna tema peta (Pulau 3 kuning, 4 biru, 5 ungu, 6 merah). Kini `layout.colors.ground` per pulau: semua hijau dengan nuansa berbeda (Pulau 6 hijau keabuan) |
+| Langit Pulau 6 | Cakrawala jingga terlalu kuat diganti senja pucat |
+
+### Uji regresi (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **714 pemeriksaan LULUS** |
+| `make platform-test` | **LULUS** (launcher, unduh, verifikasi tanda tangan, update, offline) |
+| `make client-test` | **LULUS** — The Last Dragon tidak berubah |
+| Tangkapan layar | Dermaga & desa Pulau 2–6 dicek di Pi (Xvfb) |
+
+### Uji lapangan
+
+Daftar uji untuk orang tua & guru: [`SD_UJI_LAPANGAN.md`](SD_UJI_LAPANGAN.md). Hasilnya menjadi bahan tahap revisi.
+
+### Catatan untuk revisi
+
+- Isi Pulau 2–6 dibuat dari satu pola tata ruang (dicerminkan); bila anak merasa pulaunya mirip, tata ruang bisa dibedakan per pulau.
+- Gunung api Pulau 6 hanya bercahaya di puncak; efek asap/lava bisa ditambah.
+- Performa Pulau 2–6 setara Pulau 1 (bangunan & pohon sama banyak, +1 bukit) — tetap cek di HP anak dengan Grafis Hemat.

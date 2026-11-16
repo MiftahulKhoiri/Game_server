@@ -36,7 +36,7 @@ ISLANDS = {
         "houses": ["tongkonan", "rumah_gadang", "tongkonan", "joglo"],
         "academy_b": ["library", "observatory", "lab_dome"],
         "tree_kinds": ["vegetation/tree_pine", "vegetation/tree_pine", "vegetation/bush", "vegetation/flowers"],
-        "colors": {"sky_top": "#2f7f6a", "sky_horizon": "#cdeedc", "wall": "#7a5232", "roof": "#3f8f3f", "flag": "#5a5a66"},
+        "colors": {"sky_top": "#2f7f6a", "sky_horizon": "#cdeedc", "ground": "#5fb35a", "wall": "#7a5232", "roof": "#3f8f3f", "flag": "#5a5a66"},
         "shapes": [],
         "npcs": [
             ("tetua", "Kakek Rimba", "Tetua Desa", "warga_bapak2"), ("guru", "Bu Guru Melati", "Guru Akademi", "warga_ibu"),
@@ -81,7 +81,7 @@ ISLANDS = {
         "houses": ["joglo", "rumah_gadang", "rumah_gadang", "joglo"],
         "academy_b": ["museum", "math_tower", "math_tower"],
         "tree_kinds": ["vegetation/tree_round", "vegetation/tree_round", "vegetation/bush", "vegetation/flowers"],
-        "colors": {"sky_top": "#3a5fb8", "sky_horizon": "#e8dcff", "wall": "#8f86a6", "roof": "#6a4fb0", "flag": "#2b2440"},
+        "colors": {"sky_top": "#3a5fb8", "sky_horizon": "#e8dcff", "ground": "#86c063", "wall": "#8f86a6", "roof": "#6a4fb0", "flag": "#2b2440"},
         "shapes": [],
         "npcs": [
             ("tetua", "Ratu Sekar", "Ratu Kerajaan", "penyihir"), ("guru", "Pak Guru Arif", "Guru Akademi", "warga_bapak"),
@@ -125,7 +125,7 @@ ISLANDS = {
         "houses": ["joglo", "rumah_gadang", "tongkonan", "joglo"],
         "academy_b": ["lab_dome", "observatory", "math_tower"],
         "tree_kinds": ["vegetation/tree_palm", "vegetation/tree_palm", "vegetation/bush", "vegetation/flowers"],
-        "colors": {"sky_top": "#2f8fd8", "sky_horizon": "#fff2cf", "wall": "#c9a46a", "roof": "#2f8f8a", "flag": "#e0813d"},
+        "colors": {"sky_top": "#2f8fd8", "sky_horizon": "#fff2cf", "ground": "#9cc466", "wall": "#c9a46a", "roof": "#2f8f8a", "flag": "#e0813d"},
         "shapes": [{"type": "cone", "pos": [52, 8], "r": 9, "top": 2.5, "h": 9, "color": "#a08a6a"}],
         "npcs": [
             ("tetua", "Profesor Tua", "Kepala Penemu", "penyihir"), ("guru", "Bu Guru Ratih", "Guru Akademi", "warga_ibu"),
@@ -169,7 +169,7 @@ ISLANDS = {
         "houses": ["rumah_gadang", "joglo", "joglo", "tongkonan"],
         "academy_b": ["museum", "math_tower", "lab_dome"],
         "tree_kinds": ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/bush", "vegetation/flowers"],
-        "colors": {"sky_top": "#5a6fb0", "sky_horizon": "#f0e0d0", "wall": "#5a3a22", "roof": "#8a2a2a", "flag": "#2b2440"},
+        "colors": {"sky_top": "#5a6fb0", "sky_horizon": "#f0e0d0", "ground": "#74b45c", "wall": "#5a3a22", "roof": "#8a2a2a", "flag": "#2b2440"},
         "shapes": [{"type": "cone", "pos": [-54, 10], "r": 8, "top": 3, "h": 6, "color": "#8a8174"}],
         "npcs": [
             ("tetua", "Raja Satria", "Raja", "ksatria"), ("guru", "Pak Guru Wira", "Guru Akademi", "warga_bapak"),
@@ -213,7 +213,7 @@ ISLANDS = {
         "houses": ["tongkonan", "joglo", "rumah_gadang", "tongkonan"],
         "academy_b": ["library", "observatory", "lighthouse"],
         "tree_kinds": ["vegetation/tree_pine", "vegetation/tree_pine", "vegetation/bush", "vegetation/bush"],
-        "colors": {"sky_top": "#3a2a4a", "sky_horizon": "#f0b080", "wall": "#3a3440", "roof": "#c0392b", "flag": "#e05a4f"},
+        "colors": {"sky_top": "#4a3a5e", "sky_horizon": "#ecd8c8", "ground": "#6f8c58", "wall": "#3a3440", "roof": "#c0392b", "flag": "#e05a4f"},
         "shapes": [{"type": "cone", "pos": [50, 8], "r": 12, "top": 3, "h": 14, "color": "#5a4a48", "glow": "#ff7a2a"}],
         "npcs": [
             ("tetua", "Nenek Legenda", "Penjaga Legenda", "penyihir"), ("guru", "Pak Guru Agung", "Guru Akademi", "warga_bapak2"),

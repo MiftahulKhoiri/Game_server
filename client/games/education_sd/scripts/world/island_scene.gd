@@ -234,7 +234,7 @@ func _sea() -> void:
 
 
 func _ground() -> void:
-	var green := Color.from_string(str(island.get("color", "#7cc95a")), Color("7cc95a"))
+	var green := _col("ground", Color.from_string(str(island.get("color", "#7cc95a")), Color("7cc95a")))
 	var sand := Color.from_string(str(island.get("sand", "#f3dfa2")), Color("f3dfa2"))
 	var beach := _mesh(Rig.cyl(radius + 5.0, radius + 8.0, 1.2, 72), sand.darkened(0.12), Vector3(0, -0.62, 0))
 	beach.name = "Beach"

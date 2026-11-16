@@ -696,8 +696,9 @@
 		"vegetation/bush"
 	],
 	"colors": {
-		"sky_top": "#3a2a4a",
-		"sky_horizon": "#f0b080",
+		"sky_top": "#4a3a5e",
+		"sky_horizon": "#ecd8c8",
+		"ground": "#6f8c58",
 		"wall": "#3a3440",
 		"roof": "#c0392b",
 		"flag": "#e05a4f"

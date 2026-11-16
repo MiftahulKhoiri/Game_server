@@ -29,7 +29,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "4.0.0"
+const VERSION := "4.0.1"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"

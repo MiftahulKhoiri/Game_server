@@ -698,6 +698,7 @@
 	"colors": {
 		"sky_top": "#2f8fd8",
 		"sky_horizon": "#fff2cf",
+		"ground": "#9cc466",
 		"wall": "#c9a46a",
 		"roof": "#2f8f8a",
 		"flag": "#e0813d"
