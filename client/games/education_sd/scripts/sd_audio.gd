@@ -54,8 +54,7 @@ var song := "acak"  # pilihan di Pengaturan: id lagu atau "acak"
 var current := ""  # lagu yang sedang diputar
 var _built: Dictionary = {}  # id -> AudioStreamWAV
 var _tasks: Dictionary = {}  # id -> id tugas WorkerThreadPool
-var _results: Dictionary = {}  # hasil dari utas latar (dijaga _lock)
-var _lock := Mutex.new()
+var _results: Dictionary = {}  # hasil dari utas latar (diserahkan lewat call_deferred ke utas utama)
 var _want := ""
 var _upnext := ""  # lagu acak berikutnya (sudah disiapkan)  # lagu yang ingin diputar begitu selesai dibangun
 var _rng := RandomNumberGenerator.new()
@@ -146,9 +145,7 @@ func _play(id: String) -> void:
 func _stream(id: String) -> AudioStreamWAV:
 	if _built.has(id):
 		return _built[id]
-	_lock.lock()
 	var done = _results.get(id)
-	_lock.unlock()
 	if done != null:
 		_built[id] = done
 		_tasks.erase(id)
@@ -157,15 +154,19 @@ func _stream(id: String) -> AudioStreamWAV:
 		_built[id] = _make_song(id)
 		return _built[id]
 	if not _tasks.has(id):
-		_tasks[id] = WorkerThreadPool.add_task(_bg_build.bind(id), false, "lagu " + id)
+		_tasks[id] = WorkerThreadPool.add_task(_bg_build.bind(id, _store), false, "lagu " + id)
 	return null
 
 
-func _bg_build(id: String) -> void:
+## Utas latar: hanya data lokal (fungsi statis); hasil diserahkan ke utas utama. Bila node sudah
+## dibebaskan (mis. keluar ke launcher), panggilan tertunda itu diabaikan dengan aman.
+static func _bg_build(id: String, done: Callable) -> void:
 	var st := _make_song(id)
-	_lock.lock()
+	done.call_deferred(id, st)
+
+
+func _store(id: String, st: AudioStreamWAV) -> void:
 	_results[id] = st
-	_lock.unlock()
 
 
 func _process(_delta: float) -> void:
@@ -179,7 +180,7 @@ func _exit_tree() -> void:
 	_tasks.clear()
 
 
-func _make_song(id: String) -> AudioStreamWAV:
+static func _make_song(id: String) -> AudioStreamWAV:
 	var sg := _song_def(id)
 	if sg.is_empty() or (sg[4] as Array).is_empty():
 		return _build_music()
@@ -354,7 +355,7 @@ func _build_sfx(name: String) -> AudioStreamWAV:
 
 
 ## Musik latar: melodi pentatonik riang 8 ketuk diulang (± 7 detik), volume rendah.
-func _build_music() -> AudioStreamWAV:
+static func _build_music() -> AudioStreamWAV:
 	var melody := [523.0, 659.0, 784.0, 659.0, 880.0, 784.0, 659.0, 587.0,
 		523.0, 587.0, 659.0, 784.0, 659.0, 587.0, 523.0, 0.0]
 	var bass := [262.0, 262.0, 196.0, 196.0, 220.0, 220.0, 196.0, 196.0]
