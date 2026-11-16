@@ -10,6 +10,7 @@ signal continue_pressed
 signal profile_pressed
 signal settings_pressed
 signal exit_pressed
+signal report_pressed
 
 var _t := 0.0
 var islands: Array = []
@@ -40,6 +41,9 @@ func setup(info: Dictionary, island_list: Array) -> void:
 		UI.expand(sb)
 		row.add_child(sb)
 		_box.add_child(row)
+		var rb := UI.button("Laporan Belajar (orang tua & guru)", func() -> void: report_pressed.emit(), Color("e8f4ff"), 22, 60)
+		rb.name = "Report"
+		_box.add_child(rb)
 	else:
 		var s := UI.button("Mulai Petualangan", func() -> void: start_pressed.emit(), UI.GOOD, 36, 100)
 		s.name = "Start"
@@ -61,7 +65,7 @@ func _layout() -> void:
 	var w := clampf(size.x * 0.36, 380.0, 560.0)
 	_box.custom_minimum_size = Vector2(w, 0)
 	_box.size = Vector2(w, 0)
-	_box.position = Vector2((size.x - w) / 2.0, size.y * 0.42)
+	_box.position = Vector2((size.x - w) / 2.0, size.y * 0.36)
 	var ver: Control = get_node("Version")
 	ver.position = Vector2(16, size.y - 34)
 

@@ -19,6 +19,7 @@ const ChallengeView := preload("res://games/education_sd/scripts/ui/challenge_vi
 const RewardEngine := preload("res://games/education_sd/scripts/engine/reward_engine.gd")
 const BagView := preload("res://games/education_sd/scripts/ui/bag_view.gd")
 const BattleView := preload("res://games/education_sd/scripts/ui/battle_view.gd")
+const ReportView := preload("res://games/education_sd/scripts/ui/report_view.gd")
 const TitleScreen := preload("res://games/education_sd/scripts/ui/title_screen.gd")
 const ProfileScreen := preload("res://games/education_sd/scripts/ui/profile_screen.gd")
 const WorldMap := preload("res://games/education_sd/scripts/ui/world_map.gd")
@@ -28,7 +29,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.5.0"
+const VERSION := "3.6.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -221,7 +222,7 @@ func go_back() -> void:
 				show_title()
 			else:
 				show_title()
-		"settings", "map":
+		"settings", "map", "report":
 			show_title()
 		"island":
 			leave_island()
@@ -329,6 +330,9 @@ func show_title() -> void:
 		_sfx("klik")
 		show_settings())
 	t.exit_pressed.connect(func() -> void: _confirm_exit("tombol keluar di menu utama"))
+	t.report_pressed.connect(func() -> void:
+		_sfx("klik")
+		show_report_screen())
 	if int(p.migrated_from) == 2 and SaveEngine.has_profile(p) and not bool(p.seen_intro.get("migrated", false)):
 		p.seen_intro["migrated"] = true
 		save()
@@ -628,6 +632,9 @@ func open_class(room_id: String) -> void:
 	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), room_id)
 	lesson.closed.connect(close_class)
 	lesson.changed.connect(save)
+	lesson.exam_done.connect(func(_r: Dictionary) -> void:
+		_progress()
+		save())
 	lesson.session_done.connect(func(r: Dictionary) -> void:
 		for n in rewards.on_session(p, str(lesson.topic_id), r):
 			toast(str(n.text))
@@ -651,18 +658,26 @@ func close_class() -> void:
 		world.end_talk()
 
 
-## Rapor kecil (tombol MISI di akademi): bintang & materi dikuasai per ruang kelas.
+## Laporan Belajar di akademi (tombol MISI), di atas dunia 3D.
 func show_report() -> void:
-	var sm: Dictionary = learning.room_summary(p, grade())
-	var rows: Array = ["Kelas %d — %s" % [grade(), str(p.profile.name)], ""]
-	for r in LearningEngine.ROOMS:
-		if not sm.has(str(r.id)):
-			continue
-		var e: Dictionary = sm[str(r.id)]
-		rows.append("%s: %d/%d bintang, %d dari %d materi dikuasai" % [str(r.name), int(e.stars), int(e.max), int(e.mastered), int(e.topics)])
-	rows.append("")
-	rows.append("Materi dikuasai bila banyak jawaban terakhir benar sejak percobaan pertama.")
-	hud.show_list("Rapor Belajar", rows)
+	if hud == null or world == null:
+		return
+	hud.close_dialog()
+	hud.visible = false
+	world.player.frozen = true
+	lesson = ReportView.new()
+	lesson.name = "Report"
+	_root.add_child(lesson)
+	lesson.setup(learning.report(p))
+	lesson.closed.connect(close_class)
+
+
+## Laporan Belajar dari menu utama (untuk orang tua & guru).
+func show_report_screen() -> void:
+	var rv := ReportView.new()
+	_show("report", rv)
+	rv.setup(learning.report(p))
+	rv.closed.connect(show_title)
 
 
 func _on_island_interact(kind: String, id: String) -> void:

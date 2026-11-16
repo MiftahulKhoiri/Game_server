@@ -62,8 +62,8 @@ func _data_tests() -> void:
 	var d := SdData.new()
 	_check(d.load_data(), "data/pulau_ilmu.json termuat")
 	_check(d.errors.is_empty(), "semua soal bank lolos validasi (%d galat)" % d.errors.size())
-	_check(d.questions.size() >= 200, "bank soal >= 200 (%d)" % d.questions.size())
-	_check(d.regions.size() == 4, "empat wilayah")
+	_check(d.questions.size() >= 300, "bank soal >= 300 (%d)" % d.questions.size())
+	_check(d.regions.size() == 7, "tujuh mata pelajaran (Matematika, Bahasa, IPA, IPS, Pancasila, Seni, PJOK)")
 	var types := {}
 	for q in d.questions:
 		types[q.type] = true
@@ -428,10 +428,11 @@ func _v3_learning_tests() -> void:
 	_check(not le.lesson("sinonim_antonim", 3).is_empty(), "pita yang tidak ada memakai materi terdekat")
 	var p := _prof(2)
 	var rooms_ok := true
-	for r in ["matematika", "bahasa", "ipas_alam", "ipas_sosial"]:
-		if le.topics(r, 2, p).is_empty():
-			rooms_ok = false
-	_check(rooms_ok and le.topics("pancasila", 2, p).is_empty(), "4 ruang punya materi kelas 2; ruang segera dibuka kosong")
+	for g in range(1, 7):
+		for r in ["matematika", "bahasa", "ipas_alam", "ipas_sosial", "pancasila", "seni", "olahraga"]:
+			if le.topics(r, g, p).is_empty():
+				rooms_ok = false
+	_check(rooms_ok, "7 ruang kelas punya materi di setiap kelas 1–6")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var ses: Dictionary = le.start(p, "penjumlahan", 2, rng)
@@ -461,7 +462,27 @@ func _v3_learning_tests() -> void:
 	st.recent = [0, 0, 1, 0, 0, 0, 0]
 	_check(LearningEngine.status(p2, 2, "pengurangan") == "perlu_latihan", "sering salah: perlu latihan lagi")
 	var sm: Dictionary = le.room_summary(p, 2)
-	_check(sm.size() == 4 and int(sm.matematika.stars) >= 3, "ringkasan rapor per ruang")
+	_check(sm.size() == 7 and int(sm.matematika.stars) >= 3, "ringkasan rapor per ruang")
+	var ex: Dictionary = le.exam_start(p, "pancasila", 3, rng)
+	_check((ex.questions as Array).size() >= 8, "ujian Pancasila kelas 3: %d soal campuran" % (ex.questions as Array).size())
+	var coins_e := int(p.rpg.coins)
+	for q in ex.questions:
+		LearningEngine.exam_answer(p, ex, q, true)
+	var er: Dictionary = le.exam_finish(p, ex)
+	_check(int(er.score) == 100 and bool(er.passed) and int(er.bonus) == 50 and int(p.rpg.coins) > coins_e + 49, "semua benar: nilai 100, lulus, bonus pertama 50 koin")
+	var ex2: Dictionary = le.exam_start(p, "pancasila", 3, rng)
+	for q in ex2.questions:
+		LearningEngine.exam_answer(p, ex2, q, false)
+	var er2: Dictionary = le.exam_finish(p, ex2)
+	_check(int(er2.score) == 0 and not bool(er2.passed) and int(er2.bonus) == 0 and not (er2.practice as Array).is_empty(), "gagal: tanpa bonus, saran materi untuk dilatih")
+	var rec: Dictionary = LearningEngine.exam_rec(p, 3, "pancasila")
+	_check(bool(rec.passed) and int(rec.best) == 100 and int(rec.attempts) == 2, "status lulus & nilai terbaik tetap tersimpan")
+	var rep: Dictionary = le.report(p)
+	_check((rep.rooms as Array).size() == 7 and str(rep.summary).contains(str(p.profile.name)), "laporan belajar: 7 mata pelajaran + ringkasan")
+	var mat: Dictionary = (rep.rooms as Array).filter(func(x): return str(x.id) == "matematika")[0]
+	_check(bool(mat.enough) and int(mat.answered) >= 10, "laporan hanya menilai bila jawaban cukup (Matematika %d jawaban)" % int(mat.answered))
+	var p0 := _prof(1)
+	_check(str(le.report(p0).summary).contains("baru mulai"), "laporan anak baru: bahasa positif, tanpa kesimpulan")
 
 
 func _v3_quest_tests() -> void:
@@ -843,7 +864,7 @@ func _v3_app_tests() -> void:
 	_check(w.focus_kind() == "academy", "di depan pintu akademi: AKSI menyala")
 	app.hud.trigger_action()
 	await _frames(3)
-	_check(app.screen == "academy" and app.world != null and app.world.teachers.size() == 4, "masuk Akademi Tunas: 4 ruang kelas dengan guru")
+	_check(app.screen == "academy" and app.world != null and app.world.teachers.size() == 7, "masuk Akademi Tunas: 7 ruang kelas dengan guru")
 	var aw: Node3D = app.world
 	var tglb := true
 	for id in aw.teachers:
@@ -851,21 +872,17 @@ func _v3_app_tests() -> void:
 		if tr == null or not tr.is_glb():
 			tglb = false
 	_check(tglb, "guru memakai model GLB")
-	var closed_n := 0
-	for sp in aw.spots:
-		if str(sp.kind) == "closed":
-			closed_n += 1
-	_check(closed_n == 3, "Pancasila, Seni, PJOK: pintu segera dibuka")
 	aw.player.move_input = Vector2(0, 1)
 	await _frames(30)
 	aw.player.move_input = Vector2.ZERO
 	_check(aw.player.global_position.z < aw.spawn_point().z - 1.0 and absf(aw.player.global_position.y) < 0.5, "berjalan di dalam aula")
-	aw.player.place(aw.spot_pos("closed", "seni") + Vector3(0, 0.2, 0), 0.0)
+	aw.player.place(aw.spot_pos("teacher", "seni") + Vector3(0, 0.2, 0), 0.0)
 	await _frames(3)
 	app.hud.trigger_action()
+	await _frames(2)
+	_check(app.lesson != null and app.lesson.find_children("Topic_*", "Button", true, false).size() >= 1, "Sanggar Seni terbuka dengan materi")
+	app.close_class()
 	await _frames(1)
-	_check(app.hud.dialog_open() and str(app.hud._dialog_text.text).contains("segera dibuka"), "pintu Sanggar Seni: segera dibuka")
-	app.hud.close_dialog()
 	aw.player.place(aw.spot_pos("teacher", "matematika") + Vector3(0, 0.2, 0), 0.0)
 	await _frames(3)
 	_check(aw.focus_kind() == "teacher", "dekat Bu Guru Sinta: AKSI menyala")
@@ -920,10 +937,31 @@ func _v3_app_tests() -> void:
 	_press(lv, "Back")
 	await _frames(2)
 	_check(app.lesson == null and app.hud.visible and not aw.player.frozen, "ruang kelas ditutup, kembali berjalan di aula")
-	app.show_report()
+	aw.player.place(aw.spot_pos("teacher", "matematika") + Vector3(0, 0.2, 0), 0.0)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(2)
+	lv = app.lesson
+	_press(lv, "Exam")
 	await _frames(1)
-	_check(str(app.hud._dialog_text.text).contains("Ruang Matematika"), "Rapor Belajar per ruang kelas")
-	app.hud.close_dialog()
+	_check(lv.phase == "ujian" and lv.current_question_view() != null and str(lv.current_question_view().mode) == "kuis", "Ujian Matematika: soal tanpa petunjuk")
+	var eg := 0
+	while lv.phase == "ujian" and eg < 14:
+		eg += 1
+		_answer(lv.current_question_view(), true)
+		await _frames(2)
+	_check(lv.phase == "ujian_hasil" and int(lv.result.score) == 100 and bool(lv.result.passed), "ujian selesai: nilai 100, lulus")
+	_check(bool(app.p.academy["ujian/2/matematika"].passed), "kelulusan ujian tersimpan")
+	_press(lv, "ToClass")
+	await _frames(1)
+	_check(_label_has(lv, "LULUS"), "daftar materi menampilkan status ujian")
+	_press(lv, "Back")
+	await _frames(2)
+	app.show_report()
+	await _frames(2)
+	_check(app.lesson != null and _label_has(app.lesson, "Laporan Belajar") and _label_has(app.lesson, "Ujian: LULUS"), "Laporan Belajar di akademi (ujian lulus tercatat)")
+	_press(app.lesson, "Back")
+	await _frames(2)
 	aw.player.place(aw.spot_pos("exit") + Vector3(0, 0.2, 0), PI)
 	await _frames(3)
 	app.hud.trigger_action()
@@ -1221,6 +1259,12 @@ func _v3_app_tests() -> void:
 	app.go_back()
 	await _frames(2)
 	_check(app.screen == "title" and _btn(app.current, "Continue") != null, "peta -> menu utama dengan Lanjutkan Petualangan")
+	_check(_btn(app.current, "Report") != null, "menu utama: tombol Laporan Belajar")
+	_press(app.current, "Report")
+	await _frames(2)
+	_check(app.screen == "report" and _label_has(app.current, "Mata Pelajaran"), "Laporan Belajar dari menu utama")
+	app.go_back()
+	await _frames(2)
 	_press(app.current, "Settings")
 	await _frames(2)
 	_press(app.current, "gfx_hemat")

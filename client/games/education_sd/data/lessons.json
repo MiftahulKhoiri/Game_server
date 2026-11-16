@@ -591,6 +591,296 @@
 				],
 				"example": "Indonesia punya ribuan pulau."
 			}
+		},
+		"sila_pancasila": {
+			"1-2": {
+				"title": "Pancasila",
+				"text": [
+					"Pancasila adalah dasar negara Indonesia. Ada lima sila.",
+					"Setiap sila punya lambang: bintang, rantai, pohon beringin, kepala banteng, padi dan kapas."
+				],
+				"example": "Sila pertama berlambang bintang."
+			},
+			"3-4": {
+				"title": "Lambang & Pengamalan Sila",
+				"text": [
+					"Sila 1 bintang, sila 2 rantai, sila 3 pohon beringin, sila 4 kepala banteng, sila 5 padi dan kapas.",
+					"Hari Lahir Pancasila diperingati setiap 1 Juni."
+				],
+				"example": "Menolong teman = sila kedua."
+			},
+			"5-6": {
+				"title": "Pancasila Dasar Negara",
+				"text": [
+					"Pancasila tercantum dalam Pembukaan UUD 1945 alinea keempat.",
+					"Musyawarah untuk mufakat adalah pengamalan sila keempat."
+				],
+				"example": "Bhinneka Tunggal Ika: berbeda-beda tetapi tetap satu."
+			}
+		},
+		"aturan": {
+			"1-2": {
+				"title": "Aturan",
+				"text": [
+					"Aturan ada di rumah, sekolah, dan jalan.",
+					"Menaati aturan membuat semua orang aman dan nyaman."
+				],
+				"example": "Lampu merah berarti berhenti."
+			},
+			"3-4": {
+				"title": "Menaati Aturan",
+				"text": [
+					"Melanggar aturan bisa merugikan orang lain dan mendapat sanksi.",
+					"Aturan berlaku di mana saja."
+				],
+				"example": "Antre dengan tertib di kantin."
+			}
+		},
+		"gotong_royong": {
+			"1-2": {
+				"title": "Gotong Royong",
+				"text": [
+					"Gotong royong artinya bekerja bersama-sama.",
+					"Pekerjaan berat terasa ringan bila dikerjakan bersama."
+				],
+				"example": "Kerja bakti membersihkan kelas."
+			},
+			"3-4": {
+				"title": "Musyawarah",
+				"text": [
+					"Musyawarah adalah berdiskusi untuk mengambil keputusan bersama.",
+					"Hasil yang disetujui semua orang disebut mufakat."
+				],
+				"example": "Memilih ketua kelas dengan musyawarah."
+			},
+			"5-6": {
+				"title": "Musyawarah & Voting",
+				"text": [
+					"Bila mufakat tidak tercapai, keputusan dapat diambil dengan pemungutan suara.",
+					"Hasil musyawarah dilaksanakan dengan tanggung jawab."
+				],
+				"example": "Semua menghormati hasil pemungutan suara."
+			}
+		},
+		"keberagaman": {
+			"1-2": {
+				"title": "Teman yang Berbeda",
+				"text": [
+					"Teman kita bisa berbeda suku, agama, dan bahasa daerah.",
+					"Kita tetap berteman dan saling menghormati."
+				],
+				"example": "Mengucapkan selamat hari raya kepada teman."
+			},
+			"3-4": {
+				"title": "Bhinneka Tunggal Ika",
+				"text": [
+					"Bhinneka Tunggal Ika artinya berbeda-beda tetapi tetap satu.",
+					"Bahasa Indonesia adalah bahasa persatuan."
+				],
+				"example": "Rumah gadang dari Sumatra Barat, honai dari Papua."
+			},
+			"5-6": {
+				"title": "Toleransi",
+				"text": [
+					"Toleransi berarti menghargai perbedaan.",
+					"Semboyan Bhinneka Tunggal Ika berasal dari kitab Sutasoma karya Mpu Tantular."
+				],
+				"example": "Menyelesaikan perbedaan pendapat dengan musyawarah."
+			}
+		},
+		"hak_kewajiban": {
+			"3-4": {
+				"title": "Hak dan Kewajiban",
+				"text": [
+					"Hak adalah sesuatu yang kita terima, seperti bermain dan belajar.",
+					"Kewajiban adalah sesuatu yang harus kita lakukan, seperti belajar dengan rajin."
+				],
+				"example": "Laksanakan kewajiban sebelum menuntut hak."
+			},
+			"5-6": {
+				"title": "Hak & Kewajiban Warga",
+				"text": [
+					"UUD 1945 menjamin hak warga negara, misalnya beragama dan mendapat pendidikan.",
+					"Membela negara adalah kewajiban warga negara."
+				],
+				"example": "Menjaga kebersihan lingkungan adalah kewajiban."
+			}
+		},
+		"negaraku": {
+			"3-4": {
+				"title": "Bendera dan Lagu Kebangsaan",
+				"text": [
+					"Bendera Merah Putih: merah berarti berani, putih berarti suci.",
+					"Lagu kebangsaan kita adalah Indonesia Raya."
+				],
+				"example": "Indonesia Raya diciptakan oleh W.R. Supratman."
+			},
+			"5-6": {
+				"title": "NKRI",
+				"text": [
+					"Indonesia adalah negara kesatuan berbentuk republik.",
+					"UUD 1945 adalah undang-undang dasar negara; presiden adalah kepala negara."
+				],
+				"example": "NKRI = Negara Kesatuan Republik Indonesia."
+			}
+		},
+		"warna": {
+			"1-2": {
+				"title": "Mengenal Warna",
+				"text": [
+					"Warna primer: merah, kuning, biru.",
+					"Mencampur dua warna menghasilkan warna baru."
+				],
+				"example": "Merah + kuning = jingga. Biru + kuning = hijau."
+			},
+			"3-4": {
+				"title": "Warna Primer & Sekunder",
+				"text": [
+					"Warna primer tidak bisa dibuat dari warna lain.",
+					"Warna sekunder dibuat dari dua warna primer: jingga, hijau, ungu."
+				],
+				"example": "Merah + biru = ungu."
+			}
+		},
+		"musik": {
+			"1-2": {
+				"title": "Alat Musik",
+				"text": [
+					"Alat musik dimainkan dengan cara berbeda: dipukul, ditiup, dipetik, digoyang.",
+					"Angklung dari Jawa Barat dimainkan dengan digoyang."
+				],
+				"example": "Suling ditiup, gendang dipukul."
+			},
+			"3-4": {
+				"title": "Alat Musik Daerah",
+				"text": [
+					"Sasando dari Nusa Tenggara Timur dipetik; kolintang dari Sulawesi Utara dipukul.",
+					"Tempo adalah cepat atau lambatnya lagu."
+				],
+				"example": "Lagu Ampar-Ampar Pisang dari Kalimantan Selatan."
+			},
+			"5-6": {
+				"title": "Unsur Musik",
+				"text": [
+					"Dinamika adalah keras-lembutnya lagu.",
+					"Gamelan sebagian besar dimainkan dengan dipukul."
+				],
+				"example": "Rasa Sayange dari Maluku, Yamko Rambe Yamko dari Papua."
+			}
+		},
+		"tari": {
+			"1-2": {
+				"title": "Tari Daerah",
+				"text": [
+					"Setiap daerah punya tarian khas.",
+					"Tari Saman dari Aceh, Tari Kecak dari Bali."
+				],
+				"example": "Penari Saman bergerak cepat dan kompak."
+			},
+			"3-4": {
+				"title": "Tari Nusantara",
+				"text": [
+					"Tari Piring dari Sumatra Barat, Tari Jaipong dari Jawa Barat.",
+					"Tari menggambarkan kehidupan masyarakat."
+				],
+				"example": "Tari Kecak diiringi suara cak cak cak."
+			},
+			"5-6": {
+				"title": "Unsur Tari",
+				"text": [
+					"Unsur utama tari: gerak (wiraga), irama (wirama), dan rasa (wirasa).",
+					"Gerak serempak dilakukan bersamaan oleh semua penari."
+				],
+				"example": "Penari Saman bergerak serempak."
+			}
+		},
+		"kerajinan": {
+			"3-4": {
+				"title": "Kerajinan Tangan",
+				"text": [
+					"Batik dibuat dengan canting dan malam (lilin).",
+					"Anyaman dibuat dari bambu, rotan, atau pandan."
+				],
+				"example": "Gerabah dibuat dari tanah liat."
+			},
+			"5-6": {
+				"title": "Kerajinan Nusantara",
+				"text": [
+					"Ukiran kayu Jepara terkenal di dunia.",
+					"Ulos adalah kain tenun khas Batak, Sumatra Utara."
+				],
+				"example": "Botol bekas bisa dijadikan pot bunga."
+			}
+		},
+		"gerak": {
+			"1-2": {
+				"title": "Gerak Dasar",
+				"text": [
+					"Gerak berpindah tempat: berjalan, berlari, melompat.",
+					"Gerak di tempat: membungkuk, memutar badan. Gerak memakai alat: melempar, menendang."
+				],
+				"example": "Menendang bola = gerak manipulatif."
+			},
+			"3-4": {
+				"title": "Pemanasan & Pendinginan",
+				"text": [
+					"Lakukan pemanasan sebelum berolahraga supaya tidak cedera.",
+					"Lakukan pendinginan setelah berolahraga."
+				],
+				"example": "Peregangan tangan dan kaki sebelum lari."
+			}
+		},
+		"olahraga": {
+			"1-2": {
+				"title": "Permainan Olahraga",
+				"text": [
+					"Sepak bola dimainkan dengan kaki.",
+					"Bulu tangkis memakai raket dan kok."
+				],
+				"example": "Penjaga gawang boleh memakai tangan."
+			},
+			"3-4": {
+				"title": "Olahraga Beregu",
+				"text": [
+					"Sepak bola 11 pemain, bola voli 6 pemain.",
+					"Pencak silat adalah bela diri asli Indonesia."
+				],
+				"example": "Lari estafet memakai tongkat."
+			},
+			"5-6": {
+				"title": "Atletik & Renang",
+				"text": [
+					"Bola basket 5 pemain per tim.",
+					"Gaya renang: bebas, dada, punggung, kupu-kupu."
+				],
+				"example": "Lompat jauh mendarat di bak pasir."
+			}
+		},
+		"hidup_sehat": {
+			"1-2": {
+				"title": "Hidup Sehat",
+				"text": [
+					"Gosok gigi pagi dan sebelum tidur.",
+					"Cuci tangan pakai sabun, minum air putih, dan tidur cukup."
+				],
+				"example": "Cuci tangan sebelum makan."
+			},
+			"3-4": {
+				"title": "Makanan Bergizi",
+				"text": [
+					"Nasi dan ubi mengandung karbohidrat untuk tenaga.",
+					"Ikan dan telur mengandung protein; buah dan sayur kaya vitamin."
+				],
+				"example": "Makan sayur setiap hari."
+			},
+			"5-6": {
+				"title": "Gizi Seimbang & P3K",
+				"text": [
+					"Gizi seimbang: makanan pokok, lauk, sayur, dan buah.",
+					"Kotak P3K berisi obat untuk pertolongan pertama."
+				],
+				"example": "Bersihkan luka kecil dengan air bersih."
+			}
 		}
 	}
 }

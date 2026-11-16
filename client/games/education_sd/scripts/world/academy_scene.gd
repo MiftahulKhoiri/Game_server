@@ -23,9 +23,9 @@ const LAYOUT := {
 	"bahasa": {"pos": Vector3(10, 0, -9), "board": "north"},
 	"ipas_alam": {"pos": Vector3(-13, 0, 4), "board": "west"},
 	"ipas_sosial": {"pos": Vector3(13, 0, 4), "board": "east"},
-	"pancasila": {"door": Vector3(-9, 0, HZ), "face": PI},
-	"seni": {"door": Vector3(9, 0, HZ), "face": PI},
-	"olahraga": {"door": Vector3(0, 0, -HZ), "face": 0.0},
+	"pancasila": {"pos": Vector3(-9.5, 0, 9), "board": "south"},
+	"seni": {"pos": Vector3(9.5, 0, 9), "board": "south"},
+	"olahraga": {"pos": Vector3(0, 0, -9), "board": "north"},
 }
 
 var player: CharacterBody3D
@@ -144,7 +144,7 @@ func _hall() -> void:
 	for x in [-HX + 0.4, HX - 0.4]:
 		for z in [-HZ + 0.4, 0.0, HZ - 0.4]:
 			_mesh(Rig.box(Vector3(0.7, WALL_H, 0.7)), Color("b5443a"), Vector3(x, WALL_H / 2.0, z))
-	_label("AKADEMI TUNAS", 110, Color("ffd166"), Vector3(0, 4.3, -HZ + 0.05))
+	_label("AKADEMI TUNAS", 110, Color("ffd166"), Vector3(0, 4.45, -HZ + 0.05))
 
 
 func _classroom(r: Dictionary, lay: Dictionary) -> void:
@@ -164,6 +164,9 @@ func _classroom(r: Dictionary, lay: Dictionary) -> void:
 		"east":
 			board_pos = Vector3(HX - 0.1, 2.3, base.z)
 			yaw = -PI / 2.0
+		"south":
+			board_pos = Vector3(base.x, 2.3, HZ - 0.1)
+			yaw = PI
 	var frame := _mesh(Rig.box(Vector3(5.2, 2.6, 0.12)), Color("7a4a22"), board_pos)
 	frame.rotation.y = yaw
 	var board := _mesh(Rig.box(Vector3(4.8, 2.2, 0.14)), Color("2f5d46"), board_pos)

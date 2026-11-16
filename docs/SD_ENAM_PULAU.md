@@ -374,3 +374,27 @@ ke atas tengah layar agar tidak menutupi tombol.
 |---|---|
 | `make sd-test` | **614 pemeriksaan LULUS** (+38): Battle Engine (serang, jurus salah/benar, bertahan, kabur, perisai bos, aba-aba, adaptif, kalah tanpa hukuman, simulasi keseimbangan); di game: menyentuh goblin → menang → goblin hilang; kalah → bangun di desa tanpa kehilangan barang; kue dalam pertarungan; kabur; bos: tidak bisa kabur, perisai, Ramuan Ilmu, jurus menembus perisai, menang → misi & perayaan; masuk ulang tanpa raja & goblin |
 | `make platform-test` | **LULUS** |
+
+---
+
+## Tahap 7 — Sistem akademik lengkap (paket 3.6.0, 16 Nov 2026)
+
+### Hasil
+
+| Bagian | Isi |
+|---|---|
+| Mata pelajaran baru | **Pendidikan Pancasila** (6 materi: lima sila, aturan, gotong royong & musyawarah, keberagaman, hak & kewajiban, NKRI), **Seni** (warna, alat musik & lagu daerah, tari daerah, kerajinan), **PJOK** (gerak dasar, olahraga, hidup sehat). Bank soal ditulis di `tools/gamepack/sd_bank_extra.py` (118 soal baru; total **328 soal, 48 materi, 7 mata pelajaran**), divalidasi pembuat bank |
+| Materi singkat | 13 materi baru di `lessons.json` (per pita kelas) |
+| Akademi | **7 ruang kelas semuanya terbuka**: Matematika, Bahasa, IPAS Alam, IPAS Sosial, Pancasila (Pak Guru Rahmat), Seni (Kak Sekar), PJOK (Pak Bima). Papan & guru di dinding selatan/utara aula |
+| **Ujian** | Tiap ruang & kelas: 10 soal campuran dari semua materi, **tanpa petunjuk**, nilai 0–100, lulus ≥ 70. Lulus pertama: 50 koin. Gagal: pesan positif + daftar materi yang bisa dilatih. Status lulus & nilai terbaik tampil di daftar materi |
+| **Laporan Belajar** | Dari menu utama ("Laporan Belajar (orang tua & guru)") dan tombol MISI di akademi: ringkasan positif, persentase benar per mata pelajaran (hanya bila ≥ 5 jawaban), materi dikuasai, materi yang bisa dilatih lagi, ujian, aktivitas 7 hari, riwayat. Catatan: kecepatan tidak dinilai |
+
+Fakta materi baru dipilih yang stabil (lambang sila, semboyan, asal tari/alat musik/lagu daerah, jumlah pemain olahraga,
+gizi). Tetap perlu ditinjau guru (Tahap 9).
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **626 pemeriksaan LULUS**: 7 mata pelajaran, setiap ruang punya materi di kelas 1–6, ujian (lulus + bonus sekali, gagal + saran, nilai terbaik tersimpan), laporan (7 mata pelajaran, tidak menilai bila jawaban sedikit, bahasa positif untuk anak baru); di game: 7 guru, Sanggar Seni berisi, Ujian Matematika tanpa petunjuk sampai lulus, laporan di akademi & menu utama |
+| `make platform-test` | **LULUS** |

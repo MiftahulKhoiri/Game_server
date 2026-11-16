@@ -27,9 +27,12 @@ const ROOMS := [
 		"teacher": "Profesor Kiko", "model": "penyihir"},
 	{"id": "ipas_sosial", "name": "Balai Pengetahuan Sosial", "subject": "IPAS · Sosial", "region": "ips", "color": "#e0813d",
 		"teacher": "Bu Guru Ratna", "model": "warga_ibu2"},
-	{"id": "pancasila", "name": "Aula Pendidikan Pancasila", "subject": "Pendidikan Pancasila", "region": "", "color": "#c0392b"},
-	{"id": "seni", "name": "Sanggar Seni", "subject": "Seni", "region": "", "color": "#8a6bd8"},
-	{"id": "olahraga", "name": "Lapangan Olahraga", "subject": "PJOK", "region": "", "color": "#f0b429"},
+	{"id": "pancasila", "name": "Aula Pendidikan Pancasila", "subject": "Pendidikan Pancasila", "region": "pancasila", "color": "#c0392b",
+		"teacher": "Pak Guru Rahmat", "model": "warga_bapak2"},
+	{"id": "seni", "name": "Sanggar Seni", "subject": "Seni", "region": "seni", "color": "#8a6bd8",
+		"teacher": "Kak Sekar", "model": "pemanah"},
+	{"id": "olahraga", "name": "Lapangan Olahraga", "subject": "PJOK", "region": "pjok", "color": "#d89a12",
+		"teacher": "Pak Bima", "model": "ksatria"},
 ]
 
 var data  # SdData (bank soal)
@@ -257,3 +260,125 @@ func room_summary(p: Dictionary, grade: int) -> Dictionary:
 				m += 1
 		out[str(r.id)] = {"stars": s, "max": ts.size() * 3, "mastered": m, "topics": ts.size()}
 	return out
+
+
+# --- Ujian ruang kelas (Tahap 7) -----------------------------------------------------------------------------------
+
+const EXAM_N := 10
+const EXAM_PASS := 70
+
+
+static func _exam_key(grade: int, room_id: String) -> String:
+	return "ujian/%d/%s" % [grade, room_id]
+
+
+static func exam_rec(p: Dictionary, grade: int, room_id: String) -> Dictionary:
+	return (p.academy as Dictionary).get(_exam_key(grade, room_id), {})
+
+
+## Ujian: 10 soal campuran dari semua materi ruang ini untuk kelas `grade` (tanpa petunjuk).
+func exam_start(p: Dictionary, room_id: String, grade: int, rng: RandomNumberGenerator) -> Dictionary:
+	var r := room(room_id)
+	var qs: Array = data.pick_mixed(str(r.get("region", "")), grade, EXAM_N, p.learning.topics, rng)
+	return {"exam": true, "room": room_id, "topic": "", "grade": grade, "questions": qs, "mode": "ujian", "q_grade": grade, "i": 0,
+		"correct": 0, "first_try": 0, "xp": 0, "coins": 0, "answers": [], "wrong_topics": {}}
+
+
+static func exam_answer(p: Dictionary, session: Dictionary, q: Dictionary, correct: bool) -> void:
+	session.topic = str(q.get("topic", ""))
+	answer(p, session, q, correct, correct)
+	if not correct:
+		session.wrong_topics[session.topic] = int(session.wrong_topics.get(session.topic, 0)) + 1
+
+
+## Nilai ujian (0–100). Lulus >= 70. Lulus pertama kali: 50 koin. Saran materi untuk dilatih lagi.
+func exam_finish(p: Dictionary, session: Dictionary) -> Dictionary:
+	var total := (session.questions as Array).size()
+	var score := int(round(100.0 * int(session.correct) / maxf(1.0, total)))
+	var k := _exam_key(int(session.grade), str(session.room))
+	var rec: Dictionary = (p.academy as Dictionary).get(k, {"best": 0, "passed": false, "attempts": 0})
+	var passed := score >= EXAM_PASS
+	var first_pass := passed and not bool(rec.passed)
+	rec.best = maxi(int(rec.best), score)
+	rec.passed = bool(rec.passed) or passed
+	rec.attempts = int(rec.attempts) + 1
+	p.academy[k] = rec
+	var bonus := 50 if first_pass else 0
+	p.rpg.coins = int(p.rpg.coins) + bonus
+	var practice: Array = []
+	for t in session.wrong_topics:
+		practice.append(str(data.topics.get(t, {}).get("name", t)))
+	(p.learning.history as Array).push_front({"at": Time.get_datetime_string_from_system(false, true), "mode": "ujian",
+		"subject": str(room(str(session.room)).get("subject", "")), "topic": "", "grade": int(session.grade), "correct": int(session.correct),
+		"total": total, "score": score})
+	p.learning.history = (p.learning.history as Array).slice(0, MAX_HISTORY)
+	var msg := "Nilaimu %d. Sedikit lagi! Latih lagi materinya, lalu coba ujian lagi." % score
+	if passed:
+		msg = "Selamat! Kamu lulus ujian %s dengan nilai %d." % [str(room(str(session.room)).get("name", "")), score]
+	return {"score": score, "passed": passed, "first_pass": first_pass, "bonus": bonus, "practice": practice, "message": msg,
+		"correct": int(session.correct), "total": total, "xp": int(session.xp), "coins": int(session.coins) + bonus}
+
+
+# --- Laporan belajar (untuk anak, orang tua, guru) ------------------------------------------------------------------
+
+## Ringkasan belajar: per mata pelajaran (akurasi, materi dikuasai/perlu latihan, ujian), aktivitas 7 hari,
+## riwayat terakhir, dan kesimpulan dengan bahasa positif. Hanya menyimpulkan bila jawaban cukup banyak.
+func report(p: Dictionary) -> Dictionary:
+	var grade := int(p.profile.grade)
+	var rooms_out: Array = []
+	var best := ""
+	var best_rate := -1.0
+	var weak := ""
+	var weak_rate := 2.0
+	for r in ROOMS:
+		var region := str(r.get("region", ""))
+		if region == "":
+			continue
+		var c := 0
+		var w := 0
+		var mastered: Array = []
+		var practice: Array = []
+		for key in (p.learning.topics as Dictionary):
+			var parts := str(key).split("/")
+			if parts.size() != 2:
+				continue
+			var t: Dictionary = data.topics.get(parts[1], {})
+			if str(t.get("region", "")) != region:
+				continue
+			var st: Dictionary = p.learning.topics[key]
+			c += int(st.get("correct", 0))
+			w += int(st.get("wrong", 0))
+			match status(p, int(parts[0]), parts[1]):
+				"kuasai":
+					mastered.append(str(t.name))
+				"perlu_latihan":
+					practice.append(str(t.name))
+		var n := c + w
+		var rate := float(c) / n if n > 0 else 0.0
+		var ex := exam_rec(p, grade, str(r.id))
+		rooms_out.append({"id": str(r.id), "name": str(r.subject), "answered": n, "rate": rate, "mastered": mastered, "practice": practice,
+			"exam": ex, "enough": n >= 5})
+		if n >= 5 and rate > best_rate:
+			best_rate = rate
+			best = str(r.subject)
+		if n >= 5 and rate < weak_rate:
+			weak_rate = rate
+			weak = str(r.subject)
+	var days: Array = []
+	var keys: Array = (p.learning.daily as Dictionary).keys()
+	keys.sort()
+	for k in keys.slice(-7):
+		days.append({"date": str(k), "correct": int(p.learning.daily[k][0]), "total": int(p.learning.daily[k][1])})
+	var t: Dictionary = p.learning.totals
+	var summary := ""
+	if int(t.answered) < 10:
+		summary = "%s baru mulai belajar. Ayo kerjakan lebih banyak latihan supaya kemajuannya terlihat!" % str(p.profile.name)
+	else:
+		summary = "%s sudah menjawab %d soal dengan %d%% benar sejak percobaan pertama." % [str(p.profile.name), int(t.answered),
+			int(round(100.0 * int(t.correct) / maxf(1.0, int(t.answered))))]
+		if best != "":
+			summary += " Paling kuat di %s." % best
+		if weak != "" and weak != best:
+			summary += " %s bisa dilatih lagi supaya makin mahir." % weak
+	return {"name": str(p.profile.name), "grade": grade, "answered": int(t.answered), "correct": int(t.correct), "best_streak": int(t.best_streak),
+		"rooms": rooms_out, "days": days, "history": (p.learning.history as Array).slice(0, 6), "summary": summary}

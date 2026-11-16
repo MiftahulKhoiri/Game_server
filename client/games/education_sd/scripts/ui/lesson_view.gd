@@ -13,6 +13,7 @@ const Learning := preload("res://games/education_sd/scripts/engine/learning_engi
 signal closed
 signal changed  # progres berubah: simpan
 signal session_done(result: Dictionary)  # satu latihan selesai (untuk misi)
+signal exam_done(result: Dictionary)
 
 var learning  # LearningEngine
 var p: Dictionary
@@ -109,6 +110,23 @@ func show_class() -> void:
 	if ts.is_empty():
 		greet = "Halo, %s! Materi untuk kelas %d di ruang ini sedang disiapkan." % [str(p.profile.name), grade]
 	_box.add_child(UI.label(greet, 26, UI.INK))
+	if not ts.is_empty():
+		var ex: Dictionary = Learning.exam_rec(p, grade, str(room.id))
+		var er := UI.panel(Color("fff4d6"), 20)
+		var eh := UI.hbox(12)
+		var ev := UI.vbox(2)
+		UI.expand(ev)
+		ev.add_child(UI.label("Ujian %s" % str(room.subject), 28, Color("b5443a"), false))
+		var etxt := "%d soal campuran tanpa petunjuk. Lulus bila nilai %d atau lebih." % [Learning.EXAM_N, Learning.EXAM_PASS]
+		if not ex.is_empty():
+			etxt = ("LULUS · " if bool(ex.passed) else "Belum lulus · ") + "nilai terbaik %d (%d kali)" % [int(ex.best), int(ex.attempts)]
+		ev.add_child(UI.label(etxt, 20, UI.GOOD if bool(ex.get("passed", false)) else UI.SOFT))
+		eh.add_child(ev)
+		var eb := UI.button("Ujian", start_exam, Color("b5443a"), 24, 66)
+		eb.name = "Exam"
+		eh.add_child(eb)
+		er.add_child(eh)
+		_box.add_child(er)
 	for t in ts:
 		var row := UI.panel(Color.WHITE, 20)
 		var h := UI.hbox(12)
@@ -222,6 +240,76 @@ func _finish() -> void:
 	_box.add_child(row)
 
 
+# --- Ujian ---------------------------------------------------------------------------------------------------------
+
+func start_exam() -> void:
+	_sfx("klik")
+	session = learning.exam_start(p, str(room.id), grade, rng)
+	if (session.questions as Array).is_empty():
+		show_class()
+		return
+	_show_exam_q()
+
+
+func _show_exam_q() -> void:
+	_clear("ujian")
+	var qs: Array = session.questions
+	var i := int(session.i)
+	_head("Ujian %d dari %d" % [i + 1, qs.size()], "Berhenti", _confirm_stop_exam)
+	_box.add_child(UI.progress(i, qs.size(), Color("b5443a")))
+	qview = SdQuestion.new()
+	qview.name = "Question"
+	_box.add_child(qview)
+	qview.setup(qs[i], "kuis", rng, type_names, audio)
+	qview.finished.connect(_on_exam_answer)
+
+
+func _on_exam_answer(res: Dictionary) -> void:
+	Learning.exam_answer(p, session, res.question, bool(res.correct))
+	changed.emit()
+	if int(session.i) >= (session.questions as Array).size():
+		_finish_exam()
+	else:
+		_show_exam_q.call_deferred()
+
+
+func _confirm_stop_exam() -> void:
+	_clear("berhenti_ujian")
+	_head("Berhenti ujian?", "Lanjutkan", _show_exam_q)
+	_box.add_child(UI.label("Ujian yang dihentikan tidak dinilai. Jawaban latihanmu tetap tercatat.", 26, UI.INK))
+	var b := UI.button("Ya, kembali ke daftar materi", show_class, UI.SOFT_BAD, 26, 76)
+	b.name = "StopYes"
+	_box.add_child(b)
+
+
+func _finish_exam() -> void:
+	result = learning.exam_finish(p, session)
+	changed.emit()
+	exam_done.emit(result)
+	_sfx("bintang" if bool(result.passed) else "klik")
+	_clear("ujian_hasil")
+	_head("Hasil Ujian", "Daftar materi", show_class)
+	var sc := UI.label(str(int(result.score)), 96, UI.GOOD if bool(result.passed) else UI.SOFT_BAD, false)
+	sc.name = "Score"
+	sc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_box.add_child(sc)
+	UI.pop(sc)
+	_box.add_child(UI.label(str(result.message), 28, UI.INK))
+	_box.add_child(UI.label("Benar %d dari %d · +%d XP · +%d koin" % [int(result.correct), int(result.total), int(result.xp), int(result.coins)], 24, UI.SOFT))
+	if not (result.practice as Array).is_empty():
+		_box.add_child(UI.label("Materi yang bisa dilatih lagi: " + ", ".join(result.practice), 24, Color("1f4f8a")))
+	var row := UI.hbox(12)
+	var again := UI.button("Ujian lagi", start_exam, Color("b5443a"), 24, 70)
+	again.name = "ExamAgain"
+	UI.expand(again)
+	row.add_child(again)
+	var back := UI.button("Kembali ke kelas", show_class, Color("cfc8dc"), 24, 70)
+	back.name = "ToClass"
+	UI.expand(back)
+	row.add_child(back)
+	_box.add_child(row)
+
+
 ## Tombol kembali Android: mundur satu langkah. true bila ditangani (layar tetap terbuka).
 func back() -> bool:
 	match phase:
@@ -229,7 +317,11 @@ func back() -> bool:
 			_confirm_stop()
 		"berhenti":
 			_show_question()
-		"materi", "hasil":
+		"ujian":
+			_confirm_stop_exam()
+		"berhenti_ujian":
+			_show_exam_q()
+		"materi", "hasil", "ujian_hasil":
 			show_class()
 		_:
 			return false

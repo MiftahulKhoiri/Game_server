@@ -499,6 +499,14 @@ Q = [
     mc("geografi", 6, "Konferensi Asia Afrika tahun 1955 diselenggarakan di kota …", "Bandung", "Jakarta", "Bogor", "Yogyakarta", explain="Konferensi itu diadakan di Gedung Merdeka, Bandung."),
 ]
 
+# Tahap 7: Pendidikan Pancasila, Seni, PJOK (lihat sd_bank_extra.py).
+import sd_bank_extra  # noqa: E402
+
+_extra_regions, _extra_topics, _extra_q = sd_bank_extra.build(mc, tf, match, classify, words)
+REGIONS += _extra_regions
+TOPICS += _extra_topics
+Q += _extra_q
+
 # Mini-game: data dipakai langsung oleh mini-game (lihat client/games/education_sd/scripts/mg_*.gd).
 MINIGAMES = {
     "huruf_hilang": {  # Bahasa: cari huruf yang hilang (kata umum, ejaan baku)
