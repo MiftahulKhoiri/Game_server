@@ -1,0 +1,718 @@
+{
+	"schema": 1,
+	"island": "pulau5",
+	"radius": 70,
+	"spawn": [
+		0,
+		78
+	],
+	"hills": [
+		{
+			"id": "bukit_akademi",
+			"pos": [
+				0,
+				5
+			],
+			"top": 14,
+			"bottom": 22,
+			"height": 2.2
+		}
+	],
+	"river": {
+		"z": -21,
+		"half_width": 3.4,
+		"bridge_half": 2.6
+	},
+	"paths": [
+		[
+			[
+				0,
+				72
+			],
+			[
+				0,
+				50
+			]
+		],
+		[
+			[
+				0,
+				34
+			],
+			[
+				0,
+				27
+			]
+		],
+		[
+			[
+				0,
+				27
+			],
+			[
+				0,
+				19
+			]
+		],
+		[
+			[
+				0,
+				19
+			],
+			[
+				0,
+				10
+			]
+		],
+		[
+			[
+				0,
+				-9
+			],
+			[
+				0,
+				-17
+			]
+		],
+		[
+			[
+				0,
+				-17
+			],
+			[
+				0,
+				-44
+			]
+		],
+		[
+			[
+				0,
+				-31
+			],
+			[
+				-24,
+				-36
+			]
+		],
+		[
+			[
+				0,
+				-31
+			],
+			[
+				30,
+				-37
+			]
+		],
+		[
+			[
+				6,
+				40
+			],
+			[
+				24,
+				40
+			]
+		]
+	],
+	"places": [
+		{
+			"id": "dermaga",
+			"name": "Dermaga Benteng",
+			"pos": [
+				0,
+				70
+			],
+			"radius": 7,
+			"sign": [
+				-3.2,
+				66
+			]
+		},
+		{
+			"id": "desa",
+			"name": "Kota Ksatria",
+			"pos": [
+				0,
+				42
+			],
+			"radius": 17,
+			"sign": [
+				-3.2,
+				58
+			],
+			"plaza": 8
+		},
+		{
+			"id": "ladang",
+			"name": "Ladang Gandum",
+			"pos": [
+				30,
+				40
+			],
+			"radius": 10,
+			"sign": [
+				22,
+				45
+			]
+		},
+		{
+			"id": "akademi",
+			"name": "Akademi Ksatria",
+			"pos": [
+				0,
+				5
+			],
+			"radius": 14,
+			"sign": [
+				-3.4,
+				25
+			]
+		},
+		{
+			"id": "sungai",
+			"name": "Sungai Jernih",
+			"pos": [
+				0,
+				-21
+			],
+			"radius": 7,
+			"sign": [
+				-3.6,
+				-14.5
+			]
+		},
+		{
+			"id": "hutan",
+			"name": "Lembah Pertahanan",
+			"pos": [
+				-38,
+				-38
+			],
+			"radius": 22,
+			"sign": [
+				-21,
+				-32
+			]
+		},
+		{
+			"id": "gua",
+			"name": "Mata Air Tersembunyi",
+			"pos": [
+				42,
+				-42
+			],
+			"radius": 13,
+			"sign": [
+				25,
+				-33
+			]
+		},
+		{
+			"id": "benteng",
+			"name": "Perkemahan Orc",
+			"pos": [
+				0,
+				-56
+			],
+			"radius": 13,
+			"sign": [
+				-4,
+				-40
+			]
+		}
+	],
+	"objects": [
+		{
+			"asset": "buildings/rumah_gadang",
+			"pos": [
+				-13,
+				36
+			],
+			"rot": 90,
+			"scale": 1.5
+		},
+		{
+			"asset": "buildings/joglo",
+			"pos": [
+				13,
+				34
+			],
+			"rot": -90,
+			"scale": 1.4
+		},
+		{
+			"asset": "buildings/joglo",
+			"pos": [
+				-13,
+				50
+			],
+			"rot": 90,
+			"scale": 1.4
+		},
+		{
+			"asset": "buildings/tongkonan",
+			"pos": [
+				13,
+				50
+			],
+			"rot": -90,
+			"scale": 1.5
+		},
+		{
+			"asset": "buildings/market_stall",
+			"pos": [
+				-6,
+				47
+			],
+			"rot": 0,
+			"scale": 1.3
+		},
+		{
+			"asset": "buildings/market_stall",
+			"pos": [
+				6,
+				47
+			],
+			"rot": 0,
+			"scale": 1.3
+		},
+		{
+			"asset": "educational/info_board",
+			"pos": [
+				3.4,
+				31
+			],
+			"rot": 180
+		},
+		{
+			"asset": "buildings/museum",
+			"pos": [
+				0,
+				0
+			],
+			"rot": 0,
+			"scale": 1.0
+		},
+		{
+			"asset": "buildings/math_tower",
+			"pos": [
+				-9.5,
+				-1
+			],
+			"rot": 0,
+			"scale": 0.6
+		},
+		{
+			"asset": "buildings/lab_dome",
+			"pos": [
+				9.5,
+				-1
+			],
+			"rot": 0,
+			"scale": 0.55
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				-5,
+				10
+			]
+		},
+		{
+			"asset": "educational/big_book",
+			"pos": [
+				5,
+				10
+			],
+			"rot": 180
+		},
+		{
+			"asset": "educational/globe",
+			"pos": [
+				8,
+				8
+			]
+		},
+		{
+			"asset": "educational/microscope",
+			"pos": [
+				-8,
+				8
+			],
+			"rot": 180,
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-4,
+				36
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				4,
+				36
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-4,
+				54
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				4,
+				54
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-2.4,
+				66
+			],
+			"solid": false
+		},
+		{
+			"asset": "buildings/cave",
+			"pos": [
+				44,
+				-45
+			],
+			"rot": -135,
+			"scale": 1.0,
+			"radius": 5.6
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				36,
+				-48
+			],
+			"scale": 1.6
+		},
+		{
+			"asset": "rocks/rock_b",
+			"pos": [
+				50,
+				-36
+			],
+			"scale": 1.8
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				48,
+				-52
+			],
+			"scale": 2.0
+		},
+		{
+			"asset": "rocks/rock_b",
+			"pos": [
+				-6,
+				-38
+			],
+			"scale": 1.2
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				7,
+				-36
+			],
+			"scale": 1.0
+		}
+	],
+	"farm": {
+		"pos": [
+			30,
+			40
+		],
+		"size": [
+			14,
+			10
+		],
+		"rows": 5
+	},
+	"forest": {
+		"pos": [
+			-38,
+			-38
+		],
+		"radius": 22
+	},
+	"fort": {
+		"pos": [
+			0,
+			-56
+		],
+		"half": 11,
+		"wall_h": 3.6,
+		"gate_half": 2.6,
+		"flag": "p5_gerbang",
+		"key": "p5_terompet_perang"
+	},
+	"boulder": {
+		"pos": [
+			38.5,
+			-38.5
+		],
+		"scale": 2.6,
+		"flag": "p5_terbuka"
+	},
+	"boss": {
+		"model": "ogre_batu",
+		"name": "Panglima Orc",
+		"pos": [
+			0,
+			-61
+		],
+		"scale": 1.5,
+		"monster": "panglima_orc",
+		"flag": "p5_bos",
+		"tint": "#b0d090"
+	},
+	"guards": [
+		{
+			"model": "goblin_penjaga",
+			"name": "Penjaga Orc",
+			"pos": [
+				-4.5,
+				-43.5
+			],
+			"height": 1.2
+		},
+		{
+			"model": "goblin_penjaga",
+			"name": "Penjaga Orc",
+			"pos": [
+				4.5,
+				-43.5
+			],
+			"height": 1.2
+		}
+	],
+	"academy_door": [
+		0,
+		6.5
+	],
+	"npcs": [
+		{
+			"id": "p5_tetua",
+			"name": "Raja Satria",
+			"role": "Raja",
+			"model": "ksatria",
+			"pos": [
+				3,
+				39
+			],
+			"wander": 2.5,
+			"lines": [
+				"Selamat datang di Kota Ksatria, {name}! Aku Raja Satria.",
+				"Pasukan Orc mengepung Kerajaan Ksatria. Panglima Orc menutup mata air dan membuat tanaman sakit.",
+				"Belajarlah dulu di Akademi Ksatria di atas bukit, lalu bantu para penduduk."
+			],
+			"again": [
+				"Semangat, {name}! Seluruh Kota Ksatria percaya padamu."
+			]
+		},
+		{
+			"id": "p5_guru",
+			"name": "Pak Guru Wira",
+			"role": "Guru Akademi",
+			"model": "warga_bapak",
+			"pos": [
+				3,
+				11.5
+			],
+			"wander": 2.0,
+			"lines": [
+				"Halo {name}! Aku Pak Guru Wira, guru di Akademi Ksatria.",
+				"Di sini kamu belajar materi yang lebih menantang. Ayo masuk ke akademi!"
+			],
+			"again": [
+				"Pintu Akademi Ksatria selalu terbuka. Belajarlah bersama para guru."
+			]
+		},
+		{
+			"id": "p5_pekebun",
+			"name": "Pak Gandum",
+			"role": "Petani Gandum",
+			"model": "petani",
+			"pos": [
+				24,
+				37
+			],
+			"wander": 3.0,
+			"lines": [
+				"Halo, {name}. Aku Pak Gandum.",
+				"Banyak pekerjaan di sini sejak Kabut Lupa datang."
+			],
+			"again": [
+				"Terima kasih sudah peduli pada desa kami."
+			]
+		},
+		{
+			"id": "p5_ibu",
+			"name": "Bu Tabib",
+			"role": "Tabib Kerajaan",
+			"model": "nenek_penjual",
+			"pos": [
+				-6,
+				44.5
+			],
+			"wander": 0.0,
+			"lines": [
+				"Nak {name}, hati-hati di Lembah Pertahanan, ya.",
+				"Aku butuh bantuanmu."
+			],
+			"again": [
+				"Hati-hati di perjalanan, Nak."
+			]
+		},
+		{
+			"id": "p5_anak",
+			"name": "Kesatria Kecil",
+			"role": "Murid Ksatria",
+			"model": "anak_desa",
+			"pos": [
+				-5,
+				52
+			],
+			"wander": 4.0,
+			"lines": [
+				"Kak {name}! Kakak petualang hebat itu, ya?",
+				"Aku pernah melihat Mata Air Tersembunyi. Ada sesuatu di dalamnya!"
+			],
+			"again": [
+				"Aku ingin jadi pahlawan seperti Kakak!"
+			],
+			"height": 1.3
+		},
+		{
+			"id": "p5_warga",
+			"name": "Bu Penasihat",
+			"role": "Penasihat Raja",
+			"model": "warga_ibu2",
+			"pos": [
+				9,
+				44
+			],
+			"wander": 3.0,
+			"lines": [
+				"Halo, {name}! Senang bertemu petualang.",
+				"Di desa kami, semua saling membantu."
+			],
+			"again": [
+				"Jaga kesehatan dan tetap rajin belajar, ya."
+			]
+		},
+		{
+			"id": "p5_dermaga",
+			"name": "Pak Laut",
+			"role": "Penjaga Dermaga",
+			"model": "warga_bapak2",
+			"pos": [
+				3.2,
+				63
+			],
+			"wander": 1.5,
+			"lines": [
+				"Perahumu aman di Dermaga Benteng.",
+				"Naik perahu untuk berlayar ke pulau lain."
+			],
+			"again": [
+				"Laut sedang tenang hari ini."
+			]
+		},
+		{
+			"id": "p5_jembatan",
+			"name": "Kapten Tombak",
+			"role": "Kapten Pasukan",
+			"model": "pendekar_tombak",
+			"pos": [
+				4.6,
+				-14.6
+			],
+			"wander": 1.0,
+			"lines": [
+				"Berhenti, {name}! Di seberang sungai banyak makhluk liar.",
+				"Perkemahan Orc ada di ujung utara pulau."
+			],
+			"again": [
+				"Gunakan jurus ilmumu untuk melawan musuh!"
+			]
+		},
+		{
+			"id": "p5_pedagang",
+			"name": "Pak Pandai Besi",
+			"role": "Pandai Besi",
+			"model": "pendekar_kapak",
+			"pos": [
+				6,
+				45.2
+			],
+			"wander": 0.0,
+			"lines": [
+				"Selamat datang di lapakku, {name}!",
+				"Aku menjual kue, ramuan, perisai, dan kostum. Bayar pakai koin, ya."
+			],
+			"again": [
+				"Mau belanja lagi? Koin didapat dari belajar dan menolong warga."
+			],
+			"shop": "toko_p5"
+		}
+	],
+	"signs": {
+		"gate": {
+			"title": "Perkemahan Orc",
+			"text": "Gerbangnya terkunci rapat. Panglima Orc ada di dalam."
+		},
+		"boulder": {
+			"title": "Batu Mata Air",
+			"text": "Batu besar menutup mata air. Ia bergeser bagi yang paham tubuh manusia dan ekosistem."
+		},
+		"gate_hint": {
+			"title": "Perkemahan Orc",
+			"text": "Kuncinya cocok... Tanyakan dulu pada Kapten Tombak."
+		}
+	},
+	"academy_name": "Akademi Ksatria",
+	"tree_kinds": [
+		"vegetation/tree_round",
+		"vegetation/tree_pine",
+		"vegetation/bush",
+		"vegetation/flowers"
+	],
+	"colors": {
+		"sky_top": "#5a6fb0",
+		"sky_horizon": "#f0e0d0",
+		"wall": "#5a3a22",
+		"roof": "#8a2a2a",
+		"flag": "#2b2440"
+	},
+	"shapes": [
+		{
+			"type": "cone",
+			"pos": [
+				-54,
+				10
+			],
+			"r": 8,
+			"top": 3,
+			"h": 6,
+			"color": "#8a8174"
+		}
+	]
+}

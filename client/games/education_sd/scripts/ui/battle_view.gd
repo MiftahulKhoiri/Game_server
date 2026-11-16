@@ -12,7 +12,8 @@ const Learning := preload("res://games/education_sd/scripts/engine/learning_engi
 signal finished(result: Dictionary)
 signal changed
 
-const ROOM_OF := {"matematika": "matematika", "bahasa": "bahasa", "ipa": "ipas_alam", "ips": "ipas_sosial"}
+const ROOM_OF := {"matematika": "matematika", "bahasa": "bahasa", "ipa": "ipas_alam", "ips": "ipas_sosial", "pancasila": "pancasila",
+	"seni": "seni", "pjok": "olahraga"}
 
 var engine := Battle.new()
 var learning
@@ -38,10 +39,12 @@ var _sheet: PanelContainer
 var _sheet_box: VBoxContainer
 var _ilmu_n := 0
 var result: Dictionary = {}
+var grade := 1
 
 
 func setup(learning_engine, reward_engine, progress: Dictionary, random: RandomNumberGenerator, sound: Node, names: Dictionary,
-		m_id: String, m_def: Dictionary, spawn_uid: String, hero_look: Dictionary, seed_value := -1) -> void:
+		m_id: String, m_def: Dictionary, spawn_uid: String, hero_look: Dictionary, seed_value := -1, learn_grade := 0) -> void:
+	grade = learn_grade if learn_grade > 0 else int(progress.profile.grade)
 	learning = learning_engine
 	rewards = reward_engine
 	p = progress
@@ -173,6 +176,8 @@ func _arena(hero_look: Dictionary, s: Vector2) -> void:
 	foe_rig = Rig.new()
 	foe_rig.glb_id = str(monster.get("model", "goblin"))
 	foe_rig.glb_height = float(monster.get("height", 1.0)) * (1.15 if bool(monster.get("boss", false)) else 1.0)
+	if str(monster.get("tint", "")) != "":
+		foe_rig.glb_tint = Color.from_string(str(monster.tint), Color.WHITE)
 	foe_rig.position = Vector3(1.3, 0, 0)
 	foe_rig.rotation.y = -PI / 2.0
 	vp.add_child(foe_rig)
@@ -240,9 +245,8 @@ func _apply(action: String, arg: Dictionary) -> void:
 
 func _topic() -> String:
 	var subj := str(monster.get("subject", "campur"))
-	var regions: Array = ["matematika", "bahasa", "ipa", "ips"]
+	var regions: Array = ["matematika", "bahasa", "ipa", "ips", "pancasila", "seni", "pjok"]
 	var region: String = str(regions[_ilmu_n % regions.size()]) if subj == "campur" else subj
-	var grade := int(p.profile.grade)
 	var ts: Array = learning.topics(str(ROOM_OF.get(region, "matematika")), grade, p)
 	if ts.is_empty():
 		ts = learning.topics("matematika", grade, p)
@@ -251,7 +255,7 @@ func _topic() -> String:
 
 func _open_question() -> void:
 	phase = "soal"
-	var ses: Dictionary = learning.start(p, _topic(), int(p.profile.grade), rng, 1)
+	var ses: Dictionary = learning.start(p, _topic(), grade, rng, 1)
 	_ilmu_n += 1
 	if (ses.questions as Array).is_empty():
 		phase = "pilih"

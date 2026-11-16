@@ -21,6 +21,7 @@ var id := ""
 var def: Dictionary
 var topic := ""
 var phase := ""
+var grade := 1
 var session: Dictionary = {}
 var qview: Node
 var _panel: PanelContainer
@@ -28,7 +29,8 @@ var _box: VBoxContainer
 
 
 func setup(engine, progress: Dictionary, random: RandomNumberGenerator, sound: Node, names: Dictionary, challenge_id: String,
-		challenge: Dictionary, topic_id: String) -> void:
+		challenge: Dictionary, topic_id: String, learn_grade := 0) -> void:
+	grade = learn_grade if learn_grade > 0 else int(progress.profile.grade)
 	learning = engine
 	p = progress
 	rng = random
@@ -94,7 +96,7 @@ func show_intro() -> void:
 
 
 func start() -> void:
-	session = learning.start(p, topic, int(p.profile.grade), rng, int(def.get("n", 3)))
+	session = learning.start(p, topic, grade, rng, int(def.get("n", 3)))
 	if (session.questions as Array).is_empty():
 		closed.emit()
 		return

@@ -31,6 +31,7 @@ func _initialize() -> void:
 	await _v3_quest_tests()
 	await _v3_reward_tests()
 	await _v3_battle_tests()
+	await _v4_data_tests()
 	await _v3_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
@@ -344,12 +345,12 @@ func _v3_engine_tests() -> void:
 			print("    model bos tidak ada: " + str(w.islands[i].boss.model))
 	_check(grades_ok, "pulau 1–6 berurutan = kelas 1–6")
 	_check(models_ok, "model keenam bos sudah ada di APK (tanpa aset baru)")
-	_check(bool(w.island("pulau1").available) and not bool(w.island("pulau2").available), "percontohan: Pulau 1 tersedia, Pulau 2–6 segera hadir")
+	_check(w.islands.all(func(i): return bool(i.available)), "keenam pulau tersedia (Tahap 8)")
 	_check(w.validate({"id": "x"}) != "", "pulau tanpa kolom wajib ditolak")
 
 	print("== 3.x Aturan buka & pindah pulau")
 	var p1 := _prof(1)
-	_check(w.status("pulau1", p1) == "open" and w.status("pulau2", p1) == "soon", "kelas 1: Pulau 1 terbuka, Pulau 2 segera hadir")
+	_check(w.status("pulau1", p1) == "open" and w.status("pulau2", p1) == "locked", "kelas 1: Pulau 1 terbuka, Pulau 2 terkunci")
 	_check(w.travel(p1, "pulau2") != "" and str(p1.world.island) == "pulau1", "tidak bisa berlayar ke pulau yang belum ada")
 	for isl in w.islands:
 		isl.available = true
@@ -364,7 +365,7 @@ func _v3_engine_tests() -> void:
 	_check(w.travel(p4, "pulau2") == "" and int(p4.world.sailed) == 1, "masuk pulau yang sama tidak dihitung berlayar")
 	_check(w.travel(p4, "pulau6") != "" and str(p4.world.island) == "pulau2", "pulau terkunci menolak tanpa mengubah posisi")
 	w.load_data()
-	_check(w.start_island(p4) == "pulau1", "percontohan: semua kelas mulai di Pulau 1")
+	_check(w.start_island(_prof(4)) == "pulau4" and w.start_island(_prof(6)) == "pulau6", "kelas 4/6 mulai di pulau kelasnya")
 
 	print("== 3.x Save Engine skema 3 + migrasi")
 	var d0 := SaveEngine.upgrade({})
@@ -707,14 +708,14 @@ func _v3_app_tests() -> void:
 	await _frames(1)
 	_check(app.screen == "profile" and not SaveEngine.has_profile(app.p), "nama kosong ditolak")
 	ps.name_edit.text = "Ana"
-	_press(ps, "Grade2")
+	_press(ps, "Grade1")
 	_press(ps, "Hero_perempuan")
 	_press(ps, "Outfit_warna_biru")
 	_check(not ps.preview.rig.is_glb() or ps.preview.rig.long_hair, "pratinjau berganti ke pahlawan perempuan")
 	_press(ps, "Save")
 	await _frames(2)
 	_check(app.screen == "map" and app.modal_open(), "profil disimpan -> peta + cerita pembuka (Kabut Lupa)")
-	_check(str(app.p.profile.name) == "Ana" and int(app.p.profile.grade) == 2 and str(app.p.profile.hero) == "perempuan"
+	_check(str(app.p.profile.name) == "Ana" and int(app.p.profile.grade) == 1 and str(app.p.profile.hero) == "perempuan"
 		and str(app.p.profile.outfit) == "warna_biru" and str(app.p.world.island) == "pulau1", "profil tercatat, mulai di Pulau 1")
 	_check(bool(app.p.seen_intro.story), "cerita pembuka hanya sekali")
 	app.go_back()
@@ -727,8 +728,8 @@ func _v3_app_tests() -> void:
 	var c2: Vector2 = m.island_center(app.worlds.island("pulau2"))
 	_check(m.island_at(c2) == "pulau2", "ketuk pulau di peta mengenali pulaunya")
 	m.select("pulau2")
-	_check(not _btn(m, "Sail").visible, "Pulau 2 (segera hadir): tidak ada tombol berlayar")
-	_check(not m.sail("pulau2"), "berlayar ke pulau segera hadir ditolak")
+	_check(not _btn(m, "Sail").visible, "Pulau 2 terkunci (bos Pulau 1 belum kalah): tidak ada tombol berlayar")
+	_check(not m.sail("pulau2"), "berlayar ke pulau terkunci ditolak")
 	m.select("pulau1")
 	_check(_btn(m, "Sail").visible and _btn(m, "Sail").text == "Masuk pulau", "Pulau 1: Masuk pulau")
 	_press(m, "Sail")
@@ -891,7 +892,7 @@ func _v3_app_tests() -> void:
 	var lv: Control = app.lesson
 	_check(lv != null and lv.phase == "kelas" and not app.hud.visible and aw.player.frozen, "ruang kelas terbuka, HUD disembunyikan, pemain berhenti")
 	var tbtns := lv.find_children("Topic_*", "Button", true, false)
-	_check(tbtns.size() >= 3, "daftar materi kelas 2 Matematika (%d materi)" % tbtns.size())
+	_check(tbtns.size() >= 3, "daftar materi kelas 1 Matematika (%d materi)" % tbtns.size())
 	var tname := str(tbtns[0].name).trim_prefix("Topic_")
 	SdUI.guard_until_ms = 0
 	tbtns[0].pressed.emit()
@@ -911,11 +912,11 @@ func _v3_app_tests() -> void:
 			qv._emit_finish()
 		await _frames(1)
 	_check(lv.phase == "hasil" and int(lv.result.stars) == 3, "semua benar: 3 bintang")
-	_check(int(app.p.rpg.xp) > xp0 and int(app.p.academy["2/" + tname].stars) == 3 and int(app.p.academy["2/" + tname].sessions) == 1,
+	_check(int(app.p.rpg.xp) > xp0 and int(app.p.academy["1/" + tname].stars) == 3 and int(app.p.academy["1/" + tname].sessions) == 1,
 		"XP bertambah, bintang & jumlah latihan tercatat")
 	_check(str((app.p.learning.history as Array)[0].mode) == "akademi", "riwayat belajar tercatat")
 	var sv := SaveManager.load_progress("education_sd", 3)
-	_check(sv.data.academy.has("2/" + tname), "hasil latihan tersimpan")
+	_check(sv.data.academy.has("1/" + tname), "hasil latihan tersimpan")
 	_press(lv, "Again")
 	await _frames(1)
 	_check(lv.phase == "latihan", "Ulangi latihan")
@@ -951,7 +952,7 @@ func _v3_app_tests() -> void:
 		_answer(lv.current_question_view(), true)
 		await _frames(2)
 	_check(lv.phase == "ujian_hasil" and int(lv.result.score) == 100 and bool(lv.result.passed), "ujian selesai: nilai 100, lulus")
-	_check(bool(app.p.academy["ujian/2/matematika"].passed), "kelulusan ujian tersimpan")
+	_check(bool(app.p.academy["ujian/1/matematika"].passed), "kelulusan ujian tersimpan")
 	_press(lv, "ToClass")
 	await _frames(1)
 	_check(_label_has(lv, "LULUS"), "daftar materi menampilkan status ujian")
@@ -1238,8 +1239,7 @@ func _v3_app_tests() -> void:
 	await _frames(2)
 	_check(app.screen == "map", "naik perahu -> kembali ke peta")
 
-	print("== 3.x Berlayar antarpulau (Pulau 2 dibuka sementara untuk uji)")
-	app.worlds.island("pulau2").available = true
+	print("== 3.x Berlayar antarpulau (Pulau 2 terbuka setelah Raja Goblin kalah)")
 	app.show_map()
 	await _frames(2)
 	m = app.current
@@ -1251,9 +1251,9 @@ func _v3_app_tests() -> void:
 	app.go_back()
 	await _frames(2)
 	_check(app.screen == "map", "kembali dari pulau ke peta")
-	app.worlds.load_data()
 	app.p.world.island = "pulau1"
 	app.save()
+	await _v4_islands_play(app)
 
 	print("== 3.x Pengaturan, simpan, buka ulang")
 	app.go_back()
@@ -1410,3 +1410,189 @@ func _battle_win(app: Node) -> bool:
 	_press(bv, "Done")
 	await _frames(3)
 	return won
+
+
+# --- 4.x Pulau 2–6 (Tahap 8) -------------------------------------------------------------------------------------
+
+func _v4_data_tests() -> void:
+	print("== 4.x Data Pulau 1–6: tata letak, misi, musuh, toko")
+	var worlds := WorldEngine.new()
+	worlds.load_data()
+	_check(worlds.islands.size() == 6 and worlds.islands.all(func(i): return bool(i.get("available", false))), "keenam pulau tersedia")
+	var rpg = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/data/rpg.json"))
+	var bank := SdData.new()
+	bank.load_data()
+	for isl in worlds.islands:
+		var n := int(isl.number)
+		var ne := NpcEngine.new()
+		var qe := QuestEngine.new()
+		var ok_l := ne.load_layout(str(isl.layout))
+		var ok_q := qe.load_quests(str(isl.quests))
+		_check(ok_l and ok_q, "Pulau %d: tata letak & misi valid %s" % [n, str(ne.errors + qe.errors).left(120)])
+		var mv = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/data/" + str(isl.monsters)))
+		_check(typeof(mv) == TYPE_DICTIONARY and (mv.spawns as Array).size() == 8, "Pulau %d: musuh & 8 tempat muncul" % n)
+		var models := true
+		for id in mv.monsters:
+			if not ResourceLoader.exists(MODEL_DIR + str(mv.monsters[id].model) + ".glb"):
+				models = false
+		for e in ne.npcs.values():
+			if not ResourceLoader.exists(MODEL_DIR + str(e.model) + ".glb"):
+				models = false
+		for o in ne.layout.get("objects", []):
+			if not ResourceLoader.exists("res://games/education_sd/assets/environment/" + str(o.asset) + ".glb"):
+				models = false
+		_check(models, "Pulau %d: semua model penduduk, musuh, bangunan ada di APK" % n)
+		var boss_id := str(ne.layout.boss.get("monster", "raja_goblin"))
+		_check(mv.monsters.has(boss_id) and bool(mv.monsters[boss_id].get("boss", false)), "Pulau %d: bos %s" % [n, str(isl.boss.name)])
+		var mains := qe.quests.filter(func(q): return str(q.kind) == "main")
+		_check(mains.size() == 6 and qe.quests.size() >= 10, "Pulau %d: 6 misi utama + misi sampingan (%d)" % [n, qe.quests.size()])
+		var topics_ok := true
+		for cid in qe.challenges:
+			if qe.challenge_topic(cid, bank, n) == "":
+				topics_ok = false
+		_check(topics_ok, "Pulau %d: semua tantangan punya soal kelas %d" % [n, n])
+		for nid in ne.npcs:
+			var sid := str(ne.npcs[nid].get("shop", ""))
+			if sid != "":
+				_check(rpg.shop.has(sid), "Pulau %d: toko %s ada" % [n, sid])
+	print("== 4.x Keseimbangan bos Pulau 2–6 (anak di level wajar, Jurus Ilmu benar 70%)")
+	_check(is_equal_approx(BattleEngine.level_factor(1, 11), 4.0 / 11.0) and BattleEngine.level_factor(10, 5) == 1.0
+		and BattleEngine.level_factor(1, 30) == 0.35, "musuh menyesuaikan level pemain (0,35–1,0)")
+	for n in range(2, 7):
+		var mv2 = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/data/monsters%d.json" % n))
+		var bid := ""
+		for id in mv2.monsters:
+			if bool(mv2.monsters[id].get("boss", false)):
+				bid = id
+		# Level wajar saat sampai di bos: 2n+1 (kartu & topik kuasai bertambah seiring pulau).
+		var lv := 2 * n + 1
+		var st := {"level": lv, "hp": 40 + 8 * lv, "atk": 6 + 2 * lv, "def": 2 + lv, "ilmu": 10 + 3 * (2 * n) + 2 * n}
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7 + n
+		var wins := 0
+		var N := 150
+		for i in N:
+			var sim := BattleEngine.new()
+			sim.start(st, bid, mv2.monsters[bid], 0, 3000 + i)
+			while not sim.over and sim.turn < 60:
+				if sim.heavy_next:
+					sim.act("bertahan")
+				elif int(sim.player.hp) < int(st.hp) / 3 and rng.randf() < 0.5:
+					sim.act("barang", {"use": "heal", "power": 30})
+				else:
+					var ok := rng.randf() < 0.7
+					sim.act("ilmu", {"correct": ok, "first_try": ok and rng.randf() < 0.5})
+			if sim.won:
+				wins += 1
+		var rate := float(wins) / N
+		_check(rate >= 0.6 and rate < 1.0, "Pulau %d: %s menantang tapi bisa dikalahkan (lv %d, %d%% menang)" % [n, str(mv2.monsters[bid].name), lv, int(rate * 100)])
+		# Anak kelas n yang baru mulai (level 1) tetap punya peluang karena penyesuaian level.
+		var weak := BattleEngine.new()
+		weak.start({"level": 1, "hp": 48, "atk": 8, "def": 3, "ilmu": 12}, bid, mv2.monsters[bid], 0, 5)
+		_check(int(weak.enemy.max) <= int(mv2.monsters[bid].hp) * 0.6, "Pulau %d: bos melunak untuk pemain level 1 (HP %d)" % [n, int(weak.enemy.max)])
+
+
+## Mainkan seluruh misi satu pulau lewat UI (bicara, kumpulkan, tantangan, gerbang, musuh, bos).
+func _v4_play_island(app: Node, n: int) -> void:
+	var id := "pulau%d" % n
+	_check(app.worlds.status(id, app.p) == "open", "Pulau %d terbuka setelah bos pulau sebelumnya kalah" % n)
+	app.show_island(id)
+	await _frames(4)
+	var w: Node3D = app.world
+	var Q = app.quest
+	_check(app.screen == "island" and w != null and w.npcs.size() == 9 and w.find_child("Boss", true, false) != null
+		and w.find_child("Fort", true, false) != null and w.foes.size() == 8, "Pulau %d: dunia 3D, 9 penduduk, benteng, bos, 8 musuh" % n)
+	_check(app.learn_grade() == n, "Pulau %d: soal mengikuti kelas pulau" % n)
+	var order: Array = Q.quests.filter(func(q): return not bool(q.get("auto", false)))
+	order.append_array(Q.quests.filter(func(q): return bool(q.get("auto", false))))
+	var stuck := ""
+	for q in order:
+		var qid := str(q.id)
+		var guard := 0
+		while Q.state(app.p, qid) != "done" and guard < 12:
+			guard += 1
+			if Q.state(app.p, qid) == "":
+				if bool(q.get("auto", false)):
+					break
+				await _talk_to(app, str(q.giver))
+				_press_hud(app, "Terima misi")
+				await _frames(2)
+				continue
+			var s: Dictionary = Q.step(app.p, qid)
+			match str(s.get("type", "")):
+				"learn":
+					app.quest.event(app.p, "learn", "", app._qctx())
+				"talk":
+					await _talk_to(app, str(s.npc))
+				"collect":
+					await _collect_all(app)
+					await _frames(2)
+				"challenge":
+					if s.has("npc"):
+						await _talk_to(app, str(s.npc))
+						_press_hud(app, "Mulai tantangan")
+						await _frames(2)
+					elif str(s.get("spot", "")) == "boulder":
+						await _go_spot(app, "boulder")
+					else:
+						await _go_spot(app, "clue", str(s.spot))
+					await _do_challenge(app)
+					await _frames(2)
+				"use":
+					await _go_spot(app, "gate")
+					await _frames(2)
+				"defeat":
+					var target := str(s.target)
+					if bool(app.monsters.monsters.get(target, {}).get("boss", false)):
+						app.hud.close_dialog()
+						w.player.place(w.spot_pos("boss") + Vector3(0, 0.3, 0.4), PI)
+						await _frames(3)
+						app.hud.trigger_action()
+						await _frames(1)
+						_press_hud(app, "Bertarung!")
+						await _frames(2)
+						await _battle_win(app)
+						await _frames(2)
+						app.close_modal()
+					else:
+						for f in w.foes.duplicate():
+							if str(f.monster) == target and Q.state(app.p, qid) == "active" and str(Q.step(app.p, qid).get("type", "")) == "defeat":
+								app.start_battle(target, str(f.uid))
+								await _frames(2)
+								await _battle_win(app)
+				_:
+					break
+			app.hud.close_dialog()
+		if Q.state(app.p, qid) != "done" and not (bool(q.get("auto", false)) and str(q.steps[0].type) in ["places_all", "meet_all"]):
+			stuck += "%s(%s) " % [qid, str(Q.step(app.p, qid).get("type", "?"))]
+	_check(stuck == "", "Pulau %d: semua misi selesai dimainkan %s" % [n, stuck])
+	_check(Q.done_count(app.p, "main") == 6 and bool(app.p.world.bosses.get(id, false)), "Pulau %d: 6 misi utama, bos kalah" % n)
+	_check(w.gate_open() and w.find_child("Boss", true, false) == null, "Pulau %d: gerbang terbuka, bos pergi" % n)
+	app.close_modal()
+	app.hud.close_dialog()
+
+
+func _v4_islands_play(app: Node) -> void:
+	print("== 4.x Pulau 2–6 dimainkan berurutan sampai tamat")
+	app.battle_seed = 21
+	for n in range(2, 7):
+		await _v4_play_island(app, n)
+	_check(app.all_bosses_down(), "keenam bos kalah")
+	var coins := int(app.p.rpg.coins)
+	app._final_ending()
+	await _frames(1)
+	_check(app.modal_open() and bool(app.p.world.flags.get("tamat", false)) and int(app.p.rpg.coins) == coins + 500, "akhir cerita: Kabut Lupa lenyap, hadiah 500 koin")
+	app._final_ending()
+	_check(int(app.p.rpg.coins) == coins + 500, "hadiah tamat hanya sekali")
+	app.close_modal()
+	app.show_bag()
+	await _frames(2)
+	_press(app.lesson, "Tab_Barang")
+	await _frames(1)
+	_check(_label_has(app.lesson, "Piala"), "tas menampilkan piala dari pulau lain")
+	_press(app.lesson, "Close")
+	await _frames(2)
+	app.p.world.island = "pulau1"
+	app.save()
+	app.show_map()
+	await _frames(2)

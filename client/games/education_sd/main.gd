@@ -29,7 +29,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.6.0"
+const VERSION := "4.0.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -170,6 +170,20 @@ func save() -> void:
 
 func grade() -> int:
 	return int(p.profile.grade)
+
+
+## Kelas materi yang dipakai di pulau/akademi: kelas pulau tempat anak berada (Pulau 1 = kelas 1 … Pulau 6 =
+## kelas 6). Soal tetap adaptif: bila anak kesulitan, soal diambil dari kelas lebih rendah. Di luar pulau = kelas profil.
+func learn_grade() -> int:
+	if screen in ["island", "academy"]:
+		var isl := worlds.island(str(p.world.island))
+		if not isl.is_empty():
+			return int(isl.grade)
+	return grade()
+
+
+func academy_name() -> String:
+	return str(npc.layout.get("academy_name", "Akademi Tunas"))
 
 
 func level() -> int:
@@ -497,6 +511,7 @@ func show_island(id: String, at := "") -> void:
 	if isl.is_empty() or worlds.status(id, p) != "open":
 		show_map()
 		return
+	p.world.island = id
 	var layout := {}
 	if str(isl.get("layout", "")) != "":
 		if npc.load_layout(str(isl.layout)):
@@ -550,7 +565,7 @@ func _open_bag(mode: String, shop_id := "") -> void:
 	lesson = BagView.new()
 	lesson.name = "Bag"
 	_root.add_child(lesson)
-	lesson.setup(rewards, p, quest.items, _rctx(), audio, mode, shop_id)
+	lesson.setup(rewards, p, all_items(), _rctx(), audio, mode, shop_id)
 	lesson.closed.connect(close_class)
 	lesson.changed.connect(func() -> void:
 		_progress()
@@ -595,10 +610,10 @@ func _update_chip() -> void:
 
 func enter_academy() -> void:
 	_sfx("buka")
-	_make_3d("academy", AcademyScene.new(), {"gfx": str(p.settings.gfx), "hero": hero_look()}, "Akademi Tunas", Color("b5443a"))
+	_make_3d("academy", AcademyScene.new(), {"gfx": str(p.settings.gfx), "hero": hero_look(), "name": academy_name()}, academy_name(), Color("b5443a"))
 	world.interacted.connect(_on_academy_interact)
 	hud.missions_pressed.connect(show_report)
-	hud.set_hint("Selamat datang di Akademi Tunas! Datangi guru di setiap ruang kelas untuk belajar.")
+	hud.set_hint("Selamat datang di %s! Datangi guru di setiap ruang kelas untuk belajar (materi kelas %d)." % [academy_name(), learn_grade()])
 	trail("akademi")
 
 
@@ -629,7 +644,7 @@ func open_class(room_id: String) -> void:
 	lesson = LessonView.new()
 	lesson.name = "Lesson"
 	_root.add_child(lesson)
-	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), room_id)
+	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), room_id, learn_grade())
 	lesson.closed.connect(close_class)
 	lesson.changed.connect(save)
 	lesson.exam_done.connect(func(_r: Dictionary) -> void:
@@ -721,15 +736,18 @@ func _on_island_interact(kind: String, id: String) -> void:
 				world.open_gate()
 				_sfx("buka")
 				_show_notes(notes)
-			elif quest.count_item(p, "kunci_benteng") > 0:
-				hud.show_dialog("Gerbang Benteng", "Kuncinya terlihat cocok... Tanyakan dulu pada Kak Laras, penjaga jembatan.")
+			elif quest.count_item(p, str(npc.layout.get("fort", {}).get("key", "kunci_benteng"))) > 0:
+				var hint: Dictionary = npc.layout.get("signs", {}).get("gate_hint", {"title": "Gerbang Benteng",
+					"text": "Kuncinya terlihat cocok... Tanyakan dulu pada Kak Laras, penjaga jembatan."})
+				hud.show_dialog(str(hint.title), str(hint.text))
 			else:
 				var sg: Dictionary = npc.layout.get("signs", {}).get("gate", {})
 				hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
 		"boss":
-			var bm: Dictionary = monsters.get("monsters", {}).get("raja_goblin", {})
-			hud.show_dialog(str(bm.get("name", "Raja Goblin")), "\"%s\"\n\nPerisai Mahkota hanya bisa ditembus Jurus Ilmu. Siapkan Kue Manis dan Ramuan Ilmu!" % str(bm.get("taunt", "")),
-				[["Bertarung!", start_battle.bind("raja_goblin", "boss"), Color("e05a4f")]])
+			var bid := str(npc.layout.get("boss", {}).get("monster", "raja_goblin"))
+			var bm: Dictionary = monsters.get("monsters", {}).get(bid, {})
+			hud.show_dialog(str(bm.get("name", "Bos")), "\"%s\"\n\n%s hanya bisa ditembus Jurus Ilmu. Siapkan Kue Manis dan Ramuan Ilmu!" % [str(bm.get("taunt", "")),
+				str(bm.get("shield", "Perisai"))], [["Bertarung!", start_battle.bind(bid, "boss"), Color("e05a4f")]])
 		"foe":
 			var fe: Dictionary = world.foe(id)
 			if not fe.is_empty():
@@ -754,7 +772,7 @@ func talk(id: String) -> void:
 		if notes.is_empty():
 			var need: Array = []
 			for it in (sa.step.get("take", {}) as Dictionary):
-				need.append(str(quest.items.get(it, {}).get("name", it)))
+				need.append(str(all_items().get(it, {}).get("name", it)))
 			pages.append("Kamu belum membawa %s." % ", ".join(need))
 			_pages(id, title, pages, [], meet_notes)
 		else:
@@ -834,7 +852,7 @@ func _show_notes(notes: Array) -> void:
 ## Akibat catatan pada dunia tanpa dialog: gua terbuka, barang baru muncul, tanda penduduk, tujuan.
 func _apply_notes_quiet(_notes: Array) -> void:
 	if world != null and world.has_method("open_cave"):
-		if bool(p.world.flags.get("gua_terbuka", false)) and world.get("_boulder_nodes") != null and not (world._boulder_nodes as Array).is_empty():
+		if bool(p.world.flags.get(world.flag_boulder(), false)) and world.get("_boulder_nodes") != null and not (world._boulder_nodes as Array).is_empty():
 			world.open_cave()
 		for pk in quest.pickups(p, true):
 			if not (world.pickups as Dictionary).has(str(pk.uid)):
@@ -893,10 +911,11 @@ func _foe_list() -> Array:
 	var defs: Dictionary = monsters.get("monsters", {})
 	for sp in monsters.get("spawns", []):
 		var m: Dictionary = defs.get(str(sp.monster), {})
-		if m.is_empty() or (bool(p.world.flags.get("raja_kalah", false)) and str(sp.monster).begins_with("goblin")):
+		var boss_flag := str(npc.layout.get("boss", {}).get("flag", "raja_kalah"))
+		if m.is_empty() or (bool(p.world.flags.get(boss_flag, false)) and bool(sp.get("leave_on_boss", str(sp.monster).begins_with("goblin")))):
 			continue
 		out.append({"uid": str(sp.id), "monster": str(sp.monster), "model": str(m.model), "name": str(m.name), "level": int(m.get("level", 1)),
-			"height": float(m.get("height", 1.0)), "pos": sp.pos})
+			"height": float(m.get("height", 1.0)), "pos": sp.pos, "tint": str(m.get("tint", ""))})
 	return out
 
 
@@ -911,7 +930,7 @@ func start_battle(monster_id: String, uid: String) -> void:
 	lesson = BattleView.new()
 	lesson.name = "Battle"
 	_root.add_child(lesson)
-	lesson.setup(learning, rewards, p, rng, audio, data.doc.get("type_names", {}), monster_id, m, uid, hero_look(), battle_seed)
+	lesson.setup(learning, rewards, p, rng, audio, data.doc.get("type_names", {}), monster_id, m, uid, hero_look(), battle_seed, learn_grade())
 	lesson.changed.connect(save)
 	lesson.finished.connect(_on_battle_end)
 	trail("tarung %s %s" % [monster_id, uid])
@@ -951,7 +970,47 @@ func _island_saved() -> void:
 	var msg := "%s selamat dari Kabut Lupa! Kamu adalah pahlawan %s." % [str(isl.name), str(isl.name)]
 	if not nxt.is_empty():
 		msg += "\n\nPulau berikutnya: %s. %s" % [str(nxt.name), "Segera hadir!" if not bool(nxt.get("available", false)) else "Berlayarlah dari dermaga!"]
+	if all_bosses_down():
+		modal("Pahlawan %s!" % str(isl.name), msg, [["Lanjut", _final_ending]])
+		return
 	modal("Pahlawan %s!" % str(isl.name), msg, [["Hore!", func() -> void: pass]])
+
+
+## Semua bos dari pulau yang tersedia sudah kalah: Kabut Lupa hilang dari dunia.
+func all_bosses_down() -> bool:
+	for isl in worlds.islands:
+		if bool(isl.get("available", false)) and not bool(p.world.bosses.get(str(isl.id), false)):
+			return false
+	return true
+
+
+func _final_ending() -> void:
+	if not bool(p.world.flags.get("tamat", false)):
+		p.world.flags["tamat"] = true
+		p.rpg.coins = int(p.rpg.coins) + 500
+		save()
+	var nm := str(p.profile.name)
+	modal("Kabut Lupa Lenyap!", ("Selamat, %s! Keenam pulau sudah selamat.\n\nNaga Kegelapan kalah oleh cahaya ilmu, " +
+		"dan Kabut Lupa lenyap dari Dunia Enam Pulau. Semua penduduk kembali ingat pelajaran mereka.\n\n" +
+		"Kamu kini Pahlawan Ilmu Nusantara! Hadiah: 500 koin.\n\nTerus belajar di akademi ya — " +
+		"para guru masih punya banyak materi dan ujian untukmu.") % nm, [["Tamat!", func() -> void: pass]])
+
+
+## Nama barang misi dari SEMUA pulau (tas bisa menampilkan barang yang dibawa dari pulau lain).
+var _items_all: Dictionary = {}
+func all_items() -> Dictionary:
+	if _items_all.is_empty():
+		for isl in worlds.islands:
+			var f := str(isl.get("quests", ""))
+			if f == "":
+				continue
+			var v = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/data/" + f))
+			if typeof(v) == TYPE_DICTIONARY:
+				var it: Dictionary = v.get("items", {})
+				_items_all.merge(it)
+	var out: Dictionary = _items_all.duplicate()
+	out.merge(quest.items, true)
+	return out
 
 
 # --- Tantangan misi (teka-teki belajar) ----------------------------------------------------------------
@@ -960,7 +1019,7 @@ func open_challenge(cid: String) -> void:
 	if hud == null or world == null:
 		return
 	var def: Dictionary = quest.challenges.get(cid, {})
-	var topic: String = quest.challenge_topic(cid, data, grade())
+	var topic: String = quest.challenge_topic(cid, data, learn_grade())
 	if def.is_empty() or topic == "":
 		toast("Tantangan belum bisa dimulai.")
 		return
@@ -971,7 +1030,7 @@ func open_challenge(cid: String) -> void:
 	lesson = ChallengeView.new()
 	lesson.name = "Challenge"
 	_root.add_child(lesson)
-	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), cid, def, topic)
+	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), cid, def, topic, learn_grade())
 	lesson.closed.connect(close_class)
 	lesson.changed.connect(save)
 	lesson.passed.connect(_on_challenge_passed)

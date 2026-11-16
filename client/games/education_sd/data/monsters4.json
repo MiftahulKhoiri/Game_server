@@ -1,0 +1,149 @@
+{
+	"schema": 1,
+	"island": "pulau4",
+	"monsters": {
+		"p4_golem_kerikil": {
+			"name": "Golem Kerikil",
+			"model": "golem_kerikil",
+			"height": 0.9,
+			"level": 7,
+			"hp": 56,
+			"atk": 15,
+			"def": 7,
+			"xp": 75,
+			"coins": 22,
+			"subject": "ipa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Golem Kerikil menghadang jalanmu!"
+		},
+		"p4_ular_sungai": {
+			"name": "Ular Sungai",
+			"model": "ular_sawah",
+			"height": 0.6,
+			"level": 8,
+			"hp": 61,
+			"atk": 16,
+			"def": 7,
+			"xp": 75,
+			"coins": 22,
+			"subject": "matematika",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Ular Sungai menghadang jalanmu!"
+		},
+		"p4_belalang_mesin": {
+			"name": "Belalang Mesin",
+			"model": "belalang_raksasa",
+			"height": 0.8,
+			"level": 9,
+			"hp": 66,
+			"atk": 17,
+			"def": 7,
+			"xp": 75,
+			"coins": 22,
+			"subject": "bahasa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Belalang Mesin menghadang jalanmu!"
+		},
+		"penjaga_batu": {
+			"name": "Penjaga Batu Kuno",
+			"model": "golem_lava",
+			"height": 1.7,
+			"level": 11,
+			"hp": 245,
+			"atk": 19,
+			"def": 12,
+			"xp": 300,
+			"coins": 220,
+			"boss": true,
+			"shield": "Pelindung Kristal",
+			"heavy_every": 3,
+			"subject": "campur",
+			"taunt": "GRRR... Hanya penemu sejati yang boleh lewat!",
+			"defeat": "Kau penemu sejati. Mesin dan sungai akan kembali bersih.",
+			"tint": "#9ad8ff"
+		}
+	},
+	"spawns": [
+		{
+			"id": "p4_tikus_1",
+			"monster": "p4_ular_sungai",
+			"pos": [
+				-33,
+				33
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p4_tikus_2",
+			"monster": "p4_ular_sungai",
+			"pos": [
+				-27,
+				46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p4_goblin_1",
+			"monster": "p4_golem_kerikil",
+			"pos": [
+				44,
+				-36
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p4_goblin_2",
+			"monster": "p4_golem_kerikil",
+			"pos": [
+				36,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p4_goblin_3",
+			"monster": "p4_golem_kerikil",
+			"pos": [
+				50,
+				-46
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p4_goblin_4",
+			"monster": "p4_golem_kerikil",
+			"pos": [
+				-16,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p4_kelelawar_1",
+			"monster": "p4_belalang_mesin",
+			"pos": [
+				-34,
+				-46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p4_kelelawar_2",
+			"monster": "p4_belalang_mesin",
+			"pos": [
+				-50,
+				-30
+			],
+			"leave_on_boss": false
+		}
+	]
+}

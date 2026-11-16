@@ -1,0 +1,719 @@
+{
+	"schema": 1,
+	"island": "pulau6",
+	"radius": 70,
+	"spawn": [
+		0,
+		78
+	],
+	"hills": [
+		{
+			"id": "bukit_akademi",
+			"pos": [
+				0,
+				5
+			],
+			"top": 14,
+			"bottom": 22,
+			"height": 2.2
+		}
+	],
+	"river": {
+		"z": -21,
+		"half_width": 3.4,
+		"bridge_half": 2.6
+	},
+	"paths": [
+		[
+			[
+				0,
+				72
+			],
+			[
+				0,
+				50
+			]
+		],
+		[
+			[
+				0,
+				34
+			],
+			[
+				0,
+				27
+			]
+		],
+		[
+			[
+				0,
+				27
+			],
+			[
+				0,
+				19
+			]
+		],
+		[
+			[
+				0,
+				19
+			],
+			[
+				0,
+				10
+			]
+		],
+		[
+			[
+				0,
+				-9
+			],
+			[
+				0,
+				-17
+			]
+		],
+		[
+			[
+				0,
+				-17
+			],
+			[
+				0,
+				-44
+			]
+		],
+		[
+			[
+				0,
+				-31
+			],
+			[
+				24,
+				-36
+			]
+		],
+		[
+			[
+				0,
+				-31
+			],
+			[
+				-30,
+				-37
+			]
+		],
+		[
+			[
+				-6,
+				40
+			],
+			[
+				-24,
+				40
+			]
+		]
+	],
+	"places": [
+		{
+			"id": "dermaga",
+			"name": "Dermaga Terakhir",
+			"pos": [
+				0,
+				70
+			],
+			"radius": 7,
+			"sign": [
+				3.2,
+				66
+			]
+		},
+		{
+			"id": "desa",
+			"name": "Desa Terakhir",
+			"pos": [
+				0,
+				42
+			],
+			"radius": 17,
+			"sign": [
+				3.2,
+				58
+			],
+			"plaza": 8
+		},
+		{
+			"id": "ladang",
+			"name": "Kebun Abu",
+			"pos": [
+				-30,
+				40
+			],
+			"radius": 10,
+			"sign": [
+				-22,
+				45
+			]
+		},
+		{
+			"id": "akademi",
+			"name": "Akademi Legenda",
+			"pos": [
+				0,
+				5
+			],
+			"radius": 14,
+			"sign": [
+				3.4,
+				25
+			]
+		},
+		{
+			"id": "sungai",
+			"name": "Sungai Lava Dingin",
+			"pos": [
+				0,
+				-21
+			],
+			"radius": 7,
+			"sign": [
+				3.6,
+				-14.5
+			]
+		},
+		{
+			"id": "hutan",
+			"name": "Hutan Hangus",
+			"pos": [
+				38,
+				-38
+			],
+			"radius": 22,
+			"sign": [
+				21,
+				-32
+			]
+		},
+		{
+			"id": "gua",
+			"name": "Gua Sandi Kuno",
+			"pos": [
+				-42,
+				-42
+			],
+			"radius": 13,
+			"sign": [
+				-25,
+				-33
+			]
+		},
+		{
+			"id": "benteng",
+			"name": "Sarang Naga",
+			"pos": [
+				0,
+				-56
+			],
+			"radius": 13,
+			"sign": [
+				4,
+				-40
+			]
+		}
+	],
+	"objects": [
+		{
+			"asset": "buildings/tongkonan",
+			"pos": [
+				13,
+				36
+			],
+			"rot": -90,
+			"scale": 1.5
+		},
+		{
+			"asset": "buildings/joglo",
+			"pos": [
+				-13,
+				34
+			],
+			"rot": 90,
+			"scale": 1.4
+		},
+		{
+			"asset": "buildings/rumah_gadang",
+			"pos": [
+				13,
+				50
+			],
+			"rot": -90,
+			"scale": 1.4
+		},
+		{
+			"asset": "buildings/tongkonan",
+			"pos": [
+				-13,
+				50
+			],
+			"rot": 90,
+			"scale": 1.5
+		},
+		{
+			"asset": "buildings/market_stall",
+			"pos": [
+				6,
+				47
+			],
+			"rot": 0,
+			"scale": 1.3
+		},
+		{
+			"asset": "buildings/market_stall",
+			"pos": [
+				-6,
+				47
+			],
+			"rot": 0,
+			"scale": 1.3
+		},
+		{
+			"asset": "educational/info_board",
+			"pos": [
+				-3.4,
+				31
+			],
+			"rot": -180
+		},
+		{
+			"asset": "buildings/library",
+			"pos": [
+				0,
+				0
+			],
+			"rot": 0,
+			"scale": 1.0
+		},
+		{
+			"asset": "buildings/observatory",
+			"pos": [
+				9.5,
+				-1
+			],
+			"rot": 0,
+			"scale": 0.5
+		},
+		{
+			"asset": "buildings/lighthouse",
+			"pos": [
+				-9.5,
+				-1
+			],
+			"rot": 0,
+			"scale": 0.5
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				5,
+				10
+			]
+		},
+		{
+			"asset": "educational/big_book",
+			"pos": [
+				-5,
+				10
+			],
+			"rot": -180
+		},
+		{
+			"asset": "educational/globe",
+			"pos": [
+				-8,
+				8
+			]
+		},
+		{
+			"asset": "educational/microscope",
+			"pos": [
+				8,
+				8
+			],
+			"rot": -180,
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				4,
+				36
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-4,
+				36
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				4,
+				54
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				-4,
+				54
+			],
+			"solid": false
+		},
+		{
+			"asset": "props/lamp_post",
+			"pos": [
+				2.4,
+				66
+			],
+			"solid": false
+		},
+		{
+			"asset": "buildings/cave",
+			"pos": [
+				-44,
+				-45
+			],
+			"rot": 135,
+			"scale": 1.0,
+			"radius": 5.6
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				-36,
+				-48
+			],
+			"scale": 1.6
+		},
+		{
+			"asset": "rocks/rock_b",
+			"pos": [
+				-50,
+				-36
+			],
+			"scale": 1.8
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				-48,
+				-52
+			],
+			"scale": 2.0
+		},
+		{
+			"asset": "rocks/rock_b",
+			"pos": [
+				6,
+				-38
+			],
+			"scale": 1.2
+		},
+		{
+			"asset": "rocks/rock_a",
+			"pos": [
+				-7,
+				-36
+			],
+			"scale": 1.0
+		}
+	],
+	"farm": {
+		"pos": [
+			-30,
+			40
+		],
+		"size": [
+			14,
+			10
+		],
+		"rows": 5
+	},
+	"forest": {
+		"pos": [
+			38,
+			-38
+		],
+		"radius": 22
+	},
+	"fort": {
+		"pos": [
+			0,
+			-56
+		],
+		"half": 11,
+		"wall_h": 3.6,
+		"gate_half": 2.6,
+		"flag": "p6_gerbang",
+		"key": "p6_pedang_cahaya"
+	},
+	"boulder": {
+		"pos": [
+			-38.5,
+			-38.5
+		],
+		"scale": 2.6,
+		"flag": "p6_terbuka"
+	},
+	"boss": {
+		"model": "aldragor",
+		"name": "Naga Kegelapan",
+		"pos": [
+			0,
+			-61
+		],
+		"scale": 1.3,
+		"monster": "naga_kegelapan",
+		"flag": "p6_bos",
+		"tint": ""
+	},
+	"guards": [
+		{
+			"model": "golem_lava",
+			"name": "Penjaga Lava",
+			"pos": [
+				-4.5,
+				-43.5
+			],
+			"height": 1.1
+		},
+		{
+			"model": "golem_lava",
+			"name": "Penjaga Lava",
+			"pos": [
+				4.5,
+				-43.5
+			],
+			"height": 1.1
+		}
+	],
+	"academy_door": [
+		0,
+		6.5
+	],
+	"npcs": [
+		{
+			"id": "p6_tetua",
+			"name": "Nenek Legenda",
+			"role": "Penjaga Legenda",
+			"model": "penyihir",
+			"pos": [
+				-3,
+				39
+			],
+			"wander": 2.5,
+			"lines": [
+				"Selamat datang di Desa Terakhir, {name}! Aku Nenek Legenda.",
+				"Inilah pulau terakhir. Naga Kegelapan, sumber Kabut Lupa, bersarang di dekat gunung api. Hanya pahlawan ilmu yang bisa mengalahkannya.",
+				"Belajarlah dulu di Akademi Legenda di atas bukit, lalu bantu para penduduk."
+			],
+			"again": [
+				"Semangat, {name}! Seluruh Desa Terakhir percaya padamu."
+			]
+		},
+		{
+			"id": "p6_guru",
+			"name": "Pak Guru Agung",
+			"role": "Guru Akademi",
+			"model": "warga_bapak2",
+			"pos": [
+				-3,
+				11.5
+			],
+			"wander": 2.0,
+			"lines": [
+				"Halo {name}! Aku Pak Guru Agung, guru di Akademi Legenda.",
+				"Di sini kamu belajar materi yang lebih menantang. Ayo masuk ke akademi!"
+			],
+			"again": [
+				"Pintu Akademi Legenda selalu terbuka. Belajarlah bersama para guru."
+			]
+		},
+		{
+			"id": "p6_pekebun",
+			"name": "Pak Pengukur",
+			"role": "Juru Ukur",
+			"model": "petani",
+			"pos": [
+				-24,
+				37
+			],
+			"wander": 3.0,
+			"lines": [
+				"Halo, {name}. Aku Pak Pengukur.",
+				"Banyak pekerjaan di sini sejak Kabut Lupa datang."
+			],
+			"again": [
+				"Terima kasih sudah peduli pada desa kami."
+			]
+		},
+		{
+			"id": "p6_ibu",
+			"name": "Bu Penyelamat",
+			"role": "Pemimpin Pengungsi",
+			"model": "warga_ibu",
+			"pos": [
+				6,
+				44.5
+			],
+			"wander": 0.0,
+			"lines": [
+				"Nak {name}, hati-hati di Hutan Hangus, ya.",
+				"Aku butuh bantuanmu."
+			],
+			"again": [
+				"Hati-hati di perjalanan, Nak."
+			]
+		},
+		{
+			"id": "p6_anak",
+			"name": "Bima Muda",
+			"role": "Pemberani Cilik",
+			"model": "anak_desa",
+			"pos": [
+				5,
+				52
+			],
+			"wander": 4.0,
+			"lines": [
+				"Kak {name}! Kakak petualang hebat itu, ya?",
+				"Aku pernah melihat Gua Sandi Kuno. Ada sesuatu di dalamnya!"
+			],
+			"again": [
+				"Aku ingin jadi pahlawan seperti Kakak!"
+			],
+			"height": 1.3
+		},
+		{
+			"id": "p6_warga",
+			"name": "Kak Seniman",
+			"role": "Seniman Desa",
+			"model": "warga_ibu2",
+			"pos": [
+				-9,
+				44
+			],
+			"wander": 3.0,
+			"lines": [
+				"Halo, {name}! Senang bertemu petualang.",
+				"Di desa kami, semua saling membantu."
+			],
+			"again": [
+				"Jaga kesehatan dan tetap rajin belajar, ya."
+			]
+		},
+		{
+			"id": "p6_dermaga",
+			"name": "Pak Mercusuar",
+			"role": "Penjaga Mercusuar",
+			"model": "warga_bapak",
+			"pos": [
+				-3.2,
+				63
+			],
+			"wander": 1.5,
+			"lines": [
+				"Perahumu aman di Dermaga Terakhir.",
+				"Naik perahu untuk berlayar ke pulau lain."
+			],
+			"again": [
+				"Laut sedang tenang hari ini."
+			]
+		},
+		{
+			"id": "p6_jembatan",
+			"name": "Panglima Ksatria",
+			"role": "Pemimpin Pahlawan",
+			"model": "ksatria",
+			"pos": [
+				-4.6,
+				-14.6
+			],
+			"wander": 1.0,
+			"lines": [
+				"Berhenti, {name}! Di seberang sungai banyak makhluk liar.",
+				"Sarang Naga ada di ujung utara pulau."
+			],
+			"again": [
+				"Gunakan jurus ilmumu untuk melawan musuh!"
+			]
+		},
+		{
+			"id": "p6_pedagang",
+			"name": "Saudagar Naga",
+			"role": "Pedagang",
+			"model": "pendekar_kapak",
+			"pos": [
+				-6,
+				45.2
+			],
+			"wander": 0.0,
+			"lines": [
+				"Selamat datang di lapakku, {name}!",
+				"Aku menjual kue, ramuan, perisai, dan kostum. Bayar pakai koin, ya."
+			],
+			"again": [
+				"Mau belanja lagi? Koin didapat dari belajar dan menolong warga."
+			],
+			"shop": "toko_p6"
+		}
+	],
+	"signs": {
+		"gate": {
+			"title": "Sarang Naga",
+			"text": "Gerbangnya terkunci rapat. Naga Kegelapan ada di dalam."
+		},
+		"boulder": {
+			"title": "Pintu Sandi Kuno",
+			"text": "Pintu batu dengan sandi kuno tentang tata surya dan energi."
+		},
+		"gate_hint": {
+			"title": "Sarang Naga",
+			"text": "Kuncinya cocok... Tanyakan dulu pada Panglima Ksatria."
+		}
+	},
+	"academy_name": "Akademi Legenda",
+	"tree_kinds": [
+		"vegetation/tree_pine",
+		"vegetation/tree_pine",
+		"vegetation/bush",
+		"vegetation/bush"
+	],
+	"colors": {
+		"sky_top": "#3a2a4a",
+		"sky_horizon": "#f0b080",
+		"wall": "#3a3440",
+		"roof": "#c0392b",
+		"flag": "#e05a4f"
+	},
+	"shapes": [
+		{
+			"type": "cone",
+			"pos": [
+				50,
+				8
+			],
+			"r": 12,
+			"top": 3,
+			"h": 14,
+			"color": "#5a4a48",
+			"glow": "#ff7a2a"
+		}
+	]
+}

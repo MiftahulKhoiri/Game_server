@@ -1,0 +1,149 @@
+{
+	"schema": 1,
+	"island": "pulau5",
+	"monsters": {
+		"p5_pengintai_orc": {
+			"name": "Pengintai Orc",
+			"model": "goblin",
+			"height": 1.1,
+			"level": 9,
+			"hp": 68,
+			"atk": 18,
+			"def": 9,
+			"xp": 90,
+			"coins": 26,
+			"subject": "matematika",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Pengintai Orc menghadang jalanmu!"
+		},
+		"p5_babi_perang": {
+			"name": "Babi Perang",
+			"model": "babi_hutan",
+			"height": 0.9,
+			"level": 10,
+			"hp": 75,
+			"atk": 19,
+			"def": 9,
+			"xp": 90,
+			"coins": 26,
+			"subject": "ipa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Babi Perang menghadang jalanmu!"
+		},
+		"p5_serigala_pasukan": {
+			"name": "Serigala Pasukan",
+			"model": "serigala_hutan",
+			"height": 0.8,
+			"level": 11,
+			"hp": 82,
+			"atk": 20,
+			"def": 9,
+			"xp": 90,
+			"coins": 26,
+			"subject": "pancasila",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Serigala Pasukan menghadang jalanmu!"
+		},
+		"panglima_orc": {
+			"name": "Panglima Orc",
+			"model": "ogre_batu",
+			"height": 1.7,
+			"level": 13,
+			"hp": 290,
+			"atk": 22,
+			"def": 14,
+			"xp": 350,
+			"coins": 260,
+			"boss": true,
+			"shield": "Zirah Besi",
+			"heavy_every": 3,
+			"subject": "campur",
+			"taunt": "HARR! Kerajaan ini akan jadi milik pasukanku!",
+			"defeat": "Harr... kau ksatria sejati. Pasukanku akan pergi dan tidak kembali!",
+			"tint": "#b0d090"
+		}
+	},
+	"spawns": [
+		{
+			"id": "p5_tikus_1",
+			"monster": "p5_babi_perang",
+			"pos": [
+				33,
+				33
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p5_tikus_2",
+			"monster": "p5_babi_perang",
+			"pos": [
+				27,
+				46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p5_goblin_1",
+			"monster": "p5_pengintai_orc",
+			"pos": [
+				-44,
+				-36
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p5_goblin_2",
+			"monster": "p5_pengintai_orc",
+			"pos": [
+				-36,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p5_goblin_3",
+			"monster": "p5_pengintai_orc",
+			"pos": [
+				-50,
+				-46
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p5_goblin_4",
+			"monster": "p5_pengintai_orc",
+			"pos": [
+				16,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p5_kelelawar_1",
+			"monster": "p5_serigala_pasukan",
+			"pos": [
+				34,
+				-46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p5_kelelawar_2",
+			"monster": "p5_serigala_pasukan",
+			"pos": [
+				50,
+				-30
+			],
+			"leave_on_boss": false
+		}
+	]
+}

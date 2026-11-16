@@ -1,0 +1,575 @@
+{
+	"schema": 1,
+	"island": "pulau5",
+	"items": {
+		"p5_lencana": {
+			"name": "Lencana Akademi Ksatria",
+			"desc": "Tanda murid Akademi Ksatria."
+		},
+		"p5_perbekalan": {
+			"name": "Kotak Perbekalan",
+			"desc": "Perbekalan makanan untuk pasukan penjaga."
+		},
+		"p5_perisai_kecil": {
+			"name": "Perisai Kecil",
+			"desc": "Hadiah dari Pak Gandum."
+		},
+		"p5_obat_tanaman": {
+			"name": "Ramuan Tanaman",
+			"desc": "Ramuan untuk menyembuhkan tanaman yang sakit."
+		},
+		"p5_terompet_perang": {
+			"name": "Terompet Ksatria",
+			"desc": "Terompet untuk membuka gerbang Perkemahan Orc."
+		},
+		"p5_tombak_patah": {
+			"name": "Tombak Patah",
+			"desc": "Barang untuk Pak Laut."
+		},
+		"p5_piala": {
+			"name": "Piala Kota Ksatria",
+			"desc": "Bukti kamu pahlawan pulau ini."
+		},
+		"kue": {
+			"name": "Kue Manis",
+			"desc": "Kue manis. Memulihkan HP dalam pertarungan."
+		},
+		"perisai_daun": {
+			"name": "Perisai Daun",
+			"desc": "Mengurangi serangan musuh berikutnya menjadi setengah."
+		}
+	},
+	"challenges": {
+		"p5_hitung": {
+			"title": "Kebutuhan Pasukan",
+			"story": "Bantu Pak Gandum menghitung dengan tepat!",
+			"region": "matematika",
+			"prefer": [
+				"pecahan",
+				"pengukuran",
+				"perkalian",
+				"pembagian"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p5_petunjuk": {
+			"title": "Gulungan Tabib",
+			"story": "Ada tulisan kuno. Pecahkan teka-teki bahasanya!",
+			"region": "bahasa",
+			"prefer": [
+				"bacaan",
+				"cerita",
+				"tanda_baca",
+				"kata_kalimat"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p5_batu": {
+			"title": "Batu Mata Air",
+			"story": "Batu besar menutup mata air. Ia bergeser bagi yang paham tubuh manusia dan ekosistem.",
+			"region": "ipa",
+			"prefer": [
+				"tubuh",
+				"ekosistem",
+				"hewan"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p5_sampingan": {
+			"title": "Sumpah Ksatria",
+			"story": "Ksatria sejati paham dasar negara dan kewajibannya. Siap diuji?",
+			"region": "pancasila",
+			"prefer": [
+				"sila_pancasila",
+				"negaraku",
+				"hak_kewajiban"
+			],
+			"n": 3,
+			"pass": 2
+		}
+	},
+	"spots": [
+		{
+			"id": "p5_clue",
+			"name": "Gulungan Tabib",
+			"pos": [
+				-34,
+				-28
+			]
+		}
+	],
+	"quests": [
+		{
+			"id": "p5_murid_baru",
+			"kind": "main",
+			"giver": "p5_tetua",
+			"title": "Murid Baru Akademi Ksatria",
+			"offer": [
+				"{name}, kamu sudah sampai di pulau kami!",
+				"Petualang sejati selalu belajar. Selesaikan satu latihan di Akademi Ksatria."
+			],
+			"steps": [
+				{
+					"type": "learn",
+					"count": 1,
+					"text": "Selesaikan 1 latihan di Akademi Ksatria",
+					"where": {
+						"place": "akademi"
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p5_tetua",
+					"text": "Kembali ke Raja Satria",
+					"where": {
+						"npc": "p5_tetua"
+					},
+					"say": [
+						"Bagus sekali, {name}! Ini lencana murid Akademi Ksatria.",
+						"Sekarang bantulah para penduduk."
+					]
+				}
+			],
+			"reward": {
+				"coins": 90,
+				"xp": 240,
+				"items": {
+					"p5_lencana": 1
+				}
+			}
+		},
+		{
+			"id": "p5_misi_2",
+			"kind": "main",
+			"giver": "p5_pekebun",
+			"requires": [
+				"p5_murid_baru"
+			],
+			"title": "Kebutuhan Pasukan",
+			"offer": [
+				"Perbekalan pasukan dicuri orc dan tercecer di jalan ke Lembah Pertahanan.",
+				"Kumpulkan 5 kotak, lalu bantu aku menghitung kebutuhan pasukan."
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p5_perbekalan",
+					"count": 5,
+					"text": "Kumpulkan Kotak Perbekalan",
+					"where": {
+						"pos": [
+							-12,
+							-34
+						]
+					},
+					"pickups": [
+						[
+							-5,
+							-32.5
+						],
+						[
+							-10,
+							-33.5
+						],
+						[
+							-15,
+							-34.5
+						],
+						[
+							-20,
+							-35.5
+						],
+						[
+							-26,
+							-37
+						]
+					]
+				},
+				{
+					"type": "challenge",
+					"challenge": "p5_hitung",
+					"npc": "p5_pekebun",
+					"text": "Bantu Pak Gandum menghitung",
+					"where": {
+						"npc": "p5_pekebun"
+					},
+					"say": [
+						"Perbekalan cukup untuk seluruh pasukan. Terima kasih, ksatria!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 100,
+				"xp": 260,
+				"items": {
+					"p5_perisai_kecil": 1
+				}
+			}
+		},
+		{
+			"id": "p5_misi_3",
+			"kind": "main",
+			"giver": "p5_ibu",
+			"requires": [
+				"p5_murid_baru"
+			],
+			"title": "Tanaman yang Sakit",
+			"offer": [
+				"Tanaman ladang layu dan sakit!",
+				"Di Lembah Pertahanan ada gulungan tabib. Bacalah untuk menemukan ramuannya."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p5_petunjuk",
+					"spot": "p5_clue",
+					"text": "Pecahkan teka-teki Gulungan Tabib",
+					"where": {
+						"spot": "p5_clue"
+					},
+					"say": [
+						"Gulungan terbaca! Ramuan tumbuh di bawah pohon besar di lembah."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p5_obat_tanaman",
+					"count": 1,
+					"text": "Temukan Ramuan Tanaman",
+					"where": {
+						"pos": [
+							-46,
+							-44
+						]
+					},
+					"pickups": [
+						[
+							-46,
+							-44
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p5_ibu",
+					"text": "Bawa Ramuan Tanaman ke Bu Tabib",
+					"where": {
+						"npc": "p5_ibu"
+					},
+					"take": {
+						"p5_obat_tanaman": 1
+					},
+					"say": [
+						"Ramuan ini menyembuhkan tanaman! Ladang hijau kembali."
+					]
+				}
+			],
+			"reward": {
+				"coins": 100,
+				"xp": 260,
+				"items": {
+					"kue": 3
+				}
+			}
+		},
+		{
+			"id": "p5_misi_4",
+			"kind": "main",
+			"giver": "p5_anak",
+			"requires": [
+				"p5_misi_2",
+				"p5_misi_3"
+			],
+			"title": "Mencari Sumber Air Bersih",
+			"offer": [
+				"Rakyat butuh air bersih! Mata air tersembunyi ditutup batu oleh orc."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p5_batu",
+					"spot": "boulder",
+					"text": "Pecahkan teka-teki Batu Mata Air",
+					"where": {
+						"spot": "boulder"
+					},
+					"flags": [
+						"p5_terbuka"
+					],
+					"say": [
+						"Batu bergeser! Air bersih mengalir lagi untuk seluruh kerajaan."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p5_terompet_perang",
+					"count": 1,
+					"text": "Ambil Terompet Ksatria",
+					"where": {
+						"pos": [
+							40,
+							-40
+						]
+					},
+					"pickups": [
+						[
+							40,
+							-40
+						]
+					]
+				}
+			],
+			"reward": {
+				"coins": 110,
+				"xp": 280
+			}
+		},
+		{
+			"id": "p5_misi_5",
+			"kind": "main",
+			"giver": "p5_jembatan",
+			"requires": [
+				"p5_misi_4"
+			],
+			"title": "Menyelamatkan Kerajaan",
+			"offer": [
+				"Terompet Ksatria! Tiup di depan gerbang perkemahan orc.",
+				"Panglima Orc sangat kuat, susun strategimu!"
+			],
+			"steps": [
+				{
+					"type": "use",
+					"target": "gate",
+					"item": "p5_terompet_perang",
+					"text": "Buka gerbang Perkemahan Orc",
+					"where": {
+						"spot": "gate"
+					},
+					"flags": [
+						"p5_gerbang"
+					],
+					"take": {
+						"p5_terompet_perang": 1
+					},
+					"say": [
+						"Terompet berbunyi, gerbang perkemahan terbuka!",
+						"Panglima Orc mengangkat kapaknya: \"Siapa berani menantangku?!\""
+					]
+				}
+			],
+			"reward": {
+				"coins": 110,
+				"xp": 280
+			}
+		},
+		{
+			"id": "p5_bos",
+			"kind": "main",
+			"auto": true,
+			"requires": [
+				"p5_misi_5"
+			],
+			"title": "Kalahkan Panglima Orc",
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "panglima_orc",
+					"count": 1,
+					"text": "Kalahkan Panglima Orc",
+					"where": {
+						"spot": "boss"
+					},
+					"say": [
+						"Panglima Orc kalah! Kabut Lupa di Kota Ksatria menghilang.",
+						"Seluruh penduduk bersorak untukmu, {name}!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 220,
+				"xp": 500,
+				"items": {
+					"p5_piala": 1
+				}
+			}
+		},
+		{
+			"id": "p5_pantai",
+			"kind": "side",
+			"giver": "p5_dermaga",
+			"title": "Tombak yang Hilang",
+			"offer": [
+				"Tombak pasukan hanyut ke pantai.",
+				"Kumpulkan 5 untuk diperbaiki pandai besi!"
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p5_tombak_patah",
+					"count": 5,
+					"text": "Kumpulkan Tombak Patah",
+					"where": {
+						"pos": [
+							42,
+							58
+						]
+					},
+					"pickups": [
+						[
+							42,
+							58
+						],
+						[
+							-48,
+							52
+						],
+						[
+							70,
+							6
+						],
+						[
+							-70,
+							-6
+						],
+						[
+							55,
+							-45
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p5_dermaga",
+					"text": "Berikan kepada Pak Laut",
+					"where": {
+						"npc": "p5_dermaga"
+					},
+					"take": {
+						"p5_tombak_patah": 5
+					},
+					"say": [
+						"Pasukan bersenjata lagi! Ini baju emas ksatria untukmu."
+					]
+				}
+			],
+			"reward": {
+				"coins": 60,
+				"xp": 160,
+				"outfit": "warna_emas"
+			}
+		},
+		{
+			"id": "p5_warga",
+			"kind": "side",
+			"giver": "p5_warga",
+			"requires": [
+				"p5_murid_baru"
+			],
+			"title": "Sumpah Ksatria",
+			"offer": [
+				"Ksatria sejati paham dasar negara dan kewajibannya. Siap diuji?"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p5_sampingan",
+					"npc": "p5_warga",
+					"text": "Jawab tantangan Bu Penasihat",
+					"where": {
+						"npc": "p5_warga"
+					},
+					"say": [
+						"Kamu layak menjadi ksatria!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 60,
+				"xp": 170,
+				"items": {
+					"kue": 1
+				}
+			}
+		},
+		{
+			"id": "p5_usir",
+			"kind": "side",
+			"giver": "p5_jembatan",
+			"requires": [
+				"p5_murid_baru"
+			],
+			"title": "Usir Pengintai Orc",
+			"offer": [
+				"Pengintai Orc berkeliaran di Lembah Pertahanan.",
+				"Kalahkan 3 dengan jurus ilmumu!"
+			],
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "p5_pengintai_orc",
+					"count": 3,
+					"text": "Kalahkan Pengintai Orc",
+					"where": {
+						"pos": [
+							-44,
+							-36
+						]
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p5_jembatan",
+					"text": "Lapor ke Kapten Tombak",
+					"where": {
+						"npc": "p5_jembatan"
+					},
+					"say": [
+						"Hebat! Jalan sekarang lebih aman."
+					]
+				}
+			],
+			"reward": {
+				"coins": 70,
+				"xp": 180,
+				"items": {
+					"perisai_daun": 1
+				}
+			}
+		},
+		{
+			"id": "p5_jelajah",
+			"kind": "side",
+			"auto": true,
+			"title": "Penjelajah Kota Ksatria",
+			"steps": [
+				{
+					"type": "places_all",
+					"text": "Temukan semua tempat di pulau"
+				}
+			],
+			"reward": {
+				"coins": 80,
+				"xp": 60
+			}
+		},
+		{
+			"id": "p5_kenal",
+			"kind": "side",
+			"auto": true,
+			"title": "Sahabat Kota Ksatria",
+			"steps": [
+				{
+					"type": "meet_all",
+					"text": "Berkenalan dengan semua penduduk"
+				}
+			],
+			"reward": {
+				"coins": 60,
+				"xp": 50
+			}
+		}
+	]
+}

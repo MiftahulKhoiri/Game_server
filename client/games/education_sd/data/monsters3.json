@@ -1,0 +1,149 @@
+{
+	"schema": 1,
+	"island": "pulau3",
+	"monsters": {
+		"p3_prajurit_kutukan": {
+			"name": "Prajurit Kutukan",
+			"model": "goblin_penjaga",
+			"height": 1.1,
+			"level": 5,
+			"hp": 44,
+			"atk": 12,
+			"def": 5,
+			"xp": 60,
+			"coins": 18,
+			"subject": "matematika",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Prajurit Kutukan menghadang jalanmu!"
+		},
+		"p3_tikus_gudang": {
+			"name": "Tikus Gudang",
+			"model": "tikus_sawah",
+			"height": 0.6,
+			"level": 6,
+			"hp": 47,
+			"atk": 13,
+			"def": 5,
+			"xp": 60,
+			"coins": 18,
+			"subject": "pancasila",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Tikus Gudang menghadang jalanmu!"
+		},
+		"p3_kelelawar_istana": {
+			"name": "Kelelawar Istana",
+			"model": "kelelawar_hutan",
+			"height": 0.8,
+			"level": 7,
+			"hp": 51,
+			"atk": 14,
+			"def": 5,
+			"xp": 60,
+			"coins": 18,
+			"subject": "bahasa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Kelelawar Istana menghadang jalanmu!"
+		},
+		"golem_kerajaan": {
+			"name": "Golem Penjaga Kerajaan",
+			"model": "golem_kerikil",
+			"height": 1.7,
+			"level": 9,
+			"hp": 200,
+			"atk": 16,
+			"def": 10,
+			"xp": 250,
+			"coins": 180,
+			"boss": true,
+			"shield": "Kulit Batu",
+			"heavy_every": 3,
+			"subject": "campur",
+			"taunt": "PENYUSUP... TIDAK... BOLEH... LEWAT.",
+			"defeat": "Kutukan... hilang. Aku... ingat sekarang. Aku penjaga rakyat.",
+			"tint": "#c8b8ff"
+		}
+	},
+	"spawns": [
+		{
+			"id": "p3_tikus_1",
+			"monster": "p3_tikus_gudang",
+			"pos": [
+				33,
+				33
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p3_tikus_2",
+			"monster": "p3_tikus_gudang",
+			"pos": [
+				27,
+				46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p3_goblin_1",
+			"monster": "p3_prajurit_kutukan",
+			"pos": [
+				-44,
+				-36
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p3_goblin_2",
+			"monster": "p3_prajurit_kutukan",
+			"pos": [
+				-36,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p3_goblin_3",
+			"monster": "p3_prajurit_kutukan",
+			"pos": [
+				-50,
+				-46
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p3_goblin_4",
+			"monster": "p3_prajurit_kutukan",
+			"pos": [
+				16,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p3_kelelawar_1",
+			"monster": "p3_kelelawar_istana",
+			"pos": [
+				34,
+				-46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p3_kelelawar_2",
+			"monster": "p3_kelelawar_istana",
+			"pos": [
+				50,
+				-30
+			],
+			"leave_on_boss": false
+		}
+	]
+}

@@ -1,0 +1,575 @@
+{
+	"schema": 1,
+	"island": "pulau6",
+	"items": {
+		"p6_lencana": {
+			"name": "Lencana Akademi Legenda",
+			"desc": "Tanda murid Akademi Legenda."
+		},
+		"p6_batu_penanda": {
+			"name": "Batu Penanda",
+			"desc": "Batu penanda jarak jalan menuju sarang naga."
+		},
+		"p6_kompas_naga": {
+			"name": "Kompas Naga",
+			"desc": "Hadiah dari Pak Pengukur."
+		},
+		"p6_lonceng_evakuasi": {
+			"name": "Lonceng Evakuasi",
+			"desc": "Lonceng untuk memanggil penduduk ke tempat aman."
+		},
+		"p6_pedang_cahaya": {
+			"name": "Pedang Cahaya",
+			"desc": "Pedang legenda untuk membuka Sarang Naga."
+		},
+		"p6_mutiara": {
+			"name": "Mutiara",
+			"desc": "Barang untuk Pak Mercusuar."
+		},
+		"p6_piala": {
+			"name": "Piala Desa Terakhir",
+			"desc": "Bukti kamu pahlawan pulau ini."
+		},
+		"kue": {
+			"name": "Kue Manis",
+			"desc": "Kue manis. Memulihkan HP dalam pertarungan."
+		},
+		"perisai_daun": {
+			"name": "Perisai Daun",
+			"desc": "Mengurangi serangan musuh berikutnya menjadi setengah."
+		}
+	},
+	"challenges": {
+		"p6_hitung": {
+			"title": "Jarak Sarang Naga",
+			"story": "Bantu Pak Pengukur menghitung dengan tepat!",
+			"region": "matematika",
+			"prefer": [
+				"logika",
+				"bangun_ruang",
+				"bangun_datar",
+				"pengukuran"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p6_petunjuk": {
+			"title": "Tugu Bertulis",
+			"story": "Ada tulisan kuno. Pecahkan teka-teki bahasanya!",
+			"region": "bahasa",
+			"prefer": [
+				"bacaan",
+				"kata_kalimat",
+				"pantun",
+				"cerita"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p6_batu": {
+			"title": "Pintu Sandi Kuno",
+			"story": "Pintu batu dengan sandi kuno tentang tata surya dan energi.",
+			"region": "ipa",
+			"prefer": [
+				"tata_surya",
+				"energi",
+				"ekosistem"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p6_sampingan": {
+			"title": "Karya Seni Nusantara",
+			"story": "Seni Nusantara memberi semangat para pahlawan. Ayo kita bahas!",
+			"region": "seni",
+			"prefer": [
+				"musik",
+				"kerajinan",
+				"tari"
+			],
+			"n": 3,
+			"pass": 2
+		}
+	},
+	"spots": [
+		{
+			"id": "p6_clue",
+			"name": "Tugu Bertulis",
+			"pos": [
+				34,
+				-28
+			]
+		}
+	],
+	"quests": [
+		{
+			"id": "p6_murid_baru",
+			"kind": "main",
+			"giver": "p6_tetua",
+			"title": "Murid Baru Akademi Legenda",
+			"offer": [
+				"{name}, kamu sudah sampai di pulau kami!",
+				"Petualang sejati selalu belajar. Selesaikan satu latihan di Akademi Legenda."
+			],
+			"steps": [
+				{
+					"type": "learn",
+					"count": 1,
+					"text": "Selesaikan 1 latihan di Akademi Legenda",
+					"where": {
+						"place": "akademi"
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p6_tetua",
+					"text": "Kembali ke Nenek Legenda",
+					"where": {
+						"npc": "p6_tetua"
+					},
+					"say": [
+						"Bagus sekali, {name}! Ini lencana murid Akademi Legenda.",
+						"Sekarang bantulah para penduduk."
+					]
+				}
+			],
+			"reward": {
+				"coins": 100,
+				"xp": 270,
+				"items": {
+					"p6_lencana": 1
+				}
+			}
+		},
+		{
+			"id": "p6_misi_2",
+			"kind": "main",
+			"giver": "p6_pekebun",
+			"requires": [
+				"p6_murid_baru"
+			],
+			"title": "Jarak Sarang Naga",
+			"offer": [
+				"Untuk menyerang sarang naga, kita harus tahu jaraknya.",
+				"Kumpulkan 5 batu penanda di jalan ke Hutan Hangus, lalu bantu aku menghitung jaraknya."
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p6_batu_penanda",
+					"count": 5,
+					"text": "Kumpulkan Batu Penanda",
+					"where": {
+						"pos": [
+							12,
+							-34
+						]
+					},
+					"pickups": [
+						[
+							5,
+							-32.5
+						],
+						[
+							10,
+							-33.5
+						],
+						[
+							15,
+							-34.5
+						],
+						[
+							20,
+							-35.5
+						],
+						[
+							26,
+							-37
+						]
+					]
+				},
+				{
+					"type": "challenge",
+					"challenge": "p6_hitung",
+					"npc": "p6_pekebun",
+					"text": "Bantu Pak Pengukur menghitung",
+					"where": {
+						"npc": "p6_pekebun"
+					},
+					"say": [
+						"Jarak dan peta sudah tepat. Kita siap!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 110,
+				"xp": 290,
+				"items": {
+					"p6_kompas_naga": 1
+				}
+			}
+		},
+		{
+			"id": "p6_misi_3",
+			"kind": "main",
+			"giver": "p6_ibu",
+			"requires": [
+				"p6_murid_baru"
+			],
+			"title": "Menyelamatkan Penduduk",
+			"offer": [
+				"Penduduk Hutan Hangus terjebak! Ada tugu bertulis di hutan.",
+				"Bacalah tugu itu untuk menemukan lonceng evakuasi."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p6_petunjuk",
+					"spot": "p6_clue",
+					"text": "Pecahkan teka-teki Tugu Bertulis",
+					"where": {
+						"spot": "p6_clue"
+					},
+					"say": [
+						"Tulisan tugu terbaca! Lonceng ada di tengah Hutan Hangus."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p6_lonceng_evakuasi",
+					"count": 1,
+					"text": "Temukan Lonceng Evakuasi",
+					"where": {
+						"pos": [
+							46,
+							-44
+						]
+					},
+					"pickups": [
+						[
+							46,
+							-44
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p6_ibu",
+					"text": "Bawa Lonceng Evakuasi ke Bu Penyelamat",
+					"where": {
+						"npc": "p6_ibu"
+					},
+					"take": {
+						"p6_lonceng_evakuasi": 1
+					},
+					"say": [
+						"Loncengnya berbunyi! Semua penduduk berkumpul dengan selamat."
+					]
+				}
+			],
+			"reward": {
+				"coins": 110,
+				"xp": 290,
+				"items": {
+					"kue": 3
+				}
+			}
+		},
+		{
+			"id": "p6_misi_4",
+			"kind": "main",
+			"giver": "p6_anak",
+			"requires": [
+				"p6_misi_2",
+				"p6_misi_3"
+			],
+			"title": "Sandi Kuno",
+			"offer": [
+				"Kak! Gua Sandi Kuno menyimpan Pedang Cahaya. Pintunya terbuka dengan sandi tata surya!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p6_batu",
+					"spot": "boulder",
+					"text": "Pecahkan teka-teki Pintu Sandi Kuno",
+					"where": {
+						"spot": "boulder"
+					},
+					"flags": [
+						"p6_terbuka"
+					],
+					"say": [
+						"Sandi terpecahkan! Pintu gua terbuka dan cahaya terang memancar."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p6_pedang_cahaya",
+					"count": 1,
+					"text": "Ambil Pedang Cahaya",
+					"where": {
+						"pos": [
+							-40,
+							-40
+						]
+					},
+					"pickups": [
+						[
+							-40,
+							-40
+						]
+					]
+				}
+			],
+			"reward": {
+				"coins": 120,
+				"xp": 310
+			}
+		},
+		{
+			"id": "p6_misi_5",
+			"kind": "main",
+			"giver": "p6_jembatan",
+			"requires": [
+				"p6_misi_4"
+			],
+			"title": "Strategi Melawan Naga",
+			"offer": [
+				"Pedang Cahaya! Hanya pedang ini yang bisa membuka Sarang Naga.",
+				"Ini pertarungan terakhir. Kami semua percaya padamu!"
+			],
+			"steps": [
+				{
+					"type": "use",
+					"target": "gate",
+					"item": "p6_pedang_cahaya",
+					"text": "Buka gerbang Sarang Naga",
+					"where": {
+						"spot": "gate"
+					},
+					"flags": [
+						"p6_gerbang"
+					],
+					"take": {
+						"p6_pedang_cahaya": 1
+					},
+					"say": [
+						"Pedang Cahaya bersinar, gerbang sarang runtuh!",
+						"Naga Kegelapan membuka matanya: \"Akhirnya... sang pahlawan ilmu datang.\""
+					]
+				}
+			],
+			"reward": {
+				"coins": 120,
+				"xp": 310
+			}
+		},
+		{
+			"id": "p6_bos",
+			"kind": "main",
+			"auto": true,
+			"requires": [
+				"p6_misi_5"
+			],
+			"title": "Kalahkan Naga Kegelapan",
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "naga_kegelapan",
+					"count": 1,
+					"text": "Kalahkan Naga Kegelapan",
+					"where": {
+						"spot": "boss"
+					},
+					"say": [
+						"Naga Kegelapan kalah! Kabut Lupa di Desa Terakhir menghilang.",
+						"Seluruh penduduk bersorak untukmu, {name}!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 240,
+				"xp": 550,
+				"items": {
+					"p6_piala": 1
+				}
+			}
+		},
+		{
+			"id": "p6_pantai",
+			"kind": "side",
+			"giver": "p6_dermaga",
+			"title": "Kerang Mutiara",
+			"offer": [
+				"Mutiara indah terdampar di pantai.",
+				"Kumpulkan 5 untuk menghias mercusuar!"
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p6_mutiara",
+					"count": 5,
+					"text": "Kumpulkan Mutiara",
+					"where": {
+						"pos": [
+							-42,
+							58
+						]
+					},
+					"pickups": [
+						[
+							-42,
+							58
+						],
+						[
+							48,
+							52
+						],
+						[
+							-70,
+							6
+						],
+						[
+							70,
+							-6
+						],
+						[
+							-55,
+							-45
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p6_dermaga",
+					"text": "Berikan kepada Pak Mercusuar",
+					"where": {
+						"npc": "p6_dermaga"
+					},
+					"take": {
+						"p6_mutiara": 5
+					},
+					"say": [
+						"Mercusuar bersinar indah! Ini mahkota pahlawan untukmu."
+					]
+				}
+			],
+			"reward": {
+				"coins": 65,
+				"xp": 180,
+				"outfit": "topi_mahkota"
+			}
+		},
+		{
+			"id": "p6_warga",
+			"kind": "side",
+			"giver": "p6_warga",
+			"requires": [
+				"p6_murid_baru"
+			],
+			"title": "Karya Seni Nusantara",
+			"offer": [
+				"Seni Nusantara memberi semangat para pahlawan. Ayo kita bahas!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p6_sampingan",
+					"npc": "p6_warga",
+					"text": "Jawab tantangan Kak Seniman",
+					"where": {
+						"npc": "p6_warga"
+					},
+					"say": [
+						"Indah sekali! Semangat kita bertambah."
+					]
+				}
+			],
+			"reward": {
+				"coins": 65,
+				"xp": 190,
+				"items": {
+					"kue": 1
+				}
+			}
+		},
+		{
+			"id": "p6_usir",
+			"kind": "side",
+			"giver": "p6_jembatan",
+			"requires": [
+				"p6_murid_baru"
+			],
+			"title": "Usir Golem Lava",
+			"offer": [
+				"Golem Lava berkeliaran di Hutan Hangus.",
+				"Kalahkan 3 dengan jurus ilmumu!"
+			],
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "p6_golem_lava",
+					"count": 3,
+					"text": "Kalahkan Golem Lava",
+					"where": {
+						"pos": [
+							44,
+							-36
+						]
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p6_jembatan",
+					"text": "Lapor ke Panglima Ksatria",
+					"where": {
+						"npc": "p6_jembatan"
+					},
+					"say": [
+						"Hebat! Jalan sekarang lebih aman."
+					]
+				}
+			],
+			"reward": {
+				"coins": 75,
+				"xp": 200,
+				"items": {
+					"perisai_daun": 1
+				}
+			}
+		},
+		{
+			"id": "p6_jelajah",
+			"kind": "side",
+			"auto": true,
+			"title": "Penjelajah Desa Terakhir",
+			"steps": [
+				{
+					"type": "places_all",
+					"text": "Temukan semua tempat di pulau"
+				}
+			],
+			"reward": {
+				"coins": 85,
+				"xp": 60
+			}
+		},
+		{
+			"id": "p6_kenal",
+			"kind": "side",
+			"auto": true,
+			"title": "Sahabat Desa Terakhir",
+			"steps": [
+				{
+					"type": "meet_all",
+					"text": "Berkenalan dengan semua penduduk"
+				}
+			],
+			"reward": {
+				"coins": 65,
+				"xp": 50
+			}
+		}
+	]
+}

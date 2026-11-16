@@ -53,6 +53,23 @@ const FOE_SPEED := 1.3
 const DOCK_HALF := 1.6
 
 
+## Nama bendera dunia per pulau (dari tata letak; bawaan = nama Pulau 1).
+func flag_boulder() -> String:
+	return str(layout.get("boulder", {}).get("flag", "gua_terbuka"))
+
+
+func flag_gate() -> String:
+	return str(layout.get("fort", {}).get("flag", "gerbang_terbuka"))
+
+
+func flag_boss() -> String:
+	return str(layout.get("boss", {}).get("flag", "raja_kalah"))
+
+
+func _col(key: String, fallback: Color) -> Color:
+	return Color.from_string(str(layout.get("colors", {}).get(key, "")), fallback)
+
+
 ## c: {island, layout (Dictionary, boleh kosong), npc_engine, gfx, hero}
 func build(c: Dictionary) -> void:
 	ctx = c
@@ -76,6 +93,7 @@ func build(c: Dictionary) -> void:
 		_signpost(Vector3(-2.4, 0, dock_z0 - 5.0), "Pulau %d\n%s" % [int(island.number), str(island.name)], "sign", "selamat_datang", "AKSI: baca papan")
 	else:
 		_river_and_bridge()
+		_shapes()
 		_paths()
 		_places()
 		_objects()
@@ -128,9 +146,9 @@ func _v(xz, extra_y := 0.0) -> Vector3:
 func _environment() -> void:
 	var env := Environment.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color("2f6fb8")
-	sky_mat.sky_horizon_color = Color("bfe6ff")
-	sky_mat.ground_horizon_color = Color("bfe6ff")
+	sky_mat.sky_top_color = _col("sky_top", Color("2f6fb8"))
+	sky_mat.sky_horizon_color = _col("sky_horizon", Color("bfe6ff"))
+	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
 	sky_mat.ground_bottom_color = Color("2a78b8")
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
@@ -351,6 +369,29 @@ func _river_and_bridge() -> void:
 			_mesh(Rig.cyl(0.12, 0.12, 1.2, 8), Color("6b4a2a"), Vector3(sx * (bh - 0.1), 0.6, z + k * hw))
 
 
+## Bentuk alam besar dari data: gunung (kerucut), bukit batu, kawah. {type: cone, pos, r, top, h, color, solid}
+func _shapes() -> void:
+	var i := 0
+	for sh in layout.get("shapes", []):
+		i += 1
+		var p := _v(sh.pos)
+		var h := float(sh.get("h", 8.0))
+		var mesh := Rig.cyl(float(sh.get("top", 0.0)), float(sh.r), h, 32)
+		var mi := _mesh(mesh, Color.from_string(str(sh.get("color", "#6b6355")), Color.DIM_GRAY), p + Vector3(0, h / 2.0, 0), 0.95)
+		mi.name = "Shape%d" % i
+		_far(mi, 80.0)
+		if bool(sh.get("solid", true)):
+			_body(mesh.create_trimesh_shape(), Transform3D(Basis(), mi.position))
+		if str(sh.get("glow", "")) != "":
+			var g := _mesh(Rig.cyl(float(sh.get("top", 0.0)) * 0.9, float(sh.get("top", 0.0)) * 0.9, 0.2, 24), Color(str(sh.glow)), p + Vector3(0, h + 0.05, 0), 0.5)
+			var gm := StandardMaterial3D.new()
+			gm.albedo_color = Color(str(sh.glow))
+			gm.emission_enabled = true
+			gm.emission = Color(str(sh.glow))
+			gm.emission_energy_multiplier = 1.5
+			g.material_override = gm
+
+
 func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var ab := b - a
 	var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
@@ -470,14 +511,14 @@ func _fort() -> void:
 		[Vector3((hf + gh) / 2.0, wh / 2.0, hf), Vector3(hf - gh, wh, 1.2)],
 	]
 	for w in walls:
-		var m := _mesh(Rig.box(w[1]), C_STONE, c + w[0], 0.95, root)
+		var m := _mesh(Rig.box(w[1]), _col("wall", C_STONE), c + w[0], 0.95, root)
 		_far(m, 45.0)
 		_static_box(w[1], c + w[0])
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			var tp := c + Vector3(sx * hf, 0, sz * hf)
-			_far(_mesh(Rig.cyl(1.8, 2.0, wh + 2.2, 16), C_STONE.darkened(0.1), tp + Vector3(0, (wh + 2.2) / 2.0, 0), 0.95, root), 45.0)
-			_far(_mesh(Rig.cyl(0.0, 2.3, 2.0, 16), Color("b5443a"), tp + Vector3(0, wh + 3.2, 0), 0.9, root), 45.0)
+			_far(_mesh(Rig.cyl(1.8, 2.0, wh + 2.2, 16), _col("wall", C_STONE).darkened(0.1), tp + Vector3(0, (wh + 2.2) / 2.0, 0), 0.95, root), 45.0)
+			_far(_mesh(Rig.cyl(0.0, 2.3, 2.0, 16), _col("roof", Color("b5443a")), tp + Vector3(0, wh + 3.2, 0), 0.9, root), 45.0)
 			_static_cyl(1.9, wh + 2.2, tp + Vector3(0, (wh + 2.2) / 2.0, 0))
 	var gate := _mesh(Rig.box(Vector3(gh * 2.0, wh - 0.4, 0.5)), C_WOOD.darkened(0.15), c + Vector3(0, (wh - 0.4) / 2.0, hf), 0.9, root)
 	gate.name = "Gate"
@@ -485,37 +526,40 @@ func _fort() -> void:
 	_gate_body = _static_box(Vector3(gh * 2.0, wh, 0.6), c + Vector3(0, wh / 2.0, hf))
 	for k in [-1.0, 1.0]:
 		_mesh(Rig.box(Vector3(0.15, wh - 0.6, 0.6)), Color("5a5a66"), c + Vector3(k * gh * 0.5, (wh - 0.4) / 2.0, hf + 0.05), 0.5, root)
-	var flag := _mesh(Rig.box(Vector3(1.4, 0.9, 0.05)), Color("6b8f2a"), c + Vector3(0, wh + 1.6, hf), 0.9, root)
+	var flag := _mesh(Rig.box(Vector3(1.4, 0.9, 0.05)), _col("flag", Color("6b8f2a")), c + Vector3(0, wh + 1.6, hf), 0.9, root)
 	flag.name = "GoblinFlag"
 	spots.append({"pos": c + Vector3(0, 0, hf + 1.4), "kind": "gate", "id": "benteng", "text": "AKSI: periksa gerbang benteng"})
 	var b: Dictionary = layout.get("boss", {})
-	if bool(flags.get("raja_kalah", false)):
+	if bool(flags.get(flag_boss(), false)):
 		flag.material_override = Rig.mat(Color("3fae63"))
 		b = {}
 	if not b.is_empty():
 		var bp := _v(b.pos)
 		_mesh(Rig.box(Vector3(2.4, 0.8, 1.6)), Color("6b4a2a"), bp + Vector3(0, 0.4, -0.4), 0.9, root)
-		_mesh(Rig.box(Vector3(2.4, 2.4, 0.4)), Color("b5443a"), bp + Vector3(0, 1.6, -1.1), 0.9, root)
-		var boss := _figure(str(b.model), 1.7 * float(b.get("scale", 1.0)), bp + Vector3(0, 0.8, 0), 0.0, root)
+		_mesh(Rig.box(Vector3(2.4, 2.4, 0.4)), _col("roof", Color("b5443a")), bp + Vector3(0, 1.6, -1.1), 0.9, root)
+		var boss := _figure(str(b.model), 1.7 * float(b.get("scale", 1.0)), bp + Vector3(0, 0.8, 0), 0.0, root, str(b.get("tint", "")))
 		boss.name = "Boss"
 		_label3d(str(b.name), 56, Color("ff8a6a"), Vector3(0, 3.2, 0), boss)
-		spots.append({"pos": bp + Vector3(0, 0, 2.2), "kind": "boss", "id": str(b.get("model", "boss")), "text": "AKSI: hadapi " + str(b.name)})
-	if bool(flags.get("gerbang_terbuka", false)):
+		spots.append({"pos": bp + Vector3(0, 0, 2.2 * float(b.get("scale", 1.0))), "kind": "boss", "id": str(b.get("monster", b.get("model", "boss"))),
+			"text": "AKSI: hadapi " + str(b.name)})
+	if bool(flags.get(flag_gate(), false)):
 		open_gate(false)
-	for g in ([] if bool(flags.get("raja_kalah", false)) else layout.get("guards", [])):
-		var gn := _figure(str(g.model), 1.15, _v(g.pos), 0.0, root)
+	for g in ([] if bool(flags.get(flag_boss(), false)) else layout.get("guards", [])):
+		var gn := _figure(str(g.model), float(g.get("height", 1.15)), _v(g.pos), 0.0, root, str(g.get("tint", "")))
 		gn.name = "Guard"
 		_label3d(str(g.name), 40, Color("ffd166"), Vector3(0, 1.9, 0), gn)
 
 
 ## Model berangka dari APK (res://assets/models) di posisi pos, menghadap yaw.
-func _figure(model: String, height: float, pos: Vector3, yaw: float, parent: Node = null) -> Node3D:
+func _figure(model: String, height: float, pos: Vector3, yaw: float, parent: Node = null, tint := "") -> Node3D:
 	var n := Node3D.new()
 	n.position = pos
 	n.rotation.y = yaw
 	var rig := Rig.new()
 	rig.glb_id = model
 	rig.glb_height = height
+	if tint != "":
+		rig.glb_tint = Color.from_string(tint, Color.WHITE)
 	n.add_child(rig)
 	(parent if parent != null else self).add_child(n)
 	rig.build()
@@ -528,7 +572,7 @@ func _boulder() -> void:
 	if b.is_empty():
 		return
 	var p := _v(b.pos)
-	if bool(flags.get("gua_terbuka", false)):
+	if bool(flags.get(flag_boulder(), false)):
 		_rubble(p)
 		return
 	var mesh = IslandWorld.env_mesh("rocks/rock_a")
@@ -548,7 +592,7 @@ func _boulder() -> void:
 
 ## Batu besar menggelinding ke samping: pintu gua terbuka (dipanggil saat teka-teki batu terpecahkan).
 func open_cave() -> void:
-	flags["gua_terbuka"] = true
+	flags[flag_boulder()] = true
 	var b: Dictionary = layout.get("boulder", {})
 	for n in _boulder_nodes:
 		if is_instance_valid(n):
@@ -579,7 +623,7 @@ func _rubble(p: Vector3) -> void:
 
 ## Gerbang benteng terbuka (kunci dipakai). animate=false saat dibangun ulang dari bendera tersimpan.
 func open_gate(animate := true) -> void:
-	flags["gerbang_terbuka"] = true
+	flags[flag_gate()] = true
 	if _gate_body != null and is_instance_valid(_gate_body):
 		_gate_body.queue_free()
 	_gate_body = null
@@ -690,7 +734,7 @@ func set_marks(marks: Dictionary) -> void:
 ## f: {uid, monster, model, name, level, height, pos}
 func add_foe(f: Dictionary) -> void:
 	var home := _v(f.pos)
-	var n := _figure(str(f.model), float(f.get("height", 1.0)), home, _rng.randf() * TAU)
+	var n := _figure(str(f.model), float(f.get("height", 1.0)), home, _rng.randf() * TAU, null, str(f.get("tint", "")))
 	n.name = "Foe_" + str(f.uid)
 	_label3d("%s Lv%d" % [str(f.name), int(f.get("level", 1))], 38, Color("ff8a6a"), Vector3(0, float(f.get("height", 1.0)) + 0.5, 0), n)
 	foes.append({"uid": str(f.uid), "monster": str(f.monster), "node": n, "rig": n.get_meta("rig"), "home": home, "target": home,
@@ -757,7 +801,7 @@ func _update_foes(delta: float) -> void:
 
 
 func boss_defeated() -> void:
-	flags["raja_kalah"] = true
+	flags[flag_boss()] = true
 	var b := find_child("Boss", true, false)
 	if b != null:
 		b.queue_free()
@@ -777,7 +821,7 @@ func _academy_door() -> void:
 		return
 	var p := _v(layout.academy_door)
 	spots.append({"pos": p, "kind": "academy", "id": "akademi", "text": "AKSI: masuk Akademi Tunas"})
-	var lbl := _label3d("Akademi Tunas", 64, Color("ffd166"), p + Vector3(0, 6.2, -2.0))
+	var lbl := _label3d(str(layout.get("academy_name", "Akademi Tunas")), 64, Color("ffd166"), p + Vector3(0, 6.2, -2.0))
 	lbl.visibility_range_end = 60.0
 
 
@@ -790,6 +834,9 @@ func _blocked(x: float, z: float, forest_ok: bool) -> bool:
 		return true
 	for h in hills:
 		if Vector2(x - float(h.pos[0]), z - float(h.pos[1])).length() < float(h.bottom) + 1.0:
+			return true
+	for sh in layout.get("shapes", []):
+		if Vector2(x - float(sh.pos[0]), z - float(sh.pos[1])).length() < float(sh.r) + 2.0:
 			return true
 	var f: Dictionary = layout.get("fort", {})
 	if not f.is_empty() and Vector2(x - float(f.pos[0]), z - float(f.pos[1])).length() < float(f.half) * 1.6 + 3.0:
@@ -809,7 +856,8 @@ func _forest() -> void:
 	var f: Dictionary = layout.get("forest", {})
 	var dense := clampi(int(int(profile.get("trees", 130)) * 0.6), 30, 130)
 	var sparse := clampi(int(int(profile.get("trees", 130)) * 0.3), 15, 70)
-	var kinds := ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/bush", "vegetation/flowers"]
+	# [pohon hutan 1, pohon hutan 2, semak, bunga]; bisa diganti per pulau (mis. palem di pulau tropis).
+	var kinds: Array = layout.get("tree_kinds", ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/bush", "vegetation/flowers"])
 	var xfs := {}
 	for k in kinds:
 		xfs[k] = []

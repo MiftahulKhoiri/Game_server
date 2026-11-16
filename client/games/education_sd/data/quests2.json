@@ -1,0 +1,576 @@
+{
+	"schema": 1,
+	"island": "pulau2",
+	"items": {
+		"p2_lencana": {
+			"name": "Lencana Akademi Daun",
+			"desc": "Tanda murid Akademi Daun."
+		},
+		"p2_beri": {
+			"name": "Buah Beri",
+			"desc": "Beri manis untuk persediaan musim hujan."
+		},
+		"p2_keranjang_rotan": {
+			"name": "Keranjang Rotan",
+			"desc": "Hadiah dari Pak Jati."
+		},
+		"p2_peti_harta": {
+			"name": "Peti Harta Kecil",
+			"desc": "Peti berisi hiasan desa yang hilang."
+		},
+		"p2_taring_perak": {
+			"name": "Kunci Taring Perak",
+			"desc": "Kunci berbentuk taring untuk membuka Sarang Serigala."
+		},
+		"p2_daun_ajaib": {
+			"name": "Daun Ajaib",
+			"desc": "Barang untuk Pak Bakau."
+		},
+		"p2_piala": {
+			"name": "Piala Desa Pohon",
+			"desc": "Bukti kamu pahlawan pulau ini."
+		},
+		"kue": {
+			"name": "Kue Manis",
+			"desc": "Kue manis. Memulihkan HP dalam pertarungan."
+		},
+		"perisai_daun": {
+			"name": "Perisai Daun",
+			"desc": "Mengurangi serangan musuh berikutnya menjadi setengah."
+		}
+	},
+	"challenges": {
+		"p2_hitung": {
+			"title": "Persediaan Makanan",
+			"story": "Bantu Pak Jati menghitung dengan tepat!",
+			"region": "matematika",
+			"prefer": [
+				"penjumlahan",
+				"perkalian",
+				"pengukuran",
+				"berhitung"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p2_petunjuk": {
+			"title": "Pohon Bertulis",
+			"story": "Ada tulisan kuno. Pecahkan teka-teki bahasanya!",
+			"region": "bahasa",
+			"prefer": [
+				"kata_kalimat",
+				"sinonim_antonim",
+				"tanda_baca",
+				"huruf"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p2_batu": {
+			"title": "Akar Raksasa",
+			"story": "Akar raksasa menutup Lubang Akar Tua. Mungkin akar ini bergeser bila kamu paham tentang tumbuhan.",
+			"region": "ipa",
+			"prefer": [
+				"tumbuhan",
+				"hewan",
+				"wujud_benda",
+				"lingkungan"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p2_sampingan": {
+			"title": "Lagu Hutan",
+			"story": "Aku sedang belajar lagu daerah dan warna. Bantu aku, ya!",
+			"region": "seni",
+			"prefer": [
+				"musik",
+				"warna",
+				"tari"
+			],
+			"n": 3,
+			"pass": 2
+		}
+	},
+	"spots": [
+		{
+			"id": "p2_clue",
+			"name": "Pohon Bertulis",
+			"pos": [
+				34,
+				-28
+			]
+		}
+	],
+	"quests": [
+		{
+			"id": "p2_murid_baru",
+			"kind": "main",
+			"giver": "p2_tetua",
+			"title": "Murid Baru Akademi Daun",
+			"offer": [
+				"{name}, kamu sudah sampai di pulau kami!",
+				"Petualang sejati selalu belajar. Selesaikan satu latihan di Akademi Daun."
+			],
+			"steps": [
+				{
+					"type": "learn",
+					"count": 1,
+					"text": "Selesaikan 1 latihan di Akademi Daun",
+					"where": {
+						"place": "akademi"
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p2_tetua",
+					"text": "Kembali ke Kakek Rimba",
+					"where": {
+						"npc": "p2_tetua"
+					},
+					"say": [
+						"Bagus sekali, {name}! Ini lencana murid Akademi Daun.",
+						"Sekarang bantulah para penduduk."
+					]
+				}
+			],
+			"reward": {
+				"coins": 60,
+				"xp": 150,
+				"items": {
+					"p2_lencana": 1
+				}
+			}
+		},
+		{
+			"id": "p2_misi_2",
+			"kind": "main",
+			"giver": "p2_pekebun",
+			"requires": [
+				"p2_murid_baru"
+			],
+			"title": "Persediaan Makanan",
+			"offer": [
+				"Persediaan makanan desa berkurang! Babi hutan menjatuhkan buah beri di jalan ke Hutan Ajaib.",
+				"Kumpulkan 5 buah beri, lalu bantu aku menghitung persediaannya."
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p2_beri",
+					"count": 5,
+					"text": "Kumpulkan Buah Beri",
+					"where": {
+						"pos": [
+							12,
+							-34
+						]
+					},
+					"pickups": [
+						[
+							5,
+							-32.5
+						],
+						[
+							10,
+							-33.5
+						],
+						[
+							15,
+							-34.5
+						],
+						[
+							20,
+							-35.5
+						],
+						[
+							26,
+							-37
+						]
+					]
+				},
+				{
+					"type": "challenge",
+					"challenge": "p2_hitung",
+					"npc": "p2_pekebun",
+					"text": "Bantu Pak Jati menghitung",
+					"where": {
+						"npc": "p2_pekebun"
+					},
+					"say": [
+						"Terima kasih! Persediaan desa cukup sampai musim hujan."
+					]
+				}
+			],
+			"reward": {
+				"coins": 70,
+				"xp": 170,
+				"items": {
+					"p2_keranjang_rotan": 1
+				}
+			}
+		},
+		{
+			"id": "p2_misi_3",
+			"kind": "main",
+			"giver": "p2_ibu",
+			"requires": [
+				"p2_murid_baru"
+			],
+			"title": "Petunjuk Harta Karun",
+			"offer": [
+				"Hiasan desa dicuri dan disembunyikan di Hutan Ajaib.",
+				"Ada pohon tua bertulisan. Bacalah petunjuknya!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p2_petunjuk",
+					"spot": "p2_clue",
+					"text": "Pecahkan teka-teki Pohon Bertulis",
+					"where": {
+						"spot": "p2_clue"
+					},
+					"say": [
+						"Tulisan di pohon tua bersinar! Petunjuknya: cari di balik semak paling lebat."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p2_peti_harta",
+					"count": 1,
+					"text": "Temukan Peti Harta Kecil",
+					"where": {
+						"pos": [
+							46,
+							-44
+						]
+					},
+					"pickups": [
+						[
+							46,
+							-44
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p2_ibu",
+					"text": "Bawa Peti Harta Kecil ke Mak Kenanga",
+					"where": {
+						"npc": "p2_ibu"
+					},
+					"take": {
+						"p2_peti_harta": 1
+					},
+					"say": [
+						"Hiasan desa kembali! Desa Pohon jadi cantik lagi."
+					]
+				}
+			],
+			"reward": {
+				"coins": 70,
+				"xp": 170,
+				"items": {
+					"kue": 3
+				}
+			}
+		},
+		{
+			"id": "p2_misi_4",
+			"kind": "main",
+			"giver": "p2_anak",
+			"requires": [
+				"p2_misi_2",
+				"p2_misi_3"
+			],
+			"title": "Akar Raksasa",
+			"offer": [
+				"Kak! Kata Kakek Rimba, akar raksasa itu mau bergeser kalau ada yang menjawab teka-teki tumbuhan!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p2_batu",
+					"spot": "boulder",
+					"text": "Pecahkan teka-teki Akar Raksasa",
+					"where": {
+						"spot": "boulder"
+					},
+					"flags": [
+						"p2_terbuka"
+					],
+					"say": [
+						"Akar raksasa bergeser pelan... Lubang Akar Tua terbuka!"
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p2_taring_perak",
+					"count": 1,
+					"text": "Ambil Kunci Taring Perak",
+					"where": {
+						"pos": [
+							-40,
+							-40
+						]
+					},
+					"pickups": [
+						[
+							-40,
+							-40
+						]
+					]
+				}
+			],
+			"reward": {
+				"coins": 80,
+				"xp": 190
+			}
+		},
+		{
+			"id": "p2_misi_5",
+			"kind": "main",
+			"giver": "p2_jembatan",
+			"requires": [
+				"p2_misi_4"
+			],
+			"title": "Gerbang Sarang",
+			"offer": [
+				"Kunci Taring Perak! Itu kunci pintu Sarang Serigala.",
+				"Hati-hati, Serigala Hutan Besar ada di dalam!"
+			],
+			"steps": [
+				{
+					"type": "use",
+					"target": "gate",
+					"item": "p2_taring_perak",
+					"text": "Buka gerbang Sarang Serigala",
+					"where": {
+						"spot": "gate"
+					},
+					"flags": [
+						"p2_gerbang"
+					],
+					"take": {
+						"p2_taring_perak": 1
+					},
+					"say": [
+						"Pintu kayu sarang terbuka!",
+						"Serigala Hutan Besar melolong: \"Auuuu! Siapa berani masuk?\""
+					]
+				}
+			],
+			"reward": {
+				"coins": 80,
+				"xp": 190
+			}
+		},
+		{
+			"id": "p2_bos",
+			"kind": "main",
+			"auto": true,
+			"requires": [
+				"p2_misi_5"
+			],
+			"title": "Kalahkan Serigala Hutan Besar",
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "serigala_besar",
+					"count": 1,
+					"text": "Kalahkan Serigala Hutan Besar",
+					"where": {
+						"spot": "boss"
+					},
+					"say": [
+						"Serigala Hutan Besar kalah! Kabut Lupa di Desa Pohon menghilang.",
+						"Seluruh penduduk bersorak untukmu, {name}!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 160,
+				"xp": 350,
+				"items": {
+					"p2_piala": 1
+				}
+			}
+		},
+		{
+			"id": "p2_pantai",
+			"kind": "side",
+			"giver": "p2_dermaga",
+			"title": "Daun Ajaib",
+			"offer": [
+				"Daun ajaib bercahaya tertiup ke pantai.",
+				"Kumpulkan 5 helai untukku, ya!"
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p2_daun_ajaib",
+					"count": 5,
+					"text": "Kumpulkan Daun Ajaib",
+					"where": {
+						"pos": [
+							-42,
+							58
+						]
+					},
+					"pickups": [
+						[
+							-42,
+							58
+						],
+						[
+							48,
+							52
+						],
+						[
+							-70,
+							6
+						],
+						[
+							70,
+							-6
+						],
+						[
+							-55,
+							-45
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p2_dermaga",
+					"text": "Berikan kepada Pak Bakau",
+					"where": {
+						"npc": "p2_dermaga"
+					},
+					"take": {
+						"p2_daun_ajaib": 5
+					},
+					"say": [
+						"Indah sekali! Ini baju ungu untukmu."
+					]
+				}
+			],
+			"reward": {
+				"coins": 45,
+				"xp": 100,
+				"outfit": "warna_ungu"
+			}
+		},
+		{
+			"id": "p2_warga",
+			"kind": "side",
+			"giver": "p2_warga",
+			"requires": [
+				"p2_murid_baru"
+			],
+			"title": "Lagu Hutan",
+			"offer": [
+				"Aku sedang belajar lagu daerah dan warna. Bantu aku, ya!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p2_sampingan",
+					"npc": "p2_warga",
+					"text": "Jawab tantangan Bu Anggrek",
+					"where": {
+						"npc": "p2_warga"
+					},
+					"say": [
+						"Hebat! Kamu paham seni Nusantara."
+					]
+				}
+			],
+			"reward": {
+				"coins": 45,
+				"xp": 110,
+				"items": {
+					"kue": 1
+				}
+			}
+		},
+		{
+			"id": "p2_usir",
+			"kind": "side",
+			"giver": "p2_jembatan",
+			"requires": [
+				"p2_murid_baru"
+			],
+			"title": "Usir Babi Hutan Nakal",
+			"offer": [
+				"Babi Hutan Nakal berkeliaran di Hutan Ajaib.",
+				"Kalahkan 3 dengan jurus ilmumu!"
+			],
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "p2_babi_nakal",
+					"count": 3,
+					"text": "Kalahkan Babi Hutan Nakal",
+					"where": {
+						"pos": [
+							44,
+							-36
+						]
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p2_jembatan",
+					"text": "Lapor ke Kak Pinus",
+					"where": {
+						"npc": "p2_jembatan"
+					},
+					"say": [
+						"Hebat! Jalan sekarang lebih aman."
+					]
+				}
+			],
+			"reward": {
+				"coins": 55,
+				"xp": 120,
+				"items": {
+					"perisai_daun": 1
+				}
+			}
+		},
+		{
+			"id": "p2_jelajah",
+			"kind": "side",
+			"auto": true,
+			"title": "Penjelajah Desa Pohon",
+			"steps": [
+				{
+					"type": "places_all",
+					"text": "Temukan semua tempat di pulau"
+				}
+			],
+			"reward": {
+				"coins": 65,
+				"xp": 60
+			}
+		},
+		{
+			"id": "p2_kenal",
+			"kind": "side",
+			"auto": true,
+			"title": "Sahabat Desa Pohon",
+			"steps": [
+				{
+					"type": "meet_all",
+					"text": "Berkenalan dengan semua penduduk"
+				}
+			],
+			"reward": {
+				"coins": 45,
+				"xp": 50
+			}
+		}
+	]
+}

@@ -398,3 +398,32 @@ gizi). Tetap perlu ditinjau guru (Tahap 9).
 |---|---|
 | `make sd-test` | **626 pemeriksaan LULUS**: 7 mata pelajaran, setiap ruang punya materi di kelas 1–6, ujian (lulus + bonus sekali, gagal + saran, nilai terbaik tersimpan), laporan (7 mata pelajaran, tidak menilai bila jawaban sedikit, bahasa positif untuk anak baru); di game: 7 guru, Sanggar Seni berisi, Ujian Matematika tanpa petunjuk sampai lulus, laporan di akademi & menu utama |
 | `make platform-test` | **LULUS** |
+
+---
+
+## Tahap 8 — Pulau 2–6 (paket 4.0.0, 16 Nov 2026)
+
+### Hasil
+
+| Bagian | Isi |
+|---|---|
+| Pembuat data | `tools/gamepack/make_sd_islands.py` membuat `island{2..6}.json`, `quests{2..6}.json`, `monsters{2..6}.json` dari tata ruang Pulau 1 yang sudah teruji (Pulau 2, 4, 6 dicerminkan kiri-kanan) + toko tiap pulau di `rpg.json`. Ubah spesifikasi di skrip lalu jalankan ulang |
+| Pulau 2 · Hutan Rahasia | Desa Pohon, Akademi Daun, Kebun Beri, Lubang Akar Tua; pohon pinus; bos **Serigala Hutan Besar** di Sarang Serigala |
+| Pulau 3 · Kerajaan Angka | Kota Kerajaan, Akademi Kerajaan, Pintu Teka-teki (IPS: peta & budaya); bos **Golem Penjaga Kerajaan** |
+| Pulau 4 · Negeri Penemuan | Kota Penemu, mesin kuno, sungai tercemar, Reruntuhan Kuno; pohon palem + bukit batu; bos **Penjaga Batu Kuno** |
+| Pulau 5 · Kerajaan Ksatria | Kota Ksatria, perbekalan pasukan, tanaman sakit, mata air; bos **Panglima Orc** |
+| Pulau 6 · Legenda Naga | Desa Terakhir, gunung api, penduduk yang diselamatkan, Gua Sandi Kuno (tata surya & energi); bos terakhir **Naga Kegelapan** |
+| Misi per pulau | 6 misi utama (belajar di akademi → kumpulkan + hitung → petunjuk bahasa + antar barang → teka-teki IPA/IPS buka gua + kunci → buka gerbang → kalahkan bos) + 5 sampingan (pantai → kostum baru, tantangan Pancasila/Seni/PJOK, usir 3 musuh, jelajah, kenalan). Soal mengikuti **kelas pulau** |
+| Musuh | 3 jenis per pulau + bos dengan perisai; kekuatan naik per pulau. **Penyesuaian level**: musuh melemah bila level pemain jauh di bawah (×0,35–1,0), jadi anak kelas 4 yang langsung mulai di Pulau 4 tetap bisa menang |
+| Tas | Barang misi dari semua pulau terbaca namanya |
+| Tamat | Keenam bos kalah → "Kabut Lupa Lenyap!", gelar Pahlawan Ilmu Nusantara, 500 koin (sekali) |
+| Aturan buka pulau | Pulau kelas ≤ kelas anak terbuka; pulau berikutnya terbuka setelah bos pulau sebelumnya kalah |
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **714 pemeriksaan LULUS** (+88): validasi data 6 pulau (model penduduk/musuh/bangunan ada di APK, bos, 6 misi utama, soal tersedia untuk kelas pulau, toko), simulasi bos Pulau 2–6 (70–88% menang di level wajar), bos melunak untuk level 1; **Pulau 2–6 dimainkan otomatis lewat UI** dari dermaga sampai bos kalah, lalu akhir cerita & hadiah sekali. Profil uji kini kelas 1 |
+| `make platform-test` | **LULUS** |
+
+Untuk revisi: warna tanah Pulau 6 masih kemerahan dan gunung api belum menyala; tampilan tiap pulau perlu dicek di HP.

@@ -32,6 +32,7 @@ var player: CharacterBody3D
 var spots: Array = []
 var teachers: Dictionary = {}  # room_id -> Node3D
 var profile: Dictionary
+var academy_name := "Akademi Tunas"
 var _focus := -1
 var _talking := ""
 var _release := -1.0
@@ -39,6 +40,7 @@ var _release := -1.0
 
 func build(c: Dictionary) -> void:
 	profile = IslandWorld.PROFILES.get(str(c.get("gfx", "seimbang")), IslandWorld.PROFILES.seimbang)
+	academy_name = str(c.get("name", "Akademi Tunas"))
 	_environment()
 	_hall()
 	for r in Learning.ROOMS:
@@ -144,7 +146,7 @@ func _hall() -> void:
 	for x in [-HX + 0.4, HX - 0.4]:
 		for z in [-HZ + 0.4, 0.0, HZ - 0.4]:
 			_mesh(Rig.box(Vector3(0.7, WALL_H, 0.7)), Color("b5443a"), Vector3(x, WALL_H / 2.0, z))
-	_label("AKADEMI TUNAS", 110, Color("ffd166"), Vector3(0, 4.45, -HZ + 0.05))
+	_label(academy_name.to_upper(), 110, Color("ffd166"), Vector3(0, 4.45, -HZ + 0.05))
 
 
 func _classroom(r: Dictionary, lay: Dictionary) -> void:

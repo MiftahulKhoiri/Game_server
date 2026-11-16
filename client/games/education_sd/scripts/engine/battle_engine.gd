@@ -34,8 +34,10 @@ func start(stats: Dictionary, monster_id: String, monster: Dictionary, ease := 0
 	player = {"hp": int(stats.hp), "max": int(stats.hp), "atk": int(stats.atk), "def": int(stats.def), "ilmu": int(stats.ilmu),
 		"guard": 1.0, "boost": 1.0}
 	var soften := 1.0 - 0.15 * clampi(ease, 0, 3)
-	enemy = {"id": monster_id, "name": str(monster.name), "hp": int(monster.hp), "max": int(monster.hp),
-		"atk": maxi(1, int(round(int(monster.atk) * soften))), "def": int(monster.def), "boss": bool(monster.get("boss", false)),
+	var f := level_factor(int(stats.get("level", 99)), int(monster.get("level", 1)))
+	var mhp := maxi(1, int(round(int(monster.hp) * f)))
+	enemy = {"id": monster_id, "name": str(monster.name), "hp": mhp, "max": mhp, "scale": f,
+		"atk": maxi(1, int(round(int(monster.atk) * soften * f))), "def": int(round(int(monster.def) * f)), "boss": bool(monster.get("boss", false)),
 		"shield": bool(monster.get("boss", false)) and str(monster.get("shield", "")) != "", "shield_down": 0}
 	turn = 0
 	over = false
@@ -43,6 +45,14 @@ func start(stats: Dictionary, monster_id: String, monster: Dictionary, ease := 0
 	fled = false
 	heavy_next = false
 	history = [str(monster.get("taunt", "%s muncul!" % str(monster.name)))]
+
+
+## Penyesuaian musuh menurut level pemain: pemain kelas 4 yang baru mulai di Pulau 4 tidak langsung kalah
+## telak. Bila level pemain + 3 >= level musuh, musuh tetap penuh (1.0); paling lemah 0.35.
+static func level_factor(player_level: int, monster_level: int) -> float:
+	if monster_level <= 0:
+		return 1.0
+	return clampf(float(player_level + 3) / float(monster_level), 0.35, 1.0)
 
 
 func _roll(base: float) -> int:

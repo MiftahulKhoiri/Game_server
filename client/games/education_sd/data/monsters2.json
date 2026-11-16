@@ -1,0 +1,149 @@
+{
+	"schema": 1,
+	"island": "pulau2",
+	"monsters": {
+		"p2_babi_nakal": {
+			"name": "Babi Hutan Nakal",
+			"model": "babi_hutan",
+			"height": 0.8,
+			"level": 3,
+			"hp": 32,
+			"atk": 9,
+			"def": 3,
+			"xp": 45,
+			"coins": 14,
+			"subject": "ipa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Babi Hutan Nakal menghadang jalanmu!"
+		},
+		"p2_anak_serigala": {
+			"name": "Anak Serigala",
+			"model": "serigala_hutan",
+			"height": 0.7,
+			"level": 4,
+			"hp": 33,
+			"atk": 10,
+			"def": 3,
+			"xp": 45,
+			"coins": 14,
+			"subject": "bahasa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Anak Serigala menghadang jalanmu!"
+		},
+		"p2_belalang": {
+			"name": "Belalang Raksasa",
+			"model": "belalang_raksasa",
+			"height": 0.7,
+			"level": 5,
+			"hp": 35,
+			"atk": 11,
+			"def": 3,
+			"xp": 45,
+			"coins": 14,
+			"subject": "matematika",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Belalang Raksasa menghadang jalanmu!"
+		},
+		"serigala_besar": {
+			"name": "Serigala Hutan Besar",
+			"model": "serigala_hutan",
+			"height": 1.7,
+			"level": 7,
+			"hp": 155,
+			"atk": 13,
+			"def": 8,
+			"xp": 200,
+			"coins": 140,
+			"boss": true,
+			"shield": "Bulu Baja",
+			"heavy_every": 3,
+			"subject": "campur",
+			"taunt": "Auuuu! Hutan ini milikku!",
+			"defeat": "Auuu... kamu hebat. Aku akan menjaga hutan dengan baik mulai sekarang.",
+			"tint": "#b8c4d0"
+		}
+	},
+	"spawns": [
+		{
+			"id": "p2_tikus_1",
+			"monster": "p2_anak_serigala",
+			"pos": [
+				-33,
+				33
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p2_tikus_2",
+			"monster": "p2_anak_serigala",
+			"pos": [
+				-27,
+				46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p2_goblin_1",
+			"monster": "p2_babi_nakal",
+			"pos": [
+				44,
+				-36
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p2_goblin_2",
+			"monster": "p2_babi_nakal",
+			"pos": [
+				36,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p2_goblin_3",
+			"monster": "p2_babi_nakal",
+			"pos": [
+				50,
+				-46
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p2_goblin_4",
+			"monster": "p2_babi_nakal",
+			"pos": [
+				-16,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p2_kelelawar_1",
+			"monster": "p2_belalang",
+			"pos": [
+				-34,
+				-46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p2_kelelawar_2",
+			"monster": "p2_belalang",
+			"pos": [
+				-50,
+				-30
+			],
+			"leave_on_boss": false
+		}
+	]
+}

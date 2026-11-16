@@ -31,14 +31,14 @@ var _panel: PanelContainer
 var _box: VBoxContainer
 
 
-func setup(engine, progress: Dictionary, random: RandomNumberGenerator, sound: Node, names: Dictionary, room_id: String) -> void:
+func setup(engine, progress: Dictionary, random: RandomNumberGenerator, sound: Node, names: Dictionary, room_id: String, learn_grade := 0) -> void:
 	learning = engine
 	p = progress
 	rng = random
 	audio = sound
 	type_names = names
 	room = Learning.room(room_id)
-	grade = int(p.profile.grade)
+	grade = learn_grade if learn_grade > 0 else int(p.profile.grade)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var shade := ColorRect.new()

@@ -1,0 +1,148 @@
+{
+	"schema": 1,
+	"island": "pulau6",
+	"monsters": {
+		"p6_golem_lava": {
+			"name": "Golem Lava",
+			"model": "golem_lava",
+			"height": 0.9,
+			"level": 11,
+			"hp": 80,
+			"atk": 21,
+			"def": 11,
+			"xp": 105,
+			"coins": 30,
+			"subject": "ipa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Golem Lava menghadang jalanmu!"
+		},
+		"p6_kelelawar_api": {
+			"name": "Kelelawar Api",
+			"model": "kelelawar_hutan",
+			"height": 0.9,
+			"level": 12,
+			"hp": 89,
+			"atk": 22,
+			"def": 11,
+			"xp": 105,
+			"coins": 30,
+			"subject": "matematika",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Kelelawar Api menghadang jalanmu!"
+		},
+		"p6_ular_bara": {
+			"name": "Ular Bara",
+			"model": "ular_sawah",
+			"height": 0.7,
+			"level": 13,
+			"hp": 98,
+			"atk": 23,
+			"def": 11,
+			"xp": 105,
+			"coins": 30,
+			"subject": "bahasa",
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"taunt": "Ular Bara menghadang jalanmu!"
+		},
+		"naga_kegelapan": {
+			"name": "Naga Kegelapan",
+			"model": "aldragor",
+			"height": 2.2,
+			"level": 15,
+			"hp": 335,
+			"atk": 25,
+			"def": 16,
+			"xp": 400,
+			"coins": 300,
+			"boss": true,
+			"shield": "Sisik Kegelapan",
+			"heavy_every": 3,
+			"subject": "campur",
+			"taunt": "Hahaha! Kabut Lupa akan menutupi dunia selamanya!",
+			"defeat": "Tidak... cahaya ilmu terlalu terang... Kabut Lupa... lenyap..."
+		}
+	},
+	"spawns": [
+		{
+			"id": "p6_tikus_1",
+			"monster": "p6_kelelawar_api",
+			"pos": [
+				-33,
+				33
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p6_tikus_2",
+			"monster": "p6_kelelawar_api",
+			"pos": [
+				-27,
+				46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p6_goblin_1",
+			"monster": "p6_golem_lava",
+			"pos": [
+				44,
+				-36
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p6_goblin_2",
+			"monster": "p6_golem_lava",
+			"pos": [
+				36,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p6_goblin_3",
+			"monster": "p6_golem_lava",
+			"pos": [
+				50,
+				-46
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p6_goblin_4",
+			"monster": "p6_golem_lava",
+			"pos": [
+				-16,
+				-50
+			],
+			"leave_on_boss": true
+		},
+		{
+			"id": "p6_kelelawar_1",
+			"monster": "p6_ular_bara",
+			"pos": [
+				-34,
+				-46
+			],
+			"leave_on_boss": false
+		},
+		{
+			"id": "p6_kelelawar_2",
+			"monster": "p6_ular_bara",
+			"pos": [
+				-50,
+				-30
+			],
+			"leave_on_boss": false
+		}
+	]
+}

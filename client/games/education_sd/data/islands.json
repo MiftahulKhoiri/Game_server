@@ -5,58 +5,242 @@
 	"story": "Naga Kegelapan menebar Kabut Lupa ke enam pulau. Para penduduk lupa cara berhitung, membaca, dan menjaga alam. Hanya petualang yang mau belajar yang bisa mengusir kabut dan menjadi pahlawan!",
 	"islands": [
 		{
-			"id": "pulau1", "number": 1, "grade": 1, "name": "Dunia Pemula",
-			"theme": "Mengenal dunia dan lingkungan", "color": "#7cc95a", "sand": "#f3dfa2",
-			"map_pos": [0.17, 0.66], "map_size": 0.105, "available": true, "layout": "island1.json", "quests": "quests1.json", "monsters": "monsters1.json",
-			"boss": {"name": "Raja Goblin Kecil", "model": "raja_goblin"},
-			"learn": ["Angka 1–100", "Tambah & kurang", "Huruf & suku kata", "Hewan & tumbuhan", "Anggota tubuh", "Keluarga & aturan"],
-			"places": ["Desa Pemula", "Akademi Tunas", "Hutan Kecil", "Sungai Jernih", "Gua Goblin", "Benteng Raja Goblin"],
+			"id": "pulau1",
+			"number": 1,
+			"grade": 1,
+			"name": "Dunia Pemula",
+			"theme": "Mengenal dunia dan lingkungan",
+			"color": "#7cc95a",
+			"sand": "#f3dfa2",
+			"map_pos": [
+				0.17,
+				0.66
+			],
+			"map_size": 0.105,
+			"available": true,
+			"layout": "island1.json",
+			"quests": "quests1.json",
+			"monsters": "monsters1.json",
+			"boss": {
+				"name": "Raja Goblin Kecil",
+				"model": "raja_goblin"
+			},
+			"learn": [
+				"Angka 1–100",
+				"Tambah & kurang",
+				"Huruf & suku kata",
+				"Hewan & tumbuhan",
+				"Anggota tubuh",
+				"Keluarga & aturan"
+			],
+			"places": [
+				"Desa Pemula",
+				"Akademi Tunas",
+				"Hutan Kecil",
+				"Sungai Jernih",
+				"Gua Goblin",
+				"Benteng Raja Goblin"
+			],
 			"intro": "Pulau tempat semua petualang memulai perjalanan. Goblin nakal mencuri barang-barang penduduk!"
 		},
 		{
-			"id": "pulau2", "number": 2, "grade": 2, "name": "Hutan Rahasia",
-			"theme": "Menjelajahi hutan ajaib", "color": "#3f9a52", "sand": "#e9d59a",
-			"map_pos": [0.36, 0.34], "map_size": 0.11, "available": false,
-			"boss": {"name": "Serigala Hutan Besar", "model": "serigala_hutan"},
-			"learn": ["Tambah & kurang", "Perkalian awal", "Pengukuran sederhana", "Memahami cerita", "Bagian tumbuhan", "Hewan & habitat"],
-			"places": ["Desa Pohon", "Akademi Daun", "Hutan Ajaib", "Jembatan Akar", "Sarang Serigala"],
-			"intro": "Hutan lebat penuh rahasia. Ada petunjuk harta karun yang hanya bisa dibaca petualang pintar."
+			"id": "pulau2",
+			"number": 2,
+			"grade": 2,
+			"name": "Hutan Rahasia",
+			"theme": "Menjelajahi hutan ajaib",
+			"color": "#3f9a52",
+			"sand": "#e9d59a",
+			"map_pos": [
+				0.36,
+				0.34
+			],
+			"map_size": 0.11,
+			"available": true,
+			"boss": {
+				"name": "Serigala Hutan Besar",
+				"model": "serigala_hutan"
+			},
+			"learn": [
+				"Tambah & kurang",
+				"Perkalian awal",
+				"Pengukuran sederhana",
+				"Memahami cerita",
+				"Bagian tumbuhan",
+				"Hewan & habitat"
+			],
+			"places": [
+				"Desa Pohon",
+				"Kebun Beri",
+				"Akademi Daun",
+				"Sungai Akar",
+				"Hutan Ajaib",
+				"Lubang Akar Tua",
+				"Sarang Serigala"
+			],
+			"intro": "Hutan lebat penuh rahasia. Ada petunjuk harta karun yang hanya bisa dibaca petualang pintar.",
+			"layout": "island2.json",
+			"quests": "quests2.json",
+			"monsters": "monsters2.json"
 		},
 		{
-			"id": "pulau3", "number": 3, "grade": 3, "name": "Kerajaan Angka",
-			"theme": "Menyelamatkan kerajaan dari kutukan", "color": "#c9a45a", "sand": "#f0d9a0",
-			"map_pos": [0.52, 0.70], "map_size": 0.115, "available": false,
-			"boss": {"name": "Golem Penjaga Kerajaan", "model": "golem_kerikil"},
-			"learn": ["Kali & bagi", "Pecahan sederhana", "Panjang, berat, waktu", "Memahami paragraf", "Budaya Indonesia"],
-			"places": ["Kota Kerajaan", "Akademi Kerajaan", "Pasar Angka", "Benteng Kutukan"],
-			"intro": "Kutukan membuat seluruh kerajaan membeku. Teka-teki angka adalah kunci untuk membebaskannya."
+			"id": "pulau3",
+			"number": 3,
+			"grade": 3,
+			"name": "Kerajaan Angka",
+			"theme": "Menyelamatkan kerajaan dari kutukan",
+			"color": "#c9a45a",
+			"sand": "#f0d9a0",
+			"map_pos": [
+				0.52,
+				0.7
+			],
+			"map_size": 0.115,
+			"available": true,
+			"boss": {
+				"name": "Golem Penjaga Kerajaan",
+				"model": "golem_kerikil"
+			},
+			"learn": [
+				"Kali & bagi",
+				"Pecahan sederhana",
+				"Panjang, berat, waktu",
+				"Memahami paragraf",
+				"Budaya Indonesia"
+			],
+			"places": [
+				"Kota Kerajaan",
+				"Lumbung Kerajaan",
+				"Akademi Kerajaan",
+				"Kanal Kerajaan",
+				"Taman Kerajaan",
+				"Pintu Teka-teki",
+				"Benteng Kutukan"
+			],
+			"intro": "Kutukan membuat seluruh kerajaan membeku. Teka-teki angka adalah kunci untuk membebaskannya.",
+			"layout": "island3.json",
+			"quests": "quests3.json",
+			"monsters": "monsters3.json"
 		},
 		{
-			"id": "pulau4", "number": 4, "grade": 4, "name": "Negeri Penemuan",
-			"theme": "Pengetahuan dan penemuan", "color": "#5aa7c9", "sand": "#e8dcb0",
-			"map_pos": [0.66, 0.30], "map_size": 0.115, "available": false,
-			"boss": {"name": "Penjaga Batu Kuno", "model": "golem_lava"},
-			"learn": ["Faktor & kelipatan", "Bangun datar & ruang", "Teks informasi", "Energi & gaya", "Ekosistem", "Peta & budaya"],
-			"places": ["Kota Penemu", "Akademi Ilmuwan", "Reruntuhan Kuno", "Sungai Tercemar"],
-			"intro": "Mesin-mesin kuno berhenti bekerja. Hanya ilmuwan muda yang bisa menyalakannya kembali."
+			"id": "pulau4",
+			"number": 4,
+			"grade": 4,
+			"name": "Negeri Penemuan",
+			"theme": "Pengetahuan dan penemuan",
+			"color": "#5aa7c9",
+			"sand": "#e8dcb0",
+			"map_pos": [
+				0.66,
+				0.3
+			],
+			"map_size": 0.115,
+			"available": true,
+			"boss": {
+				"name": "Penjaga Batu Kuno",
+				"model": "golem_lava"
+			},
+			"learn": [
+				"Faktor & kelipatan",
+				"Bangun datar & ruang",
+				"Teks informasi",
+				"Energi & gaya",
+				"Ekosistem",
+				"Peta & budaya"
+			],
+			"places": [
+				"Kota Penemu",
+				"Kebun Percobaan",
+				"Akademi Ilmuwan",
+				"Sungai Tercemar",
+				"Hutan Palem",
+				"Reruntuhan Kuno",
+				"Kuil Batu Kuno"
+			],
+			"intro": "Mesin-mesin kuno berhenti bekerja. Hanya ilmuwan muda yang bisa menyalakannya kembali.",
+			"layout": "island4.json",
+			"quests": "quests4.json",
+			"monsters": "monsters4.json"
 		},
 		{
-			"id": "pulau5", "number": 5, "grade": 5, "name": "Kerajaan Ksatria",
-			"theme": "Menjadi ksatria penjaga kerajaan", "color": "#9a7bd0", "sand": "#ead7b0",
-			"map_pos": [0.82, 0.64], "map_size": 0.12, "available": false,
-			"boss": {"name": "Panglima Orc", "model": "ogre_batu"},
-			"learn": ["Pecahan, desimal, persen", "Perbandingan", "Teks eksplanasi", "Tubuh manusia", "Rantai makanan", "Sejarah"],
-			"places": ["Benteng Ksatria", "Akademi Ksatria", "Lembah Pertahanan", "Perkemahan Orc"],
-			"intro": "Pasukan Orc mengepung kerajaan. Susun strategi dan lindungi rakyat!"
+			"id": "pulau5",
+			"number": 5,
+			"grade": 5,
+			"name": "Kerajaan Ksatria",
+			"theme": "Menjadi ksatria penjaga kerajaan",
+			"color": "#9a7bd0",
+			"sand": "#ead7b0",
+			"map_pos": [
+				0.82,
+				0.64
+			],
+			"map_size": 0.12,
+			"available": true,
+			"boss": {
+				"name": "Panglima Orc",
+				"model": "ogre_batu"
+			},
+			"learn": [
+				"Pecahan, desimal, persen",
+				"Perbandingan",
+				"Teks eksplanasi",
+				"Tubuh manusia",
+				"Rantai makanan",
+				"Sejarah"
+			],
+			"places": [
+				"Kota Ksatria",
+				"Ladang Gandum",
+				"Akademi Ksatria",
+				"Sungai Jernih",
+				"Lembah Pertahanan",
+				"Mata Air Tersembunyi",
+				"Perkemahan Orc"
+			],
+			"intro": "Pasukan Orc mengepung kerajaan. Susun strategi dan lindungi rakyat!",
+			"layout": "island5.json",
+			"quests": "quests5.json",
+			"monsters": "monsters5.json"
 		},
 		{
-			"id": "pulau6", "number": 6, "grade": 6, "name": "Pulau Legenda Naga",
-			"theme": "Petualangan terakhir menghadapi naga", "color": "#d0644a", "sand": "#d9c39a",
-			"map_pos": [0.88, 0.22], "map_size": 0.12, "available": false,
-			"boss": {"name": "Naga Kegelapan", "model": "aldragor"},
-			"learn": ["Hitung campuran", "Skala & perbandingan", "Luas & volume", "Literasi & penalaran", "Tata surya", "Kewarganegaraan"],
-			"places": ["Desa Terakhir", "Akademi Legenda", "Gunung Api", "Sarang Naga"],
-			"intro": "Di puncak gunung api, Naga Kegelapan menunggu. Hanya pahlawan sejati yang bisa mengalahkannya."
+			"id": "pulau6",
+			"number": 6,
+			"grade": 6,
+			"name": "Pulau Legenda Naga",
+			"theme": "Petualangan terakhir menghadapi naga",
+			"color": "#d0644a",
+			"sand": "#d9c39a",
+			"map_pos": [
+				0.88,
+				0.22
+			],
+			"map_size": 0.12,
+			"available": true,
+			"boss": {
+				"name": "Naga Kegelapan",
+				"model": "aldragor"
+			},
+			"learn": [
+				"Hitung campuran",
+				"Skala & perbandingan",
+				"Luas & volume",
+				"Literasi & penalaran",
+				"Tata surya",
+				"Kewarganegaraan"
+			],
+			"places": [
+				"Desa Terakhir",
+				"Kebun Abu",
+				"Akademi Legenda",
+				"Sungai Lava Dingin",
+				"Hutan Hangus",
+				"Gua Sandi Kuno",
+				"Sarang Naga"
+			],
+			"intro": "Di puncak gunung api, Naga Kegelapan menunggu. Hanya pahlawan sejati yang bisa mengalahkannya.",
+			"layout": "island6.json",
+			"quests": "quests6.json",
+			"monsters": "monsters6.json"
 		}
 	]
 }

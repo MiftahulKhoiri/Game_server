@@ -1,0 +1,577 @@
+{
+	"schema": 1,
+	"island": "pulau3",
+	"items": {
+		"p3_lencana": {
+			"name": "Lencana Akademi Kerajaan",
+			"desc": "Tanda murid Akademi Kerajaan."
+		},
+		"p3_karung_gandum": {
+			"name": "Karung Gandum",
+			"desc": "Gandum untuk dibagi adil ke seluruh rakyat."
+		},
+		"p3_timbangan_emas": {
+			"name": "Timbangan Emas",
+			"desc": "Hadiah dari Pak Lumbung."
+		},
+		"p3_peta_kerajaan": {
+			"name": "Peta Kerajaan",
+			"desc": "Peta lama yang menunjukkan jalan rahasia istana."
+		},
+		"p3_kunci_mahkota": {
+			"name": "Kunci Mahkota",
+			"desc": "Kunci emas pembuka Benteng Kutukan."
+		},
+		"p3_koin_kuno": {
+			"name": "Koin Kuno",
+			"desc": "Barang untuk Pak Nahkoda."
+		},
+		"p3_piala": {
+			"name": "Piala Kota Kerajaan",
+			"desc": "Bukti kamu pahlawan pulau ini."
+		},
+		"kue": {
+			"name": "Kue Manis",
+			"desc": "Kue manis. Memulihkan HP dalam pertarungan."
+		},
+		"perisai_daun": {
+			"name": "Perisai Daun",
+			"desc": "Mengurangi serangan musuh berikutnya menjadi setengah."
+		}
+	},
+	"challenges": {
+		"p3_hitung": {
+			"title": "Membagi Makanan",
+			"story": "Bantu Pak Lumbung menghitung dengan tepat!",
+			"region": "matematika",
+			"prefer": [
+				"pembagian",
+				"perkalian",
+				"pecahan",
+				"pengukuran"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p3_petunjuk": {
+			"title": "Prasasti Taman",
+			"story": "Ada tulisan kuno. Pecahkan teka-teki bahasanya!",
+			"region": "bahasa",
+			"prefer": [
+				"bacaan",
+				"kata_kalimat",
+				"cerita",
+				"sinonim_antonim"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p3_batu": {
+			"title": "Pintu Batu Angka",
+			"story": "Pintu batu penuh angka dan peta. Pintu ini terbuka bagi yang memahami peta dan budaya Nusantara.",
+			"region": "ips",
+			"prefer": [
+				"peta",
+				"budaya",
+				"ekonomi"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p3_sampingan": {
+			"title": "Rakyat yang Rukun",
+			"story": "Rakyat kerajaan sedang bermusyawarah. Bantu aku memahami aturan dan kerukunan!",
+			"region": "pancasila",
+			"prefer": [
+				"gotong_royong",
+				"keberagaman",
+				"hak_kewajiban",
+				"aturan"
+			],
+			"n": 3,
+			"pass": 2
+		}
+	},
+	"spots": [
+		{
+			"id": "p3_clue",
+			"name": "Prasasti Taman",
+			"pos": [
+				-34,
+				-28
+			]
+		}
+	],
+	"quests": [
+		{
+			"id": "p3_murid_baru",
+			"kind": "main",
+			"giver": "p3_tetua",
+			"title": "Murid Baru Akademi Kerajaan",
+			"offer": [
+				"{name}, kamu sudah sampai di pulau kami!",
+				"Petualang sejati selalu belajar. Selesaikan satu latihan di Akademi Kerajaan."
+			],
+			"steps": [
+				{
+					"type": "learn",
+					"count": 1,
+					"text": "Selesaikan 1 latihan di Akademi Kerajaan",
+					"where": {
+						"place": "akademi"
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p3_tetua",
+					"text": "Kembali ke Ratu Sekar",
+					"where": {
+						"npc": "p3_tetua"
+					},
+					"say": [
+						"Bagus sekali, {name}! Ini lencana murid Akademi Kerajaan.",
+						"Sekarang bantulah para penduduk."
+					]
+				}
+			],
+			"reward": {
+				"coins": 70,
+				"xp": 180,
+				"items": {
+					"p3_lencana": 1
+				}
+			}
+		},
+		{
+			"id": "p3_misi_2",
+			"kind": "main",
+			"giver": "p3_pekebun",
+			"requires": [
+				"p3_murid_baru"
+			],
+			"title": "Membagi Makanan",
+			"offer": [
+				"Karung gandum lumbung terjatuh di jalan ke Taman Kerajaan.",
+				"Kumpulkan 5 karung, lalu bantu aku membaginya dengan adil!"
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p3_karung_gandum",
+					"count": 5,
+					"text": "Kumpulkan Karung Gandum",
+					"where": {
+						"pos": [
+							-12,
+							-34
+						]
+					},
+					"pickups": [
+						[
+							-5,
+							-32.5
+						],
+						[
+							-10,
+							-33.5
+						],
+						[
+							-15,
+							-34.5
+						],
+						[
+							-20,
+							-35.5
+						],
+						[
+							-26,
+							-37
+						]
+					]
+				},
+				{
+					"type": "challenge",
+					"challenge": "p3_hitung",
+					"npc": "p3_pekebun",
+					"text": "Bantu Pak Lumbung menghitung",
+					"where": {
+						"npc": "p3_pekebun"
+					},
+					"say": [
+						"Semua rakyat mendapat bagian yang sama. Adil sekali!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 80,
+				"xp": 200,
+				"items": {
+					"p3_timbangan_emas": 1
+				}
+			}
+		},
+		{
+			"id": "p3_misi_3",
+			"kind": "main",
+			"giver": "p3_ibu",
+			"requires": [
+				"p3_murid_baru"
+			],
+			"title": "Peta Kerajaan",
+			"offer": [
+				"Resep istana hilang bersama peta kerajaan!",
+				"Di Taman Kerajaan ada prasasti. Pecahkan tulisannya untuk menemukan peta."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p3_petunjuk",
+					"spot": "p3_clue",
+					"text": "Pecahkan teka-teki Prasasti Taman",
+					"where": {
+						"spot": "p3_clue"
+					},
+					"say": [
+						"Prasasti bersinar! Peta tersembunyi di bawah pohon paling besar."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p3_peta_kerajaan",
+					"count": 1,
+					"text": "Temukan Peta Kerajaan",
+					"where": {
+						"pos": [
+							-46,
+							-44
+						]
+					},
+					"pickups": [
+						[
+							-46,
+							-44
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p3_ibu",
+					"text": "Bawa Peta Kerajaan ke Bu Juru Masak",
+					"where": {
+						"npc": "p3_ibu"
+					},
+					"take": {
+						"p3_peta_kerajaan": 1
+					},
+					"say": [
+						"Peta kerajaan kembali! Kini aku tahu letak dapur rahasia."
+					]
+				}
+			],
+			"reward": {
+				"coins": 80,
+				"xp": 200,
+				"items": {
+					"kue": 3
+				}
+			}
+		},
+		{
+			"id": "p3_misi_4",
+			"kind": "main",
+			"giver": "p3_anak",
+			"requires": [
+				"p3_misi_2",
+				"p3_misi_3"
+			],
+			"title": "Pintu Teka-teki",
+			"offer": [
+				"Ibunda Ratu bilang, Pintu Teka-teki menyimpan kunci benteng!",
+				"Pintunya terbuka kalau kamu paham peta dan budaya."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p3_batu",
+					"spot": "boulder",
+					"text": "Pecahkan teka-teki Pintu Batu Angka",
+					"where": {
+						"spot": "boulder"
+					},
+					"flags": [
+						"p3_terbuka"
+					],
+					"say": [
+						"Pintu batu bergeser... Ruang rahasia terbuka!"
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p3_kunci_mahkota",
+					"count": 1,
+					"text": "Ambil Kunci Mahkota",
+					"where": {
+						"pos": [
+							40,
+							-40
+						]
+					},
+					"pickups": [
+						[
+							40,
+							-40
+						]
+					]
+				}
+			],
+			"reward": {
+				"coins": 90,
+				"xp": 220
+			}
+		},
+		{
+			"id": "p3_misi_5",
+			"kind": "main",
+			"giver": "p3_jembatan",
+			"requires": [
+				"p3_misi_4"
+			],
+			"title": "Membuka Benteng Kutukan",
+			"offer": [
+				"Kunci Mahkota! Bukalah Benteng Kutukan, petualang.",
+				"Golem Penjaga sangat kuat. Gunakan jurus ilmumu!"
+			],
+			"steps": [
+				{
+					"type": "use",
+					"target": "gate",
+					"item": "p3_kunci_mahkota",
+					"text": "Buka gerbang Benteng Kutukan",
+					"where": {
+						"spot": "gate"
+					},
+					"flags": [
+						"p3_gerbang"
+					],
+					"take": {
+						"p3_kunci_mahkota": 1
+					},
+					"say": [
+						"Gerbang benteng turun!",
+						"Golem Penjaga Kerajaan bangkit: \"PENYUSUP... HARUS... DIHENTIKAN.\""
+					]
+				}
+			],
+			"reward": {
+				"coins": 90,
+				"xp": 220
+			}
+		},
+		{
+			"id": "p3_bos",
+			"kind": "main",
+			"auto": true,
+			"requires": [
+				"p3_misi_5"
+			],
+			"title": "Kalahkan Golem Penjaga Kerajaan",
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "golem_kerajaan",
+					"count": 1,
+					"text": "Kalahkan Golem Penjaga Kerajaan",
+					"where": {
+						"spot": "boss"
+					},
+					"say": [
+						"Golem Penjaga Kerajaan kalah! Kabut Lupa di Kota Kerajaan menghilang.",
+						"Seluruh penduduk bersorak untukmu, {name}!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 180,
+				"xp": 400,
+				"items": {
+					"p3_piala": 1
+				}
+			}
+		},
+		{
+			"id": "p3_pantai",
+			"kind": "side",
+			"giver": "p3_dermaga",
+			"title": "Koin Kuno",
+			"offer": [
+				"Koin kuno kerajaan tersebar di pantai.",
+				"Kumpulkan 5 untuk museum kerajaan!"
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p3_koin_kuno",
+					"count": 5,
+					"text": "Kumpulkan Koin Kuno",
+					"where": {
+						"pos": [
+							42,
+							58
+						]
+					},
+					"pickups": [
+						[
+							42,
+							58
+						],
+						[
+							-48,
+							52
+						],
+						[
+							70,
+							6
+						],
+						[
+							-70,
+							-6
+						],
+						[
+							55,
+							-45
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p3_dermaga",
+					"text": "Berikan kepada Pak Nahkoda",
+					"where": {
+						"npc": "p3_dermaga"
+					},
+					"take": {
+						"p3_koin_kuno": 5
+					},
+					"say": [
+						"Koleksi museum lengkap! Ini topi toga untukmu."
+					]
+				}
+			],
+			"reward": {
+				"coins": 50,
+				"xp": 120,
+				"outfit": "topi_toga"
+			}
+		},
+		{
+			"id": "p3_warga",
+			"kind": "side",
+			"giver": "p3_warga",
+			"requires": [
+				"p3_murid_baru"
+			],
+			"title": "Rakyat yang Rukun",
+			"offer": [
+				"Rakyat kerajaan sedang bermusyawarah. Bantu aku memahami aturan dan kerukunan!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p3_sampingan",
+					"npc": "p3_warga",
+					"text": "Jawab tantangan Bu Bendahara",
+					"where": {
+						"npc": "p3_warga"
+					},
+					"say": [
+						"Terima kasih! Rakyat kini hidup rukun."
+					]
+				}
+			],
+			"reward": {
+				"coins": 50,
+				"xp": 130,
+				"items": {
+					"kue": 1
+				}
+			}
+		},
+		{
+			"id": "p3_usir",
+			"kind": "side",
+			"giver": "p3_jembatan",
+			"requires": [
+				"p3_murid_baru"
+			],
+			"title": "Usir Prajurit Kutukan",
+			"offer": [
+				"Prajurit Kutukan berkeliaran di Taman Kerajaan.",
+				"Kalahkan 3 dengan jurus ilmumu!"
+			],
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "p3_prajurit_kutukan",
+					"count": 3,
+					"text": "Kalahkan Prajurit Kutukan",
+					"where": {
+						"pos": [
+							-44,
+							-36
+						]
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p3_jembatan",
+					"text": "Lapor ke Kapten Bayu",
+					"where": {
+						"npc": "p3_jembatan"
+					},
+					"say": [
+						"Hebat! Jalan sekarang lebih aman."
+					]
+				}
+			],
+			"reward": {
+				"coins": 60,
+				"xp": 140,
+				"items": {
+					"perisai_daun": 1
+				}
+			}
+		},
+		{
+			"id": "p3_jelajah",
+			"kind": "side",
+			"auto": true,
+			"title": "Penjelajah Kota Kerajaan",
+			"steps": [
+				{
+					"type": "places_all",
+					"text": "Temukan semua tempat di pulau"
+				}
+			],
+			"reward": {
+				"coins": 70,
+				"xp": 60
+			}
+		},
+		{
+			"id": "p3_kenal",
+			"kind": "side",
+			"auto": true,
+			"title": "Sahabat Kota Kerajaan",
+			"steps": [
+				{
+					"type": "meet_all",
+					"text": "Berkenalan dengan semua penduduk"
+				}
+			],
+			"reward": {
+				"coins": 50,
+				"xp": 50
+			}
+		}
+	]
+}

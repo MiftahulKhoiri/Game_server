@@ -1,0 +1,575 @@
+{
+	"schema": 1,
+	"island": "pulau4",
+	"items": {
+		"p4_lencana": {
+			"name": "Lencana Akademi Ilmuwan",
+			"desc": "Tanda murid Akademi Ilmuwan."
+		},
+		"p4_roda_gigi": {
+			"name": "Roda Gigi",
+			"desc": "Roda gigi kuningan untuk mesin kuno."
+		},
+		"p4_kunci_inggris": {
+			"name": "Kunci Inggris",
+			"desc": "Hadiah dari Pak Mesin."
+		},
+		"p4_botol_sampel": {
+			"name": "Botol Sampel Air",
+			"desc": "Sampel air sungai untuk diteliti."
+		},
+		"p4_kristal_kuno": {
+			"name": "Kristal Kuno",
+			"desc": "Kristal bercahaya pembuka Kuil Batu Kuno."
+		},
+		"p4_sampah_plastik": {
+			"name": "Sampah Plastik",
+			"desc": "Barang untuk Pak Kapal."
+		},
+		"p4_piala": {
+			"name": "Piala Kota Penemu",
+			"desc": "Bukti kamu pahlawan pulau ini."
+		},
+		"kue": {
+			"name": "Kue Manis",
+			"desc": "Kue manis. Memulihkan HP dalam pertarungan."
+		},
+		"perisai_daun": {
+			"name": "Perisai Daun",
+			"desc": "Mengurangi serangan musuh berikutnya menjadi setengah."
+		}
+	},
+	"challenges": {
+		"p4_hitung": {
+			"title": "Memperbaiki Mesin Kuno",
+			"story": "Bantu Pak Mesin menghitung dengan tepat!",
+			"region": "matematika",
+			"prefer": [
+				"bangun_datar",
+				"bangun_ruang",
+				"logika",
+				"perkalian"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p4_petunjuk": {
+			"title": "Catatan Peneliti",
+			"story": "Ada tulisan kuno. Pecahkan teka-teki bahasanya!",
+			"region": "bahasa",
+			"prefer": [
+				"bacaan",
+				"pantun",
+				"kata_kalimat",
+				"cerita"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p4_batu": {
+			"title": "Pintu Batu Bercahaya",
+			"story": "Pintu batu reruntuhan bercahaya. Ia hanya terbuka bagi yang memahami energi dan alam.",
+			"region": "ipa",
+			"prefer": [
+				"energi",
+				"lingkungan",
+				"tumbuhan",
+				"tubuh"
+			],
+			"n": 3,
+			"pass": 2
+		},
+		"p4_sampingan": {
+			"title": "Sehat dan Bugar",
+			"story": "Ayo jadi penemu yang sehat! Jawab pertanyaanku tentang olahraga dan hidup sehat.",
+			"region": "pjok",
+			"prefer": [
+				"olahraga",
+				"hidup_sehat"
+			],
+			"n": 3,
+			"pass": 2
+		}
+	},
+	"spots": [
+		{
+			"id": "p4_clue",
+			"name": "Catatan Peneliti",
+			"pos": [
+				34,
+				-28
+			]
+		}
+	],
+	"quests": [
+		{
+			"id": "p4_murid_baru",
+			"kind": "main",
+			"giver": "p4_tetua",
+			"title": "Murid Baru Akademi Ilmuwan",
+			"offer": [
+				"{name}, kamu sudah sampai di pulau kami!",
+				"Petualang sejati selalu belajar. Selesaikan satu latihan di Akademi Ilmuwan."
+			],
+			"steps": [
+				{
+					"type": "learn",
+					"count": 1,
+					"text": "Selesaikan 1 latihan di Akademi Ilmuwan",
+					"where": {
+						"place": "akademi"
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p4_tetua",
+					"text": "Kembali ke Profesor Tua",
+					"where": {
+						"npc": "p4_tetua"
+					},
+					"say": [
+						"Bagus sekali, {name}! Ini lencana murid Akademi Ilmuwan.",
+						"Sekarang bantulah para penduduk."
+					]
+				}
+			],
+			"reward": {
+				"coins": 80,
+				"xp": 210,
+				"items": {
+					"p4_lencana": 1
+				}
+			}
+		},
+		{
+			"id": "p4_misi_2",
+			"kind": "main",
+			"giver": "p4_pekebun",
+			"requires": [
+				"p4_murid_baru"
+			],
+			"title": "Memperbaiki Mesin Kuno",
+			"offer": [
+				"Mesin kincir kota mati! Roda giginya tercecer di jalan ke Hutan Palem.",
+				"Kumpulkan 5 roda gigi, lalu bantu aku menghitung ukurannya."
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p4_roda_gigi",
+					"count": 5,
+					"text": "Kumpulkan Roda Gigi",
+					"where": {
+						"pos": [
+							12,
+							-34
+						]
+					},
+					"pickups": [
+						[
+							5,
+							-32.5
+						],
+						[
+							10,
+							-33.5
+						],
+						[
+							15,
+							-34.5
+						],
+						[
+							20,
+							-35.5
+						],
+						[
+							26,
+							-37
+						]
+					]
+				},
+				{
+					"type": "challenge",
+					"challenge": "p4_hitung",
+					"npc": "p4_pekebun",
+					"text": "Bantu Pak Mesin menghitung",
+					"where": {
+						"npc": "p4_pekebun"
+					},
+					"say": [
+						"Mesin kincir berputar lagi! Lampu kota menyala!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 90,
+				"xp": 230,
+				"items": {
+					"p4_kunci_inggris": 1
+				}
+			}
+		},
+		{
+			"id": "p4_misi_3",
+			"kind": "main",
+			"giver": "p4_ibu",
+			"requires": [
+				"p4_murid_baru"
+			],
+			"title": "Menyelidiki Sungai",
+			"offer": [
+				"Sungai kita tercemar! Ada catatan peneliti di Hutan Palem.",
+				"Baca catatannya dan ambil sampel air untukku."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p4_petunjuk",
+					"spot": "p4_clue",
+					"text": "Pecahkan teka-teki Catatan Peneliti",
+					"where": {
+						"spot": "p4_clue"
+					},
+					"say": [
+						"Catatan peneliti terbaca! Sampel air disimpan di dekat pohon palem tertinggi."
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p4_botol_sampel",
+					"count": 1,
+					"text": "Temukan Botol Sampel Air",
+					"where": {
+						"pos": [
+							46,
+							-44
+						]
+					},
+					"pickups": [
+						[
+							46,
+							-44
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p4_ibu",
+					"text": "Bawa Botol Sampel Air ke Bu Sungai",
+					"where": {
+						"npc": "p4_ibu"
+					},
+					"take": {
+						"p4_botol_sampel": 1
+					},
+					"say": [
+						"Dengan sampel ini kita tahu penyebab pencemarannya: sampah! Ayo jaga sungai bersama."
+					]
+				}
+			],
+			"reward": {
+				"coins": 90,
+				"xp": 230,
+				"items": {
+					"kue": 3
+				}
+			}
+		},
+		{
+			"id": "p4_misi_4",
+			"kind": "main",
+			"giver": "p4_anak",
+			"requires": [
+				"p4_misi_2",
+				"p4_misi_3"
+			],
+			"title": "Reruntuhan Kuno",
+			"offer": [
+				"Kata Profesor Tua, pintu reruntuhan terbuka dengan teka-teki ilmiah!"
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p4_batu",
+					"spot": "boulder",
+					"text": "Pecahkan teka-teki Pintu Batu Bercahaya",
+					"where": {
+						"spot": "boulder"
+					},
+					"flags": [
+						"p4_terbuka"
+					],
+					"say": [
+						"Pintu batu bercahaya terang lalu bergeser... Reruntuhan terbuka!"
+					]
+				},
+				{
+					"type": "collect",
+					"item": "p4_kristal_kuno",
+					"count": 1,
+					"text": "Ambil Kristal Kuno",
+					"where": {
+						"pos": [
+							-40,
+							-40
+						]
+					},
+					"pickups": [
+						[
+							-40,
+							-40
+						]
+					]
+				}
+			],
+			"reward": {
+				"coins": 100,
+				"xp": 250
+			}
+		},
+		{
+			"id": "p4_misi_5",
+			"kind": "main",
+			"giver": "p4_jembatan",
+			"requires": [
+				"p4_misi_4"
+			],
+			"title": "Kuil Batu Kuno",
+			"offer": [
+				"Kristal Kuno! Pasang di gerbang kuil untuk membukanya.",
+				"Penjaga Batu Kuno menunggu di dalam."
+			],
+			"steps": [
+				{
+					"type": "use",
+					"target": "gate",
+					"item": "p4_kristal_kuno",
+					"text": "Buka gerbang Kuil Batu Kuno",
+					"where": {
+						"spot": "gate"
+					},
+					"flags": [
+						"p4_gerbang"
+					],
+					"take": {
+						"p4_kristal_kuno": 1
+					},
+					"say": [
+						"Kristal bersinar, gerbang kuil turun!",
+						"Penjaga Batu Kuno bergemuruh: \"Buktikan ilmumu!\""
+					]
+				}
+			],
+			"reward": {
+				"coins": 100,
+				"xp": 250
+			}
+		},
+		{
+			"id": "p4_bos",
+			"kind": "main",
+			"auto": true,
+			"requires": [
+				"p4_misi_5"
+			],
+			"title": "Kalahkan Penjaga Batu Kuno",
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "penjaga_batu",
+					"count": 1,
+					"text": "Kalahkan Penjaga Batu Kuno",
+					"where": {
+						"spot": "boss"
+					},
+					"say": [
+						"Penjaga Batu Kuno kalah! Kabut Lupa di Kota Penemu menghilang.",
+						"Seluruh penduduk bersorak untukmu, {name}!"
+					]
+				}
+			],
+			"reward": {
+				"coins": 200,
+				"xp": 450,
+				"items": {
+					"p4_piala": 1
+				}
+			}
+		},
+		{
+			"id": "p4_pantai",
+			"kind": "side",
+			"giver": "p4_dermaga",
+			"title": "Sampah Pantai",
+			"offer": [
+				"Pantai kotor oleh sampah plastik.",
+				"Bantu kumpulkan 5 sampah untuk didaur ulang!"
+			],
+			"steps": [
+				{
+					"type": "collect",
+					"item": "p4_sampah_plastik",
+					"count": 5,
+					"text": "Kumpulkan Sampah Plastik",
+					"where": {
+						"pos": [
+							-42,
+							58
+						]
+					},
+					"pickups": [
+						[
+							-42,
+							58
+						],
+						[
+							48,
+							52
+						],
+						[
+							-70,
+							6
+						],
+						[
+							70,
+							-6
+						],
+						[
+							-55,
+							-45
+						]
+					]
+				},
+				{
+					"type": "talk",
+					"npc": "p4_dermaga",
+					"text": "Berikan kepada Pak Kapal",
+					"where": {
+						"npc": "p4_dermaga"
+					},
+					"take": {
+						"p4_sampah_plastik": 5
+					},
+					"say": [
+						"Pantai bersih lagi! Ini syal dari bahan daur ulang."
+					]
+				}
+			],
+			"reward": {
+				"coins": 55,
+				"xp": 140,
+				"outfit": "aks_syal"
+			}
+		},
+		{
+			"id": "p4_warga",
+			"kind": "side",
+			"giver": "p4_warga",
+			"requires": [
+				"p4_murid_baru"
+			],
+			"title": "Sehat dan Bugar",
+			"offer": [
+				"Ayo jadi penemu yang sehat! Jawab pertanyaanku tentang olahraga dan hidup sehat."
+			],
+			"steps": [
+				{
+					"type": "challenge",
+					"challenge": "p4_sampingan",
+					"npc": "p4_warga",
+					"text": "Jawab tantangan Kak Atlet",
+					"where": {
+						"npc": "p4_warga"
+					},
+					"say": [
+						"Hebat! Tubuh sehat, pikiran cerdas."
+					]
+				}
+			],
+			"reward": {
+				"coins": 55,
+				"xp": 150,
+				"items": {
+					"kue": 1
+				}
+			}
+		},
+		{
+			"id": "p4_usir",
+			"kind": "side",
+			"giver": "p4_jembatan",
+			"requires": [
+				"p4_murid_baru"
+			],
+			"title": "Usir Golem Kerikil",
+			"offer": [
+				"Golem Kerikil berkeliaran di Hutan Palem.",
+				"Kalahkan 3 dengan jurus ilmumu!"
+			],
+			"steps": [
+				{
+					"type": "defeat",
+					"target": "p4_golem_kerikil",
+					"count": 3,
+					"text": "Kalahkan Golem Kerikil",
+					"where": {
+						"pos": [
+							44,
+							-36
+						]
+					}
+				},
+				{
+					"type": "talk",
+					"npc": "p4_jembatan",
+					"text": "Lapor ke Kak Peneliti",
+					"where": {
+						"npc": "p4_jembatan"
+					},
+					"say": [
+						"Hebat! Jalan sekarang lebih aman."
+					]
+				}
+			],
+			"reward": {
+				"coins": 65,
+				"xp": 160,
+				"items": {
+					"perisai_daun": 1
+				}
+			}
+		},
+		{
+			"id": "p4_jelajah",
+			"kind": "side",
+			"auto": true,
+			"title": "Penjelajah Kota Penemu",
+			"steps": [
+				{
+					"type": "places_all",
+					"text": "Temukan semua tempat di pulau"
+				}
+			],
+			"reward": {
+				"coins": 75,
+				"xp": 60
+			}
+		},
+		{
+			"id": "p4_kenal",
+			"kind": "side",
+			"auto": true,
+			"title": "Sahabat Kota Penemu",
+			"steps": [
+				{
+					"type": "meet_all",
+					"text": "Berkenalan dengan semua penduduk"
+				}
+			],
+			"reward": {
+				"coins": 55,
+				"xp": 50
+			}
+		}
+	]
+}
