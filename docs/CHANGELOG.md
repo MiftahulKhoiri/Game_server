@@ -2,6 +2,34 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd 5.0.0 — Paket visual 5.0: dunia 3D lebih indah & hidup (17 November 2026)
+
+Tanpa APK baru (launcher 0.84.x cukup); paket diunduh ulang dari server. Gameplay, data misi, NPC, progres tidak berubah.
+
+- **Medan baru** (`w3d_terrain.gd`): tanah bergelombang lembut di alam liar, gundukan di tepi pulau, alur sungai
+  yang menurun, pantai pasir melandai ke laut. Jalan tanah & pelataran bata dicat langsung di permukaan (tepi
+  organik, batu kecil di tepi jalan). Bukit lama tetap persis; jalan, tempat & bangunan diratakan. Tabrakan memakai
+  HeightMapShape3D 1 m.
+- **Air**: laut bergradasi dalam–dangkal dengan buih di garis pantai & riak (shader); sungai mengalir dengan buih tepi.
+  Jembatan papan baru dengan pagar & tiang, teratai di sungai.
+- **Flora**: rumput & bunga berkelompok (MultiMesh per petak 16 m, mengecil halus di kejauhan, ditanam bertahap
+  supaya pulau cepat terbuka), daun pohon bergoyang + variasi warna per pohon. Perbaikan: jenis pohon ganda di
+  pulau 2 & 6 dulu digambar dua kali.
+- **Hidup**: awan berarak, burung & camar berputar, kupu-kupu di padang bunga, ayam mematuk di ladang/desa,
+  serbuk sari melayang — semua animasi di GPU (tanpa beban CPU per bingkai).
+- **Pencahayaan**: cahaya ambien langit, cahaya isi tanpa bayangan, bayangan lebih lembut, kabut warna cakrawala,
+  dan suasana khas tiap pulau (pagi cerah, hutan berkabut hijau, siang keemasan, tropis, sore hangat, senja naga).
+- **Bangunan**: akademi menjadi kastel, rumah beratap warna khas tiap pulau, warung, kincir angin, sumur, lumbung,
+  tong/peti/karung, bendera (KayKit Medieval Hexagon Pack, CC0). Rumah adat pertama tiap desa dipertahankan;
+  Rumah Gadang & Tongkonan dibuat ulang dengan atap melengkung khas. Ciri tiap pulau: patung angka & menara
+  (Kerajaan Angka), mikroskop/globe/tenda (Negeri Penemuan), pandai besi (Kerajaan Ksatria), tambang (Pulau Naga),
+  hutan lebih lebat (Hutan Rahasia).
+- **Akademi**: lantai papan kayu (shader), karpet, panel kayu dinding, lampu gantung hangat.
+- **Profil grafis**: Hemat (medan 2 m, ±4.000 rumpun rumput, tanpa animasi air/daun), Seimbang (1,5 m, ±12.000),
+  Tinggi (1 m, ±20.000, rumput terlihat sampai 40 m).
+- Uji: SD 758 pemeriksaan LULUS, uji platform LULUS. Waktu bangun pulau di Raspberry Pi 5: ±450 ms
+  (sebelumnya ±270 ms; rumput ditanam setelah pulau tampil). FPS di HP belum diukur.
+
 ## v0.84.5 + paket education_sd 4.2.0 — Pengaturan launcher, pilihan suara & lagu, resolusi 3D (17 November 2026)
 
 - **Launcher: tombol Pengaturan** (berlaku untuk semua game): alamat server + "Tes & simpan" (alamat disimpan bila
