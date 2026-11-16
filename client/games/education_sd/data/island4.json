@@ -693,6 +693,50 @@
 			"scale": 3.0,
 			"solid": false,
 			"v5": true
+		},
+		{
+			"asset": "educational/microscope",
+			"pos": [
+				-40.84,
+				9.69
+			],
+			"rot": 0,
+			"scale": 1.6,
+			"v5": true,
+			"radius": 0.9
+		},
+		{
+			"asset": "educational/globe",
+			"pos": [
+				13.62,
+				30.84
+			],
+			"rot": 240,
+			"scale": 1.6,
+			"v5": true,
+			"radius": 0.9
+		},
+		{
+			"asset": "kaykit/tent",
+			"pos": [
+				-44.29,
+				-39.24
+			],
+			"rot": 255,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/crate_open",
+			"pos": [
+				50.76,
+				10.61
+			],
+			"rot": 195,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
 		}
 	],
 	"farm": {
@@ -976,5 +1020,6 @@
 			"h": 9,
 			"color": "#a08a6a"
 		}
-	]
+	],
+	"tree_density": 1.0
 }

@@ -119,5 +119,28 @@ for n in range(1, 7):
         for sx in (-1, 1):
             objs.append({"asset": "kaykit/flag_%s" % ("red" if n % 2 else "blue"), "pos": [f["pos"][0] + sx * (f["gate_half"] + 2.2), f["pos"][1] + f["half"] + 1.6],
                          "rot": 0, "scale": 3.0, "solid": False, "v5": True})
+    # Ciri khas tiap pulau (dekorasi, tidak mengubah misi/NPC): diletakkan acak tetapi tetap (seed per pulau).
+    import random
+    rnd = random.Random(500 + n)
+    EXTRA = {
+        1: [("kaykit/tent", 3.0, False, 1.2, None), ("kaykit/resource_lumber", 3.0, False, 1.0, None)],
+        2: [("kaykit/rock_single_C", 3.5, True, 1.4, 1.2)] * 4 + [("kaykit/building_lumbermill_yellow", 3.6, True, 3.0, 2.8)] * 0
+           + [("kaykit/resource_lumber", 3.0, False, 1.0, None)] * 2,
+        3: [("educational/math_statue", 1.4, True, 1.5, 1.0)] * 4 + [("kaykit/building_tower_A_yellow", 3.6, True, 2.6, 2.4),
+            ("kaykit/flag_yellow", 3.0, False, 0.5, None), ("kaykit/flag_yellow", 3.0, False, 0.5, None)],
+        4: [("educational/microscope", 1.6, True, 1.2, 0.9), ("educational/globe", 1.6, True, 1.2, 0.9), ("kaykit/tent", 3.0, False, 1.2, None),
+            ("kaykit/crate_open", 3.0, False, 0.8, None)],
+        5: [("kaykit/building_blacksmith_yellow", 3.6, True, 2.8, 2.6), ("kaykit/building_tower_A_yellow", 3.6, True, 2.6, 2.4),
+            ("kaykit/flag_red", 3.0, False, 0.5, None), ("kaykit/flag_red", 3.0, False, 0.5, None), ("kaykit/flag_blue", 3.0, False, 0.5, None)],
+        6: [("kaykit/building_mine_yellow", 3.6, True, 2.8, 2.6), ("kaykit/rock_single_E", 4.0, True, 1.6, 1.4),
+            ("kaykit/rock_single_A", 4.0, True, 1.6, 1.4), ("kaykit/flag_red", 3.0, False, 0.5, None)],
+    }
+    d["tree_density"] = {2: 1.5, 6: 1.15}.get(n, 1.0)  # Hutan Rahasia lebih lebat
+    for asset, sc, solid, r, rad in EXTRA.get(n, []):
+        for _ in range(200):
+            a_ = rnd.random() * math.tau
+            dd = rnd.uniform(18, d["radius"] - 10)
+            if add(asset, math.cos(a_) * dd, math.sin(a_) * dd, sc, rnd.randrange(0, 360, 15), solid, r, rad):
+                break
     json.dump(d, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent="\t")
     print(n, "objek:", len(objs), "baru v5:", sum(1 for o in objs if o.get("v5")))

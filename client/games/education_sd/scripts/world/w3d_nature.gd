@@ -388,11 +388,14 @@ void fragment() {
 	vec3 pc = path_col * (0.86 + 0.28 * n3) * (1.0 - 0.12 * smoothstep(0.55, 0.75, n2));
 	col = mix(col, col * 0.78, clamp(rim, 0.0, 1.0));
 	col = mix(col, pc, path);
-	vec2 cell = floor(p * 1.1);
-	vec2 tile = abs(fract(p * 1.1) - 0.5);
-	float joint = smoothstep(0.42, 0.48, max(tile.x, tile.y));
-	float tn = texture(noise, cell * 0.173).r;
-	vec3 plc = plaza_col * (0.85 + 0.3 * tn) * (1.0 - 0.2 * joint);
+	vec2 q = p * 1.3;
+	q.x += floor(q.y) * 0.5;
+	vec2 cell = floor(q);
+	vec2 tile = abs(fract(q) - 0.5);
+	float joint = smoothstep(0.4, 0.47, max(tile.x, tile.y));
+	float tn = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	vec3 plc = plaza_col * (0.78 + 0.32 * tn) * (0.92 + 0.16 * n3) * (1.0 - 0.32 * joint);
+	plc = mix(plc, plc * vec3(1.06, 0.98, 0.9), step(0.7, tn));
 	float plaza = smoothstep(0.42, 0.58, m.g + edge * 0.3);
 	col = mix(col, plc, plaza);
 	float r = length(p) + (n1 - 0.5) * 5.0;
@@ -553,6 +556,29 @@ void fragment() {
 	c = mix(c, c * vec3(1.18, 1.08, 0.7), warm * 0.45);
 	ALBEDO = c;
 	ROUGHNESS = 0.92;
+}
+""",
+"planks": """shader_type spatial;
+render_mode diffuse_lambert, specular_schlick_ggx;
+uniform vec3 wood : source_color = vec3(0.66, 0.45, 0.25);
+varying vec3 wp;
+void vertex() {
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+float h1(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }
+void fragment() {
+	vec2 q = vec2(wp.x / 0.45, wp.z / 2.4);
+	q.y += h1(vec2(floor(q.x), 3.0)) * 3.0;
+	vec2 cell = floor(q);
+	vec2 f = fract(q);
+	float r = h1(cell);
+	float gap = max(smoothstep(0.93, 0.98, f.x), smoothstep(0.985, 0.998, f.y));
+	float grain = sin((wp.z + r * 7.0) * 9.0 + sin(wp.x * 23.0) * 0.6) * 0.5 + 0.5;
+	vec3 c = wood * (0.8 + 0.32 * r) * (0.94 + 0.08 * grain);
+	c = mix(c, c * 0.45, gap);
+	ALBEDO = c;
+	ROUGHNESS = 0.55;
+	SPECULAR = 0.3;
 }
 """,
 "bark": """shader_type spatial;

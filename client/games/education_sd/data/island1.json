@@ -694,6 +694,28 @@
 			"scale": 3.0,
 			"solid": false,
 			"v5": true
+		},
+		{
+			"asset": "kaykit/tent",
+			"pos": [
+				-28.43,
+				-34.11
+			],
+			"rot": 105,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/resource_lumber",
+			"pos": [
+				-31.6,
+				36.34
+			],
+			"rot": 165,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
 		}
 	],
 	"farm": {
@@ -940,5 +962,6 @@
 			"title": "Batu Besar",
 			"text": "Batu besar menutup pintu Gua Goblin. Terlalu berat untuk didorong sendirian."
 		}
-	}
+	},
+	"tree_density": 1.0
 }

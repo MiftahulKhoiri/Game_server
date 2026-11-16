@@ -693,6 +693,83 @@
 			"scale": 3.0,
 			"solid": false,
 			"v5": true
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				15.66,
+				28.9
+			],
+			"rot": 90,
+			"scale": 1.4,
+			"v5": true,
+			"radius": 1.0
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				-17.07,
+				16.54
+			],
+			"rot": 300,
+			"scale": 1.4,
+			"v5": true,
+			"radius": 1.0
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				50.74,
+				6.03
+			],
+			"rot": 330,
+			"scale": 1.4,
+			"v5": true,
+			"radius": 1.0
+		},
+		{
+			"asset": "educational/math_statue",
+			"pos": [
+				19.14,
+				-4.38
+			],
+			"rot": 30,
+			"scale": 1.4,
+			"v5": true,
+			"radius": 1.0
+		},
+		{
+			"asset": "kaykit/building_tower_A_yellow",
+			"pos": [
+				44.91,
+				-2.87
+			],
+			"rot": 165,
+			"scale": 3.6,
+			"v5": true,
+			"radius": 2.4
+		},
+		{
+			"asset": "kaykit/flag_yellow",
+			"pos": [
+				-52.32,
+				8.8
+			],
+			"rot": 195,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/flag_yellow",
+			"pos": [
+				24.32,
+				12.36
+			],
+			"rot": 240,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
 		}
 	],
 	"farm": {
@@ -964,5 +1041,6 @@
 		"roof": "#6a4fb0",
 		"flag": "#2b2440"
 	},
-	"shapes": []
+	"shapes": [],
+	"tree_density": 1.0
 }

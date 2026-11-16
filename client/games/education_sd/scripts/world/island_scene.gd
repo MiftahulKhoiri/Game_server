@@ -20,7 +20,7 @@ const NPC_SPEED := 1.1
 const NPC_ACTIVE := 40.0
 const C_PATH := Color("c9a26b")
 const C_TRAIL := Color("b98e5c")  # jalan tanah yang dicat di medan (5.0)
-const C_PLAZA := Color("b9ab90")  # pelataran batu
+const C_PLAZA := Color("a8977a")  # pelataran batu
 const C_STONE := Color("8a8174")
 const C_WOOD := Color("8a5a2b")
 
@@ -165,6 +165,19 @@ func _v(xz, extra_y := 0.0) -> Vector3:
 	return Vector3(x, ground_y(x, z) + extra_y, z)
 
 
+## Suasana tiap pulau (hanya tampilan): warna & sudut matahari, kekuatan cahaya ambien, kabut.
+## Pulau 1 pagi cerah, 2 hutan sejuk berkabut hijau, 3 siang keemasan, 4 tropis terang,
+## 5 sore hangat, 6 senja dramatis (pulau naga).
+const MOODS := {
+	"pulau1": {"sun": "fff0d6", "energy": 0.95, "pitch": -0.85, "amb": 0.38, "fog": 0.0028, "fog_col": ""},
+	"pulau2": {"sun": "f4ffe0", "energy": 0.85, "pitch": -0.95, "amb": 0.42, "fog": 0.006, "fog_col": "cfe8d4"},
+	"pulau3": {"sun": "ffe4b0", "energy": 1.0, "pitch": -0.8, "amb": 0.36, "fog": 0.003, "fog_col": "fff0d0"},
+	"pulau4": {"sun": "ffffff", "energy": 1.0, "pitch": -1.05, "amb": 0.4, "fog": 0.0025, "fog_col": ""},
+	"pulau5": {"sun": "ffd2a0", "energy": 0.95, "pitch": -0.55, "amb": 0.36, "fog": 0.0035, "fog_col": "f6dcc4"},
+	"pulau6": {"sun": "ffb27a", "energy": 0.9, "pitch": -0.42, "amb": 0.34, "fog": 0.0045, "fog_col": "e8c8b8"},
+}
+
+
 func _environment() -> void:
 	# Paket visual 5.0: langit cerah bergradasi, cahaya ambien dari langit lebih tinggi (sisi bayangan tidak
 	# hitam), matahari hangat + cahaya isi kebiruan tanpa bayangan, kabut tipis warna cakrawala.
@@ -184,7 +197,8 @@ func _environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.38
+	var mood: Dictionary = MOODS.get(str(island.get("id", "")), MOODS.pulau1)
+	env.ambient_light_energy = float(mood.amb)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 1.0
@@ -195,17 +209,17 @@ func _environment() -> void:
 	env.adjustment_saturation = 1.14
 	if bool(profile.get("fog", false)):
 		env.fog_enabled = true
-		env.fog_light_color = hor.lerp(Color.WHITE, 0.2)
-		env.fog_density = 0.0028
+		env.fog_light_color = Color(str(mood.fog_col)) if str(mood.fog_col) != "" else hor.lerp(Color.WHITE, 0.2)
+		env.fog_density = float(mood.fog)
 		env.fog_sky_affect = 0.2
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation = Vector3(-0.85, 0.65, 0)
-	sun.light_energy = 0.95
-	sun.light_color = Color("fff0d6")
+	sun.rotation = Vector3(float(mood.pitch), 0.65, 0)
+	sun.light_energy = float(mood.energy)
+	sun.light_color = Color(str(mood.sun))
 	sun.shadow_enabled = bool(profile.get("shadow", false))
 	sun.shadow_opacity = 0.82
 	sun.shadow_blur = 1.5
@@ -908,7 +922,7 @@ func _blocked(x: float, z: float, forest_ok: bool) -> bool:
 ## Hutan lebat + pohon jarang di seluruh pulau. MultiMesh per jenis (hemat draw call), batang bertabrakan.
 func _forest() -> void:
 	var f: Dictionary = layout.get("forest", {})
-	var dense := clampi(int(int(profile.get("trees", 130)) * 0.6), 30, 130)
+	var dense := clampi(int(int(profile.get("trees", 130)) * 0.6 * float(layout.get("tree_density", 1.0))), 30, 200)
 	var sparse := clampi(int(int(profile.get("trees", 130)) * 0.3), 15, 70)
 	# [pohon hutan 1, pohon hutan 2, semak, bunga]; bisa diganti per pulau (mis. palem di pulau tropis).
 	var kinds: Array = layout.get("tree_kinds", ["vegetation/tree_round", "vegetation/tree_pine", "vegetation/bush", "vegetation/flowers"])

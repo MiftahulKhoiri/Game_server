@@ -694,6 +694,50 @@
 			"scale": 3.0,
 			"solid": false,
 			"v5": true
+		},
+		{
+			"asset": "kaykit/building_mine_yellow",
+			"pos": [
+				37.53,
+				46.58
+			],
+			"rot": 300,
+			"scale": 3.6,
+			"v5": true,
+			"radius": 2.6
+		},
+		{
+			"asset": "kaykit/rock_single_E",
+			"pos": [
+				16.26,
+				20.88
+			],
+			"rot": 300,
+			"scale": 4.0,
+			"v5": true,
+			"radius": 1.4
+		},
+		{
+			"asset": "kaykit/rock_single_A",
+			"pos": [
+				48.0,
+				7.21
+			],
+			"rot": 255,
+			"scale": 4.0,
+			"v5": true,
+			"radius": 1.4
+		},
+		{
+			"asset": "kaykit/flag_red",
+			"pos": [
+				-49.11,
+				-6.67
+			],
+			"rot": 15,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
 		}
 	],
 	"farm": {
@@ -978,5 +1022,6 @@
 			"color": "#5a4a48",
 			"glow": "#ff7a2a"
 		}
-	]
+	],
+	"tree_density": 1.15
 }

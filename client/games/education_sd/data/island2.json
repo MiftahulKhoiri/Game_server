@@ -694,6 +694,72 @@
 			"scale": 3.0,
 			"solid": false,
 			"v5": true
+		},
+		{
+			"asset": "kaykit/rock_single_C",
+			"pos": [
+				-25.06,
+				-0.87
+			],
+			"rot": 165,
+			"scale": 3.5,
+			"v5": true,
+			"radius": 1.2
+		},
+		{
+			"asset": "kaykit/rock_single_C",
+			"pos": [
+				34.73,
+				-9.18
+			],
+			"rot": 330,
+			"scale": 3.5,
+			"v5": true,
+			"radius": 1.2
+		},
+		{
+			"asset": "kaykit/rock_single_C",
+			"pos": [
+				43.59,
+				11.47
+			],
+			"rot": 180,
+			"scale": 3.5,
+			"v5": true,
+			"radius": 1.2
+		},
+		{
+			"asset": "kaykit/rock_single_C",
+			"pos": [
+				29.65,
+				-29.83
+			],
+			"rot": 300,
+			"scale": 3.5,
+			"v5": true,
+			"radius": 1.2
+		},
+		{
+			"asset": "kaykit/resource_lumber",
+			"pos": [
+				53.01,
+				-11.87
+			],
+			"rot": 30,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/resource_lumber",
+			"pos": [
+				56.83,
+				11.35
+			],
+			"rot": 15,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
 		}
 	],
 	"farm": {
@@ -965,5 +1031,6 @@
 		"roof": "#3f8f3f",
 		"flag": "#5a5a66"
 	},
-	"shapes": []
+	"shapes": [],
+	"tree_density": 1.5
 }

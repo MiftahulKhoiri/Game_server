@@ -693,6 +693,61 @@
 			"scale": 3.0,
 			"solid": false,
 			"v5": true
+		},
+		{
+			"asset": "kaykit/building_blacksmith_yellow",
+			"pos": [
+				-19.83,
+				32.12
+			],
+			"rot": 255,
+			"scale": 3.6,
+			"v5": true,
+			"radius": 2.6
+		},
+		{
+			"asset": "kaykit/building_tower_A_yellow",
+			"pos": [
+				-43.69,
+				28.96
+			],
+			"rot": 285,
+			"scale": 3.6,
+			"v5": true,
+			"radius": 2.4
+		},
+		{
+			"asset": "kaykit/flag_red",
+			"pos": [
+				-33.41,
+				22.88
+			],
+			"rot": 345,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/flag_red",
+			"pos": [
+				45.02,
+				32.36
+			],
+			"rot": 150,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/flag_blue",
+			"pos": [
+				56.03,
+				-11.4
+			],
+			"rot": 105,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
 		}
 	],
 	"farm": {
@@ -976,5 +1031,6 @@
 			"h": 6,
 			"color": "#8a8174"
 		}
-	]
+	],
+	"tree_density": 1.0
 }

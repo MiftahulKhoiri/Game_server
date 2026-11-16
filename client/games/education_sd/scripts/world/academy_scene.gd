@@ -10,6 +10,7 @@ signal place_changed(id: String)
 const Player := preload("res://games/education_sd/scripts/world/w3d_player.gd")
 const Rig := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.gd")
+const Nature := preload("res://games/education_sd/scripts/world/w3d_nature.gd")
 const Learning := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
 
 const HX := 18.0  # setengah lebar aula (x)
@@ -75,15 +76,39 @@ func _environment() -> void:
 	env.background_color = Color("2b2440")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("fff3e0")
-	env.ambient_light_energy = 0.45
+	env.ambient_light_energy = 0.34
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_white = 6.0
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.08
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
+	# Paket visual 5.0: lampu gantung hangat (OmniLight tanpa bayangan) supaya aula terasa hidup.
+	for x in [-9.0, 9.0]:
+		for z in [-7.0, 7.0]:
+			var lamp := OmniLight3D.new()
+			lamp.position = Vector3(x, WALL_H - 1.0, z)
+			lamp.light_color = Color("ffd9a0")
+			lamp.light_energy = 0.9
+			lamp.omni_range = 11.0
+			lamp.shadow_enabled = false
+			add_child(lamp)
+			var bulb := MeshInstance3D.new()
+			bulb.mesh = Rig.sphere(0.32)
+			var bm := StandardMaterial3D.new()
+			bm.albedo_color = Color("fff1c8")
+			bm.emission_enabled = true
+			bm.emission = Color("ffd28a")
+			bm.emission_energy_multiplier = 1.4
+			bulb.material_override = bm
+			bulb.position = lamp.position + Vector3(0, 0.2, 0)
+			bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(bulb)
+			_mesh(Rig.cyl(0.02, 0.02, 0.8, 4), Color("4a3a2a"), lamp.position + Vector3(0, 0.82, 0))
 	var sun := DirectionalLight3D.new()
 	sun.rotation = Vector3(-1.1, 0.4, 0)
-	sun.light_energy = 0.55
+	sun.light_energy = 0.35
 	sun.shadow_enabled = bool(profile.get("shadow", false))
 	add_child(sun)
 
@@ -131,14 +156,22 @@ func _label(text: String, size: int, col: Color, pos: Vector3, rot_y := 0.0, bil
 func _hall() -> void:
 	var floor := _box_solid(Vector3(HX * 2.0, 0.4, HZ * 2.0), Vector3(0, -0.2, 0), Color("a8743f"))
 	floor.name = "Floor"
-	# Garis papan lantai.
-	for i in range(-int(HX), int(HX) + 1, 2):
-		_mesh(Rig.box(Vector3(0.05, 0.01, HZ * 2.0)), Color("a87a48"), Vector3(i, 0.005, 0))
+	floor.material_override = Nature.smat("planks")  # lantai papan kayu (shader, satu draw call)
+	# Karpet di tengah aula + lis emas.
+	_mesh(Rig.box(Vector3(3.2, 0.02, HZ * 2.0 - 3.0)), Color("8e3430"), Vector3(0, 0.01, 0.5))
+	for sx in [-1.0, 1.0]:
+		_mesh(Rig.box(Vector3(0.14, 0.022, HZ * 2.0 - 3.0)), Color("e0b040"), Vector3(sx * 1.45, 0.012, 0.5))
 	var wall_col := Color("e8c99a")
 	_box_solid(Vector3(HX * 2.0, WALL_H, 0.5), Vector3(0, WALL_H / 2.0, -HZ - 0.25), wall_col).name = "WallN"
 	_box_solid(Vector3(0.5, WALL_H, HZ * 2.0), Vector3(-HX - 0.25, WALL_H / 2.0, 0), wall_col)
 	_box_solid(Vector3(0.5, WALL_H, HZ * 2.0), Vector3(HX + 0.25, WALL_H / 2.0, 0), wall_col)
 	_box_solid(Vector3(HX * 2.0, WALL_H, 0.5), Vector3(0, WALL_H / 2.0, HZ + 0.25), wall_col)
+	# Panel kayu bagian bawah dinding (wainscot).
+	var wain := Color("9a6a3e")
+	_mesh(Rig.box(Vector3(HX * 2.0, 1.1, 0.08)), wain, Vector3(0, 0.55, -HZ + 0.04))
+	_mesh(Rig.box(Vector3(HX * 2.0, 1.1, 0.08)), wain, Vector3(0, 0.55, HZ - 0.04))
+	_mesh(Rig.box(Vector3(0.08, 1.1, HZ * 2.0)), wain, Vector3(-HX + 0.04, 0.55, 0))
+	_mesh(Rig.box(Vector3(0.08, 1.1, HZ * 2.0)), wain, Vector3(HX - 0.04, 0.55, 0))
 	var ceil := _mesh(Rig.box(Vector3(HX * 2.0 + 1.0, 0.3, HZ * 2.0 + 1.0)), Color("fdf6e3"), Vector3(0, WALL_H + 0.15, 0))
 	ceil.name = "Ceiling"
 	ceil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
