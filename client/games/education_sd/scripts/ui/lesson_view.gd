@@ -12,6 +12,7 @@ const Learning := preload("res://games/education_sd/scripts/engine/learning_engi
 
 signal closed
 signal changed  # progres berubah: simpan
+signal session_done(result: Dictionary)  # satu latihan selesai (untuk misi)
 
 var learning  # LearningEngine
 var p: Dictionary
@@ -197,6 +198,7 @@ func _confirm_stop() -> void:
 func _finish() -> void:
 	result = Learning.finish(p, session, str(room.subject))
 	changed.emit()
+	session_done.emit(result)
 	_sfx("bintang")
 	_clear("hasil")
 	_head("Latihan selesai!", "Daftar materi", show_class)

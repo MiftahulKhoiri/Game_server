@@ -14,6 +14,8 @@ const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.g
 const LearningEngine := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
 const AcademyScene := preload("res://games/education_sd/scripts/world/academy_scene.gd")
 const LessonView := preload("res://games/education_sd/scripts/ui/lesson_view.gd")
+const QuestEngine := preload("res://games/education_sd/scripts/engine/quest_engine.gd")
+const ChallengeView := preload("res://games/education_sd/scripts/ui/challenge_view.gd")
 const TitleScreen := preload("res://games/education_sd/scripts/ui/title_screen.gd")
 const ProfileScreen := preload("res://games/education_sd/scripts/ui/profile_screen.gd")
 const WorldMap := preload("res://games/education_sd/scripts/ui/world_map.gd")
@@ -23,7 +25,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.2.0"
+const VERSION := "3.3.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -35,6 +37,8 @@ var npc := NpcEngine.new()  # isi pulau yang sedang dikunjungi (penduduk, tempat
 var learning := LearningEngine.new()
 var lesson: Control  # ruang kelas yang sedang terbuka di akademi (null bila tidak ada)
 var rng := RandomNumberGenerator.new()
+var quest := QuestEngine.new()  # misi pulau yang sedang dikunjungi
+var _obj_t := 0.0
 var p: Dictionary = {}
 var audio: Node
 var screen := ""
@@ -483,13 +487,20 @@ func show_island(id: String, at := "") -> void:
 			layout = npc.layout
 		else:
 			trail("tata letak pulau gagal: " + ", ".join(npc.errors.slice(0, 3)))
+	quest = QuestEngine.new()
+	if str(isl.get("quests", "")) != "" and not quest.load_quests(str(isl.quests)):
+		trail("misi pulau gagal: " + ", ".join(quest.errors.slice(0, 3)))
+	QuestEngine._ensure(p)
 	_make_3d("island", IslandScene.new(), {"island": isl, "layout": layout, "npc_engine": npc if not layout.is_empty() else null,
-		"gfx": str(p.settings.gfx), "hero": hero_look()}, "Pulau %d · %s" % [int(isl.number), str(isl.name)],
+		"gfx": str(p.settings.gfx), "hero": hero_look(), "flags": p.world.flags, "pickups": quest.pickups(p, true),
+		"quest_spots": quest.doc.get("spots", [])}, "Pulau %d · %s" % [int(isl.number), str(isl.name)],
 		Color.from_string(str(isl.color), UI.PRIMARY))
 	world.interacted.connect(_on_island_interact)
 	world.place_changed.connect(_on_place)
 	hud.missions_pressed.connect(show_explore)
 	hud.set_hint("Selamat datang di %s! Jelajahi pulau dan sapa penduduknya. Perahu di dermaga membawamu kembali ke peta." % str(isl.name))
+	_show_notes(quest.start_auto(p, _qctx()))
+	_refresh_quest_ui()
 	if at == "academy" and layout.has("academy_door"):
 		var d: Array = layout.academy_door
 		world.player.place(Vector3(float(d[0]), world.ground_y(float(d[0]), float(d[1]) + 2.0) + 0.3, float(d[1]) + 2.0), PI)
@@ -502,8 +513,14 @@ func show_bag() -> void:
 		return
 	var lv := level()
 	var t: Dictionary = p.learning.totals
-	hud.show_dialog("Tas Petualang", "Level %d  (XP %d / %d)\nKoin: %d\nJawaban benar: %d dari %d" % [lv, int(p.rpg.xp),
-		SaveEngine.xp_for(lv + 1), int(p.rpg.coins), int(t.correct), int(t.answered)])
+	var lines: Array = ["Level %d  (XP %d / %d)" % [lv, int(p.rpg.xp), SaveEngine.xp_for(lv + 1)], "Koin: %d" % int(p.rpg.coins),
+		"Jawaban benar: %d dari %d" % [int(t.correct), int(t.answered)], "", "BARANG"]
+	var its: Dictionary = p.rpg.get("items", {})
+	if its.is_empty():
+		lines.append("  (tas masih kosong)")
+	for it in its:
+		lines.append("  %s ×%d" % [str(quest.items.get(it, {}).get("name", it)), int(its[it])])
+	hud.show_list("Tas Petualang", lines)
 
 
 # --- Akademi (Tahap 3) ------------------------------------------------------------------------------------------
@@ -547,6 +564,11 @@ func open_class(room_id: String) -> void:
 	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), room_id)
 	lesson.closed.connect(close_class)
 	lesson.changed.connect(save)
+	lesson.session_done.connect(func(_r: Dictionary) -> void:
+		for n in quest.event(p, "learn", "", _qctx()):
+			if str(n.kind) in ["step", "done", "start"]:
+				toast(str(n.text))
+		save())
 	trail("kelas " + room_id)
 
 
@@ -595,40 +617,222 @@ func _on_island_interact(kind: String, id: String) -> void:
 			talk(id)
 		"academy":
 			enter_academy()
-		"gate", "boulder":
-			var sg: Dictionary = npc.layout.get("signs", {}).get(kind, {})
-			hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
+		"pickup":
+			_sfx("bintang")
+			_show_notes(quest.event(p, "pickup", id, _qctx()))
+		"clue", "boulder":
+			var sa: Dictionary = quest.step_at(p, "", id if kind == "clue" else "boulder")
+			if not sa.is_empty():
+				open_challenge(str(sa.step.challenge))
+			elif kind == "clue":
+				hud.show_dialog("Batu Bertulis", "Huruf-huruf di batu tua ini bersinar samar. Sepertinya menyimpan petunjuk.")
+			else:
+				var sg: Dictionary = npc.layout.get("signs", {}).get("boulder", {})
+				hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
+		"gate":
+			if world.gate_open():
+				hud.show_dialog("Gerbang Benteng", "Gerbang sudah terbuka. Raja Goblin Kecil menunggu di dalam.")
+				return
+			var sg2: Dictionary = quest.step_at(p, "", "gate")
+			if not sg2.is_empty() and quest.count_item(p, str(sg2.step.get("item", ""))) > 0:
+				var notes := quest.event(p, "use", "gate", _qctx())
+				world.open_gate()
+				_sfx("buka")
+				_show_notes(notes)
+			elif quest.count_item(p, "kunci_benteng") > 0:
+				hud.show_dialog("Gerbang Benteng", "Kuncinya terlihat cocok... Tanyakan dulu pada Kak Laras, penjaga jembatan.")
+			else:
+				var sg: Dictionary = npc.layout.get("signs", {}).get("gate", {})
+				hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
+		"boss":
+			hud.show_dialog("Raja Goblin Kecil", "\"Hahaha! Jadi kamu petualang yang menolong warga? Latih dulu jurus ilmumu di akademi... lalu kembalilah kalau berani!\"")
 
 
 ## Percakapan dengan penduduk: satu kalimat per halaman, tombol Lanjut sampai habis.
+## Urusan misi didahulukan: langkah "bicara/antar" diselesaikan, tantangan dibuka, atau misi baru ditawarkan.
 func talk(id: String) -> void:
-	var d: Dictionary = npc.talk(p, str(p.world.island), id)
+	var iid := str(p.world.island)
+	var first := not (p.world.met as Dictionary).has(iid + "/" + id)
+	var d: Dictionary = npc.talk(p, iid, id)
 	if d.is_empty():
 		return
+	var title := "%s · %s" % [str(d.name), str(d.role)]
+	var pages: Array = (d.lines as Array).duplicate() if first else []
+	var meet_notes: Array = quest.event(p, "world", "", _qctx())
 	save()
-	_talk_page(id, d, 0)
+	var sa: Dictionary = quest.step_at(p, id)
+	if not sa.is_empty() and str(sa.step.type) == "talk":
+		var notes: Array = quest.event(p, "talk", id, _qctx())
+		if notes.is_empty():
+			var need: Array = []
+			for it in (sa.step.get("take", {}) as Dictionary):
+				need.append(str(quest.items.get(it, {}).get("name", it)))
+			pages.append("Kamu belum membawa %s." % ", ".join(need))
+			_pages(id, title, pages, [], meet_notes)
+		else:
+			_pages(id, title, pages, [], meet_notes + notes)
+		return
+	if not sa.is_empty() and str(sa.step.type) == "challenge":
+		var ch: Dictionary = quest.challenges.get(str(sa.step.challenge), {})
+		pages.append(str(ch.get("story", "")))
+		_pages(id, title, pages, [["Mulai tantangan", open_challenge.bind(str(sa.step.challenge)), UI.GOOD]], meet_notes)
+		return
+	var offer: Dictionary = quest.offer_for(p, id)
+	if not offer.is_empty():
+		for l in offer.get("offer", []):
+			pages.append(QuestEngine.fill(str(l), p))
+		_pages(id, title, pages, [["Terima misi", accept_quest.bind(str(offer.id)), UI.GOOD]], meet_notes)
+		return
+	if pages.is_empty():
+		pages = d.lines
+	_pages(id, title, pages, [], meet_notes)
 
 
-func _talk_page(id: String, d: Dictionary, i: int) -> void:
+func accept_quest(qid: String) -> void:
+	_sfx("buka")
+	_show_notes(quest.start(p, qid, _qctx()))
+
+
+## Halaman dialog berurutan. final: tombol di halaman terakhir. notes: catatan misi ditampilkan sesudahnya.
+func _pages(id: String, title: String, pages: Array, final: Array, notes: Array = [], i := 0) -> void:
 	if hud == null or world == null:
 		return
-	world.hold_talk(id)
-	var lines: Array = d.lines
-	var title := "%s · %s" % [str(d.name), str(d.role)]
-	if i < lines.size() - 1:
-		hud.show_dialog(title, str(lines[i]), [["Lanjut", _talk_page.bind(id, d, i + 1), UI.PRIMARY]])
+	if pages.is_empty():
+		_show_notes(notes)
+		return
+	if world.has_method("hold_talk"):
+		world.hold_talk(id)
+	if i < pages.size() - 1:
+		hud.show_dialog(title, str(pages[i]), [["Lanjut", _pages.bind(id, title, pages, final, notes, i + 1), UI.PRIMARY]])
+	elif not notes.is_empty() and final.is_empty():
+		hud.show_dialog(title, str(pages[i]), [["Lanjut", _show_notes.bind(notes), UI.PRIMARY]])
 	else:
-		hud.show_dialog(title, str(lines[i]))
+		hud.show_dialog(title, str(pages[i]), final)
+		if not notes.is_empty():
+			_apply_notes_quiet(notes)
+
+
+func _qctx() -> Dictionary:
+	var iid := str(p.world.island)
+	return {"found": npc.found_count(p, iid), "places": npc.places.size(), "met": npc.met_count(p, iid), "npcs": npc.npcs.size()}
+
+
+## Tampilkan catatan misi: barang & misi baru sebagai pesan singkat; ucapan langkah & hadiah sebagai dialog.
+func _show_notes(notes: Array) -> void:
+	var say: Array = []
+	var title := ""
+	for n in notes:
+		match str(n.kind):
+			"item", "start":
+				toast(str(n.text))
+			"step":
+				for l in n.get("say", []):
+					say.append(str(l))
+				if (n.get("say", []) as Array).is_empty():
+					toast(str(n.text))
+				title = str(n.title)
+			"done":
+				_sfx("bintang")
+				say.append("")
+				say.append("★ %s  Hadiah: %s" % [str(n.text), str(n.reward)])
+				title = str(n.title)
+	_apply_notes_quiet(notes)
+	if not say.is_empty() and hud != null:
+		hud.show_dialog(title, "\n".join(say).strip_edges())
+
+
+## Akibat catatan pada dunia tanpa dialog: gua terbuka, barang baru muncul, tanda penduduk, tujuan.
+func _apply_notes_quiet(_notes: Array) -> void:
+	if world != null and world.has_method("open_cave"):
+		if bool(p.world.flags.get("gua_terbuka", false)) and world.get("_boulder_nodes") != null and not (world._boulder_nodes as Array).is_empty():
+			world.open_cave()
+		for pk in quest.pickups(p, true):
+			if not (world.pickups as Dictionary).has(str(pk.uid)):
+				world.add_pickup(str(pk.uid), str(pk.item), pk.pos)
+	save()
+	_refresh_quest_ui()
+
+
+func _refresh_quest_ui() -> void:
+	if world == null or hud == null or not world.has_method("set_marks"):
+		return
+	world.set_marks(quest.marks(p))
+	var o: Dictionary = quest.objective(p)
+	var place_name := str(npc.places.get(world.place, {}).get("name", "")) if world.get("place") != null else ""
+	var hint := ("Tempat: %s\n" % place_name if place_name != "" else "")
+	hud.set_hint(hint + ("Misi: %s — %s" % [str(o.title), str(o.text)] if not o.is_empty() else "Jelajahi pulau dan sapa penduduknya."))
+	hud.compass_target = objective_pos()
+
+
+## Posisi tujuan misi aktif di dunia (untuk panah kompas), atau null.
+func objective_pos():
+	var o: Dictionary = quest.objective(p)
+	if o.is_empty() or world == null or not world.has_method("set_marks"):
+		return null
+	var wh: Dictionary = o.get("where", {})
+	if wh.has("npc"):
+		var n: Node3D = world.npc_node(str(wh.npc))
+		return n.position if n != null else null
+	if wh.has("place") and npc.places.has(str(wh.place)):
+		var pp: Array = npc.places[str(wh.place)].pos
+		return Vector3(float(pp[0]), 0, float(pp[1]))
+	if wh.has("spot"):
+		var sid := str(wh.spot)
+		var kind := sid if sid in ["boulder", "gate"] else "clue"
+		var v: Vector3 = world.spot_pos(kind, "" if kind != "clue" else sid)
+		return v if v != Vector3.ZERO else null
+	if wh.has("pos"):
+		return Vector3(float(wh.pos[0]), 0, float(wh.pos[1]))
+	return null
+
+
+func _process(delta: float) -> void:
+	if screen != "island" or hud == null:
+		return
+	_obj_t -= delta
+	if _obj_t <= 0.0:
+		_obj_t = 0.5
+		hud.compass_target = objective_pos()
+
+
+# --- Tantangan misi (teka-teki belajar) ----------------------------------------------------------------
+
+func open_challenge(cid: String) -> void:
+	if hud == null or world == null:
+		return
+	var def: Dictionary = quest.challenges.get(cid, {})
+	var topic: String = quest.challenge_topic(cid, data, grade())
+	if def.is_empty() or topic == "":
+		toast("Tantangan belum bisa dimulai.")
+		return
+	hud.close_dialog()
+	hud.visible = false
+	world.player.frozen = true
+	world.player.move_input = Vector2.ZERO
+	lesson = ChallengeView.new()
+	lesson.name = "Challenge"
+	_root.add_child(lesson)
+	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), cid, def, topic)
+	lesson.closed.connect(close_class)
+	lesson.changed.connect(save)
+	lesson.passed.connect(_on_challenge_passed)
+	trail("tantangan " + cid)
+
+
+func _on_challenge_passed(cid: String) -> void:
+	close_class()
+	_show_notes(quest.event(p, "challenge", cid, _qctx()))
 
 
 func _on_place(id: String) -> void:
 	if id == "" or hud == null:
 		return
 	var pl: Dictionary = npc.places.get(id, {})
-	hud.set_hint("Tempat: %s" % str(pl.get("name", "")))
 	if _discover(id):
 		toast("Tempat baru ditemukan: %s!" % str(pl.get("name", "")))
 		_sfx("bintang")
+		_show_notes(quest.event(p, "world", "", _qctx()))
+	_refresh_quest_ui()
 
 
 func _discover(id: String) -> bool:
@@ -643,6 +847,23 @@ func _discover(id: String) -> bool:
 func show_explore() -> void:
 	var iid := str(p.world.island)
 	var rows: Array = []
+	if not quest.quests.is_empty():
+		rows.append("MISI UTAMA (%d/%d selesai)" % [quest.done_count(p, "main"), quest.quests.filter(func(q): return str(q.kind) == "main").size()])
+		for kind in ["main", "side"]:
+			if kind == "side":
+				rows.append("")
+				rows.append("MISI SAMPINGAN")
+			for q in quest.quests:
+				if str(q.kind) != kind:
+					continue
+				var st: String = quest.state(p, str(q.id))
+				if st == "done":
+					rows.append("  ✓ " + str(q.title))
+				elif st == "active":
+					rows.append("  ▶ %s: %s" % [str(q.title), str(quest.step(p, str(q.id)).get("text", ""))])
+				elif quest.requires_met(p, q) and str(q.get("giver", "")) != "":
+					rows.append("  ! %s (tanya %s)" % [str(q.title), str(npc.npcs.get(str(q.giver), {}).get("name", q.giver))])
+		rows.append("")
 	if npc.places.is_empty():
 		rows.append("Pulau ini masih sepi. Jelajahi pantainya!")
 	else:

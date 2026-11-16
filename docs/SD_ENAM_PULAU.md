@@ -266,3 +266,41 @@ kelas anak → **materi singkat** (penjelasan + contoh) → **latihan interaktif
 
 - Materi Pendidikan Pancasila, Seni, PJOK belum ada di bank soal → ruangnya "Segera dibuka".
 - Materi perlu ditinjau guru dan dicocokkan dengan Capaian Pembelajaran Kurikulum Merdeka (Tahap 9).
+
+---
+
+## Tahap 4 — Sistem petualangan: misi Pulau 1 (paket 3.3.0, 16 Nov 2026)
+
+### Misi (data `data/quests1.json`, mesin `scripts/engine/quest_engine.gd`)
+
+| Misi | Jenis | Pemberi | Langkah | Hadiah |
+|---|---|---|---|---|
+| Petualang Baru | utama | Pak Lurah | selesaikan 1 latihan di akademi → lapor Pak Lurah | 30 koin, 40 XP, Lencana Petualang |
+| Bibit yang Hilang | utama | Pak Budi | kumpulkan 5 bibit di jalan ke hutan → **tantangan hitung** (matematika) | 40 koin, 60 XP, Sekop Kecil |
+| Keranjang Nenek Ijah | utama | Nenek Ijah | **teka-teki kata** di Batu Bertulis hutan → temukan keranjang → kembalikan | 40 koin, 60 XP, 3 Kue Manis |
+| Rahasia Gua Goblin | utama | Dodi (setelah 2 misi di atas) | **teka-teki alam** di batu besar → batu bergeser (area terkunci terbuka) → ambil Kunci Benteng | 50 koin, 80 XP |
+| Gerbang Benteng | utama | Kak Laras | pakai Kunci Benteng di gerbang → gerbang turun, Raja Goblin terlihat | 50 koin, 80 XP |
+| Kerang Pantai | sampingan | Pak Udin | kumpulkan 5 kerang di pantai → antar | 20 koin, baju hijau |
+| Ternak Bu Wati | sampingan | Bu Wati | tantangan hewan (IPAS) | 30 koin, Bunga Desa |
+| Penjelajah Dunia Pemula | sampingan, otomatis | — | temukan 8 tempat | 50 koin |
+| Sahabat Warga | sampingan, otomatis | — | kenal 8 penduduk | 30 koin |
+
+Sistem:
+- **Tantangan belajar** (`ui/challenge_view.gd`): cerita → 3 soal sesuai kelas anak (topik pertama dari daftar
+  `prefer` yang punya soal untuk kelas itu; mis. kelas 1 = berhitung, kelas 4 = penjumlahan) → lulus bila 2 benar.
+  Boleh petunjuk, mencoba lagi, menunda ("Nanti saja"); gagal = "Coba lagi" dengan soal lain, **tanpa hukuman**.
+  Jawaban ikut ke statistik belajar (penguasaan & adaptasi).
+- **Barang**: tersebar sebagai benda bercahaya, terpungut otomatis saat didekati, hanya muncul saat misinya aktif,
+  tidak bisa dipungut dua kali. Tas menampilkan barang.
+- **Area terkunci**: batu besar gua & gerbang benteng; status tersimpan (`world.flags`), tetap terbuka saat masuk ulang.
+- **Petunjuk arah**: tujuan misi tampil di layar ("Misi: … (2/5)"), **panah kompas** menunjuk tujuan, tanda **!**
+  (misi baru) dan **?** (urusan misi) di atas kepala penduduk.
+- Tombol **MISI** = jurnal: misi utama/sampingan (selesai, berjalan, tersedia) + catatan jelajah.
+- Pertarungan melawan Raja Goblin Kecil belum ada (Tahap 6): ia menantang pemain untuk kembali.
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **540 pemeriksaan LULUS** (+50): Quest Engine (urutan, pungutan sekali, tantangan sesuai kelas, otomatis, antar barang) dan **seluruh misi utama dimainkan** di dunia 3D: lencana → 5 bibit → tantangan hitung → batu bertulis (gagal lalu coba lagi) → keranjang → batu gua bergeser → kunci → gerbang terbuka → masuk benteng; kerang & baju hijau; jurnal; tas; masuk ulang mempertahankan gua & gerbang |
+| `make platform-test` | **LULUS** |

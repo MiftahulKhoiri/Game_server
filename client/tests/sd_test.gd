@@ -28,6 +28,7 @@ func _initialize() -> void:
 	await _v3_engine_tests()
 	await _v3_npc_tests()
 	await _v3_learning_tests()
+	await _v3_quest_tests()
 	await _v3_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
@@ -292,6 +293,7 @@ const SaveEngine := preload("res://games/education_sd/scripts/engine/save_engine
 const WorldEngine := preload("res://games/education_sd/scripts/engine/world_engine.gd")
 const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.gd")
 const LearningEngine := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
+const QuestEngine := preload("res://games/education_sd/scripts/engine/quest_engine.gd")
 const MODEL_DIR := "res://assets/models/"
 
 
@@ -458,6 +460,53 @@ func _v3_learning_tests() -> void:
 	_check(sm.size() == 4 and int(sm.matematika.stars) >= 3, "ringkasan rapor per ruang")
 
 
+func _v3_quest_tests() -> void:
+	print("== 3.x Quest Engine (data misi Pulau 1)")
+	var q := QuestEngine.new()
+	_check(q.load_quests("quests1.json"), "quests1.json termuat %s" % str(q.errors))
+	_check(q.quests.size() == 9 and q.quests.filter(func(x): return str(x.kind) == "main").size() == 5, "5 misi utama + 4 sampingan")
+	var n := NpcEngine.new()
+	n.load_layout("island1.json")
+	var giver_ok := true
+	for x in q.quests:
+		if str(x.get("giver", "")) != "" and not n.npcs.has(str(x.giver)):
+			giver_ok = false
+	_check(giver_ok, "setiap pemberi misi ada di pulau")
+	var d := _prof(1)
+	_check(q.offer_for(d, "pak_lurah").get("id", "") == "petualang_baru" and q.offer_for(d, "pak_budi").is_empty(), "misi berurutan: Pak Budi menunggu Petualang Baru")
+	q.start(d, "petualang_baru")
+	q.event(d, "talk", "pak_lurah")
+	_check(q.state(d, "petualang_baru") == "active", "belum belajar: bicara dengan Pak Lurah belum menyelesaikan misi")
+	q.event(d, "learn")
+	var notes := q.event(d, "talk", "pak_lurah")
+	_check(q.state(d, "petualang_baru") == "done" and notes.filter(func(x): return str(x.kind) == "done").size() == 1 and int(d.rpg.coins) == 30,
+		"belajar lalu lapor: misi selesai + hadiah")
+	q.start(d, "bibit_hilang")
+	_check(q.pickups(d, true).size() == 5, "5 bibit tampil saat misinya aktif")
+	var pks := q.pickups(d, true)
+	q.event(d, "pickup", str(pks[0].uid))
+	q.event(d, "pickup", str(pks[0].uid))
+	_check(q.count_item(d, "bibit") == 1 and q.pickups(d, true).size() == 4, "bibit yang sama tidak bisa dipungut dua kali")
+	for e in pks:
+		q.event(d, "pickup", str(e.uid))
+	_check(q.step(d, "bibit_hilang").get("type", "") == "challenge" and q.objective(d).text.contains("menghitung"), "terkumpul -> tujuan berikutnya")
+	var sd := SdData.new()
+	sd.load_data()
+	_check(q.challenge_topic("hitung_bibit", sd, 1) == "berhitung" and q.challenge_topic("hitung_bibit", sd, 4) == "penjumlahan"
+		and q.challenge_topic("batu_ajaib", sd, 4) == "tumbuhan", "topik tantangan mengikuti kelas anak")
+	q.event(d, "challenge", "hitung_bibit")
+	_check(q.state(d, "bibit_hilang") == "done" and q.count_item(d, "sekop") == 1, "tantangan lulus: misi selesai")
+	_check(q.marks(d).get("nenek_ijah", "") == "!", "tanda misi baru di Nenek Ijah")
+	q.event(d, "world", "", {"found": 8, "places": 8, "met": 1, "npcs": 8})
+	_check(q.state(d, "jelajah_pulau") == "done" and q.state(d, "kenal_warga") == "active", "misi jelajah otomatis selesai bila semua tempat sudah ditemukan")
+	q.event(d, "world", "", {"found": 8, "places": 8, "met": 8, "npcs": 8})
+	_check(q.state(d, "kenal_warga") == "done", "kenal semua warga: misi selesai")
+	q.start(d, "kerang_pantai")
+	for e in q.pickups(d, true).slice(0, 3):
+		q.event(d, "pickup", str(e.uid))
+	_check(q.event(d, "talk", "pak_udin").is_empty() and q.state(d, "kerang_pantai") == "active", "kerang belum cukup: belum bisa diantar")
+
+
 # --- 3.x Dunia Enam Pulau: aplikasi utuh --------------------------------------------------------------------------
 
 func _open() -> Node:
@@ -622,7 +671,8 @@ func _v3_app_tests() -> void:
 		nb.pressed.emit()
 		await _frames(1)
 		pages += 1
-	_check(pages == 3 and str(app.hud._dialog_text.text).contains("Akademi Tunas"), "dialog 3 halaman dengan tombol Lanjut")
+	_check(pages == 5 and str(app.hud._dialog_text.text).contains("Akademi Tunas") and _hud_btn(app, "Terima misi") != null,
+		"perkenalan 3 halaman + tawaran misi 2 halaman, tombol Terima misi")
 	_check(w.npcs[0].talking, "penduduk tetap menghadap pemain di antara halaman")
 	app.hud.close_dialog()
 	await _frames(30)
@@ -630,8 +680,13 @@ func _v3_app_tests() -> void:
 	_check(app.p.world.met.has("pulau1/pak_lurah"), "pertemuan dicatat")
 	app.hud.trigger_action()
 	await _frames(2)
-	_check(str(app.hud._dialog_text.text).contains("Akademi Tunas ada di bukit"), "bicara lagi: kalimat berbeda (tidak mengulang perkenalan)")
-	app.hud.close_dialog()
+	_check(str(app.hud._dialog_text.text).contains("maukah kamu membantu"), "bicara lagi: langsung tawaran misi (tidak mengulang perkenalan)")
+	await _next_pages(app)
+	_press_hud(app, "Terima misi")
+	await _frames(2)
+	_check(app.quest.state(app.p, "petualang_baru") == "active", "misi Petualang Baru diterima")
+	_check(str(app.hud._hint.text).contains("Misi: Petualang Baru"), "tujuan misi tampil di layar")
+	_check(app.hud.compass_target != null, "panah kompas menunjuk tujuan misi")
 	var moved := false
 	var e_d: Dictionary = {}
 	for e in w.npcs:
@@ -754,6 +809,125 @@ func _v3_app_tests() -> void:
 		"keluar akademi: kembali di depan pintu akademi")
 	w = app.world
 
+	print("== 3.x Misi Pulau 1: dimainkan dari awal sampai gerbang benteng")
+	var Q = app.quest
+	_check(Q.step(app.p, "petualang_baru").get("type", "") == "talk", "latihan di akademi menyelesaikan langkah belajar")
+	await _talk_to(app, "pak_lurah")
+	_check(Q.state(app.p, "petualang_baru") == "done" and Q.count_item(app.p, "lencana_petualang") == 1, "Petualang Baru selesai: Lencana Petualang")
+	_check(str(app.hud._dialog_text.text).contains("Hadiah"), "dialog hadiah misi tampil")
+	_check(w.npc_node("pak_budi").get_node_or_null("Mark") != null and str(w.npc_node("pak_budi").get_node("Mark").text) == "!",
+		"tanda ! di atas Pak Budi (misi baru)")
+	await _talk_to(app, "pak_budi")
+	_press_hud(app, "Terima misi")
+	await _frames(2)
+	_check(Q.state(app.p, "bibit_hilang") == "active" and w.pickups.size() == 5, "Bibit yang Hilang: 5 bibit muncul di dunia")
+	_check(app.objective_pos() != null and absf(app.objective_pos().z + 34.0) < 1.0, "kompas menunjuk jalan ke Hutan Kecil")
+	await _collect_all(app)
+	await _frames(2)
+	_check(Q.count_item(app.p, "bibit") == 5 and Q.step(app.p, "bibit_hilang").get("type", "") == "challenge", "5 bibit terkumpul -> langkah menghitung")
+	await _talk_to(app, "pak_budi")
+	_check(_hud_btn(app, "Mulai tantangan") != null, "Pak Budi menawarkan tantangan menghitung")
+	_press_hud(app, "Mulai tantangan")
+	await _frames(2)
+	_check(app.lesson != null and not app.hud.visible, "tantangan terbuka di atas dunia")
+	var tq := int(app.p.learning.totals.answered)
+	_check(await _do_challenge(app), "tantangan lulus (semua benar)")
+	_check(int(app.p.learning.totals.answered) == tq + 3, "jawaban tantangan ikut tercatat di statistik belajar")
+	_check(Q.state(app.p, "bibit_hilang") == "done" and Q.count_item(app.p, "sekop") == 1 and app.hud.visible, "Bibit yang Hilang selesai: Sekop Kecil")
+	await _talk_to(app, "nenek_ijah")
+	_press_hud(app, "Terima misi")
+	await _frames(2)
+	await _go_spot(app, "clue", "clue_hutan")
+	_check(app.lesson != null, "Batu Bertulis membuka tantangan kata")
+	app.go_back()
+	await _frames(2)
+	_check(app.lesson == null and Q.step(app.p, "keranjang_nenek").get("type", "") == "challenge", "tantangan boleh ditunda (Nanti saja)")
+	await _go_spot(app, "clue", "clue_hutan")
+	var cv = app.lesson
+	_press(cv, "Start")
+	await _frames(1)
+	var g2 := 0
+	while cv.phase == "soal" and g2 < 10:
+		g2 += 1
+		var qv3 = cv.current_question_view()
+		_answer(qv3, false)
+		await _frames(1)
+		if cv.phase == "soal" and cv.current_question_view() == qv3:
+			qv3._emit_finish()
+		await _frames(1)
+	var failed_ok: bool = cv.phase == "hasil"
+	_check(failed_ok and (_btn(cv, "Retry") != null or cv.is_passed()), "gagal tantangan: boleh coba lagi tanpa hukuman")
+	if _btn(cv, "Retry") != null:
+		_press(cv, "Retry")
+		await _frames(1)
+		var g3 := 0
+		while cv.phase == "soal" and g3 < 10:
+			g3 += 1
+			var qv4 = cv.current_question_view()
+			_answer(qv4, true)
+			await _frames(1)
+			if cv.phase == "soal" and cv.current_question_view() == qv4:
+				qv4._emit_finish()
+			await _frames(1)
+	_press(cv, "Continue")
+	await _frames(2)
+	_check(Q.step(app.p, "keranjang_nenek").get("item", "") == "keranjang" and w.pickups.size() == 1, "teka-teki terpecahkan -> keranjang muncul di hutan")
+	await _collect_all(app)
+	await _talk_to(app, "nenek_ijah")
+	_check(Q.state(app.p, "keranjang_nenek") == "done" and Q.count_item(app.p, "keranjang") == 0 and Q.count_item(app.p, "kue") == 3,
+		"keranjang dikembalikan, hadiah 3 Kue Manis")
+	await _talk_to(app, "dodi")
+	_press_hud(app, "Terima misi")
+	await _frames(2)
+	_check(Q.state(app.p, "pintu_gua") == "active", "Rahasia Gua Goblin dimulai (setelah dua misi selesai)")
+	var bz: Vector3 = w.spot_pos("boulder")
+	await _go_spot(app, "boulder")
+	_check(await _do_challenge(app), "teka-teki batu besar lulus")
+	await _frames(3)
+	_check(bool(app.p.world.flags.get("gua_terbuka", false)) and w.find_child("Boulder", true, false) == null and w.find_child("BoulderMoved", true, false) != null,
+		"batu besar bergeser: pintu gua terbuka")
+	_check(w.pickups.size() == 1, "harta goblin muncul di mulut gua")
+	await _collect_all(app)
+	_check(Q.state(app.p, "pintu_gua") == "done" and Q.count_item(app.p, "kunci_benteng") == 1, "Kunci Benteng ditemukan")
+	await _go_spot(app, "gate")
+	_check(not w.gate_open() and str(app.hud._dialog_text.text).contains("Kak Laras"), "gerbang: tanya Kak Laras dulu")
+	await _talk_to(app, "kak_laras")
+	_press_hud(app, "Terima misi")
+	await _frames(2)
+	await _go_spot(app, "gate")
+	await _frames(2)
+	_check(w.gate_open() and bool(app.p.world.flags.get("gerbang_terbuka", false)) and Q.state(app.p, "gerbang_benteng") == "done",
+		"kunci dipakai: gerbang benteng terbuka")
+	_check(Q.count_item(app.p, "kunci_benteng") == 0 and Q.done_count(app.p, "main") == 5, "5 misi utama selesai")
+	app.hud.close_dialog()
+	var fz: float = w.layout.fort.pos[1] + w.layout.fort.half
+	w.player.place(Vector3(0, 0.3, fz + 3.0), 0.0)
+	w.player.move_input = Vector2(0, 1)
+	await _frames(80)
+	w.player.move_input = Vector2.ZERO
+	_check(w.player.global_position.z < fz - 1.0, "masuk benteng lewat gerbang yang terbuka")
+	_check(Q.state(app.p, "jelajah_pulau") != "" and Q.state(app.p, "kenal_warga") != "", "misi jelajah & kenalan berjalan otomatis (%s, %s)" % [Q.state(app.p, "jelajah_pulau"), Q.state(app.p, "kenal_warga")])
+	await _talk_to(app, "pak_udin")
+	_press_hud(app, "Terima misi")
+	await _frames(2)
+	_check(w.pickups.size() == 5, "Kerang Pantai: 5 kerang di pantai")
+	await _collect_all(app)
+	await _talk_to(app, "pak_udin")
+	_check(Q.state(app.p, "kerang_pantai") == "done" and (app.p.rpg.owned as Array).has("warna_hijau"), "kerang diantar: baju hijau terbuka")
+	app.show_explore()
+	await _frames(1)
+	_check(str(app.hud._dialog_text.text).contains("MISI UTAMA (5/5") and str(app.hud._dialog_text.text).contains("✓ Kerang Pantai"), "jurnal misi")
+	app.hud.close_dialog()
+	app.show_bag()
+	await _frames(1)
+	_check(str(app.hud._dialog_text.text).contains("Kue Manis ×3"), "Tas berisi barang hadiah")
+	app.hud.close_dialog()
+	app.save()
+	app.show_island("pulau1")
+	await _frames(3)
+	w = app.world
+	_check(w.find_child("Boulder", true, false) == null and w.gate_open() and w.pickups.is_empty(), "masuk ulang: gua & gerbang tetap terbuka, barang tidak muncul lagi")
+
 	w.player.place(w.spot_pos("dock") + Vector3(0, 0.2, -0.8), 0.0)
 	await _frames(3)
 	_check(w.focus_kind() == "dock", "dekat perahu: tombol AKSI menyala")
@@ -819,3 +993,80 @@ func _v3_app_tests() -> void:
 	_check(app.screen == "title" and app.modal_open(), "pemain lama disambut pesan Petualangan Baru")
 	_check(int(SaveManager.load_progress("education_sd", 3).get("schema_version", 0)) == 3, "berkas save ditulis ulang dalam skema 3")
 	_clear_save()
+
+
+func _hud_btn(app: Node, text: String) -> Button:
+	for b in app.hud.find_children("*", "Button", true, false):
+		if (b as Button).text == text and b.is_visible_in_tree() and not b.is_queued_for_deletion():
+			return b
+	return null
+
+
+func _press_hud(app: Node, text: String) -> bool:
+	var b := _hud_btn(app, text)
+	if b == null:
+		return false
+	SdUI.guard_until_ms = 0
+	b.pressed.emit()
+	return true
+
+
+func _next_pages(app: Node) -> void:
+	for i in 12:
+		if not _press_hud(app, "Lanjut"):
+			return
+		await _frames(1)
+
+
+## Dekati penduduk lalu tekan AKSI; lewati halaman Lanjut.
+func _talk_to(app: Node, id: String) -> void:
+	var n: Node3D = app.world.npc_node(id)
+	app.hud.close_dialog()
+	app.world.player.place(n.position + Vector3(1.0, 0.3, 0.3), 0.0)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(2)
+	await _next_pages(app)
+
+
+func _go_spot(app: Node, kind: String, id := "") -> void:
+	app.hud.close_dialog()
+	var sp: Vector3 = app.world.spot_pos(kind, id)
+	app.world.player.place(sp + Vector3(0, app.world.ground_y(sp.x, sp.z) + 0.3, 0), 0.0)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(2)
+	await _next_pages(app)
+
+
+## Selesaikan tantangan misi yang sedang terbuka (semua benar).
+func _do_challenge(app: Node) -> bool:
+	var cv = app.lesson
+	if cv == null or not cv.has_method("is_passed"):
+		return false
+	_press(cv, "Start")
+	await _frames(1)
+	var guard := 0
+	while cv.phase == "soal" and guard < 10:
+		guard += 1
+		var qv = cv.current_question_view()
+		_answer(qv, true)
+		await _frames(1)
+		if cv.phase == "soal" and cv.current_question_view() == qv:
+			qv._emit_finish()
+		await _frames(1)
+	var ok: bool = cv.phase == "hasil" and cv.is_passed()
+	_press(cv, "Continue")
+	await _frames(2)
+	return ok
+
+
+func _collect_all(app: Node) -> int:
+	var n := 0
+	for uid in app.world.pickups.keys():
+		var pn: Node3D = app.world.pickups[uid]
+		app.world.player.place(Vector3(pn.position.x, app.world.ground_y(pn.position.x, pn.position.z) + 0.3, pn.position.z), 0.0)
+		await _frames(3)
+		n += 1
+	app.hud.close_dialog()
+	return n

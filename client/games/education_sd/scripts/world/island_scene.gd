@@ -39,6 +39,12 @@ var _talk_release := -1.0
 var _place_t := 0.0
 var _rng := RandomNumberGenerator.new()
 var _river: Dictionary = {}
+var flags: Dictionary = {}
+var pickups: Dictionary = {}  # uid -> Node3D
+const PICK_RANGE := 1.5
+var _gate_body: StaticBody3D
+var _gate_mesh: MeshInstance3D
+var _boulder_nodes: Array = []
 
 const DOCK_HALF := 1.6
 
@@ -54,6 +60,7 @@ func build(c: Dictionary) -> void:
 	radius = float(layout.get("radius", 36.0))
 	hills = layout.get("hills", [])
 	_river = layout.get("river", {})
+	flags = c.get("flags", {})
 	dock_z0 = radius + 3.0
 	dock_z1 = radius + 14.0
 	_environment()
@@ -74,6 +81,10 @@ func build(c: Dictionary) -> void:
 		_academy_door()
 		_forest()
 		_npcs()
+		for qs in c.get("quest_spots", []):
+			_clue(qs)
+		for pk in c.get("pickups", []):
+			add_pickup(str(pk.uid), str(pk.item), pk.pos)
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
@@ -464,7 +475,8 @@ func _fort() -> void:
 			_static_cyl(1.9, wh + 2.2, tp + Vector3(0, (wh + 2.2) / 2.0, 0))
 	var gate := _mesh(Rig.box(Vector3(gh * 2.0, wh - 0.4, 0.5)), C_WOOD.darkened(0.15), c + Vector3(0, (wh - 0.4) / 2.0, hf), 0.9, root)
 	gate.name = "Gate"
-	_static_box(Vector3(gh * 2.0, wh, 0.6), c + Vector3(0, wh / 2.0, hf))
+	_gate_mesh = gate
+	_gate_body = _static_box(Vector3(gh * 2.0, wh, 0.6), c + Vector3(0, wh / 2.0, hf))
 	for k in [-1.0, 1.0]:
 		_mesh(Rig.box(Vector3(0.15, wh - 0.6, 0.6)), Color("5a5a66"), c + Vector3(k * gh * 0.5, (wh - 0.4) / 2.0, hf + 0.05), 0.5, root)
 	var flag := _mesh(Rig.box(Vector3(1.4, 0.9, 0.05)), Color("6b8f2a"), c + Vector3(0, wh + 1.6, hf), 0.9, root)
@@ -478,6 +490,9 @@ func _fort() -> void:
 		var boss := _figure(str(b.model), 1.7 * float(b.get("scale", 1.0)), bp + Vector3(0, 0.8, 0), 0.0, root)
 		boss.name = "Boss"
 		_label3d(str(b.name), 56, Color("ff8a6a"), Vector3(0, 3.2, 0), boss)
+		spots.append({"pos": bp + Vector3(0, 0, 2.2), "kind": "boss", "id": str(b.get("model", "boss")), "text": "AKSI: hadapi " + str(b.name)})
+	if bool(flags.get("gerbang_terbuka", false)):
+		open_gate(false)
 	for g in layout.get("guards", []):
 		var gn := _figure(str(g.model), 1.15, _v(g.pos), 0.0, root)
 		gn.name = "Guard"
@@ -504,6 +519,9 @@ func _boulder() -> void:
 	if b.is_empty():
 		return
 	var p := _v(b.pos)
+	if bool(flags.get("gua_terbuka", false)):
+		_rubble(p)
+		return
 	var mesh = IslandWorld.env_mesh("rocks/rock_a")
 	var mi := MeshInstance3D.new()
 	mi.name = "Boulder"
@@ -513,9 +531,149 @@ func _boulder() -> void:
 	mi.scale = Vector3.ONE * float(b.get("scale", 2.5))
 	mi.position = p
 	add_child(mi)
-	_static_cyl(1.0 * float(b.get("scale", 2.5)), 3.0, p + Vector3(0, 1.5, 0))
+	var body := _static_cyl(1.0 * float(b.get("scale", 2.5)), 3.0, p + Vector3(0, 1.5, 0))
+	_boulder_nodes = [mi, body]
 	var to_center := Vector3(-p.x, 0, -p.z).normalized()
 	spots.append({"pos": p + to_center * (1.2 * float(b.get("scale", 2.5))), "kind": "boulder", "id": "gua", "text": "AKSI: periksa batu besar"})
+
+
+## Batu besar menggelinding ke samping: pintu gua terbuka (dipanggil saat teka-teki batu terpecahkan).
+func open_cave() -> void:
+	flags["gua_terbuka"] = true
+	var b: Dictionary = layout.get("boulder", {})
+	for n in _boulder_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	_boulder_nodes.clear()
+	for i in range(spots.size() - 1, -1, -1):
+		if str(spots[i].kind) == "boulder":
+			spots.remove_at(i)
+	_focus = -1
+	if not b.is_empty():
+		_rubble(_v(b.pos))
+
+
+func _rubble(p: Vector3) -> void:
+	var to_center := Vector3(-p.x, 0, -p.z).normalized()
+	var side := to_center.cross(Vector3.UP).normalized()
+	var mesh = IslandWorld.env_mesh("rocks/rock_a")
+	var mi := MeshInstance3D.new()
+	mi.name = "BoulderMoved"
+	mi.mesh = mesh if mesh != null else Rig.sphere(1.0)
+	mi.scale = Vector3.ONE * 2.0
+	mi.position = p + side * 4.0
+	add_child(mi)
+	_static_cyl(2.0, 3.0, mi.position + Vector3(0, 1.5, 0))
+	var glow := _mesh(Rig.cyl(1.4, 1.4, 0.05, 24), Color("2b2440"), p + Vector3(0, 0.03, 0), 0.9)
+	glow.name = "CaveMouth"
+
+
+## Gerbang benteng terbuka (kunci dipakai). animate=false saat dibangun ulang dari bendera tersimpan.
+func open_gate(animate := true) -> void:
+	flags["gerbang_terbuka"] = true
+	if _gate_body != null and is_instance_valid(_gate_body):
+		_gate_body.queue_free()
+	_gate_body = null
+	if _gate_mesh != null and is_instance_valid(_gate_mesh):
+		var f: Dictionary = layout.fort
+		# Gerbang turun masuk ke tanah (seperti pintu benteng yang diturunkan).
+		var target := _gate_mesh.position - Vector3(0, float(f.wall_h), 0)
+		if animate:
+			var tw := create_tween()
+			tw.tween_property(_gate_mesh, "position", target, 1.2)
+		else:
+			_gate_mesh.position = target
+	for sp in spots:
+		if str(sp.kind) == "gate":
+			sp.text = "Gerbang terbuka"
+
+
+func gate_open() -> bool:
+	return _gate_body == null
+
+
+func _clue(qs: Dictionary) -> void:
+	var p := _v(qs.pos)
+	var mesh = IslandWorld.env_mesh("rocks/rock_b")
+	var mi := MeshInstance3D.new()
+	mi.name = "Clue_" + str(qs.id)
+	mi.mesh = mesh if mesh != null else Rig.sphere(0.8)
+	mi.scale = Vector3.ONE * 1.4
+	mi.position = p
+	add_child(mi)
+	_static_cyl(0.9, 2.0, p + Vector3(0, 1.0, 0))
+	var l := _label3d("A  B  C", 64, Color("7fe0ff"), Vector3(0, 1.9, 0), mi)
+	l.name = "Runes"
+	_label3d(str(qs.name), 40, Color("ffd166"), Vector3(0, 2.4, 0), mi)
+	spots.append({"pos": p + Vector3(0, 0, 1.4), "kind": "clue", "id": str(qs.id), "text": "AKSI: baca " + str(qs.name)})
+
+
+const ITEM_COLORS := {"bibit": Color("e8c25a"), "keranjang": Color("b5743a"), "kerang": Color("ffb3c7"), "kunci_benteng": Color("f0b429")}
+
+
+## Barang yang bisa dipungut: berputar & melayang, terpungut otomatis saat didekati.
+func add_pickup(uid: String, item: String, pos) -> void:
+	var n := Node3D.new()
+	n.name = "Pickup_" + uid.replace("/", "_")
+	n.position = _v(pos, 0.6)
+	n.scale = Vector3.ONE * 1.6
+	add_child(n)
+	var col: Color = ITEM_COLORS.get(item, Color("ffd166"))
+	var body: Mesh = Rig.sphere(0.22)
+	match item:
+		"keranjang":
+			body = Rig.cyl(0.32, 0.24, 0.3, 12)
+		"kunci_benteng":
+			body = Rig.box(Vector3(0.14, 0.5, 0.06))
+		"bibit":
+			body = Rig.sphere(0.16)
+	var mi := MeshInstance3D.new()
+	mi.mesh = body
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.emission_enabled = true
+	m.emission = col
+	m.emission_energy_multiplier = 0.6
+	mi.material_override = m
+	n.add_child(mi)
+	var ring := MeshInstance3D.new()
+	ring.mesh = Rig.cyl(0.55, 0.55, 0.02, 24)
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(1, 0.9, 0.4, 0.45)
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring.material_override = rm
+	ring.position.y = -0.55
+	n.add_child(ring)
+	n.set_meta("item", item)
+	n.set_meta("uid", uid)
+	pickups[uid] = n
+
+
+func remove_pickup(uid: String) -> void:
+	var n: Node3D = pickups.get(uid)
+	if n != null and is_instance_valid(n):
+		n.queue_free()
+	pickups.erase(uid)
+
+
+## Tanda di atas kepala penduduk: "!" misi baru, "?" ada urusan misi.
+func set_marks(marks: Dictionary) -> void:
+	for e in npcs:
+		var n: Node3D = e.node
+		var old := n.get_node_or_null("Mark")
+		if old != null:
+			old.queue_free()
+			n.remove_child(old)
+		var m := str(marks.get(str(e.id), ""))
+		if m == "":
+			continue
+		var l := _label3d(m, 180, Color("ffd166") if m == "!" else Color("7fe0ff"), Vector3(0, 2.9, 0), n)
+		l.outline_size = 18
+		l.no_depth_test = true
+		l.modulate = Color("ffcc00") if m == "!" else Color("33ccff")
+		l.name = "Mark"
+		l.visibility_range_end = 45.0
 
 
 func _academy_door() -> void:
@@ -712,6 +870,16 @@ func _process(delta: float) -> void:
 		if _talk_release < 0.0:
 			for e in npcs:
 				e.talking = false
+	var pp3 := player.global_position
+	for uid in pickups.keys():
+		var pn: Node3D = pickups[uid]
+		if not is_instance_valid(pn):
+			continue
+		pn.rotation.y += delta * 2.0
+		pn.position.y = ground_y(pn.position.x, pn.position.z) + 0.6 + sin(Time.get_ticks_msec() * 0.003) * 0.1
+		if Vector2(pp3.x - pn.position.x, pp3.z - pn.position.z).length() < PICK_RANGE:
+			remove_pickup(uid)
+			interacted.emit("pickup", uid)
 	var best := -1
 	var best_d := FOCUS_RANGE
 	for i in spots.size():

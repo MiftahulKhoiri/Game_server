@@ -1,0 +1,100 @@
+{
+	"schema": 1,
+	"island": "pulau1",
+	"items": {
+		"lencana_petualang": {"name": "Lencana Petualang", "desc": "Tanda bahwa kamu petualang yang mau belajar."},
+		"bibit": {"name": "Bibit Jagung", "desc": "Bibit milik Pak Budi yang dijatuhkan goblin."},
+		"sekop": {"name": "Sekop Kecil", "desc": "Hadiah dari Pak Budi."},
+		"keranjang": {"name": "Keranjang Kue", "desc": "Keranjang kue Nenek Ijah."},
+		"kue": {"name": "Kue Manis", "desc": "Kue buatan Nenek Ijah. Enak dan mengenyangkan."},
+		"kerang": {"name": "Kerang Pantai", "desc": "Kerang cantik dari pantai Dunia Pemula."},
+		"kunci_benteng": {"name": "Kunci Benteng", "desc": "Kunci besar berkarat yang disembunyikan goblin di gua."},
+		"bunga": {"name": "Bunga Desa", "desc": "Hadiah dari Bu Wati."}
+	},
+	"challenges": {
+		"hitung_bibit": {"title": "Menghitung Bibit", "story": "Bantu Pak Budi menghitung bibit jagung sebelum ditanam!",
+			"region": "matematika", "prefer": ["berhitung", "penjumlahan", "perkalian"], "n": 3, "pass": 2},
+		"petunjuk_hutan": {"title": "Batu Bertulis Hutan", "story": "Ada tulisan di batu tua. Pecahkan teka-teki kata untuk menemukan jejak keranjang!",
+			"region": "bahasa", "prefer": ["huruf", "kata_kalimat", "bacaan"], "n": 3, "pass": 2},
+		"batu_ajaib": {"title": "Batu Besar Ajaib", "story": "Batu besar ini hanya mau bergeser bila kamu menjawab teka-teki alam!",
+			"region": "ipa", "prefer": ["hewan", "tumbuhan", "wujud_benda", "energi"], "n": 3, "pass": 2},
+		"kelompok_hewan": {"title": "Ternak Bu Wati", "story": "Ayam dan bebek Bu Wati tercampur. Bantu ia mengenali hewan-hewan!",
+			"region": "ipa", "prefer": ["hewan", "pancaindra", "tumbuhan"], "n": 3, "pass": 2}
+	},
+	"spots": [
+		{"id": "clue_hutan", "name": "Batu Bertulis", "pos": [-34, -28]}
+	],
+	"quests": [
+		{"id": "petualang_baru", "kind": "main", "giver": "pak_lurah", "title": "Petualang Baru",
+			"offer": ["{name}, maukah kamu membantu desa kami?", "Petualang sejati harus mau belajar. Pergilah ke Akademi Tunas dan selesaikan satu latihan."],
+			"steps": [
+				{"type": "learn", "count": 1, "text": "Selesaikan 1 latihan di Akademi Tunas", "where": {"place": "akademi"}},
+				{"type": "talk", "npc": "pak_lurah", "text": "Kembali ke Pak Lurah", "where": {"npc": "pak_lurah"},
+					"say": ["Hebat, {name}! Kamu sudah belajar di akademi.", "Ini Lencana Petualang. Sekarang bantulah warga yang kesusahan: Pak Budi dan Nenek Ijah."]}
+			],
+			"reward": {"coins": 30, "xp": 40, "items": {"lencana_petualang": 1}}},
+		{"id": "bibit_hilang", "kind": "main", "giver": "pak_budi", "requires": ["petualang_baru"], "title": "Bibit yang Hilang",
+			"offer": ["Goblin menjatuhkan bibit jagungku di jalan menuju Hutan Kecil.", "Tolong kumpulkan 5 bibit, lalu bantu aku menghitungnya, ya!"],
+			"steps": [
+				{"type": "collect", "item": "bibit", "count": 5, "text": "Kumpulkan Bibit Jagung", "where": {"pos": [-12, -34]},
+					"pickups": [[-5, -32.5], [-10, -33.5], [-15, -34.5], [-20, -35.5], [-26, -37]]},
+				{"type": "challenge", "challenge": "hitung_bibit", "npc": "pak_budi", "text": "Bantu Pak Budi menghitung bibit", "where": {"npc": "pak_budi"},
+					"say": ["Terima kasih! Sekarang ladangku bisa ditanami lagi.", "Ini sekop kecil untukmu."]}
+			],
+			"reward": {"coins": 40, "xp": 60, "items": {"sekop": 1}}},
+		{"id": "keranjang_nenek", "kind": "main", "giver": "nenek_ijah", "requires": ["petualang_baru"], "title": "Keranjang Nenek Ijah",
+			"offer": ["Nak, goblin membawa lari keranjang kueku ke Hutan Kecil.", "Di hutan ada batu bertulis. Mungkin ada petunjuk di sana."],
+			"steps": [
+				{"type": "challenge", "challenge": "petunjuk_hutan", "spot": "clue_hutan", "text": "Pecahkan teka-teki Batu Bertulis di Hutan Kecil", "where": {"spot": "clue_hutan"},
+					"say": ["Tulisan di batu bersinar! Ada jejak kaki goblin menuju ke dalam hutan."]},
+				{"type": "collect", "item": "keranjang", "count": 1, "text": "Temukan Keranjang Kue di Hutan Kecil", "where": {"pos": [-46, -44]},
+					"pickups": [[-46, -44]]},
+				{"type": "talk", "npc": "nenek_ijah", "text": "Kembalikan keranjang ke Nenek Ijah", "where": {"npc": "nenek_ijah"}, "take": {"keranjang": 1},
+					"say": ["Keranjangku kembali! Terima kasih, {name}.", "Bawalah kue-kue ini untuk bekal petualanganmu."]}
+			],
+			"reward": {"coins": 40, "xp": 60, "items": {"kue": 3}}},
+		{"id": "pintu_gua", "kind": "main", "giver": "dodi", "requires": ["bibit_hilang", "keranjang_nenek"], "title": "Rahasia Gua Goblin",
+			"offer": ["Kak {name}! Kakak sudah membantu Pak Budi dan Nenek Ijah!", "Kata orang, batu besar di gua bisa bergeser kalau ada yang menjawab teka-teki alamnya. Coba, Kak!"],
+			"steps": [
+				{"type": "challenge", "challenge": "batu_ajaib", "spot": "boulder", "text": "Jawab teka-teki Batu Besar di Gua Goblin", "where": {"spot": "boulder"},
+					"flags": ["gua_terbuka"], "say": ["Batu besar bergeser pelan-pelan... Pintu gua terbuka!"]},
+				{"type": "collect", "item": "kunci_benteng", "count": 1, "text": "Cari harta goblin di dalam gua", "where": {"pos": [42, -40]},
+					"pickups": [[40, -40]]}
+			],
+			"reward": {"coins": 50, "xp": 80}},
+		{"id": "gerbang_benteng", "kind": "main", "giver": "kak_laras", "requires": ["pintu_gua"], "title": "Gerbang Benteng",
+			"offer": ["Itu Kunci Benteng! Kamu menemukannya di gua?", "Bukalah gerbang Benteng Raja Goblin di ujung utara pulau. Hati-hati!"],
+			"steps": [
+				{"type": "use", "target": "gate", "item": "kunci_benteng", "text": "Buka gerbang benteng dengan Kunci Benteng", "where": {"spot": "gate"},
+					"flags": ["gerbang_terbuka"], "take": {"kunci_benteng": 1},
+					"say": ["Kriiiet... Gerbang benteng terbuka!", "Raja Goblin Kecil berdiri dari singgasananya: \"Siapa berani masuk ke bentengku?!\""]}
+			],
+			"reward": {"coins": 50, "xp": 80}},
+		{"id": "kerang_pantai", "kind": "side", "giver": "pak_udin", "title": "Kerang Pantai",
+			"offer": ["Pantai pulau ini penuh kerang cantik.", "Maukah kamu mengumpulkan 5 kerang untukku? Aku ingin membuat hiasan perahu."],
+			"steps": [
+				{"type": "collect", "item": "kerang", "count": 5, "text": "Kumpulkan Kerang di pantai", "where": {"pos": [40, 58]},
+					"pickups": [[42, 58], [-48, 52], [70, 6], [-70, -6], [55, -45]]},
+				{"type": "talk", "npc": "pak_udin", "text": "Berikan kerang kepada Pak Udin", "where": {"npc": "pak_udin"}, "take": {"kerang": 5},
+					"say": ["Indah sekali! Ini baju hijau pelaut untukmu."]}
+			],
+			"reward": {"coins": 20, "xp": 30, "outfit": "warna_hijau"}},
+		{"id": "hewan_desa", "kind": "side", "giver": "bu_wati", "requires": ["petualang_baru"], "title": "Ternak Bu Wati",
+			"offer": ["Ternakku tercampur dengan hewan lain. Kamu tahu banyak tentang hewan?"],
+			"steps": [
+				{"type": "challenge", "challenge": "kelompok_hewan", "npc": "bu_wati", "text": "Bantu Bu Wati mengenali hewan", "where": {"npc": "bu_wati"},
+					"say": ["Pintar sekali! Ini bunga dari kebunku."]}
+			],
+			"reward": {"coins": 30, "xp": 40, "items": {"bunga": 1}}},
+		{"id": "jelajah_pulau", "kind": "side", "auto": true, "title": "Penjelajah Dunia Pemula",
+			"steps": [
+				{"type": "places_all", "text": "Temukan semua tempat di pulau"}
+			],
+			"reward": {"coins": 50, "xp": 50}},
+		{"id": "kenal_warga", "kind": "side", "auto": true, "title": "Sahabat Warga",
+			"steps": [
+				{"type": "meet_all", "text": "Berkenalan dengan semua penduduk"}
+			],
+			"reward": {"coins": 30, "xp": 40}}
+	]
+}
