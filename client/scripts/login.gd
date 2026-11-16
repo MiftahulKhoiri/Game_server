@@ -3,9 +3,9 @@ extends Control
 ##   Beranda    : hanya tombol Masuk, Daftar, Pengaturan (+ Lanjutkan bila ada sesi tersimpan).
 ##   Masuk      : isian nama/email + kata sandi.
 ##   Daftar     : isian nama, email, kata sandi.
-##   Pengaturan : alamat server (tes, menciut dengan tanda centang hijau bila terjangkau),
-##                layar (kualitas grafis, kamera, layar menyala) dan suara (NPC, musik, volume),
-##                keluar dari akun, dan info pembaruan APK (unduh dan pasang bila ada versi baru).
+##   Pengaturan : status server (centang hijau bila terjangkau), layar (kualitas grafis, kamera,
+##                layar menyala) dan suara (NPC, musik, volume), keluar dari akun. Alamat server dan
+##                pembaruan aplikasi (APK) diatur di Pengaturan launcher (v0.84.5), berlaku untuk semua game.
 ## Seluruh antarmuka dibuat lewat kode agar mudah ditinjau di Pull Request.
 ## Kata sandi TIDAK pernah disimpan di HP; yang disimpan hanya token sesi (lihat Session).
 
@@ -59,9 +59,6 @@ var _reg_hint: Label        # pemeriksaan isian saat mengetik (roadmap no. 203)
 var home_footer: Label
 
 # Pengaturan
-var _url_edit: LineEdit
-var _btn_test: Button
-var _server_box: VBoxContainer  # label + isian alamat + tombol tes
 var _server_msg: Label
 var _server_row: HBoxContainer  # ringkasan setelah server terjangkau
 var _server_label: Label
@@ -69,17 +66,12 @@ var _account_box: VBoxContainer
 var _btn_logout: Button
 var _account_status: Label
 var _update_status: Label
-var _btn_update: Button
-var _progress: ProgressBar
 var _version_label: Label
 
 var _server_ok := false
 var _testing := false
 var _update_required := false
 var _update_url := ""
-var _updater: Node
-var _updating := false
-var _open_web := false  # pasang otomatis gagal/tidak ada: tombol membuka halaman unduhan
 
 
 ## Lingkaran hijau bertanda centang (digambar sendiri, tidak bergantung pada huruf/font).
@@ -141,13 +133,9 @@ func _ready() -> void:
 	_kb_spacer = Control.new()  # tinggi disesuaikan dengan papan ketik (lihat _process)
 	_box.add_child(_kb_spacer)
 
-	for e: LineEdit in [_url_edit, _login_edit, _pass_edit, _name_edit, _email_edit, _rpass_edit, _rpass2_edit]:
+	for e: LineEdit in [_login_edit, _pass_edit, _name_edit, _email_edit, _rpass_edit, _rpass2_edit]:
 		e.focus_entered.connect(_scroll_to_focus)
 
-	_updater = Updater.new()
-	add_child(_updater)
-	_updater.status.connect(func(text: String) -> void: _show_update_msg(text, Color.WHITE))
-	_updater.progress.connect(_on_update_progress)
 	Updater.cleanup()  # sisa unduhan dari pembaruan sebelumnya
 
 	_show_page("home")
@@ -441,21 +429,6 @@ func _build_register() -> void:
 func _build_settings() -> void:
 	var p := _new_page("settings", "Pengaturan")
 
-	# Server
-	_server_box = VBoxContainer.new()
-	_server_box.add_theme_constant_override("separation", 12)
-	_server_box.add_child(_make_label("Alamat server", 26))
-	_url_edit = _make_edit(Api.base_url, Api.DEFAULT_URL)
-	_url_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_URL
-	_url_edit.text_submitted.connect(func(_t: String) -> void:
-		_url_edit.release_focus()
-		_test_server())
-	_server_box.add_child(_url_edit)
-	_btn_test = _make_button("Tes server")
-	_btn_test.pressed.connect(_test_server)
-	_server_box.add_child(_btn_test)
-	p.add_child(_server_box)
-
 	_server_msg = _make_status()
 	p.add_child(_server_msg)
 
@@ -468,13 +441,11 @@ func _build_settings() -> void:
 	_server_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_server_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_server_row.add_child(_server_label)
-	var btn_change := _make_button("Ubah")
-	btn_change.custom_minimum_size = Vector2(140, 70)
-	btn_change.add_theme_font_size_override("font_size", 26)
-	btn_change.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn_change.pressed.connect(_on_change_server)
-	_server_row.add_child(btn_change)
 	p.add_child(_server_row)
+	var note := _make_label("Alamat server dan pembaruan aplikasi diatur di Pengaturan launcher (halaman utama aplikasi).", 20)
+	note.name = "LauncherNote"
+	note.modulate = Color(1, 1, 1, 0.7)
+	p.add_child(note)
 
 	# Akun (hanya bila ada sesi tersimpan di HP ini)
 	_account_box = VBoxContainer.new()
@@ -497,14 +468,6 @@ func _build_settings() -> void:
 	_update_status = _make_status()
 	_update_status.visible = false
 	update_box.add_child(_update_status)
-	_btn_update = _make_button("Unduh dan pasang pembaruan")
-	_btn_update.visible = false
-	_btn_update.pressed.connect(_on_update)
-	update_box.add_child(_btn_update)
-	_progress = ProgressBar.new()
-	_progress.custom_minimum_size = Vector2(0, 28)
-	_progress.visible = false
-	update_box.add_child(_progress)
 	_version_label = _make_label("Aplikasi " + Version.app_label() + Patcher.suffix(), 22)
 	_version_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_version_label.modulate = Color(1, 1, 1, 0.65)
@@ -556,10 +519,10 @@ func _gate() -> bool:
 		_home_msg("Mengecek server... coba lagi sebentar.", Color.WHITE)
 		return false
 	if not _server_ok:
-		_home_msg("Server belum terhubung. Buka Pengaturan untuk mengecek alamat server.", RED)
+		_home_msg("Server belum terhubung. Cek alamat server di Pengaturan launcher.", RED)
 		return false
 	if _update_required:
-		_home_msg("Aplikasi terlalu lama. Update lewat Pengaturan.", RED)
+		_home_msg("Aplikasi terlalu lama. Update lewat Pengaturan launcher.", RED)
 		return false
 	return true
 
@@ -624,27 +587,23 @@ func _scroll_to_focus() -> void:
 
 # --- Server ------------------------------------------------------------------------------
 
-## Tes server (otomatis saat dibuka, atau lewat Pengaturan). Bila terjangkau, bagian alamat
-## menciut dengan tanda centang hijau dan info pembaruan diperbarui. Bila gagal, alamat tetap terbuka.
+## Tes server (otomatis saat dibuka) memakai alamat dari Pengaturan launcher. Bila terjangkau, tanda
+## centang hijau tampil dan info pembaruan diperbarui.
 func _test_server() -> void:
 	if _testing:
 		return
 	_testing = true
-	Api.base_url = _clean_url(_url_edit.text)
-	_url_edit.text = Api.base_url
-	_btn_test.disabled = true
 	_server_msg.visible = true
 	_server_msg.text = "Mengecek server..."
 	_server_msg.modulate = Color.WHITE
 	_home_msg("Mengecek server...", Color.WHITE)
 	var res: Dictionary = await Api.version_info()
 	_testing = false
-	_btn_test.disabled = false
 	if not res.ok:
 		_set_server_ok(false)
-		_server_msg.text = "Server tidak terjangkau: %s" % str(res.error)
+		_server_msg.text = "Server tidak terjangkau: %s\nCek alamat server di Pengaturan launcher." % str(res.error)
 		_server_msg.modulate = RED
-		_home_msg("Server belum terhubung. Buka Pengaturan.", RED)
+		_home_msg("Server belum terhubung. Cek alamat server di Pengaturan launcher.", RED)
 		return
 	var info: Dictionary = res.data
 	Session.save_config()  # alamat yang terbukti benar dipakai lagi lain kali
@@ -659,15 +618,8 @@ func _test_server() -> void:
 
 func _set_server_ok(ok: bool) -> void:
 	_server_ok = ok
-	_server_box.visible = not ok
 	_server_msg.visible = not ok
 	_server_row.visible = ok
-
-
-func _on_change_server() -> void:
-	_set_server_ok(false)
-	_server_msg.text = ""
-	_url_edit.grab_focus()
 
 
 # --- Pembaruan ---------------------------------------------------------------------------
@@ -684,13 +636,9 @@ func _apply_version_info(info: Dictionary) -> void:
 	if Version.compare(mine, min_client) < 0:
 		_require_update("Aplikasimu v%s terlalu lama. Wajib update ke v%s atau lebih baru." % [mine, latest])
 	elif Version.compare(mine, latest) < 0:
-		_show_update_msg("Versi baru tersedia: v%s (kamu v%s)." % [latest, mine], YELLOW)
-		_btn_update.text = "Unduh dan pasang v%s" % latest
-		_btn_update.visible = _update_url != ""
-		_btn_settings.text = "Pengaturan  (ada update)"
+		_show_update_msg("Versi baru tersedia: v%s (kamu v%s). Perbarui lewat Pengaturan launcher." % [latest, mine], YELLOW)
 	else:
 		_update_status.visible = false
-		_btn_update.visible = false
 
 
 func _show_update_msg(text: String, color: Color) -> void:
@@ -701,43 +649,8 @@ func _show_update_msg(text: String, color: Color) -> void:
 
 func _require_update(message: String) -> void:
 	_update_required = true
-	_show_update_msg(message, RED)
-	_btn_update.text = "Unduh dan pasang update"
-	_btn_update.visible = _update_url != ""
-	_btn_settings.text = "Pengaturan  (WAJIB update)"
-	_home_msg("Aplikasi terlalu lama. Update lewat Pengaturan.", RED)
-
-
-## Tombol update: unduh dan pasang langsung di dalam aplikasi. Bila tidak bisa
-## (bukan Android / ada langkah gagal), tombol berubah menjadi pembuka halaman unduhan.
-func _on_update() -> void:
-	if _updating or _update_url == "":
-		return
-	if _open_web or not Updater.supported():
-		OS.shell_open(_update_url)
-		return
-	_updating = true
-	_btn_update.disabled = true
-	_progress.value = 0
-	_progress.visible = true
-	var res_v: Variant = await _updater.run(_update_url)
-	var res: Dictionary = res_v if res_v is Dictionary else {
-		"ok": false, "web": true,
-		"message": "Pembaruan terhenti di langkah \"%s\"." % _updater._step,
-	}
-	_updating = false
-	_btn_update.disabled = false
-	_progress.visible = false
-	_show_update_msg(str(res.message), GREEN if res.ok else RED)
-	if res.get("web", false):
-		_open_web = true
-		_btn_update.text = "Buka halaman unduhan"
-
-
-func _on_update_progress(received: int, total: int) -> void:
-	if total > 0:
-		_progress.value = 100.0 * received / total
-		_show_update_msg("Mengunduh... %.1f / %.1f MB" % [received / 1048576.0, total / 1048576.0], Color.WHITE)
+	_show_update_msg(message + " Perbarui lewat Pengaturan launcher.", RED)
+	_home_msg("Aplikasi terlalu lama. Update lewat Pengaturan launcher.", RED)
 
 
 # --- Daftar / Masuk ----------------------------------------------------------------------
@@ -777,7 +690,6 @@ func _do_register() -> void:
 		_fail("Kata sandi dan ulangannya tidak sama.")
 		return
 	_set_busy(true, "Mendaftar...")
-	Api.base_url = _clean_url(_url_edit.text)
 	var res: Dictionary = await Api.register(player_name, email, password)
 	if not res.ok:
 		_set_busy(false, str(res.error))
@@ -793,7 +705,6 @@ func _do_login() -> void:
 		_fail("Isi nama (atau email) dan kata sandi.")
 		return
 	_set_busy(true, "Masuk...")
-	Api.base_url = _clean_url(_url_edit.text)
 	var res: Dictionary = await Api.login(login, password)
 	if not res.ok:
 		# 401: nama/email atau kata sandi salah. 429: terlalu banyak percobaan (pesan memuat lama tunggu).
@@ -816,7 +727,6 @@ func _on_continue() -> void:
 	if not _gate():
 		return
 	_set_busy(true, "Menghubungkan...")
-	Api.base_url = _clean_url(_url_edit.text)
 	var res: Dictionary = await Api.get_me()
 	if not res.ok:
 		if res.status == 426:
@@ -838,7 +748,6 @@ func _on_continue() -> void:
 ## Progress aman di server; masuk lagi dengan nama + kata sandi.
 func _on_logout() -> void:
 	_set_busy(true, "Keluar...")
-	Api.base_url = _clean_url(_url_edit.text)
 	await Api.logout()  # gagal terhubung pun tidak masalah: token lokal tetap dihapus
 	_forget_session()
 	_show_page("home")

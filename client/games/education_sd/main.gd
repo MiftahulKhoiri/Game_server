@@ -30,7 +30,7 @@ const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const Voice := preload("res://games/education_sd/scripts/voice.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "4.1.0"
+const VERSION := "4.2.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -130,6 +130,7 @@ func platform_before_exit() -> void:
 
 
 func _start_audio() -> void:
+	audio.set_song(str(p.settings.get("song", "acak")))
 	audio.apply(bool(p.settings.music), bool(p.settings.sfx))
 
 
@@ -181,6 +182,8 @@ func _voice_sync() -> void:
 		return
 	voice.mode = str(p.get("settings", {}).get("voice", "auto"))
 	voice.grade = int(p.get("profile", {}).get("grade", 1))
+	var st: Dictionary = p.get("settings", {})
+	voice.configure(str(st.get("voice_id", "")), str(st.get("voice_rate", "sedang")), str(st.get("voice_pitch", "normal")))
 
 
 ## Penutur dialog: penduduk pulau atau guru akademi (potret 3D yang membacakan).
@@ -373,6 +376,7 @@ func show_title() -> void:
 		show_profile())
 	t.settings_pressed.connect(func() -> void:
 		_sfx("klik")
+		_settings_scroll = 0
 		show_settings())
 	t.exit_pressed.connect(func() -> void: _confirm_exit("tombol keluar di menu utama"))
 	t.report_pressed.connect(func() -> void:
@@ -428,53 +432,128 @@ func show_story() -> void:
 
 # --- Pengaturan ------------------------------------------------------------------------------------------------
 
+var _settings_scroll := 0
+
+
 func show_settings() -> void:
 	var page := Control.new()
 	_show("settings", page)
+	var sc := ScrollContainer.new()
+	sc.name = "Scroll"
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(sc)
+	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var mg := MarginContainer.new()
+	mg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right"]:
+		mg.add_theme_constant_override("margin_" + side, 60)
+	mg.add_theme_constant_override("margin_top", 24)
+	mg.add_theme_constant_override("margin_bottom", 40)
+	sc.add_child(mg)
 	var v := UI.vbox(14)
 	v.name = "Page"
-	page.add_child(v)
-	v.position = Vector2(60, 30)
-	v.custom_minimum_size = Vector2(get_viewport_rect().size.x - 120, 0)
+	mg.add_child(v)
 	var h := UI.hbox(12)
 	h.add_child(UI.button("Kembali", go_back, Color("cfc8dc"), 24, 64))
 	h.add_child(UI.label("Pengaturan", 38, UI.PRIMARY, false))
 	v.add_child(h)
-	var rows := [
-		["Musik", "music", [true, false], {true: "Nyala", false: "Mati"}],
-		["Efek suara", "sfx", [true, false], {true: "Nyala", false: "Mati"}],
-		["Grafis dunia 3D", "gfx", ["hemat", "seimbang", "tinggi"], {"hemat": "Hemat (HP lama)", "seimbang": "Seimbang", "tinggi": "Tinggi"}],
-		["Tampilkan FPS", "perf", [true, false], {true: "Nyala", false: "Mati"}],
-		["Suara pembaca", "voice", ["auto", "on", "off"], {"auto": "Otomatis kelas 1–2", "on": "Selalu", "off": "Mati"}],
-	]
-	for r in rows:
-		var row := UI.hbox(12)
-		var lbl := UI.label(str(r[0]), 28, UI.INK, false)
-		lbl.custom_minimum_size.x = 320
-		row.add_child(lbl)
-		for opt in r[2]:
-			var on: bool = p.settings[r[1]] == opt
-			var key: String = r[1]
-			var b := UI.button(str(r[3][opt]), func() -> void:
-				p.settings[key] = opt
-				save()
-				_start_audio()
-				show_settings(), Color("ffd166") if on else Color("e8e2f2"), 24, 66)
-			b.name = "%s_%s" % [key, str(opt)]
-			UI.expand(b)
-			row.add_child(b)
-		v.add_child(row)
+	_section(v, "Musik & suara")
+	_opt_row(v, "Musik", "music", [true, false], {true: "Nyala", false: "Mati"})
+	var songs: Array = audio.songs()
+	var song_names := {"acak": "Acak (semua lagu)"}
+	var song_ids: Array = ["acak"]
+	for sg in songs:
+		song_ids.append(str(sg[0]))
+		song_names[str(sg[0])] = str(sg[1])
+	_cycle_row(v, "Lagu", "song", song_ids, song_names)
+	_opt_row(v, "Efek suara", "sfx", [true, false], {true: "Nyala", false: "Mati"})
+
+	_section(v, "Suara pembaca (untuk anak yang belum lancar membaca)")
+	_opt_row(v, "Membacakan", "voice", ["auto", "on", "off"], {"auto": "Otomatis kelas 1–2", "on": "Selalu", "off": "Mati"})
 	var why: String = voice.status() if voice != null else ""
 	if why != "":
-		var vl := UI.label("Suara pembaca: " + why, 22, UI.SOFT)
+		var vl := UI.label(why, 22, UI.SOFT)
 		vl.name = "VoiceStatus"
 		v.add_child(vl)
 	else:
+		var vids: Array = [""]
+		var vnames := {"": "Otomatis"}
+		for vo in voice.voices():
+			vids.append(str(vo.id))
+			vnames[str(vo.id)] = str(vo.label)
+		_cycle_row(v, "Pilihan suara", "voice_id", vids, vnames)
+		_opt_row(v, "Kecepatan", "voice_rate", ["pelan", "sedang", "normal", "cepat"], Voice.RATE_NAMES)
+		_opt_row(v, "Nada suara", "voice_pitch", ["rendah", "normal", "tinggi"], Voice.PITCH_NAMES)
 		var tb := UI.listen_button(func() -> void:
-			voice.speak("Halo, %s! Aku akan membacakan pesan dan soal untukmu." % str(p.profile.get("name", "teman"))), 24, 66)
+			voice.speak("Halo, %s! Aku akan membacakan pesan dan soal untukmu. Tiga tambah empat sama dengan tujuh." % str(p.profile.get("name", "teman"))), 24, 66)
 		tb.name = "VoiceTry"
 		tb.text = "       Coba suara pembaca"
 		v.add_child(tb)
+		v.add_child(UI.label("Suara lain bisa dipasang di Pengaturan HP > Text-to-speech > mesin Google > Bahasa Indonesia.", 20, UI.SOFT))
+
+	_section(v, "Tampilan")
+	_opt_row(v, "Resolusi 3D", "res", ["rendah", "sedang", "tinggi"], {"rendah": "Rendah (HP lama)", "sedang": "Sedang", "tinggi": "Tinggi (tajam)"})
+	_opt_row(v, "Efek grafis", "gfx", ["hemat", "seimbang", "tinggi"], {"hemat": "Hemat", "seimbang": "Seimbang", "tinggi": "Tinggi"})
+	v.add_child(UI.label("Gambar buram atau warnanya pucat? Naikkan Resolusi 3D. Terasa patah-patah? Turunkan Resolusi atau Efek grafis.", 20, UI.SOFT))
+	_opt_row(v, "Tampilkan FPS", "perf", [true, false], {true: "Nyala", false: "Mati"})
+	var keep := _settings_scroll
+	(func() -> void:
+		await get_tree().process_frame
+		if is_instance_valid(sc):
+			sc.scroll_vertical = keep  # pilihan berganti tanpa layar melompat ke atas
+			sc.get_v_scroll_bar().value_changed.connect(func(val: float) -> void: _settings_scroll = int(val))).call()
+
+
+func _section(v: Control, title: String) -> void:
+	var l := UI.label(title, 26, UI.PRIMARY)
+	l.add_theme_constant_override("line_spacing", 2)
+	v.add_child(l)
+
+
+func _set_setting(key: String, val) -> void:
+	p.settings[key] = val
+	save()
+	_start_audio()
+	show_settings()
+
+
+func _opt_row(v: Control, title: String, key: String, opts: Array, names: Dictionary) -> void:
+	var row := UI.hbox(12)
+	var lbl := UI.label(title, 26, UI.INK, false)
+	lbl.custom_minimum_size.x = 260
+	row.add_child(lbl)
+	for opt in opts:
+		var on: bool = p.settings.get(key) == opt
+		var b := UI.button(str(names.get(opt, str(opt))), _set_setting.bind(key, opt), Color("ffd166") if on else Color("e8e2f2"), 22, 62)
+		b.name = "%s_%s" % [key, str(opt)]
+		UI.expand(b)
+		row.add_child(b)
+	v.add_child(row)
+
+
+## Baris pilihan bergilir: < nama > (untuk daftar panjang seperti lagu & suara).
+func _cycle_row(v: Control, title: String, key: String, ids: Array, names: Dictionary) -> void:
+	var row := UI.hbox(12)
+	var lbl := UI.label(title, 26, UI.INK, false)
+	lbl.custom_minimum_size.x = 260
+	row.add_child(lbl)
+	var cur := maxi(ids.find(p.settings.get(key, ids[0])), 0)
+	var prev := UI.button("<", _set_setting.bind(key, ids[(cur - 1 + ids.size()) % ids.size()]), Color("e8e2f2"), 26, 62)
+	prev.name = "%s_prev" % key
+	prev.custom_minimum_size.x = 80
+	row.add_child(prev)
+	var nm := UI.panel(Color("ffd166"), 16)
+	var nl := UI.label(str(names.get(ids[cur], str(ids[cur]))), 24, UI.INK, false)
+	nl.name = "%s_name" % key
+	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.add_child(nl)
+	UI.expand(nm)
+	row.add_child(nm)
+	var nxt := UI.button(">", _set_setting.bind(key, ids[(cur + 1) % ids.size()]), Color("e8e2f2"), 26, 62)
+	nxt.name = "%s_next" % key
+	nxt.custom_minimum_size.x = 80
+	row.add_child(nxt)
+	v.add_child(row)
 
 
 # --- Peta dunia enam pulau --------------------------------------------------------------------------------------
@@ -518,17 +597,41 @@ func hero_look() -> Dictionary:
 		"model_path": path if ResourceLoader.exists(path) else ""}
 
 
+## Tinggi gambar 3D (piksel layar sungguhan) per pilihan Resolusi 3D di Pengaturan.
+const RES_HEIGHT := {"rendah": 540.0, "sedang": 720.0, "tinggi": 1080.0}
+
+
+## Dunia 3D digambar pada piksel LAYAR SUNGGUHAN (bukan ukuran kanvas 1280×720 yang lalu diperbesar):
+## wadah diperbesar sebesar rasio layar lalu diperkecil kembali (scale), sehingga di HP beresolusi tinggi
+## gambar tetap tajam dan warnanya tidak pudar. Resolusi 3D menentukan seberapa tajam (beban GPU).
+func _fit_3d(holder: Control, box: SubViewportContainer, vp: SubViewport) -> void:
+	var logical := holder.size if holder.size.x > 0 else get_viewport_rect().size
+	var win := Vector2(get_window().size)
+	var ratio := clampf(win.x / maxf(get_viewport_rect().size.x, 1.0), 1.0, 4.0)
+	box.position = Vector2.ZERO
+	box.scale = Vector2.ONE / ratio
+	box.size = logical * ratio
+	var phys_h := logical.y * ratio
+	var target: float = RES_HEIGHT.get(str(p.settings.get("res", "sedang")), 720.0)
+	vp.scaling_3d_scale = clampf(target / maxf(phys_h, 1.0), 0.25, 1.0)
+
+
 ## Wadah 3D bersama untuk pulau & akademi: SubViewport + adegan + HUD.
 func _make_3d(id: String, scene: Node3D, ctx: Dictionary, title: String, color: Color) -> void:
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_show(id, holder)
 	var box := SubViewportContainer.new()
-	_show(id, box)
+	box.name = "View3D"
 	box.stretch = true
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(box)
 	var prof: Dictionary = IslandWorld.PROFILES.get(str(p.settings.gfx), IslandWorld.PROFILES.seimbang)
 	var vp := SubViewport.new()
 	vp.own_world_3d = true
-	vp.scaling_3d_scale = float(prof.scale)
 	vp.msaa_3d = Viewport.MSAA_2X if bool(prof.msaa) else Viewport.MSAA_DISABLED
+	_fit_3d(holder, box, vp)
+	holder.resized.connect(func() -> void: _fit_3d(holder, box, vp))
 	vp.handle_input_locally = false
 	box.add_child(vp)
 	world = scene

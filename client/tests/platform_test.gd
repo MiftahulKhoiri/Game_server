@@ -229,6 +229,32 @@ func _phase_install() -> void:
 	launcher._select("adventure")
 	_check(launcher._b_play.visible and not launcher._b_delete.visible, "Petualangan: MAINKAN tampil, HAPUS tidak")
 
+	print("== Pengaturan launcher: server & pembaruan aplikasi")
+	launcher.open_settings()
+	await _wait(0.2)
+	var ls = launcher.settings
+	_check(ls != null and ls.url_edit.text == GM.api.base_url() and ls.version_label.text.contains(ProjectSettings.get_setting("application/config/version")),
+		"Pengaturan launcher: alamat server & versi aplikasi tampil")
+	for i in 40:
+		if ls.update_msg.text != "Memeriksa pembaruan...":
+			break
+		await _wait(0.1)
+	_check(ls.update_msg.text.contains("terbaru") and not ls.btn_update.visible, "pembaruan diperiksa ke server: aplikasi sudah terbaru (%s)" % ls.update_msg.text)
+	ls._apply({"latest_client": "99.0.0", "min_client": "0.1.0", "update_url": "https://github.com/x/y/releases/latest"})
+	_check(ls.update_available and ls.btn_update.visible and launcher.update_available and launcher.settings_btn.text.contains("update"),
+		"versi baru: tombol Unduh dan pasang + tanda di tombol Pengaturan launcher")
+	var good: String = GM.api.base_url()
+	ls.url_edit.text = "http://127.0.0.1:1"
+	await ls.test_server()
+	_check(ls.server_msg.text.begins_with("Server tidak terjangkau") and GM.api.base_url() == good, "alamat salah ditolak, alamat lama tetap dipakai")
+	ls.url_edit.text = good
+	await ls.test_server()
+	_check(ls.server_msg.text.begins_with("Server tersambung") and GM.api.base_url() == good, "alamat benar: server tersambung & disimpan")
+	await _wait(0.5)
+	ls.close()
+	await _wait(0.1)
+	_check(launcher.settings == null and quit_on_go_back, "Pengaturan ditutup, kembali ke daftar game")
+
 	print("== Unduhan putus lalu dilanjutkan (HTTP Range)")
 	var first_progress := [-1]
 	GM.downloads.fail_after_bytes = 60000

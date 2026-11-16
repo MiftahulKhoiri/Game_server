@@ -5,6 +5,7 @@ extends Control
 ## Antarmuka dibangun lewat kode, sama seperti layar lain di proyek ini.
 
 const GameRegistry := preload("res://core/game_registry.gd")
+const LauncherSettings := preload("res://launcher/scripts/launcher_settings.gd")
 const State := GameRegistry.State
 
 const BG := Color("141a24")
@@ -33,6 +34,9 @@ var _progress: Dictionary = {}    # id -> [received, total]
 var _grid: GridContainer
 var _net_label: Label
 var _refresh_btn: Button
+var settings_btn: Button
+var settings: Control  # halaman Pengaturan yang sedang terbuka (null bila tertutup)
+var update_available := false
 var _msg: Label
 var _d_cover: TextureRect
 var _d_cover_bg: ColorRect
@@ -66,6 +70,7 @@ func _ready() -> void:
 	_selected = GameManager.last_played()
 	_reload()
 	_refresh()
+	_check_update.call_deferred()
 
 
 func _build() -> void:
@@ -103,6 +108,10 @@ func _build() -> void:
 	_refresh_btn = _button("Muat ulang katalog", 22)
 	_refresh_btn.pressed.connect(_refresh)
 	head.add_child(_refresh_btn)
+	settings_btn = _button("Pengaturan", 22)
+	settings_btn.name = "Settings"
+	settings_btn.pressed.connect(open_settings)
+	head.add_child(settings_btn)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -202,6 +211,39 @@ func _build() -> void:
 	_confirm.cancel_button_text = "Batal"
 	_confirm.confirmed.connect(func() -> void: GameManager.uninstall(_selected))
 	add_child(_confirm)
+
+
+## Pengaturan launcher: server (untuk semua game) dan pembaruan aplikasi.
+func open_settings() -> void:
+	if settings != null and is_instance_valid(settings):
+		return
+	settings = LauncherSettings.new()
+	settings.name = "LauncherSettings"
+	settings.update_state.connect(_set_update)
+	settings.closed.connect(func() -> void:
+		settings = null
+		_reload())
+	add_child(settings)
+
+
+## Cek versi aplikasi diam-diam saat launcher dibuka: tombol Pengaturan diberi tanda bila ada update.
+func _check_update() -> void:
+	var r: Dictionary = await GameManager.api.get_bytes("/v1/version", 6.0)
+	if not r.ok or not is_inside_tree():
+		return
+	var d = JSON.parse_string((r.body as PackedByteArray).get_string_from_utf8())
+	if typeof(d) != TYPE_DICTIONARY:
+		return
+	var V := preload("res://scripts/version.gd")
+	var mine: String = V.app_version()
+	_set_update(V.compare(mine, str(d.get("latest_client", "0.0.0"))) < 0 or V.compare(mine, str(d.get("min_client", "0.0.0"))) < 0)
+
+
+func _set_update(av: bool) -> void:
+	update_available = av
+	if settings_btn != null:
+		settings_btn.text = "Pengaturan  (ada update)" if av else "Pengaturan"
+		settings_btn.add_theme_color_override("font_color", ACCENT if av else Color.WHITE)
 
 
 func _refresh() -> void:

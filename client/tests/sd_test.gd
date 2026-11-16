@@ -35,6 +35,7 @@ func _initialize() -> void:
 	await _v3_app_tests()
 	await _v5_voice_unit_tests()
 	await _v5_voice_app_tests()
+	await _v6_settings_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
 	quit(1 if _failed else 0)
@@ -1726,5 +1727,62 @@ func _v5_voice_app_tests() -> void:
 	_press(app.current, "voice_off")
 	await _frames(2)
 	_check(str(app.p.settings.voice) == "off" and str(app.voice.mode) == "off", "suara pembaca dimatikan dan tersimpan")
+	app.voice.fake = false
+	_clear_save()
+
+
+# --- 4.2 Pengaturan orang tua: suara pembaca, lagu anak, resolusi 3D --------------------------------------------
+
+func _v6_settings_tests() -> void:
+	print("== 4.2 Pengaturan: pilihan suara pembaca, lagu, resolusi 3D")
+	_clear_save()
+	var app := await _open()
+	app.foes_calm = 99999.0
+	app.voice.fake = true
+	app.set_profile({"name": "Ana", "grade": 1, "hero": "perempuan", "outfit": "warna_biru"})
+	app.close_modal()
+	_check(str(app.p.settings.voice_rate) == "sedang" and str(app.p.settings.voice_pitch) == "normal" and str(app.p.settings.song) == "acak"
+		and str(app.p.settings.res) == "sedang", "bawaan: suara sedang/normal, lagu acak, resolusi sedang")
+	app.show_settings()
+	await _frames(2)
+	var page: Node = app.current
+	for nm in ["voice_rate_pelan", "voice_rate_cepat", "voice_pitch_tinggi", "voice_id_next", "song_next", "res_rendah", "res_tinggi", "gfx_hemat", "VoiceTry"]:
+		_check(_btn(page, nm) != null, "Pengaturan punya " + nm)
+	_press(page, "voice_rate_pelan")
+	await _frames(1)
+	_press(app.current, "voice_pitch_tinggi")
+	await _frames(1)
+	_check(str(app.voice.rate) == "pelan" and str(app.voice.pitch) == "tinggi" and app.screen == "settings", "kecepatan Pelan & nada Tinggi diterapkan ke suara pembaca")
+	_check(is_equal_approx(float(VoiceT.RATES[app.voice.rate]), 0.7) and is_equal_approx(float(VoiceT.PITCHES[app.voice.pitch]), 1.25), "nilai TTS: kecepatan 0,7, nada 1,25")
+	_check(app.audio.songs().size() == 7, "7 pilihan lagu (%d)" % app.audio.songs().size())
+	_press(app.current, "song_next")
+	await _frames(1)
+	var s1 := str(app.p.settings.song)
+	_check(s1 != "acak" and str(app.audio.song) == s1 and _label_has(app.current, str(app.audio.songs()[0][1])), "ganti lagu: %s" % s1)
+	_press(app.current, "song_prev")
+	await _frames(1)
+	_check(str(app.p.settings.song) == "acak", "kembali ke Acak (semua lagu)")
+	var Aud := preload("res://games/education_sd/scripts/sd_audio.gd")
+	for id in ["bintang", "ombak"]:
+		var st: AudioStreamWAV = Aud._build_song(Aud._song_def(id))
+		var sec := st.data.size() / 2.0 / Aud.RATE
+		_check(sec > 15.0 and sec < 40.0, "lagu %s dibuat dengan kode (%.1f detik)" % [id, sec])
+	_press(app.current, "res_rendah")
+	await _frames(1)
+	app.arrive("pulau1")
+	await _frames(3)
+	var box: SubViewportContainer = app.current.find_child("View3D", true, false)
+	var vp: SubViewport = box.get_child(0)
+	var low := vp.scaling_3d_scale
+	_check((box.size * box.scale).distance_to(app.current.size) < 1.0, "dunia 3D memenuhi layar pada piksel layar sungguhan")
+	var phys := box.size.y
+	app.go_back()
+	await _frames(2)
+	app.p.settings.res = "tinggi"
+	app.arrive("pulau1")
+	await _frames(3)
+	vp = app.current.find_child("View3D", true, false).get_child(0)
+	_check(is_equal_approx(low, clampf(540.0 / phys, 0.25, 1.0)) and is_equal_approx(vp.scaling_3d_scale, clampf(1080.0 / phys, 0.25, 1.0)),
+		"Resolusi Rendah/Tinggi: 3D setinggi 540/1080 piksel (skala %.2f / %.2f, layar %d)" % [low, vp.scaling_3d_scale, int(phys)])
 	app.voice.fake = false
 	_clear_save()

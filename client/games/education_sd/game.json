@@ -3,7 +3,7 @@
 	"name": "Petualangan Ilmu SD",
 	"description": "RPG petualangan edukasi SD kelas 1–6: jelajahi Dunia Enam Pulau, belajar di akademi, bantu penduduk, dan kalahkan bos penjaga pulau dengan jurus ilmu. Bisa dimainkan tanpa internet setelah diunduh.",
 	"category": "Pendidikan",
-	"version": "4.1.0",
+	"version": "4.2.0",
 	"entry_scene": "res://games/education_sd/main.tscn",
 	"min_launcher_version": "0.84.0",
 	"icon": "res://games/education_sd/assets/icon/sd_icon_512.png",

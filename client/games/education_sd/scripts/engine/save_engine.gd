@@ -26,7 +26,8 @@ static func default_data() -> Dictionary:
 			"minigames": {}},
 		"quests": {},
 		"academy": {},
-		"settings": {"music": true, "sfx": true, "gfx": "seimbang", "perf": false, "voice": "auto"},
+		"settings": {"music": true, "sfx": true, "gfx": "seimbang", "perf": false, "voice": "auto",
+			"voice_id": "", "voice_rate": "sedang", "voice_pitch": "normal", "song": "acak", "res": ""},
 		"seen_intro": {},
 		"migrated_from": 0,
 		"legacy": {},
@@ -98,6 +99,8 @@ static func ensure(d: Dictionary) -> Dictionary:
 		d.settings.gfx = "seimbang"
 	if not str(d.settings.get("voice", "")) in ["auto", "on", "off"]:
 		d.settings.voice = "auto"
+	if not str(d.settings.get("res", "")) in ["rendah", "sedang", "tinggi"]:
+		d.settings.res = "rendah" if str(d.settings.gfx) == "hemat" else "sedang"
 	d.rpg.xp = maxi(int(d.rpg.xp), 0)
 	d.rpg.coins = maxi(int(d.rpg.coins), 0)
 	d.world.sailed = int(d.world.sailed)

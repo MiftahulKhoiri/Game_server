@@ -2,6 +2,26 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## v0.84.5 + paket education_sd 4.2.0 — Pengaturan launcher, pilihan suara & lagu, resolusi 3D (17 November 2026)
+
+- **Launcher: tombol Pengaturan** (berlaku untuk semua game): alamat server + "Tes & simpan" (alamat disimpan bila
+  terjangkau, katalog dimuat ulang) dan **Pembaruan aplikasi** (versi terpasang vs terbaru dari server, unduh & pasang
+  APK lewat Updater yang sama). Saat launcher dibuka, versi diperiksa diam-diam: tombol menjadi "Pengaturan (ada update)".
+- **The Last Dragon:** isian alamat server dan tombol pembaruan APK dihapus dari Pengaturan (dipindah ke launcher).
+  Yang tersisa: status server (centang hijau), akun, layar & suara. Pesan "server belum terhubung"/"wajib update"
+  kini menunjuk ke Pengaturan launcher. Uji e2e disesuaikan.
+- **Petualangan Ilmu SD 4.2.0:**
+  - Suara pembaca bisa diatur orang tua: pilihan suara (semua suara bahasa Indonesia di HP; suara "perlu internet"
+    ditandai), kecepatan (Pelan/Sedang/Normal/Cepat), nada (Rendah/Normal/Tinggi), tombol "Coba suara".
+  - Pilihan lagu: Petualang Riang, Pulau Ceria, Ombak Tenang (ciptaan sendiri) dan lagu anak domain publik
+    instrumental: Bintang Kerlip (Twinkle Twinkle), Domba Kecil (Mary Had a Little Lamb), Bangun Pagi (Frère Jacques),
+    Lagu Gembira (Ode to Joy, Beethoven); "Acak" memutar bergantian. Dibuat dengan kode di utas latar (tanpa berkas).
+  - **Resolusi 3D**: dunia 3D kini digambar pada piksel layar sungguhan (dulu pada kanvas 1280×720 yang lalu diperbesar
+    dan diperkecil lagi oleh skala grafis — di HP beresolusi tinggi gambar jadi buram dan warnanya pudar).
+    Pilihan Rendah (540p) / Sedang (720p, bawaan) / Tinggi (1080p); "Efek grafis" (Hemat/Seimbang/Tinggi) terpisah.
+  - Halaman Pengaturan bisa digulir dan dikelompokkan: Musik & suara, Suara pembaca, Tampilan.
+- Server 0.84.5: versi klien terbaru 0.84.5.
+
 ## v0.84.4 + paket education_sd 4.1.0 — suara pembaca untuk kelas 1–2 (16 November 2026)
 
 - APK 0.84.4: `audio/general/text_to_speech` dinyalakan di `project.godot` supaya game bisa memakai mesin suara

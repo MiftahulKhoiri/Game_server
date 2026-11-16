@@ -483,3 +483,18 @@ Catatan HP: bila suara tidak keluar, buka Pengaturan HP → Text-to-speech → m
 | `make sd-test` | LULUS (+25 pemeriksaan suara: mode per kelas, teks soal, sorot kata berurutan, berhenti saat dialog ditutup, potret penduduk/Bu Guru, soal & pilihan dibacakan, Pengaturan). Mesin suara diganti tiruan di headless |
 | `make client-test`, `go test ./...` | LULUS |
 | Tangkapan layar | dialog dengan potret Pak Lurah + kata tersorot; soal dengan tombol Dengar |
+
+---
+
+## Revisi 2 — Pengaturan orang tua, lagu anak, resolusi 3D, Pengaturan launcher (paket 4.2.0 + APK 0.84.5, 17 Nov 2026)
+
+| Masukan | Perubahan |
+|---|---|
+| Pilihan suara pembaca | Pengaturan > Suara pembaca: pilihan suara (semua suara Indonesia di HP), kecepatan Pelan/Sedang/Normal/Cepat, nada Rendah/Normal/Tinggi, "Coba suara pembaca" |
+| Warna kurang bagus (resolusi) | Penyebab: dunia 3D digambar pada kanvas 1280×720 lalu diperbesar ke layar HP, ditambah skala grafis 0,6–0,8 → buram & warna pudar. Sekarang digambar pada piksel layar sungguhan; Pengaturan > Resolusi 3D Rendah 540p / Sedang 720p / Tinggi 1080p |
+| Lagu anak-anak | 7 lagu: 3 ciptaan sendiri + 4 lagu anak domain publik (instrumental), atau Acak |
+| Pengaturan launcher | Tombol Pengaturan di launcher: alamat server (semua game) + pembaruan aplikasi. Isian server & tombol update di Pengaturan The Last Dragon dihapus |
+
+Uji: `make sd-test` 758 LULUS (+19: pilihan suara/kecepatan/nada, 7 lagu & lagu dibuat dengan kode, resolusi 540/1080),
+`make client-test` (e2e Pengaturan The Last Dragon tanpa isian server), `make platform-test` (+6: Pengaturan launcher —
+alamat & versi tampil, cek pembaruan, tanda "ada update", alamat salah ditolak, alamat benar disimpan), `go test ./...`.

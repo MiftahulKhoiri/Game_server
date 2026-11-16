@@ -185,7 +185,7 @@ func _run() -> void:
 	root.add_child(login)
 	await create_timer(0.6).timeout
 	_check(login._page == "home" and login._pages.home.visible and not login._pages.login.visible and not login._pages.register.visible and not login._pages.settings.visible, "beranda: hanya tombol utama yang tampil")
-	_check(login._server_ok and login._server_row.visible and not login._server_box.visible, "server terjangkau: alamat menciut jadi baris bercentang")
+	_check(login._server_ok and login._server_row.visible and not login._server_msg.visible, "server terjangkau: baris bercentang (alamat diatur di launcher)")
 	_check(login._home_status.text == "Server tersambung", "beranda memberi tahu server tersambung")
 	_check(not login._btn_continue.visible, "tanpa sesi tersimpan tidak ada tombol Lanjutkan")
 	login._open_form("login")
@@ -197,19 +197,17 @@ func _run() -> void:
 	login._show_page("settings")
 	_check(login._pages.settings.visible and not login._pages.home.visible, "tombol Pengaturan membuka halaman Pengaturan")
 	_check(login._version_label.text.begins_with("Aplikasi "), "Pengaturan menampilkan versi aplikasi")
-	_check(not login._btn_update.visible and not login._update_status.visible, "tidak ada ajakan update bila versi sudah terbaru")
+	_check(not login._update_status.visible, "tidak ada ajakan update bila versi sudah terbaru")
+	_check(login._pages.settings.find_child("LauncherNote", true, false) != null and not ("_url_edit" in login), "Pengaturan Petualangan: alamat server & update dipindah ke launcher")
 	_check(login._looks_like_email("a@b.id") and not login._looks_like_email("a@b") and not login._looks_like_email("a b@c.id") and not login._looks_like_email("@b.id"), "pemeriksaan ringan email di layar")
-	login._on_change_server()
-	_check(login._server_box.visible and not login._server_row.visible, "tombol Ubah membuka lagi alamat server")
 	var good_url: String = Api.base_url
-	login._url_edit.text = "http://127.0.0.1:1"
+	Api.base_url = "http://127.0.0.1:1"
 	await login._test_server()
 	_check(not login._server_ok and login._server_msg.text.begins_with("Server tidak terjangkau"), "server salah: pesan galat dan alamat tetap terbuka")
 	login._show_page("home")
 	login._open_form("login")
 	_check(login._page == "home" and login._home_status.text.begins_with("Server belum terhubung"), "tanpa server, Masuk/Daftar tidak terbuka")
 	Api.base_url = good_url
-	login._url_edit.text = good_url
 	await login._test_server()
 	_check(login._server_ok, "tes server ulang berhasil setelah alamat dibetulkan")
 	login._open_form("register")

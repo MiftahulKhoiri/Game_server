@@ -14,7 +14,11 @@ signal ended
 
 static var shared: Node = null
 
-const RATE := 0.9  # sedikit lebih pelan dari normal, nyaman untuk anak
+## Pilihan orang tua di Pengaturan (p.settings.voice_rate / voice_pitch / voice_id).
+const RATES := {"pelan": 0.7, "sedang": 0.85, "normal": 1.0, "cepat": 1.2}
+const RATE_NAMES := {"pelan": "Pelan", "sedang": "Sedang", "normal": "Normal", "cepat": "Cepat"}
+const PITCHES := {"rendah": 0.8, "normal": 1.0, "tinggi": 1.25}
+const PITCH_NAMES := {"rendah": "Rendah", "normal": "Normal", "tinggi": "Tinggi"}
 const SPOKEN := {"×": " kali ", "÷": " dibagi ", "+": " tambah ", "=": " sama dengan ", "−": " kurang ", "\n": ", ",
 	"&": " dan ", "%": " persen ", ":": ", "}
 
@@ -22,7 +26,11 @@ var mode := "auto"
 var grade := 1
 var fake := false
 var fake_step := 0.04
-var voice_id := ""
+var voice_id := ""  # suara yang dipakai
+var chosen := ""  # suara pilihan orang tua ("" = otomatis: suara pertama yang terpasang di HP)
+var rate := "sedang"
+var pitch := "normal"
+var _voices: Array = []  # [{id, name, label}] suara bahasa Indonesia di HP
 var speaking := false
 var text := ""  # teks asli yang sedang dibaca
 var history: Array = []  # semua teks yang dibacakan (uji & laporan)
@@ -52,19 +60,58 @@ static func engine_on() -> bool:
 
 func _probe() -> void:
 	voice_id = ""
+	_voices = []
 	if not engine_on():
 		return
-	for lang in ["id", "in"]:  # Android lama menamai bahasa Indonesia "in"
-		var v := DisplayServer.tts_get_voices_for_language(lang)
-		if not v.is_empty():
-			voice_id = v[0]
-			break
+	for v in DisplayServer.tts_get_voices():
+		var lang := str(v.get("language", "")).to_lower()
+		if lang.begins_with("id") or lang.begins_with("in"):  # Android lama menamai bahasa Indonesia "in"
+			_voices.append({"id": str(v.get("id", "")), "name": str(v.get("name", ""))})
+	_voices.sort_custom(func(a, b): return _local(a) and not _local(b))
+	for i in _voices.size():
+		var nm := str(_voices[i].name)
+		_voices[i]["label"] = "Suara %d%s" % [i + 1, " (perlu internet)" if nm.contains("network") else ""]
+	_pick()
 	if not _hooked:
 		_hooked = true
 		DisplayServer.tts_set_utterance_callback(DisplayServer.TTS_UTTERANCE_STARTED, _on_started)
 		DisplayServer.tts_set_utterance_callback(DisplayServer.TTS_UTTERANCE_ENDED, _on_ended)
 		DisplayServer.tts_set_utterance_callback(DisplayServer.TTS_UTTERANCE_CANCELED, _on_ended)
 		DisplayServer.tts_set_utterance_callback(DisplayServer.TTS_UTTERANCE_BOUNDARY, _on_boundary)
+
+
+static func _local(v: Dictionary) -> bool:
+	return not str(v.get("name", "")).contains("network")
+
+
+func _pick() -> void:
+	voice_id = ""
+	for v in _voices:
+		if str(v.id) == chosen:
+			voice_id = chosen
+	if voice_id == "" and not _voices.is_empty():
+		voice_id = str(_voices[0].id)
+
+
+## Suara bahasa Indonesia yang terpasang di HP: [{id, name, label}].
+func voices() -> Array:
+	return _voices
+
+
+## Terapkan pilihan orang tua (dari Pengaturan).
+func configure(voice: String, speed: String, tone: String) -> void:
+	chosen = voice
+	rate = speed if RATES.has(speed) else "sedang"
+	pitch = tone if PITCHES.has(tone) else "normal"
+	_pick()
+
+
+## Nama suara yang dipakai sekarang (untuk Pengaturan).
+func voice_label() -> String:
+	for v in _voices:
+		if str(v.id) == voice_id:
+			return str(v.label)
+	return "Otomatis"
 
 
 func available() -> bool:
@@ -125,7 +172,7 @@ func speak(t: String) -> void:
 		_fake_pos = 0
 		_fake_t = 0.0
 		return
-	DisplayServer.tts_speak(_spoken, voice_id, 90, 1.0, RATE, _uid, true)
+	DisplayServer.tts_speak(_spoken, voice_id, 90, float(PITCHES[pitch]), float(RATES[rate]), _uid, true)
 
 
 func stop() -> void:
