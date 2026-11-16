@@ -1,0 +1,132 @@
+{
+	"schema": 1,
+	"island": "pulau1",
+	"monsters": {
+		"tikus_sawah": {
+			"name": "Tikus Sawah",
+			"model": "tikus_sawah",
+			"height": 0.55,
+			"level": 1,
+			"hp": 20,
+			"atk": 6,
+			"def": 1,
+			"xp": 15,
+			"coins": 6,
+			"subject": "matematika",
+			"taunt": "Cit cit! Bibit jagung ini enak!"
+		},
+		"goblin_nakal": {
+			"name": "Goblin Nakal",
+			"model": "goblin",
+			"height": 1.0,
+			"level": 2,
+			"hp": 30,
+			"atk": 7,
+			"def": 2,
+			"xp": 25,
+			"coins": 10,
+			"drop": {
+				"item": "kue",
+				"chance": 0.3
+			},
+			"subject": "bahasa",
+			"taunt": "Hihihi! Kamu tidak akan bisa menangkapku!"
+		},
+		"kelelawar_gua": {
+			"name": "Kelelawar Gua",
+			"model": "kelelawar_hutan",
+			"height": 0.8,
+			"level": 2,
+			"hp": 24,
+			"atk": 8,
+			"def": 1,
+			"xp": 22,
+			"coins": 8,
+			"subject": "ipa",
+			"taunt": "Kiiik! Gua ini milik kami!"
+		},
+		"raja_goblin": {
+			"name": "Raja Goblin Kecil",
+			"model": "raja_goblin",
+			"height": 1.7,
+			"level": 5,
+			"hp": 110,
+			"atk": 10,
+			"def": 6,
+			"xp": 150,
+			"coins": 100,
+			"boss": true,
+			"shield": "Perisai Mahkota",
+			"heavy_every": 3,
+			"subject": "campur",
+			"taunt": "Hahaha! Akulah Raja Goblin! Kabut Lupa membuat semua orang bodoh!",
+			"defeat": "Aduh... ilmumu terlalu kuat! Baiklah, aku kembalikan semua barang curian dan pergi dari pulau ini!"
+		}
+	},
+	"spawns": [
+		{
+			"id": "tikus_1",
+			"monster": "tikus_sawah",
+			"pos": [
+				33,
+				33
+			]
+		},
+		{
+			"id": "tikus_2",
+			"monster": "tikus_sawah",
+			"pos": [
+				27,
+				46
+			]
+		},
+		{
+			"id": "goblin_1",
+			"monster": "goblin_nakal",
+			"pos": [
+				-44,
+				-36
+			]
+		},
+		{
+			"id": "goblin_2",
+			"monster": "goblin_nakal",
+			"pos": [
+				-36,
+				-50
+			]
+		},
+		{
+			"id": "goblin_3",
+			"monster": "goblin_nakal",
+			"pos": [
+				-50,
+				-46
+			]
+		},
+		{
+			"id": "goblin_4",
+			"monster": "goblin_nakal",
+			"pos": [
+				16,
+				-50
+			]
+		},
+		{
+			"id": "kelelawar_1",
+			"monster": "kelelawar_gua",
+			"pos": [
+				34,
+				-46
+			]
+		},
+		{
+			"id": "kelelawar_2",
+			"monster": "kelelawar_gua",
+			"pos": [
+				50,
+				-30
+			]
+		}
+	]
+}

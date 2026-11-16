@@ -30,6 +30,7 @@ func _initialize() -> void:
 	await _v3_learning_tests()
 	await _v3_quest_tests()
 	await _v3_reward_tests()
+	await _v3_battle_tests()
 	await _v3_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
@@ -296,6 +297,7 @@ const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.g
 const LearningEngine := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
 const QuestEngine := preload("res://games/education_sd/scripts/engine/quest_engine.gd")
 const RewardEngine := preload("res://games/education_sd/scripts/engine/reward_engine.gd")
+const BattleEngine := preload("res://games/education_sd/scripts/engine/battle_engine.gd")
 const MODEL_DIR := "res://assets/models/"
 
 
@@ -466,7 +468,7 @@ func _v3_quest_tests() -> void:
 	print("== 3.x Quest Engine (data misi Pulau 1)")
 	var q := QuestEngine.new()
 	_check(q.load_quests("quests1.json"), "quests1.json termuat %s" % str(q.errors))
-	_check(q.quests.size() == 9 and q.quests.filter(func(x): return str(x.kind) == "main").size() == 5, "5 misi utama + 4 sampingan")
+	_check(q.quests.size() == 11 and q.quests.filter(func(x): return str(x.kind) == "main").size() == 6, "6 misi utama + 5 sampingan")
 	var n := NpcEngine.new()
 	n.load_layout("island1.json")
 	var giver_ok := true
@@ -544,6 +546,89 @@ func _v3_reward_tests() -> void:
 	_check(rw.equip(p, "warna_biru") and str(p.profile.outfit) == "warna_biru", "ganti baju")
 
 
+func _v3_battle_tests() -> void:
+	print("== 3.x Battle Engine (bergiliran, perisai bos, ramah anak, keseimbangan)")
+	var mv = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/data/monsters1.json"))
+	_check(typeof(mv) == TYPE_DICTIONARY and (mv.monsters as Dictionary).size() == 4 and (mv.spawns as Array).size() == 8, "monsters1.json: 4 jenis, 8 tempat muncul")
+	var models_ok := true
+	for id in mv.monsters:
+		if not ResourceLoader.exists(MODEL_DIR + str(mv.monsters[id].model) + ".glb"):
+			models_ok = false
+	_check(models_ok, "model semua musuh ada di APK")
+	var st1 := {"hp": 48, "atk": 8, "def": 3, "ilmu": 12}
+	var b := BattleEngine.new()
+	b.start(st1, "goblin_nakal", mv.monsters.goblin_nakal, 0, 3)
+	var o: Dictionary = b.act("serang")
+	_check(int(o.enemy_dmg) >= 5 and int(o.player_dmg) >= 1 and b.turn == 1, "serang: musuh kena, musuh membalas")
+	var hp0 := int(b.enemy.hp)
+	var o2: Dictionary = b.act("ilmu", {"correct": false, "first_try": false})
+	_check(int(o2.enemy_dmg) == 0 and int(b.enemy.hp) == hp0 and str(o2.text[0]).contains("Tidak apa-apa"), "jurus salah: gagal saja, pesan lembut")
+	var o3: Dictionary = b.act("ilmu", {"correct": true, "first_try": true})
+	_check(int(o3.enemy_dmg) >= 15, "jurus ilmu sempurna lebih kuat dari serangan fisik (%d)" % int(o3.enemy_dmg))
+	var bb := BattleEngine.new()
+	bb.start(st1, "goblin_nakal", mv.monsters.goblin_nakal, 0, 5)
+	var g1: Dictionary = bb.act("bertahan")
+	var bb2 := BattleEngine.new()
+	bb2.start(st1, "goblin_nakal", mv.monsters.goblin_nakal, 0, 5)
+	var g2: Dictionary = bb2.act("ilmu", {"correct": false})
+	_check(int(g1.player_dmg) < int(g2.player_dmg) and int(g1.healed) > 0, "bertahan: kerusakan berkurang + pulih sedikit")
+	var bk := BattleEngine.new()
+	bk.start(st1, "tikus_sawah", mv.monsters.tikus_sawah, 0, 1)
+	bk.act("kabur")
+	_check(bk.over and bk.fled and bk.rewards().is_empty(), "kabur dari musuh biasa")
+	var bs := BattleEngine.new()
+	bs.start({"hp": 64, "atk": 12, "def": 5, "ilmu": 16}, "raja_goblin", mv.monsters.raja_goblin, 0, 2)
+	bs.act("kabur")
+	_check(not bs.over, "tidak bisa kabur dari bos")
+	_check(bs.shield_up() and bs.phys_base() < 4.0, "Perisai Mahkota menahan serangan fisik")
+	bs.act("ilmu", {"correct": true, "first_try": true})
+	_check(not bs.shield_up(), "jurus ilmu benar menghancurkan perisai")
+	_check(bs.heavy_next, "bos memberi aba-aba sebelum pukulan berat (giliran ke-3)")
+	var bh := int(bs.player.hp)
+	var oh: Dictionary = bs.act("bertahan")
+	_check(not bs.heavy_next and int(oh.player_dmg) <= int(round((10 - 5 * 0.5) * 1.6 * 0.5 * 1.15)) + 1 and int(bs.player.hp) <= bh + 4, "bertahan saat pukulan berat")
+	var be := BattleEngine.new()
+	be.start(st1, "goblin_nakal", mv.monsters.goblin_nakal, 3, 1)
+	_check(int(be.enemy.atk) < int(mv.monsters.goblin_nakal.atk), "kalah berkali-kali: serangan musuh dikurangi (adaptif)")
+	var bl := BattleEngine.new()
+	bl.start({"hp": 5, "atk": 8, "def": 3, "ilmu": 12}, "goblin_nakal", mv.monsters.goblin_nakal, 0, 1)
+	bl.act("bertahan")
+	bl.act("bertahan")
+	_check(bl.over and not bl.won and bl.rewards().is_empty(), "HP habis: kalah, tanpa hadiah (tanpa hukuman)")
+	# Simulasi keseimbangan: anak level 3, Jurus Ilmu benar 70% (setengahnya sejak percobaan pertama), Bertahan saat aba-aba.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var wins := 0
+	var turns := 0
+	var N := 200
+	for i in N:
+		var sim := BattleEngine.new()
+		sim.start({"hp": 64, "atk": 12, "def": 5, "ilmu": 16}, "raja_goblin", mv.monsters.raja_goblin, 0, 1000 + i)
+		while not sim.over and sim.turn < 60:
+			if sim.heavy_next:
+				sim.act("bertahan")
+			elif int(sim.player.hp) < 22 and rng.randf() < 0.5:
+				sim.act("barang", {"use": "heal", "power": 30})
+			else:
+				var ok := rng.randf() < 0.7
+				sim.act("ilmu", {"correct": ok, "first_try": ok and rng.randf() < 0.5})
+		if sim.won:
+			wins += 1
+		turns += sim.turn
+	var rate := float(wins) / N
+	print("    simulasi bos: menang %d%%, rata-rata %.1f giliran" % [int(rate * 100), float(turns) / N])
+	_check(rate >= 0.6 and rate < 1.0, "Raja Goblin menantang tapi bisa dikalahkan anak level 3 (%d%% menang)" % int(rate * 100))
+	var wins2 := 0
+	for i in 100:
+		var sim2 := BattleEngine.new()
+		sim2.start({"hp": 48, "atk": 8, "def": 3, "ilmu": 12}, "goblin_nakal", mv.monsters.goblin_nakal, 0, 2000 + i)
+		while not sim2.over:
+			sim2.act("serang")
+		if sim2.won:
+			wins2 += 1
+	_check(wins2 >= 90, "goblin nakal bisa dikalahkan anak level 1 hanya dengan serangan (%d%%)" % wins2)
+
+
 # --- 3.x Dunia Enam Pulau: aplikasi utuh --------------------------------------------------------------------------
 
 func _open() -> Node:
@@ -586,6 +671,7 @@ func _v3_app_tests() -> void:
 	print("== 3.x Menu utama & profil petualang (pemain baru)")
 	_clear_save()
 	var app := await _open()
+	app.foes_calm = 99999.0
 	_check(app != null and app.screen == "title", "game dibuka di menu utama, bukan menu soal")
 	_check(_btn(app, "Start") != null and _btn(app, "Continue") == null, "pemain baru: tombol Mulai Petualangan")
 	_check(str(app.get("game_id")) == "education_sd" and app.worlds.islands.size() == 6 and app.data.questions.size() >= 200,
@@ -953,7 +1039,7 @@ func _v3_app_tests() -> void:
 	_check(Q.state(app.p, "kerang_pantai") == "done" and (app.p.rpg.owned as Array).has("warna_hijau"), "kerang diantar: baju hijau terbuka")
 	app.show_explore()
 	await _frames(1)
-	_check(str(app.hud._dialog_text.text).contains("MISI UTAMA (5/5") and str(app.hud._dialog_text.text).contains("✓ Kerang Pantai"), "jurnal misi")
+	_check(str(app.hud._dialog_text.text).contains("MISI UTAMA (5/6") and str(app.hud._dialog_text.text).contains("✓ Kerang Pantai"), "jurnal misi")
 	app.hud.close_dialog()
 	print("== 3.x Sistem RPG: tas, status, kostum, toko, koleksi, prestasi, naik level")
 	_check(int(app.p.rpg.level_seen) == app.level() and app.level() >= 2, "naik level tercatat selama misi (level %d)" % app.level())
@@ -1015,6 +1101,89 @@ func _v3_app_tests() -> void:
 	w = app.world
 	_check(w.find_child("Boulder", true, false) == null and w.gate_open() and w.pickups.is_empty(), "masuk ulang: gua & gerbang tetap terbuka, barang tidak muncul lagi")
 
+	print("== 3.x Pertarungan bergiliran: goblin, kalah, kabur, barang, Raja Goblin Kecil")
+	app.battle_seed = 11
+	_check(Q.state(app.p, "raja_goblin") == "active" and str(Q.objective(app.p).text).contains("Raja Goblin"), "misi Raja Goblin Kecil aktif setelah gerbang terbuka")
+	_check(w.foes.size() == 8, "8 musuh berkeliaran (tikus, goblin, kelelawar)")
+	var fg: Dictionary = w.foe("goblin_1")
+	fg.rest = 0.0
+	w.player.place((fg.node as Node3D).position + Vector3(0.6, 0.3, 0), 0.0)
+	await _frames(3)
+	var bv: Control = app.lesson
+	_check(bv != null and bv.monster_id == "goblin_nakal" and not app.hud.visible, "menyentuh goblin: pertarungan dimulai")
+	var xp_b := int(app.p.rpg.xp)
+	_check(await _battle_win(app), "goblin dikalahkan dengan serangan & jurus ilmu")
+	_check(w.foe("goblin_1").is_empty() and app.lesson == null and app.hud.visible, "goblin hilang dari dunia, kembali menjelajah")
+	_check(int(app.p.rpg.xp) > xp_b, "menang: XP bertambah")
+	app.start_battle("tikus_sawah", "tikus_1")
+	await _frames(2)
+	bv = app.lesson
+	bv.engine.player.hp = 1
+	_press(bv, "Act_serang")
+	await _frames(2)
+	_check(bv.engine.over and not bv.engine.won and _btn(bv, "Done").text == "Bangun di desa", "HP habis: pingsan")
+	_press(bv, "Done")
+	await _frames(3)
+	_check(app.lesson == null and w.player.global_position.distance_to(Vector3(0, 0, 46)) < 3.0, "bangun di desa")
+	_check(int(app.p.world.battle_losses.tikus_sawah) == 1 and Q.count_item(app.p, "lencana_petualang") == 1, "kalah tidak menghilangkan barang; kesulitan tikus diturunkan")
+	app.start_battle("kelelawar_gua", "kelelawar_1")
+	await _frames(2)
+	bv = app.lesson
+	var kue0 := int(app.p.rpg.items.get("kue", 0))
+	bv.engine.player.hp = 10
+	_press(bv, "Act_barang")
+	await _frames(1)
+	_press(bv, "Use_kue")
+	await _frames(2)
+	_check(int(app.p.rpg.items.get("kue", 0)) == kue0 - 1 and bv.engine.history.any(func(t): return str(t).contains("Kue Manis")), "Kue Manis dipakai dalam pertarungan")
+	_press(bv, "Act_kabur")
+	await _frames(1)
+	_check(bv.engine.fled, "kabur dari kelelawar")
+	_press(bv, "Done")
+	await _frames(2)
+	_check(app.lesson == null and not w.foe("kelelawar_1").is_empty(), "kabur: kelelawar tetap ada")
+	app.p.rpg.items["ramuan_ilmu"] = 1
+	w.player.place(w.spot_pos("boss") + Vector3(0, 0.3, 0.4), PI)
+	await _frames(3)
+	_check(w.focus_kind() == "boss", "di depan Raja Goblin Kecil: AKSI menyala")
+	app.hud.trigger_action()
+	await _frames(1)
+	_press_hud(app, "Bertarung!")
+	await _frames(2)
+	bv = app.lesson
+	_check(bv != null and bool(bv.engine.enemy.boss) and _btn(bv, "Act_kabur").disabled, "pertarungan bos dimulai, tidak bisa kabur")
+	_check(bv.engine.shield_up(), "Perisai Mahkota aktif")
+	var hp_b := int(bv.engine.enemy.hp)
+	_press(bv, "Act_serang")
+	await _frames(1)
+	_check(hp_b - int(bv.engine.enemy.hp) <= 4, "serangan fisik tertahan perisai (%d)" % (hp_b - int(bv.engine.enemy.hp)))
+	_press(bv, "Act_barang")
+	await _frames(1)
+	_press(bv, "Use_ramuan_ilmu")
+	await _frames(1)
+	_check(float(bv.engine.player.boost) > 1.0, "Ramuan Ilmu menguatkan jurus berikutnya")
+	_press(bv, "Act_ilmu")
+	await _frames(1)
+	var bq = bv.current_question_view()
+	_answer(bq, true)
+	await _frames(1)
+	if bv.current_question_view() == bq:
+		bq._emit_finish()
+	await _frames(1)
+	_check(not bv.engine.shield_up() and int(bv.engine.enemy.hp) < hp_b - 20, "jurus ilmu benar menembus perisai")
+	_check(await _battle_win(app), "Raja Goblin Kecil dikalahkan")
+	await _frames(2)
+	_check(bool(app.p.world.bosses.get("pulau1", false)) and Q.state(app.p, "raja_goblin") == "done" and Q.count_item(app.p, "mahkota_goblin") == 1,
+		"bos kalah: misi selesai, Mahkota Goblin, pulau tercatat")
+	_check(w.find_child("Boss", true, false) == null and app.modal_open(), "Raja hilang dari singgasana, perayaan pahlawan pulau")
+	app.close_modal()
+	app.hud.close_dialog()
+	app.show_island("pulau1")
+	await _frames(3)
+	w = app.world
+	_check(w.find_child("Boss", true, false) == null and w.foes.filter(func(e): return str(e.monster).begins_with("goblin")).is_empty(),
+		"masuk ulang: Raja & goblin sudah pergi dari pulau")
+
 	w.player.place(w.spot_pos("dock") + Vector3(0, 0.2, -0.8), 0.0)
 	await _frames(3)
 	_check(w.focus_kind() == "dock", "dekat perahu: tombol AKSI menyala")
@@ -1061,6 +1230,7 @@ func _v3_app_tests() -> void:
 	_check(int(saved.get("schema_version", 0)) == 3 and str(saved.data.profile.name) == "Ana" and str(saved.data.settings.gfx) == "hemat",
 		"progres tersimpan di skema 3")
 	app = await _open()
+	app.foes_calm = 99999.0
 	_check(app.screen == "title" and _btn(app.current, "Continue") != null and str(app.p.profile.name) == "Ana", "buka ulang: petualang dikenali")
 	_press(app.current, "Continue")
 	await _frames(2)
@@ -1076,6 +1246,7 @@ func _v3_app_tests() -> void:
 	_clear_save()
 	SaveManager.save("education_sd", _v2_sample(), 2)
 	app = await _open()
+	app.foes_calm = 99999.0
 	_check(int(app.p.migrated_from) == 2 and str(app.p.profile.name) == "Budi" and int(app.p.rpg.coins) == 77, "save 2.x dimigrasikan lewat GameManager")
 	_check(app.screen == "title" and app.modal_open(), "pemain lama disambut pesan Petualangan Baru")
 	_check(int(SaveManager.load_progress("education_sd", 3).get("schema_version", 0)) == 3, "berkas save ditulis ulang dalam skema 3")
@@ -1164,3 +1335,34 @@ func _label_has(root: Node, text: String) -> bool:
 		if str((l as Label).text).contains(text) and not l.is_queued_for_deletion():
 			return true
 	return false
+
+
+## Menangkan pertarungan yang sedang terbuka: Jurus Ilmu benar terus; Bertahan saat bos bersiap memukul.
+func _battle_win(app: Node) -> bool:
+	var bv = app.lesson
+	if bv == null or not bv.has_method("choose"):
+		return false
+	var guard := 0
+	while not bv.engine.over and guard < 40:
+		guard += 1
+		if bv.engine.heavy_next:
+			_press(bv, "Act_bertahan")
+			await _frames(1)
+			continue
+		_press(bv, "Act_ilmu")
+		await _frames(1)
+		var q = bv.current_question_view()
+		if q == null:
+			_press(bv, "Act_serang")
+			await _frames(1)
+			continue
+		_answer(q, true)
+		await _frames(1)
+		if bv.current_question_view() == q:
+			q._emit_finish()
+		await _frames(1)
+		bv.engine.player.hp = maxi(int(bv.engine.player.hp), 20)
+	var won: bool = bv.engine.won
+	_press(bv, "Done")
+	await _frames(3)
+	return won

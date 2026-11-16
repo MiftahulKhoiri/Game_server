@@ -16,7 +16,7 @@ var items: Dictionary = {}
 var challenges: Dictionary = {}
 var island_id := ""
 var errors: Array[String] = []
-const STEP_TYPES := ["learn", "talk", "collect", "challenge", "use", "places_all", "meet_all"]
+const STEP_TYPES := ["learn", "talk", "collect", "challenge", "use", "places_all", "meet_all", "defeat"]
 
 
 func load_quests(file: String) -> bool:
@@ -243,6 +243,10 @@ func event(p: Dictionary, kind: String, arg: String = "", ctx: Dictionary = {}) 
 				hit = kind == "challenge" and arg == str(s.challenge)
 			"use":
 				hit = kind == "use" and arg == str(s.target) and count_item(p, str(s.get("item", ""))) > 0
+			"defeat":
+				if kind == "defeat" and arg == str(s.target):
+					p.quests[id].n = int(p.quests[id].n) + 1
+					hit = int(p.quests[id].n) >= int(s.get("count", 1))
 		if hit:
 			notes.append_array(_advance(p, id))
 		notes.append_array(_settle(p, id, ctx))
@@ -311,6 +315,8 @@ func objective(p: Dictionary) -> Dictionary:
 		var text := str(s.get("text", ""))
 		if str(s.type) == "collect":
 			text += " (%d/%d)" % [mini(count_item(p, str(s.item)), int(s.get("count", 1))), int(s.get("count", 1))]
+		elif str(s.type) == "defeat" and int(s.get("count", 1)) > 1:
+			text += " (%d/%d)" % [int(p.quests[id].get("n", 0)), int(s.get("count", 1))]
 		return {"quest": id, "title": str(by_id[id].title), "text": text, "where": s.get("where", {})}
 	return {}
 

@@ -45,6 +45,10 @@ const PICK_RANGE := 1.5
 var _gate_body: StaticBody3D
 var _gate_mesh: MeshInstance3D
 var _boulder_nodes: Array = []
+var foes: Array = []  # [{uid, monster, node, rig, home, target, wait, rest}]
+const FOE_CHASE := 6.0
+const FOE_TOUCH := 1.5
+const FOE_SPEED := 1.3
 
 const DOCK_HALF := 1.6
 
@@ -85,6 +89,8 @@ func build(c: Dictionary) -> void:
 			_clue(qs)
 		for pk in c.get("pickups", []):
 			add_pickup(str(pk.uid), str(pk.item), pk.pos)
+		for f in c.get("foes", []):
+			add_foe(f)
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
@@ -483,6 +489,9 @@ func _fort() -> void:
 	flag.name = "GoblinFlag"
 	spots.append({"pos": c + Vector3(0, 0, hf + 1.4), "kind": "gate", "id": "benteng", "text": "AKSI: periksa gerbang benteng"})
 	var b: Dictionary = layout.get("boss", {})
+	if bool(flags.get("raja_kalah", false)):
+		flag.material_override = Rig.mat(Color("3fae63"))
+		b = {}
 	if not b.is_empty():
 		var bp := _v(b.pos)
 		_mesh(Rig.box(Vector3(2.4, 0.8, 1.6)), Color("6b4a2a"), bp + Vector3(0, 0.4, -0.4), 0.9, root)
@@ -493,7 +502,7 @@ func _fort() -> void:
 		spots.append({"pos": bp + Vector3(0, 0, 2.2), "kind": "boss", "id": str(b.get("model", "boss")), "text": "AKSI: hadapi " + str(b.name)})
 	if bool(flags.get("gerbang_terbuka", false)):
 		open_gate(false)
-	for g in layout.get("guards", []):
+	for g in ([] if bool(flags.get("raja_kalah", false)) else layout.get("guards", [])):
 		var gn := _figure(str(g.model), 1.15, _v(g.pos), 0.0, root)
 		gn.name = "Guard"
 		_label3d(str(g.name), 40, Color("ffd166"), Vector3(0, 1.9, 0), gn)
@@ -674,6 +683,93 @@ func set_marks(marks: Dictionary) -> void:
 		l.modulate = Color("ffcc00") if m == "!" else Color("33ccff")
 		l.name = "Mark"
 		l.visibility_range_end = 45.0
+
+
+# --- Musuh berkeliaran (Tahap 6) -----------------------------------------------------------------------------
+
+## f: {uid, monster, model, name, level, height, pos}
+func add_foe(f: Dictionary) -> void:
+	var home := _v(f.pos)
+	var n := _figure(str(f.model), float(f.get("height", 1.0)), home, _rng.randf() * TAU)
+	n.name = "Foe_" + str(f.uid)
+	_label3d("%s Lv%d" % [str(f.name), int(f.get("level", 1))], 38, Color("ff8a6a"), Vector3(0, float(f.get("height", 1.0)) + 0.5, 0), n)
+	foes.append({"uid": str(f.uid), "monster": str(f.monster), "node": n, "rig": n.get_meta("rig"), "home": home, "target": home,
+		"wait": _rng.randf_range(0.5, 2.0), "rest": 0.0})
+
+
+func foe(uid: String) -> Dictionary:
+	for e in foes:
+		if str(e.uid) == uid:
+			return e
+	return {}
+
+
+func remove_foe(uid: String) -> void:
+	for i in range(foes.size() - 1, -1, -1):
+		if str(foes[i].uid) == uid:
+			(foes[i].node as Node3D).queue_free()
+			foes.remove_at(i)
+
+
+## Musuh kembali ke rumahnya dan diam sebentar (setelah kabur/kalah) supaya tidak langsung menyerang lagi.
+func calm_foes(sec := 5.0) -> void:
+	for e in foes:
+		e.rest = sec
+		(e.node as Node3D).position = e.home
+		e.target = e.home
+
+
+func _update_foes(delta: float) -> void:
+	var pp := player.global_position
+	for e in foes:
+		var n: Node3D = e.node
+		var d := Vector2(pp.x - n.position.x, pp.z - n.position.z).length()
+		var far := d > NPC_ACTIVE
+		n.visible = not far
+		if far:
+			continue
+		var speed := 0.0
+		if float(e.rest) > 0.0:
+			e.rest = float(e.rest) - delta
+		elif not player.frozen and d < FOE_TOUCH:
+			e.rest = 3.0
+			interacted.emit("foe", str(e.uid))
+			continue
+		var tgt: Vector3 = e.target
+		var h: Vector3 = e.home
+		if float(e.rest) <= 0.0 and d < FOE_CHASE and Vector2(pp.x - h.x, pp.z - h.z).length() < FOE_CHASE + 4.0:
+			tgt = Vector3(pp.x, 0, pp.z)
+		var flat := Vector3(tgt.x - n.position.x, 0, tgt.z - n.position.z)
+		if flat.length() < 0.2:
+			e.wait = float(e.wait) - delta
+			if float(e.wait) <= 0.0:
+				var a := _rng.randf() * TAU
+				e.target = Vector3(h.x + cos(a) * 3.0, 0, h.z + sin(a) * 3.0)
+				e.wait = _rng.randf_range(1.5, 4.0)
+		else:
+			var step := minf(FOE_SPEED * delta, flat.length())
+			n.position += flat.normalized() * step
+			n.rotation.y = lerp_angle(n.rotation.y, atan2(flat.x, flat.z), minf(delta * 6.0, 1.0))
+			speed = FOE_SPEED
+		n.position.y = ground_y(n.position.x, n.position.z)
+		if e.rig != null:
+			e.rig.animate(delta, speed, true)
+
+
+func boss_defeated() -> void:
+	flags["raja_kalah"] = true
+	var b := find_child("Boss", true, false)
+	if b != null:
+		b.queue_free()
+	for g in find_children("Guard", "", true, false):
+		g.queue_free()
+	var fl := find_child("GoblinFlag", true, false)
+	if fl != null:
+		(fl as MeshInstance3D).material_override = Rig.mat(Color("3fae63"))
+	for i in range(spots.size() - 1, -1, -1):
+		if str(spots[i].kind) == "boss":
+			spots.remove_at(i)
+	_focus = -1
 
 
 func _academy_door() -> void:
@@ -865,6 +961,8 @@ func _process(delta: float) -> void:
 		return
 	if not npcs.is_empty():
 		_update_npcs(delta)
+	if not foes.is_empty():
+		_update_foes(delta)
 	if _talk_release >= 0.0:
 		_talk_release -= delta
 		if _talk_release < 0.0:

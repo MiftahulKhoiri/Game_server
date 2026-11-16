@@ -18,6 +18,7 @@ const QuestEngine := preload("res://games/education_sd/scripts/engine/quest_engi
 const ChallengeView := preload("res://games/education_sd/scripts/ui/challenge_view.gd")
 const RewardEngine := preload("res://games/education_sd/scripts/engine/reward_engine.gd")
 const BagView := preload("res://games/education_sd/scripts/ui/bag_view.gd")
+const BattleView := preload("res://games/education_sd/scripts/ui/battle_view.gd")
 const TitleScreen := preload("res://games/education_sd/scripts/ui/title_screen.gd")
 const ProfileScreen := preload("res://games/education_sd/scripts/ui/profile_screen.gd")
 const WorldMap := preload("res://games/education_sd/scripts/ui/world_map.gd")
@@ -27,7 +28,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.4.0"
+const VERSION := "3.5.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -44,6 +45,9 @@ var _obj_t := 0.0
 var rewards := RewardEngine.new()
 var _toast_queue: Array = []
 var _chip_lbl: Label
+var monsters: Dictionary = {}  # data/monstersN.json pulau yang sedang dikunjungi
+var battle_seed := -1  # uji: pertarungan dengan acak tetap
+var foes_calm := 0.0  # uji: musuh diam selama n detik setelah pulau dibangun
 var p: Dictionary = {}
 var audio: Node
 var screen := ""
@@ -499,12 +503,19 @@ func show_island(id: String, at := "") -> void:
 	if str(isl.get("quests", "")) != "" and not quest.load_quests(str(isl.quests)):
 		trail("misi pulau gagal: " + ", ".join(quest.errors.slice(0, 3)))
 	QuestEngine._ensure(p)
+	monsters = {}
+	if str(isl.get("monsters", "")) != "":
+		var mv = JSON.parse_string(FileAccess.get_file_as_string("res://games/education_sd/data/" + str(isl.monsters)))
+		if typeof(mv) == TYPE_DICTIONARY:
+			monsters = mv
 	_make_3d("island", IslandScene.new(), {"island": isl, "layout": layout, "npc_engine": npc if not layout.is_empty() else null,
 		"gfx": str(p.settings.gfx), "hero": hero_look(), "flags": p.world.flags, "pickups": quest.pickups(p, true),
-		"quest_spots": quest.doc.get("spots", [])}, "Pulau %d · %s" % [int(isl.number), str(isl.name)],
+		"quest_spots": quest.doc.get("spots", []), "foes": _foe_list()}, "Pulau %d · %s" % [int(isl.number), str(isl.name)],
 		Color.from_string(str(isl.color), UI.PRIMARY))
 	world.interacted.connect(_on_island_interact)
 	world.place_changed.connect(_on_place)
+	if foes_calm > 0.0:
+		world.calm_foes(foes_calm)
 	hud.missions_pressed.connect(show_explore)
 	hud.set_hint("Selamat datang di %s! Jelajahi pulau dan sapa penduduknya. Perahu di dermaga membawamu kembali ke peta." % str(isl.name))
 	_show_notes(quest.start_auto(p, _qctx()))
@@ -701,7 +712,13 @@ func _on_island_interact(kind: String, id: String) -> void:
 				var sg: Dictionary = npc.layout.get("signs", {}).get("gate", {})
 				hud.show_dialog(str(sg.get("title", "")), str(sg.get("text", "")))
 		"boss":
-			hud.show_dialog("Raja Goblin Kecil", "\"Hahaha! Jadi kamu petualang yang menolong warga? Latih dulu jurus ilmumu di akademi... lalu kembalilah kalau berani!\"")
+			var bm: Dictionary = monsters.get("monsters", {}).get("raja_goblin", {})
+			hud.show_dialog(str(bm.get("name", "Raja Goblin")), "\"%s\"\n\nPerisai Mahkota hanya bisa ditembus Jurus Ilmu. Siapkan Kue Manis dan Ramuan Ilmu!" % str(bm.get("taunt", "")),
+				[["Bertarung!", start_battle.bind("raja_goblin", "boss"), Color("e05a4f")]])
+		"foe":
+			var fe: Dictionary = world.foe(id)
+			if not fe.is_empty():
+				start_battle(str(fe.monster), id)
 
 
 ## Percakapan dengan penduduk: satu kalimat per halaman, tombol Lanjut sampai habis.
@@ -853,6 +870,75 @@ func _process(delta: float) -> void:
 		hud.compass_target = objective_pos()
 
 
+# --- Pertarungan (Tahap 6) -------------------------------------------------------------------------------------
+
+## Musuh berkeliaran pulau ini. Setelah Raja Goblin kalah, goblin pergi dari pulau.
+func _foe_list() -> Array:
+	var out: Array = []
+	var defs: Dictionary = monsters.get("monsters", {})
+	for sp in monsters.get("spawns", []):
+		var m: Dictionary = defs.get(str(sp.monster), {})
+		if m.is_empty() or (bool(p.world.flags.get("raja_kalah", false)) and str(sp.monster).begins_with("goblin")):
+			continue
+		out.append({"uid": str(sp.id), "monster": str(sp.monster), "model": str(m.model), "name": str(m.name), "level": int(m.get("level", 1)),
+			"height": float(m.get("height", 1.0)), "pos": sp.pos})
+	return out
+
+
+func start_battle(monster_id: String, uid: String) -> void:
+	var m: Dictionary = monsters.get("monsters", {}).get(monster_id, {})
+	if m.is_empty() or hud == null or world == null or (lesson != null and is_instance_valid(lesson)):
+		return
+	hud.close_dialog()
+	hud.visible = false
+	world.player.frozen = true
+	world.player.move_input = Vector2.ZERO
+	lesson = BattleView.new()
+	lesson.name = "Battle"
+	_root.add_child(lesson)
+	lesson.setup(learning, rewards, p, rng, audio, data.doc.get("type_names", {}), monster_id, m, uid, hero_look(), battle_seed)
+	lesson.changed.connect(save)
+	lesson.finished.connect(_on_battle_end)
+	trail("tarung %s %s" % [monster_id, uid])
+
+
+func _on_battle_end(res: Dictionary) -> void:
+	close_class()
+	if world == null:
+		return
+	if bool(res.won):
+		if bool(res.boss):
+			p.world.bosses[str(p.world.island)] = true
+			world.boss_defeated()
+		else:
+			world.remove_foe(str(res.uid))
+		var notes: Array = quest.event(p, "defeat", str(res.monster), _qctx())
+		_show_notes(notes)
+		if bool(res.boss):
+			_island_saved()
+	elif bool(res.fled):
+		world.calm_foes(5.0)
+	else:
+		var desa: Dictionary = npc.places.get("desa", {})
+		var dp: Array = desa.get("pos", [0, 40])
+		world.player.place(Vector3(float(dp[0]), 0.3, float(dp[1]) + 4.0), 0.0)
+		world.calm_foes(5.0)
+		toast("Kamu bangun di desa. HP pulih penuh! Belajar lagi di akademi supaya jurus ilmumu makin kuat.")
+	save()
+	_progress()
+
+
+## Akhir cerita pulau: bos kalah.
+func _island_saved() -> void:
+	var isl := worlds.island(str(p.world.island))
+	var i: int = worlds.index_of(str(isl.id))
+	var nxt: Dictionary = worlds.islands[i + 1] if i + 1 < worlds.islands.size() else {}
+	var msg := "%s selamat dari Kabut Lupa! Kamu adalah pahlawan %s." % [str(isl.name), str(isl.name)]
+	if not nxt.is_empty():
+		msg += "\n\nPulau berikutnya: %s. %s" % [str(nxt.name), "Segera hadir!" if not bool(nxt.get("available", false)) else "Berlayarlah dari dermaga!"]
+	modal("Pahlawan %s!" % str(isl.name), msg, [["Hore!", func() -> void: pass]])
+
+
 # --- Tantangan misi (teka-teki belajar) ----------------------------------------------------------------
 
 func open_challenge(cid: String) -> void:
@@ -953,9 +1039,10 @@ func _build_toast() -> void:
 	_toast.z_index = 10
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast)
-	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_toast.offset_top = -120
-	_toast.offset_bottom = -30
+	# Di atas tengah layar: tidak menutupi joystick, tombol aksi, atau tombol pertarungan.
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_toast.offset_top = 92
+	_toast.offset_bottom = 170
 	_toast.offset_left = -360
 	_toast.offset_right = 360
 

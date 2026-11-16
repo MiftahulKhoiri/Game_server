@@ -331,3 +331,46 @@ Tidak ada: perjudian, loot box, pembelian uang sungguhan, iklan (sesuai dokumen 
 |---|---|
 | `make sd-test` | **576 pemeriksaan LULUS** (+36): Reward Engine (level & hadiah, kekuatan, kartu sekali, prestasi sekali, toko: beli/ganda/koin kurang/tidak dijual, pakai/lepas kostum); di game: naik level selama misi, prestasi otomatis, HUD level, semua tab tas, ganti baju mengganti model di dunia, toko Pak Darto (beli topi, kue, ditolak saat koin kurang), pakai topi dari toko |
 | `make platform-test` | **LULUS** |
+
+---
+
+## Tahap 6 — Sistem pertarungan (paket 3.5.0, 16 Nov 2026)
+
+### Hasil (data `data/monsters1.json`, mesin `scripts/engine/battle_engine.gd`, layar `scripts/ui/battle_view.gd`)
+
+Pertarungan **bergiliran berbasis pengetahuan** (dokumen induk §6). Giliran pemain:
+
+| Aksi | Efek |
+|---|---|
+| Serang | Serangan fisik dari Serang (level) − pertahanan musuh |
+| **Jurus Ilmu** | Satu soal sesuai kelas anak (petunjuk & mencoba lagi tetap ada). Benar tanpa salah = 1,6 × Ilmu; benar setelah mencoba lagi = 0,8 × Ilmu; salah = jurus gagal saja (pesan lembut). Jawaban ikut ke statistik belajar |
+| Bertahan | Kerusakan musuh setengah + pulih 5% HP |
+| Barang | Kue Manis (+30 HP), Ramuan Ilmu (jurus ilmu berikutnya ×2), Perisai Daun (serangan berikutnya setengah) |
+| Kabur | Untuk musuh biasa (tidak untuk bos) |
+
+Musuh di Pulau 1: Tikus Sawah (ladang), Goblin Nakal (hutan & jalan utara), Kelelawar Gua (gua) — 8 ekor
+berkeliaran, mengejar bila dekat, pertarungan dimulai saat menyentuh pemain. Menang: XP, koin, kadang
+barang (kue/ramuan). Subjek soal mengikuti musuh (goblin = bahasa, tikus = matematika, kelelawar = IPAS).
+
+**Bos Raja Goblin Kecil** (benteng, setelah gerbang terbuka; misi utama ke-6 otomatis):
+- **Perisai Mahkota**: serangan fisik hanya 25%; hanya **Jurus Ilmu benar** yang menghancurkannya (2 giliran).
+- Setiap giliran ke-3 bos mengangkat tongkat (**aba-aba**) → pukulan berat 1,6× bila pemain tidak Bertahan.
+- Soal bos bergilir: Matematika → Bahasa → IPAS alam → IPAS sosial.
+- Menang: 150 XP, 100 koin, Mahkota Goblin, `world.bosses.pulau1`, goblin pergi dari pulau, bendera benteng
+  berganti, perayaan "Pahlawan Dunia Pemula!" + pulau berikutnya.
+
+Ramah anak:
+- Kalah = pingsan, bangun di desa dengan HP penuh; **tidak ada barang/progres yang hilang**.
+- Kesulitan menyesuaikan: setiap kalah dari musuh yang sama, serangan musuh itu −15% (maks −45%).
+- Simulasi 200 pertarungan bos (anak level 3, 70% jawaban benar, Bertahan saat aba-aba): **menang 85%,
+  rata-rata 14 giliran** — menantang tapi bisa dimenangkan. Goblin nakal dikalahkan anak level 1 hanya dengan Serang ≥90%.
+
+Juga: misi sampingan **Usir Goblin Nakal** (Kak Laras, kalahkan 3 goblin → Perisai Daun); pesan singkat dipindah
+ke atas tengah layar agar tidak menutupi tombol.
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **614 pemeriksaan LULUS** (+38): Battle Engine (serang, jurus salah/benar, bertahan, kabur, perisai bos, aba-aba, adaptif, kalah tanpa hukuman, simulasi keseimbangan); di game: menyentuh goblin → menang → goblin hilang; kalah → bangun di desa tanpa kehilangan barang; kue dalam pertarungan; kabur; bos: tidak bisa kabur, perisai, Ramuan Ilmu, jurus menembus perisai, menang → misi & perayaan; masuk ulang tanpa raja & goblin |
+| `make platform-test` | **LULUS** |
