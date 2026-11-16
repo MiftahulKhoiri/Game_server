@@ -1327,4 +1327,18 @@ func _nature() -> void:
 		bool(profile.get("fx", false)), hash(str(island.id)) + 5)
 	if not is_inside_tree():
 		return
+	var hens := []
+	var fm: Dictionary = layout.get("farm", {})
+	if not fm.is_empty():
+		for k in [-1.0, 1.0]:
+			var hx: float = float(fm.pos[0]) + k * (float(fm.size[0]) / 2.0 + 2.5)
+			var hz: float = float(fm.pos[1]) - float(fm.size[1]) / 2.0 - 2.0
+			hens.append(Vector3(hx, ground_y(hx, hz), hz))
+	for pl in layout.get("places", []):
+		if str(pl.id) == "desa" or pl.has("plaza"):
+			var hx: float = float(pl.pos[0]) + float(pl.get("plaza", 8)) + 3.0
+			var hz: float = float(pl.pos[1]) + 3.0
+			hens.append(Vector3(hx, ground_y(hx, hz), hz))
+			break
+	Nature.chickens(self, hens, int(profile.get("animals", 3)) * 2, hash(str(island.id)) + 11)
 	Nature.ambience(self, radius, profile, _col("sky_top", Color("3a7fd5")), flower_spots, hash(str(island.id)) + 9)

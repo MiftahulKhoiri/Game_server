@@ -75,7 +75,7 @@ static func tuft_mesh(flower: bool) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77 if flower else 31
 	var v := PackedVector3Array()
-	var c := PackedColorArray()
+	var c := PackedVector2Array()  # UV: x = kepala bunga (1), y = tinggi relatif (0 pangkal .. 1 ujung)
 	var nrm := PackedVector3Array()
 	var blades := 4 if flower else 6
 	for i in blades:
@@ -87,7 +87,7 @@ static func tuft_mesh(flower: bool) -> ArrayMesh:
 		var tip := base + Vector3(cos(a), 0, sin(a)) * rng.randf_range(0.06, 0.16) + Vector3(0, hgt, 0)
 		for p in [[base - side, 0.0], [base + side, 0.0], [tip, 1.0]]:
 			v.append(p[0])
-			c.append(Color(p[1], 0, 0))
+			c.append(Vector2(0, p[1]))
 			nrm.append(Vector3.UP)
 	if flower:
 		# Kepala bunga: piramida ganda kecil di atas tangkai tengah.
@@ -95,7 +95,7 @@ static func tuft_mesh(flower: bool) -> ArrayMesh:
 		var stem := [Vector3(-0.012, 0, 0), Vector3(0.012, 0, 0), top]
 		for p in stem:
 			v.append(p)
-			c.append(Color(0.5, 0, 0))
+			c.append(Vector2(0, 0.5))
 			nrm.append(Vector3.UP)
 		var rr := 0.075
 		var ring := [Vector3(rr, 0, 0), Vector3(0, 0, rr), Vector3(-rr, 0, 0), Vector3(0, 0, -rr)]
@@ -103,12 +103,12 @@ static func tuft_mesh(flower: bool) -> ArrayMesh:
 			for tri in [[top + Vector3(0, 0.05, 0), top + ring[k], top + ring[(k + 1) % 4]], [top - Vector3(0, 0.02, 0), top + ring[(k + 1) % 4], top + ring[k]]]:
 				for p in tri:
 					v.append(p)
-					c.append(Color(1.0, 1.0, 0))
+					c.append(Vector2(1.0, 1.0))
 					nrm.append(Vector3.UP)
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = v
-	arr[Mesh.ARRAY_COLOR] = c
+	arr[Mesh.ARRAY_TEX_UV] = c
 	arr[Mesh.ARRAY_NORMAL] = nrm
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
@@ -251,12 +251,12 @@ static func _bird_mesh() -> ArrayMesh:
 	var v := PackedVector3Array([Vector3(0, 0, 0.25), Vector3(0, 0, -0.2), Vector3(-0.75, 0.05, -0.1),
 		Vector3(0, 0, -0.2), Vector3(0, 0, 0.25), Vector3(0.75, 0.05, -0.1),
 		Vector3(0, 0.02, 0.35), Vector3(-0.06, 0, -0.25), Vector3(0.06, 0, -0.25)])
-	var c := PackedColorArray([Color(0, 0, 0), Color(0, 0, 0), Color(1, 0, 0), Color(0, 0, 0), Color(0, 0, 0), Color(1, 0, 0),
-		Color(0, 0, 0), Color(0, 0, 0), Color(0, 0, 0)])
+	var c := PackedVector2Array([Vector2(0, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 0), Vector2(0, 0), Vector2(1, 0),
+		Vector2(0, 0), Vector2(0, 0), Vector2(0, 0)])
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = v
-	arr[Mesh.ARRAY_COLOR] = c
+	arr[Mesh.ARRAY_TEX_UV] = c
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	_meshes.bird = m
@@ -316,8 +316,82 @@ static func ambience(w: Node3D, radius: float, profile: Dictionary, sky_tint: Co
 			var fc: Color = FLOWER_COLS[rng.randi() % FLOWER_COLS.size()]
 			bf.append(Color(p.x + rng.randf_range(-2, 2), p.z + rng.randf_range(-2, 2), p.y + rng.randf_range(0.6, 1.4), fc.h))
 		if not bf.is_empty():
-			var bmi := _gpu_swarm(w, "Butterflies", _bird_mesh(), smat("butterfly"), bf)
-			bmi.visibility_range_end = 45.0
+			_gpu_swarm(w, "Butterflies", _bird_mesh(), smat("butterfly"), bf)
+
+
+## Tambahkan bentuk primitif berwarna ke larik (verteks/normal/warna) dengan transformasi xf.
+static func _part(v: PackedVector3Array, nr: PackedVector3Array, c: PackedVector2Array, mesh: PrimitiveMesh, xf: Transform3D, col: float) -> void:
+	var arr := mesh.get_mesh_arrays()
+	var pv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var pn: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var nb := xf.basis.inverse().transposed()
+	for k in arr[Mesh.ARRAY_INDEX]:
+		v.append(xf * pv[k])
+		nr.append((nb * pn[k]).normalized())
+		c.append(Vector2(col, 0))
+
+
+## Ayam kartun kecil (±0,45 m), satu mesh berwarna verteks.
+static func _chicken_mesh() -> ArrayMesh:
+	if _meshes.has("chicken"):
+		return _meshes.chicken
+	var v := PackedVector3Array()
+	var nr := PackedVector3Array()
+	var c := PackedVector2Array()  # UV.x = nomor warna (0 putih, 1 merah, 2 jingga, 3 krem)
+	var body := SphereMesh.new()
+	body.radius = 0.16
+	body.height = 0.3
+	body.radial_segments = 10
+	body.rings = 6
+	_part(v, nr, c, body, Transform3D(Basis().scaled(Vector3(1.0, 0.95, 1.25)), Vector3(0, 0.24, 0)), 0.0)
+	var head := SphereMesh.new()
+	head.radius = 0.09
+	head.height = 0.18
+	head.radial_segments = 8
+	head.rings = 5
+	_part(v, nr, c, head, Transform3D(Basis(), Vector3(0, 0.42, 0.13)), 0.0)
+	var comb := BoxMesh.new()
+	comb.size = Vector3(0.03, 0.06, 0.08)
+	_part(v, nr, c, comb, Transform3D(Basis(), Vector3(0, 0.52, 0.13)), 1.0)
+	var beak := CylinderMesh.new()
+	beak.top_radius = 0.0
+	beak.bottom_radius = 0.03
+	beak.height = 0.07
+	beak.radial_segments = 6
+	_part(v, nr, c, beak, Transform3D(Basis(Vector3.RIGHT, PI / 2), Vector3(0, 0.41, 0.24)), 2.0)
+	var tail := BoxMesh.new()
+	tail.size = Vector3(0.12, 0.12, 0.05)
+	_part(v, nr, c, tail, Transform3D(Basis(Vector3.RIGHT, -0.5), Vector3(0, 0.33, -0.2)), 3.0)
+	for sx in [-0.05, 0.05]:
+		var leg := CylinderMesh.new()
+		leg.top_radius = 0.012
+		leg.bottom_radius = 0.012
+		leg.height = 0.12
+		leg.radial_segments = 4
+		_part(v, nr, c, leg, Transform3D(Basis(), Vector3(sx, 0.06, 0)), 2.0)
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = v
+	arr[Mesh.ARRAY_NORMAL] = nr
+	arr[Mesh.ARRAY_TEX_UV] = c
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	_meshes.chicken = m
+	return m
+
+
+## Ayam berkeliaran: tiap ekor berjalan memutar pelan di sekitar titiknya, sesekali berhenti & mematuk.
+## spots: Array[Vector3] (titik tanah). Semua gerakan di shader.
+static func chickens(w: Node3D, spots: Array, n: int, seed_: int) -> void:
+	if spots.is_empty() or n <= 0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_
+	var cs := []
+	for i in n:
+		var p: Vector3 = spots[i % spots.size()]
+		cs.append(Color(p.x + rng.randf_range(-1.5, 1.5), p.z + rng.randf_range(-1.5, 1.5), p.y, rng.randf_range(0.0, 100.0)))
+	_gpu_swarm(w, "Chickens", _chicken_mesh(), smat("chicken"), cs)
 
 
 ## Serbuk sari / debu cahaya melayang di sekitar pemain (CPUParticles, ringan).
@@ -484,7 +558,7 @@ varying vec3 wp;
 varying float h;
 varying float tint;
 void vertex() {
-	h = COLOR.r;
+	h = UV.y;
 	tint = INSTANCE_CUSTOM.r;
 	vec3 o = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	float d = distance(o, CAMERA_POSITION_WORLD);
@@ -517,8 +591,8 @@ varying float h;
 varying float head;
 varying vec3 petal;
 void vertex() {
-	h = COLOR.r;
-	head = COLOR.g;
+	h = UV.y;
+	head = UV.x;
 	petal = INSTANCE_CUSTOM.gba;
 	vec3 o = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	float d = distance(o, CAMERA_POSITION_WORLD);
@@ -593,6 +667,36 @@ void fragment() {
 	ROUGHNESS = 0.95;
 }
 """,
+"chicken": """shader_type spatial;
+render_mode diffuse_lambert, specular_disabled;
+varying vec3 vc;
+void vertex() {
+	vec4 c = INSTANCE_CUSTOM;
+	float ph = c.a;
+	float t = TIME * 0.35 + ph;
+	float walk = smoothstep(-0.2, 0.4, sin(t * 1.7 + ph));
+	float a = t * 0.9 + sin(t * 0.7) * 0.8;
+	float rad = 1.6 + sin(ph) * 0.6;
+	vec3 pos = vec3(c.r + cos(a) * rad, c.b, c.g + sin(a) * rad);
+	vec3 fwd = normalize(vec3(-sin(a), 0.0, cos(a)));
+	vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), fwd));
+	vec3 v = VERTEX;
+	float peck = (1.0 - walk) * max(sin(TIME * 7.0 + ph * 3.0), 0.0);
+	if (v.y > 0.34 && v.z > 0.04) {
+		v.y -= peck * 0.16;
+		v.z += peck * 0.06;
+	}
+	v.y += walk * abs(sin(TIME * 9.0 + ph)) * 0.03;
+	VERTEX = pos + right * v.x + vec3(0.0, v.y, 0.0) + fwd * v.z;
+	NORMAL = right * NORMAL.x + vec3(0.0, NORMAL.y, 0.0) + fwd * NORMAL.z;
+	float k = UV.x;
+	vc = k < 0.5 ? vec3(0.98, 0.96, 0.92) : (k < 1.5 ? vec3(0.9, 0.2, 0.17) : (k < 2.5 ? vec3(0.95, 0.65, 0.1) : vec3(0.92, 0.88, 0.8)));
+}
+void fragment() {
+	ALBEDO = vc;
+	ROUGHNESS = 0.9;
+}
+""",
 "cloud": """shader_type spatial;
 render_mode unshaded, cull_back, fog_disabled, shadows_disabled;
 uniform vec3 shade : source_color = vec3(0.78, 0.84, 0.95);
@@ -627,8 +731,8 @@ void vertex() {
 	vec3 fwd = normalize(vec3(-sin(a), 0.0, cos(a)));
 	vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), fwd));
 	vec3 v = VERTEX;
-	wing = COLOR.r;
-	v.y += sin(TIME * 9.0 + c.a * 3.0) * 0.35 * COLOR.r;
+	wing = UV.x;
+	v.y += sin(TIME * 9.0 + c.a * 3.0) * 0.35 * UV.x;
 	VERTEX = pos + right * v.x * 1.1 + vec3(0.0, v.y, 0.0) + fwd * v.z * 1.1;
 }
 void fragment() {
