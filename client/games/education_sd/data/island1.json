@@ -648,6 +648,25 @@
 			"again": [
 				"Benteng Raja Goblin terkunci rapat. Kamu harus lebih kuat dulu."
 			]
+		},
+		{
+			"id": "pak_darto",
+			"name": "Pak Darto",
+			"role": "Pedagang",
+			"model": "warga_bapak",
+			"pos": [
+				6,
+				45.2
+			],
+			"wander": 0.0,
+			"shop": "pak_darto",
+			"lines": [
+				"Selamat datang di lapak Pak Darto, {name}!",
+				"Aku menjual kue, ramuan, perisai, dan kostum keren. Bayar pakai koin, ya."
+			],
+			"again": [
+				"Mau belanja lagi? Koin didapat dari belajar dan menolong warga."
+			]
 		}
 	],
 	"signs": {

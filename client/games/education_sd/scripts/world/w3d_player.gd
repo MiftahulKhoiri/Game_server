@@ -44,25 +44,7 @@ func setup(look: Dictionary) -> void:
 	shape.shape = cap
 	shape.position.y = 0.75
 	add_child(shape)
-	rig = Rig.new()
-	rig.shirt = look.get("shirt", Color("e05a4f"))
-	rig.long_hair = bool(look.get("long_hair", false))
-	rig.hair = Color("6b3a1e") if rig.long_hair else Color("3a2a20")
-	rig.hat = str(look.get("hat", ""))
-	rig.acc = str(look.get("acc", ""))
-	if str(look.get("model_path", "")) != "":
-		# Pahlawan anak buatan sendiri (Fase 9): baju diwarnai sesuai kostum, topi/aksesori ditempel ke tulang.
-		rig.glb_path = str(look.model_path)
-		rig.glb_height = 1.47
-		rig.glb_recolor = {"Baju": rig.shirt}
-	elif str(look.get("model", "")) != "":
-		rig.glb_id = str(look.model)
-		rig.glb_height = 1.45
-		rig.glb_tint = rig.shirt.lerp(Color.WHITE, 0.55)
-	add_child(rig)
-	rig.build()
-	if rig.is_glb():
-		rig.attach_costume()
+	_make_rig(look)
 	var disc := Rig.part(Rig.cyl(0.42, 0.42, 0.02, 16), Color(0, 0, 0, 0.25), Vector3(0, 0.03, 0))
 	var dm := StandardMaterial3D.new()
 	dm.albedo_color = Color(0, 0, 0, 0.22)
@@ -87,6 +69,38 @@ func setup(look: Dictionary) -> void:
 	cam.far = 220.0
 	_arm.add_child(cam)
 	_arm.add_excluded_object(get_rid())
+
+
+func _make_rig(look: Dictionary) -> void:
+	rig = Rig.new()
+	rig.shirt = look.get("shirt", Color("e05a4f"))
+	rig.long_hair = bool(look.get("long_hair", false))
+	rig.hair = Color("6b3a1e") if rig.long_hair else Color("3a2a20")
+	rig.hat = str(look.get("hat", ""))
+	rig.acc = str(look.get("acc", ""))
+	if str(look.get("model_path", "")) != "":
+		# Pahlawan anak buatan sendiri (Fase 9): baju diwarnai sesuai kostum, topi/aksesori ditempel ke tulang.
+		rig.glb_path = str(look.model_path)
+		rig.glb_height = 1.47
+		rig.glb_recolor = {"Baju": rig.shirt}
+	elif str(look.get("model", "")) != "":
+		rig.glb_id = str(look.model)
+		rig.glb_height = 1.45
+		rig.glb_tint = rig.shirt.lerp(Color.WHITE, 0.55)
+	add_child(rig)
+	rig.build()
+	if rig.is_glb():
+		rig.attach_costume()
+
+
+## Ganti penampilan (baju/topi/aksesori) tanpa membuat ulang pemain: rangka lama dibuang, arah hadap tetap.
+func set_look(look: Dictionary) -> void:
+	var rot := rig.rotation.y if rig != null else 0.0
+	if rig != null:
+		remove_child(rig)
+		rig.queue_free()
+	_make_rig(look)
+	rig.rotation.y = rot
 
 
 func place(pos: Vector3, face_yaw: float) -> void:

@@ -29,6 +29,7 @@ func _initialize() -> void:
 	await _v3_npc_tests()
 	await _v3_learning_tests()
 	await _v3_quest_tests()
+	await _v3_reward_tests()
 	await _v3_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
@@ -294,6 +295,7 @@ const WorldEngine := preload("res://games/education_sd/scripts/engine/world_engi
 const NpcEngine := preload("res://games/education_sd/scripts/engine/npc_engine.gd")
 const LearningEngine := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
 const QuestEngine := preload("res://games/education_sd/scripts/engine/quest_engine.gd")
+const RewardEngine := preload("res://games/education_sd/scripts/engine/reward_engine.gd")
 const MODEL_DIR := "res://assets/models/"
 
 
@@ -392,7 +394,7 @@ func _v3_npc_tests() -> void:
 	print("== 3.x NPC Engine (tata letak Pulau 1)")
 	var n := NpcEngine.new()
 	_check(n.load_layout("island1.json"), "island1.json termuat tanpa galat %s" % str(n.errors))
-	_check(n.npcs.size() == 8 and n.places.size() == 8, "8 penduduk, 8 tempat")
+	_check(n.npcs.size() == 9 and n.places.size() == 8, "9 penduduk (termasuk pedagang), 8 tempat")
 	_check(not n.load_layout("tidak_ada.json") and n.load_layout("island1.json"), "tata letak yang tidak ada ditolak")
 	var d := _prof(1)
 	d.profile.name = "Sari"
@@ -507,6 +509,41 @@ func _v3_quest_tests() -> void:
 	_check(q.event(d, "talk", "pak_udin").is_empty() and q.state(d, "kerang_pantai") == "active", "kerang belum cukup: belum bisa diantar")
 
 
+func _v3_reward_tests() -> void:
+	print("== 3.x Reward Engine (level, kartu, prestasi, toko, kostum)")
+	var d := SdData.new()
+	d.load_data()
+	var rw := RewardEngine.new()
+	_check(rw.setup(d), "rpg.json & toko termuat %s" % str(rw.errors))
+	var p := _prof(2)
+	var s1: Dictionary = rw.stats(p)
+	_check(int(s1.level) == 1 and int(s1.hp) == 48 and int(s1.atk) == 8, "level 1: HP 48, Serang 8")
+	_check(rw.level_check(p).is_empty() and int(p.rpg.level_seen) == 1, "level awal dicatat tanpa hadiah")
+	p.rpg.xp = 320
+	var lv: Array = rw.level_check(p)
+	_check(lv.size() == 2 and int(lv[1].level) == 3 and int(p.rpg.coins) == 50, "XP 320: naik ke level 2 lalu 3, hadiah 20 + 30 koin")
+	_check(int(rw.stats(p).hp) > int(s1.hp) and int(rw.stats(p).atk) > int(s1.atk), "naik level menambah HP & serang")
+	_check(rw.on_session(p, "penjumlahan", {"stars": 2, "status": "belajar"}).is_empty(), "2 bintang: belum dapat kartu")
+	_check(rw.on_session(p, "penjumlahan", {"stars": 3}).size() == 1 and rw.on_session(p, "penjumlahan", {"stars": 3}).is_empty(),
+		"3 bintang: kartu sekali saja")
+	_check(rw.cards_total() == d.topics.size(), "%d kartu pengetahuan (satu per topik)" % rw.cards_total())
+	var a: Array = rw.check_achievements(p, {"main_quests": 0})
+	_check(a.is_empty(), "belum ada prestasi")
+	p.quests = {"x": {"state": "done"}}
+	var a2: Array = rw.check_achievements(p, {"main_quests": 1})
+	_check(a2.size() == 1 and str(a2[0].id) == "misi_pertama" and rw.check_achievements(p).is_empty(), "prestasi didapat sekali")
+	p.rpg.coins = 100
+	_check(rw.buy(p, "pak_darto", "topi_pita") == "" and int(p.rpg.coins) == 60 and (p.rpg.owned as Array).has("topi_pita"), "beli topi pita")
+	_check(rw.buy(p, "pak_darto", "topi_pita") != "", "tidak bisa membeli kostum yang sama dua kali")
+	_check(rw.buy(p, "pak_darto", "warna_emas") != "" and int(p.rpg.coins) == 60, "koin kurang: ditolak, koin tetap")
+	_check(rw.buy(p, "pak_darto", "tidak_ada") != "", "barang yang tidak dijual ditolak")
+	_check(rw.buy(p, "pak_darto", "kue") == "" and rw.buy(p, "pak_darto", "kue") == "" and int(p.rpg.items.kue) == 2, "barang pakai bisa dibeli berkali-kali")
+	_check(rw.equip(p, "topi_pita") and str(p.profile.hat) == "topi_pita", "pakai topi")
+	_check(rw.equip(p, "topi_pita") and str(p.profile.hat) == "", "pakai lagi = lepas topi")
+	_check(not rw.equip(p, "warna_emas"), "kostum yang belum dimiliki tidak bisa dipakai")
+	_check(rw.equip(p, "warna_biru") and str(p.profile.outfit) == "warna_biru", "ganti baju")
+
+
 # --- 3.x Dunia Enam Pulau: aplikasi utuh --------------------------------------------------------------------------
 
 func _open() -> Node:
@@ -602,7 +639,7 @@ func _v3_app_tests() -> void:
 			objs += 1
 	_check(objs >= 20, "bangunan & benda GLB desa, akademi, gua terpasang (%d)" % objs)
 	_check(w.tree_count() >= 40, "hutan + pohon tersebar (MultiMesh, %d pohon)" % w.tree_count())
-	_check(w.npcs.size() == 8 and app.npc.npcs.size() == 8, "8 penduduk dengan model berangka")
+	_check(w.npcs.size() == 9 and app.npc.npcs.size() == 9, "9 penduduk dengan model berangka")
 	var npc_glb := true
 	for e in w.npcs:
 		if e.rig == null or not e.rig.is_glb():
@@ -918,10 +955,60 @@ func _v3_app_tests() -> void:
 	await _frames(1)
 	_check(str(app.hud._dialog_text.text).contains("MISI UTAMA (5/5") and str(app.hud._dialog_text.text).contains("✓ Kerang Pantai"), "jurnal misi")
 	app.hud.close_dialog()
+	print("== 3.x Sistem RPG: tas, status, kostum, toko, koleksi, prestasi, naik level")
+	_check(int(app.p.rpg.level_seen) == app.level() and app.level() >= 2, "naik level tercatat selama misi (level %d)" % app.level())
+	_check((app.p.rpg.achievements as Dictionary).has("misi_pertama") and (app.p.rpg.achievements as Dictionary).has("penolong_desa"),
+		"prestasi Langkah Pertama & Penolong Desa didapat otomatis")
+	_check(str(app._chip_lbl.text).begins_with("Lv %d" % app.level()), "level & koin tampil di layar")
 	app.show_bag()
+	await _frames(2)
+	var bag: Control = app.lesson
+	_check(bag != null and bag.tab == "Status" and not app.hud.visible, "TAS membuka Tas Petualang (Status)")
+	_press(bag, "Tab_Barang")
 	await _frames(1)
-	_check(str(app.hud._dialog_text.text).contains("Kue Manis ×3"), "Tas berisi barang hadiah")
-	app.hud.close_dialog()
+	_check(_label_has(bag, "Kue Manis ×3"), "tab Barang berisi hadiah misi")
+	_press(bag, "Tab_Kostum")
+	await _frames(1)
+	_check(_btn(bag, "Wear_warna_hijau") != null, "tab Kostum: baju hijau dari misi kerang")
+	_press(bag, "Wear_warna_hijau")
+	await _frames(2)
+	_check(str(app.p.profile.outfit) == "warna_hijau", "baju hijau dipakai")
+	_check(app.world.player.rig.shirt.is_equal_approx(Color("#3fae63")), "model pemain di dunia ikut berganti baju")
+	_press(bag, "Tab_Koleksi")
+	await _frames(1)
+	_check((app.p.learning.cards as Array).size() >= 1 and _label_has(bag, "Kartu Pengetahuan: %d" % (app.p.learning.cards as Array).size()),
+		"latihan sempurna memberi kartu pengetahuan")
+	_press(bag, "Tab_Prestasi")
+	await _frames(1)
+	_check(_label_has(bag, "Penolong Desa"), "tab Prestasi")
+	_press(bag, "Close")
+	await _frames(2)
+	_check(app.lesson == null and app.hud.visible, "tas ditutup")
+	await _talk_to(app, "pak_darto")
+	_check(_hud_btn(app, "Buka Toko") != null, "Pak Darto menawarkan toko")
+	_press_hud(app, "Buka Toko")
+	await _frames(2)
+	var shop: Control = app.lesson
+	_check(shop != null and shop.mode == "toko" and _btn(shop, "Buy_topi_petualang") != null, "Toko Pak Darto terbuka")
+	var c0 := int(app.p.rpg.coins)
+	_press(shop, "Buy_topi_petualang")
+	await _frames(1)
+	_check((app.p.rpg.owned as Array).has("topi_petualang") and int(app.p.rpg.coins) == c0 - 40, "beli Topi Petualang (40 koin)")
+	_check(_btn(shop, "Buy_topi_petualang").disabled, "kostum yang sudah dimiliki tidak bisa dibeli lagi")
+	_press(shop, "Buy_kue")
+	await _frames(1)
+	_check(int(app.p.rpg.items.kue) == 4, "beli Kue Manis masuk tas")
+	app.p.rpg.coins = 5
+	_press(shop, "Buy_warna_emas")
+	await _frames(1)
+	_check(not (app.p.rpg.owned as Array).has("warna_emas") and int(app.p.rpg.coins) == 5 and _label_has(shop, "belum cukup"), "koin kurang: ditolak dengan pesan ramah")
+	_press(shop, "Tab_Kostum")
+	await _frames(1)
+	_press(shop, "Wear_topi_petualang")
+	await _frames(2)
+	_check(str(app.p.profile.hat) == "topi_petualang" and str(app.world.player.rig.hat) == "petualang", "topi dipakai langsung dari toko")
+	_press(shop, "Close")
+	await _frames(2)
 	app.save()
 	app.show_island("pulau1")
 	await _frames(3)
@@ -1070,3 +1157,10 @@ func _collect_all(app: Node) -> int:
 		n += 1
 	app.hud.close_dialog()
 	return n
+
+
+func _label_has(root: Node, text: String) -> bool:
+	for l in root.find_children("*", "Label", true, false):
+		if str((l as Label).text).contains(text) and not l.is_queued_for_deletion():
+			return true
+	return false

@@ -1,0 +1,30 @@
+{
+	"schema": 1,
+	"items": {
+		"kue": {"name": "Kue Manis", "desc": "Memulihkan 30 HP dalam pertarungan.", "price": 15, "use": "heal", "power": 30},
+		"ramuan_ilmu": {"name": "Ramuan Ilmu", "desc": "Jurus ilmu berikutnya jauh lebih kuat dalam pertarungan.", "price": 25, "use": "boost", "power": 2},
+		"perisai_daun": {"name": "Perisai Daun", "desc": "Mengurangi serangan musuh berikutnya menjadi setengah.", "price": 20, "use": "guard", "power": 50}
+	},
+	"shop": {
+		"pak_darto": {"title": "Toko Pak Darto", "greet": "Selamat datang, {name}! Lihat-lihat dulu, barang bagus semua.",
+			"stock": ["kue", "ramuan_ilmu", "perisai_daun", "warna_hijau", "warna_ungu", "warna_emas", "topi_petualang", "topi_pita",
+				"topi_toga", "topi_mahkota", "aks_kacamata", "aks_syal", "aks_ransel"]}
+	},
+	"costume_names": {
+		"warna_merah": "Baju Merah", "warna_biru": "Baju Biru", "warna_hijau": "Baju Hijau", "warna_ungu": "Baju Ungu",
+		"warna_emas": "Baju Emas", "topi_petualang": "Topi Petualang", "topi_mahkota": "Mahkota", "topi_toga": "Topi Toga",
+		"topi_pita": "Pita", "aks_kacamata": "Kacamata", "aks_syal": "Syal", "aks_ransel": "Ransel"
+	},
+	"achievements": [
+		{"id": "misi_pertama", "name": "Langkah Pertama", "desc": "Selesaikan misi pertamamu.", "stat": "quests", "goal": 1, "coins": 20},
+		{"id": "penolong_desa", "name": "Penolong Desa", "desc": "Selesaikan 5 misi utama.", "stat": "main_quests", "goal": 5, "coins": 50},
+		{"id": "rajin_belajar", "name": "Rajin Belajar", "desc": "Selesaikan 10 latihan di akademi.", "stat": "sessions", "goal": 10, "coins": 40},
+		{"id": "pintar", "name": "Si Pintar", "desc": "Jawab 50 soal dengan benar.", "stat": "correct", "goal": 50, "coins": 40},
+		{"id": "beruntun", "name": "Beruntun", "desc": "Jawab 10 soal benar berturut-turut.", "stat": "best_streak", "goal": 10, "coins": 30},
+		{"id": "ahli", "name": "Ahli Muda", "desc": "Kuasai 3 materi.", "stat": "mastered", "goal": 3, "coins": 50},
+		{"id": "kolektor", "name": "Kolektor Kartu", "desc": "Kumpulkan 5 kartu pengetahuan.", "stat": "cards", "goal": 5, "coins": 40},
+		{"id": "penjelajah", "name": "Penjelajah", "desc": "Temukan 8 tempat.", "stat": "places", "goal": 8, "coins": 30},
+		{"id": "gaya", "name": "Petualang Bergaya", "desc": "Miliki 5 kostum.", "stat": "costumes", "goal": 5, "coins": 30},
+		{"id": "level5", "name": "Petualang Tangguh", "desc": "Capai level 5.", "stat": "level", "goal": 5, "coins": 50}
+	]
+}

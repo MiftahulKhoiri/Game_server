@@ -16,6 +16,8 @@ const AcademyScene := preload("res://games/education_sd/scripts/world/academy_sc
 const LessonView := preload("res://games/education_sd/scripts/ui/lesson_view.gd")
 const QuestEngine := preload("res://games/education_sd/scripts/engine/quest_engine.gd")
 const ChallengeView := preload("res://games/education_sd/scripts/ui/challenge_view.gd")
+const RewardEngine := preload("res://games/education_sd/scripts/engine/reward_engine.gd")
+const BagView := preload("res://games/education_sd/scripts/ui/bag_view.gd")
 const TitleScreen := preload("res://games/education_sd/scripts/ui/title_screen.gd")
 const ProfileScreen := preload("res://games/education_sd/scripts/ui/profile_screen.gd")
 const WorldMap := preload("res://games/education_sd/scripts/ui/world_map.gd")
@@ -25,7 +27,7 @@ const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "3.3.0"
+const VERSION := "3.4.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -39,6 +41,9 @@ var lesson: Control  # ruang kelas yang sedang terbuka di akademi (null bila tid
 var rng := RandomNumberGenerator.new()
 var quest := QuestEngine.new()  # misi pulau yang sedang dikunjungi
 var _obj_t := 0.0
+var rewards := RewardEngine.new()
+var _toast_queue: Array = []
+var _chip_lbl: Label
 var p: Dictionary = {}
 var audio: Node
 var screen := ""
@@ -71,10 +76,11 @@ func _ready() -> void:
 	add_child(audio)
 	_build_toast()
 	rng.randomize()
-	if not data.load_data() or not worlds.load_data() or not learning.setup(data):
-		_show_error("Data game tidak bisa dimuat:\n" + "\n".join((data.errors + worlds.errors + learning.errors).slice(0, 5)))
+	if not data.load_data() or not worlds.load_data() or not learning.setup(data) or not rewards.setup(data):
+		_show_error("Data game tidak bisa dimuat:\n" + "\n".join((data.errors + worlds.errors + learning.errors + rewards.errors).slice(0, 5)))
 		return
 	_load_progress()
+	rewards.level_check(p)  # catat level sekarang (tanpa hadiah) untuk deteksi naik level berikutnya
 	_reset_safe_mode()
 	_check_last_trail()
 	_open_trail()
@@ -471,6 +477,8 @@ func _make_3d(id: String, scene: Node3D, ctx: Dictionary, title: String, color: 
 	hud.back_pressed.connect(go_back)
 	hud.bag_pressed.connect(show_bag)
 	hud.set_perf(bool(p.settings.perf))
+	_chip_lbl = null
+	_update_chip()
 	if audio != null:
 		audio.ambient(true)
 
@@ -509,18 +517,63 @@ func show_island(id: String, at := "") -> void:
 
 
 func show_bag() -> void:
+	_open_bag("tas")
+
+
+func open_shop(shop_id: String) -> void:
+	_open_bag("toko", shop_id)
+
+
+## Tas Petualang / Toko di atas dunia 3D.
+func _open_bag(mode: String, shop_id := "") -> void:
+	if hud == null or world == null:
+		return
+	hud.close_dialog()
+	hud.visible = false
+	world.player.frozen = true
+	world.player.move_input = Vector2.ZERO
+	lesson = BagView.new()
+	lesson.name = "Bag"
+	_root.add_child(lesson)
+	lesson.setup(rewards, p, quest.items, _rctx(), audio, mode, shop_id)
+	lesson.closed.connect(close_class)
+	lesson.changed.connect(func() -> void:
+		_progress()
+		save())
+	lesson.look_changed.connect(func() -> void:
+		if world != null and world.player != null:
+			world.player.set_look(hero_look()))
+	trail(("toko " + shop_id) if mode == "toko" else "tas")
+
+
+func _rctx() -> Dictionary:
+	return {"main_quests": quest.done_count(p, "main")}
+
+
+## Setelah progres berubah: naik level & prestasi (pesan singkat berurutan).
+func _progress() -> void:
+	var notes: Array = rewards.after(p, _rctx())
+	for n in notes:
+		if str(n.kind) == "level":
+			_sfx("bintang")
+			toast("%s  %s" % [str(n.text), str(n.detail)])
+		else:
+			toast(str(n.text))
+	if not notes.is_empty():
+		save()
+	_update_chip()
+
+
+func _update_chip() -> void:
 	if hud == null:
 		return
-	var lv := level()
-	var t: Dictionary = p.learning.totals
-	var lines: Array = ["Level %d  (XP %d / %d)" % [lv, int(p.rpg.xp), SaveEngine.xp_for(lv + 1)], "Koin: %d" % int(p.rpg.coins),
-		"Jawaban benar: %d dari %d" % [int(t.correct), int(t.answered)], "", "BARANG"]
-	var its: Dictionary = p.rpg.get("items", {})
-	if its.is_empty():
-		lines.append("  (tas masih kosong)")
-	for it in its:
-		lines.append("  %s ×%d" % [str(quest.items.get(it, {}).get("name", it)), int(its[it])])
-	hud.show_list("Tas Petualang", lines)
+	if _chip_lbl == null or not is_instance_valid(_chip_lbl):
+		var c := UI.panel(Color("ffd166"), 18)
+		c.name = "LevelChip"
+		_chip_lbl = UI.label("", 22, UI.INK, false)
+		c.add_child(_chip_lbl)
+		hud.chips.add_child(c)
+	_chip_lbl.text = "Lv %d · Koin %d" % [level(), int(p.rpg.coins)]
 
 
 # --- Akademi (Tahap 3) ------------------------------------------------------------------------------------------
@@ -564,10 +617,13 @@ func open_class(room_id: String) -> void:
 	lesson.setup(learning, p, rng, audio, data.doc.get("type_names", {}), room_id)
 	lesson.closed.connect(close_class)
 	lesson.changed.connect(save)
-	lesson.session_done.connect(func(_r: Dictionary) -> void:
+	lesson.session_done.connect(func(r: Dictionary) -> void:
+		for n in rewards.on_session(p, str(lesson.topic_id), r):
+			toast(str(n.text))
 		for n in quest.event(p, "learn", "", _qctx()):
 			if str(n.kind) in ["step", "done", "start"]:
 				toast(str(n.text))
+		_progress()
 		save())
 	trail("kelas " + room_id)
 
@@ -685,7 +741,8 @@ func talk(id: String) -> void:
 		return
 	if pages.is_empty():
 		pages = d.lines
-	_pages(id, title, pages, [], meet_notes)
+	var shop_id := str(npc.npcs.get(id, {}).get("shop", ""))
+	_pages(id, title, pages, [["Buka Toko", open_shop.bind(shop_id), UI.GOOD]] if shop_id != "" else [], meet_notes)
 
 
 func accept_quest(qid: String) -> void:
@@ -737,6 +794,7 @@ func _show_notes(notes: Array) -> void:
 				say.append("★ %s  Hadiah: %s" % [str(n.text), str(n.reward)])
 				title = str(n.title)
 	_apply_notes_quiet(notes)
+	_progress()
 	if not say.is_empty() and hud != null:
 		hud.show_dialog(title, "\n".join(say).strip_edges())
 
@@ -902,15 +960,31 @@ func _build_toast() -> void:
 	_toast.offset_right = 360
 
 
+## Pesan singkat di bawah layar. Beberapa pesan sekaligus ditampilkan bergantian (tidak saling menimpa).
 func toast(text: String) -> void:
-	_toast_lbl.text = text
+	_toast_queue.append(text)
+	if _toast_queue.size() == 1:
+		_show_toast()
+
+
+func _show_toast() -> void:
+	if _toast_queue.is_empty():
+		_toast.visible = false
+		return
+	_toast_lbl.text = str(_toast_queue[0])
 	_toast.visible = true
 	_toast.modulate.a = 1.0
 	move_child(_toast, get_child_count() - 1)
 	var tw := _toast.create_tween()
-	tw.tween_interval(2.4)
-	tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
-	tw.tween_callback(func() -> void: _toast.visible = false)
+	tw.tween_interval(2.0 if _toast_queue.size() > 1 else 2.4)
+	tw.tween_property(_toast, "modulate:a", 0.0, 0.3)
+	tw.tween_callback(func() -> void:
+		_toast_queue.pop_front()
+		_show_toast())
+
+
+func last_toast() -> String:
+	return _toast_lbl.text
 
 
 # --- Diagnosis (jejak langkah & mode aman) ---------------------------------------------------------------------

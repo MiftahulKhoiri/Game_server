@@ -304,3 +304,30 @@ Sistem:
 |---|---|
 | `make sd-test` | **540 pemeriksaan LULUS** (+50): Quest Engine (urutan, pungutan sekali, tantangan sesuai kelas, otomatis, antar barang) dan **seluruh misi utama dimainkan** di dunia 3D: lencana → 5 bibit → tantangan hitung → batu bertulis (gagal lalu coba lagi) → keranjang → batu gua bergeser → kunci → gerbang terbuka → masuk benteng; kerang & baju hijau; jurnal; tas; masuk ulang mempertahankan gua & gerbang |
 | `make platform-test` | **LULUS** |
+
+---
+
+## Tahap 5 — Sistem RPG (paket 3.4.0, 16 Nov 2026)
+
+### Hasil (data `data/rpg.json`, mesin `scripts/engine/reward_engine.gd`, layar `scripts/ui/bag_view.gd`)
+
+| Bagian | Isi |
+|---|---|
+| Level & kekuatan | Level dari XP (rumus lama dipertahankan). HP = 40 + 8×level, Serang = 6 + 2×level, Pertahanan = 2 + level, **Ilmu** = 10 + 3×materi dikuasai + kartu — dipakai pertarungan Tahap 6 |
+| Naik level | Terdeteksi setelah belajar/misi/prestasi: pesan "Naik level!", HP & kekuatan baru, hadiah 10×level koin. Level saat pertama dibuka dicatat tanpa hadiah |
+| XP & koin | Dari latihan, tantangan, misi, prestasi; tampil di HUD ("Lv N · Koin M") |
+| Tas Petualang (TAS) | Tab **Status** (level, XP, HP, Serang, Pertahanan, Ilmu), **Barang**, **Kostum** (lemari + pratinjau 3D), **Koleksi** (kartu pengetahuan), **Prestasi** |
+| Kostum | 5 baju, 4 topi, 3 aksesori. Dipakai langsung; model pemain di dunia ikut berganti (`w3d_player.set_look`). Topi/aksesori dipakai lagi = dilepas |
+| Toko | Penduduk baru **Pak Darto** (pedagang, lapak pasar desa): Kue Manis (pulih 30 HP), Ramuan Ilmu (jurus ilmu lebih kuat), Perisai Daun (serangan musuh setengah) + semua kostum. Koin kurang / kostum sudah dimiliki ditolak dengan pesan ramah |
+| Koleksi kartu | 35 Kartu Pengetahuan (satu per topik, isi dari bank soal). Didapat dari latihan sempurna (3 bintang) atau materi dikuasai; sekali per topik |
+| Prestasi | 10 prestasi (misi pertama, 5 misi utama, 10 latihan, 50 benar, 10 beruntun, 3 materi dikuasai, 5 kartu, 8 tempat, 5 kostum, level 5); otomatis + hadiah koin |
+| Pesan | Pesan singkat kini antre bergantian (tidak saling menimpa) |
+
+Tidak ada: perjudian, loot box, pembelian uang sungguhan, iklan (sesuai dokumen induk §7).
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | **576 pemeriksaan LULUS** (+36): Reward Engine (level & hadiah, kekuatan, kartu sekali, prestasi sekali, toko: beli/ganda/koin kurang/tidak dijual, pakai/lepas kostum); di game: naik level selama misi, prestasi otomatis, HUD level, semua tab tas, ganti baju mengganti model di dunia, toko Pak Darto (beli topi, kue, ditolak saat koin kurang), pakai topi dari toko |
+| `make platform-test` | **LULUS** |
