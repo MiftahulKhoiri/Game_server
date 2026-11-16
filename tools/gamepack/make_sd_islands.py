@@ -501,6 +501,9 @@ def main():
         if k in ISLANDS:
             e["places"] = list(ISLANDS[k]["places"].values())[1:]
     save("islands.json", isl)
+    # Paket visual 5.0: bangunan KayKit + dekorasi desa (idempoten, lihat sd_visual5.py).
+    import runpy
+    runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sd_visual5.py"))
     print("Pulau 2–6 dibuat: island/quests/monsters + toko; islands.json: semua pulau tersedia")
 
 

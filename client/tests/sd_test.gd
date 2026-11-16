@@ -1442,7 +1442,8 @@ func _v4_data_tests() -> void:
 			if not ResourceLoader.exists(MODEL_DIR + str(e.model) + ".glb"):
 				models = false
 		for o in ne.layout.get("objects", []):
-			if not ResourceLoader.exists("res://games/education_sd/assets/environment/" + str(o.asset) + ".glb"):
+			var env_base := "res://games/education_sd/assets/environment/" + str(o.asset)
+			if not ResourceLoader.exists(env_base + ".glb") and not ResourceLoader.exists(env_base + ".gltf"):
 				models = false
 		_check(models, "Pulau %d: semua model penduduk, musuh, bangunan ada di APK" % n)
 		var boss_id := str(ne.layout.boss.get("monster", "raja_goblin"))

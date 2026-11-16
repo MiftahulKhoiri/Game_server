@@ -10,3 +10,7 @@ Isi    : tree_round (642 segitiga), tree_pine (248), tree_palm (660), bush (432)
 Ubah   : jalankan ulang skrip lalu `godot --headless --path client --import`.
 buildings/: cave, math_tower, library, museum, lab_dome, market_stall, rumah_gadang, joglo, tongkonan,
          lighthouse, observatory (360-1.870 segitiga) - juga buatan sendiri, CC0.
+
+kaykit/ : KayKit Medieval Hexagon Pack 1.0 oleh Kay Lousberg (www.kaylousberg.com), lisensi CC0 1.0
+(domain publik) — lihat kaykit/LISENSI_KayKit.txt. Dipakai untuk rumah, warung, akademi (kastel),
+kincir angin, sumur, lumbung, teratai, tong/peti/karung, bendera (paket visual 5.0).

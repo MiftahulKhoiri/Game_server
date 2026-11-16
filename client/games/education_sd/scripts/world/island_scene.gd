@@ -493,6 +493,8 @@ func _objects() -> void:
 		mi.name = "Obj%d_%s" % [i, str(o.asset).get_file()]
 		mi.mesh = mesh
 		mi.position = _v(o.pos)
+		if o.has("y"):  # benda di air (mis. teratai di permukaan sungai)
+			mi.position.y = float(o.y)
 		mi.rotation.y = rot
 		mi.scale = Vector3.ONE * scl
 		_far(mi, 45.0)

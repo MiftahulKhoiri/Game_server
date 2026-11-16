@@ -233,31 +233,37 @@
 			"scale": 1.5
 		},
 		{
-			"asset": "buildings/rumah_gadang",
+			"asset": "kaykit/building_home_B_blue",
 			"pos": [
 				-13,
 				34
 			],
 			"rot": 90,
-			"scale": 1.4
+			"scale": 4.6,
+			"orig_asset": "buildings/rumah_gadang",
+			"orig_scale": 1.4
 		},
 		{
-			"asset": "buildings/tongkonan",
+			"asset": "kaykit/building_home_A_blue",
 			"pos": [
 				13,
 				50
 			],
 			"rot": -90,
-			"scale": 1.4
+			"scale": 5.2,
+			"orig_asset": "buildings/tongkonan",
+			"orig_scale": 1.4
 		},
 		{
-			"asset": "buildings/joglo",
+			"asset": "kaykit/building_tavern_yellow",
 			"pos": [
 				-13,
 				50
 			],
 			"rot": 90,
-			"scale": 1.5
+			"scale": 3.8,
+			"orig_asset": "buildings/joglo",
+			"orig_scale": 1.5
 		},
 		{
 			"asset": "buildings/market_stall",
@@ -432,6 +438,261 @@
 				-36
 			],
 			"scale": 1.0
+		},
+		{
+			"asset": "kaykit/building_windmill_yellow",
+			"pos": [
+				-42.0,
+				31.0
+			],
+			"rot": 90,
+			"scale": 4.0,
+			"v5": true,
+			"radius": 2.6
+		},
+		{
+			"asset": "kaykit/building_grain",
+			"pos": [
+				-28.5,
+				47.6
+			],
+			"rot": 0,
+			"scale": 3.2,
+			"v5": true,
+			"radius": 1.6
+		},
+		{
+			"asset": "kaykit/barrel",
+			"pos": [
+				10.2,
+				46.8
+			],
+			"rot": 0,
+			"scale": 3.2,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/barrel",
+			"pos": [
+				-10.2,
+				46.8
+			],
+			"rot": 0,
+			"scale": 3.2,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/sack",
+			"pos": [
+				3.24,
+				42.6
+			],
+			"rot": 74,
+			"scale": 3.0,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/crate_A_big",
+			"pos": [
+				-3.78,
+				43.2
+			],
+			"rot": 37,
+			"scale": 2.6,
+			"v5": true,
+			"solid": false
+		},
+		{
+			"asset": "kaykit/building_well_yellow",
+			"pos": [
+				-9,
+				51
+			],
+			"rot": 0,
+			"scale": 3.2,
+			"v5": true,
+			"radius": 1.4
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				-48.7,
+				-21.0
+			],
+			"rot": 47,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_B",
+			"pos": [
+				-40.4,
+				-19.9
+			],
+			"rot": 94,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				-36.0,
+				-21.55
+			],
+			"rot": 141,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_B",
+			"pos": [
+				-27.7,
+				-20.45
+			],
+			"rot": 188,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				-19.4,
+				-22.1
+			],
+			"rot": 235,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_B",
+			"pos": [
+				-15.0,
+				-21.0
+			],
+			"rot": 282,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				-6.7,
+				-19.9
+			],
+			"rot": 329,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_B",
+			"pos": [
+				15.6,
+				-21.55
+			],
+			"rot": 376,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				20.0,
+				-20.45
+			],
+			"rot": 423,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_B",
+			"pos": [
+				28.3,
+				-22.1
+			],
+			"rot": 470,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				36.6,
+				-21.0
+			],
+			"rot": 517,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_B",
+			"pos": [
+				41.0,
+				-19.9
+			],
+			"rot": 564,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/waterlily_A",
+			"pos": [
+				49.3,
+				-21.55
+			],
+			"rot": 611,
+			"scale": 2.6,
+			"solid": false,
+			"v5": true,
+			"y": -0.18
+		},
+		{
+			"asset": "kaykit/flag_blue",
+			"pos": [
+				-4.800000000000001,
+				-43.4
+			],
+			"rot": 0,
+			"scale": 3.0,
+			"solid": false,
+			"v5": true
+		},
+		{
+			"asset": "kaykit/flag_blue",
+			"pos": [
+				4.800000000000001,
+				-43.4
+			],
+			"rot": 0,
+			"scale": 3.0,
+			"solid": false,
+			"v5": true
 		}
 	],
 	"farm": {

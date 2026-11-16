@@ -408,7 +408,7 @@ void fragment() {
 render_mode diffuse_lambert, specular_schlick_ggx;
 uniform sampler2D noise : filter_linear_mipmap, repeat_enable;
 uniform vec3 deep : source_color = vec3(0.05, 0.33, 0.62);
-uniform vec3 shallow : source_color = vec3(0.2, 0.75, 0.8);
+uniform vec3 shallow : source_color = vec3(0.15, 0.6, 0.68);
 uniform vec3 foam : source_color = vec3(0.96, 0.98, 1.0);
 uniform float shore_r = 75.0;
 uniform float move = 1.0;
@@ -424,10 +424,12 @@ void fragment() {
 	float n3 = texture(noise, p * 0.13 + vec2(-t * 0.02, t * 0.017)).r;
 	float d = length(p) - shore_r + (n1 - 0.5) * 3.0;
 	vec3 col = mix(shallow, deep, smoothstep(-1.0, 22.0, d));
+	col = mix(col, shallow * vec3(1.05, 0.95, 0.8), 1.0 - smoothstep(-3.0, -0.8, d));
 	col += vec3(0.05, 0.07, 0.07) * smoothstep(0.55, 0.85, n2 * 0.6 + n3 * 0.5);
 	float band = sin(d * 2.4 - t * 1.4) * 0.5 + 0.5;
 	float lines = (1.0 - smoothstep(0.5, 3.5, d)) * smoothstep(-0.5, 0.5, d) * smoothstep(0.62, 0.92, band * 0.55 + n3 * 0.6);
-	float edge = 1.0 - smoothstep(-0.4, 0.5, d + (n3 - 0.5) * 1.2);
+	float de = d + (n3 - 0.5) * 1.2;
+	float edge = smoothstep(-1.6, -0.6, de) * (1.0 - smoothstep(-0.3, 0.6, de));
 	float f = clamp(max(lines * 0.7, edge * 0.75), 0.0, 1.0);
 	col = mix(col, foam, f * 0.8);
 	NORMAL_MAP = normalize(vec3(n2 - 0.5 + (n3 - 0.5) * 0.6, n3 - 0.5 - (n2 - 0.5) * 0.4, 1.4)) * 0.5 + 0.5;

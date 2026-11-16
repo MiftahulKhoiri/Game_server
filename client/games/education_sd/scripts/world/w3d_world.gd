@@ -1173,11 +1173,15 @@ static func env_mesh(name: String):
 	if _env_cache.has(name):
 		return _env_cache[name]
 	var path := ENV_DIR + name + ".glb"
+	if not ResourceLoader.exists(path):
+		path = ENV_DIR + name + ".gltf"  # aset KayKit (CC0): .gltf + .bin + satu atlas tekstur bersama
 	var mesh = null
 	if ResourceLoader.exists(path):
 		var inst := (load(path) as PackedScene).instantiate()
 		var mis := inst.find_children("*", "MeshInstance3D", true, false)
-		if mis.size() > 0:
+		if mis.size() > 1:
+			mesh = _merge_meshes(inst, mis)  # mis. kincir angin: badan + baling-baling jadi satu mesh
+		elif mis.size() > 0:
 			mesh = (mis[0] as MeshInstance3D).mesh
 			for s in (mesh as Mesh).get_surface_count():
 				var mat := (mesh as Mesh).surface_get_material(s) as BaseMaterial3D
@@ -1186,6 +1190,35 @@ static func env_mesh(name: String):
 		inst.free()
 	_env_cache[name] = mesh
 	return mesh
+
+
+## Gabungkan beberapa MeshInstance3D (dengan transformasinya terhadap akar) menjadi satu ArrayMesh,
+## satu permukaan per bahan.
+static func _merge_meshes(root: Node, mis: Array) -> ArrayMesh:
+	var by_mat := {}
+	var mats := {}
+	for mi: MeshInstance3D in mis:
+		var xf := Transform3D()
+		var n: Node = mi
+		while n != null and n != root:
+			if n is Node3D:
+				xf = (n as Node3D).transform * xf
+			n = n.get_parent()
+		for s in mi.mesh.get_surface_count():
+			var mat: Material = mi.get_active_material(s)
+			var key := mat.get_instance_id() if mat != null else 0
+			if not by_mat.has(key):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				by_mat[key] = st
+				mats[key] = mat
+			(by_mat[key] as SurfaceTool).append_from(mi.mesh, s, xf)
+	var out := ArrayMesh.new()
+	for key in by_mat:
+		var st: SurfaceTool = by_mat[key]
+		st.set_material(mats[key])
+		out = st.commit(out)
+	return out
 
 
 const TREE_SETS := {"matematika": ["tree_round"], "bahasa": ["tree_round", "tree_pine"], "ipa": ["tree_round", "tree_pine"],
