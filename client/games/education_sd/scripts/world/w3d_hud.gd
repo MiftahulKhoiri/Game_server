@@ -5,6 +5,10 @@ extends Control
 ## Dialog NPC dan pilihan pulau tampil di atas kontrol; selama dialog terbuka pemain berhenti.
 
 const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
+const Voice := preload("res://games/education_sd/scripts/voice.gd")
+const Portrait := preload("res://games/education_sd/scripts/ui/speaker_portrait.gd")
+## Pembaca pesan bila tidak ada penduduk yang berbicara (papan, misi, hadiah): Bu Guru.
+const NARRATOR := {"model": "warga_ibu", "height": 1.7}
 
 signal back_pressed
 signal missions_pressed
@@ -28,7 +32,12 @@ var _hint: Label
 var _prompt: Label
 var _dialog: PanelContainer
 var _dialog_title: Label
-var _dialog_text: Label
+var _dialog_text: RichTextLabel
+var _dialog_plain := ""
+var _listen: Button
+var portrait: Control
+## Penutur dialog berikutnya {model, tint, height}; kosong = Bu Guru. Dipakai sekali oleh show_dialog.
+var next_speaker: Dictionary = {}
 var _dialog_btns: HBoxContainer
 var _dialog_scroll: ScrollContainer
 var _list_mode := false
@@ -137,16 +146,27 @@ func setup(w: Node3D, title: String, color: Color) -> void:
 	_dialog.name = "Dialog"
 	var dv := UI.vbox(10)
 	_dialog_title = UI.label("", 28, UI.PRIMARY, false)
-	_dialog_text = UI.label("", 24, UI.INK)
+	_dialog_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_dialog_text = UI.rich("", 24, UI.INK)
 	_dialog_btns = UI.hbox(12)
 	_dialog_scroll = ScrollContainer.new()
 	_dialog_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_dialog_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dialog_scroll.add_child(_dialog_text)
-	dv.add_child(_dialog_title)
+	var trow := UI.hbox(10)
+	trow.add_child(_dialog_title)
+	_listen = UI.listen_button(read_dialog)
+	trow.add_child(_listen)
+	dv.add_child(trow)
 	dv.add_child(_dialog_scroll)
 	dv.add_child(_dialog_btns)
-	_dialog.add_child(dv)
+	dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var dh := UI.hbox(14)
+	portrait = Portrait.new()
+	portrait.name = "Portrait"
+	dh.add_child(portrait)
+	dh.add_child(dv)
+	_dialog.add_child(dh)
 	_dialog.visible = false
 	add_child(_dialog)
 	w.focus_changed.connect(_on_focus)
@@ -177,7 +197,10 @@ func _layout() -> void:
 	_prompt.size = Vector2(540, 40)
 	_dialog.position = Vector2(s.x * 0.18, s.y * (0.1 if _list_mode else 0.38))
 	_dialog_scroll.custom_minimum_size = Vector2(0, s.y * 0.5 if _list_mode else 0.0)
+	_dialog_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if _list_mode else ScrollContainer.SCROLL_MODE_DISABLED
 	_dialog.custom_minimum_size = Vector2(s.x * 0.64, 0)
+	var pw := 164.0 if portrait != null and portrait.visible else 0.0
+	_dialog_text.custom_minimum_size.x = maxf(200.0, s.x * 0.64 - 60.0 - pw)
 	_dialog.size = Vector2(s.x * 0.64, 0)
 	_joy_draw.queue_redraw()
 
@@ -211,7 +234,15 @@ func show_dialog(title: String, text: String, buttons: Array = []) -> void:
 func _fill_dialog(title: String, text: String, buttons: Array) -> void:
 	_layout()
 	_dialog_title.text = title
-	_dialog_text.text = text
+	_dialog_plain = text
+	_dialog_text.text = UI.esc(text)
+	var sp: Dictionary = next_speaker if not next_speaker.is_empty() else NARRATOR
+	next_speaker = {}
+	portrait.set_model(str(sp.get("model", "")), str(sp.get("tint", "")), float(sp.get("height", 1.7)))
+	portrait.visible = not _list_mode and portrait.rig != null
+	_layout()
+	_listen.visible = Voice.listen_ok()
+	_hook_voice()
 	for c in _dialog_btns.get_children():
 		c.queue_free()
 	for b in buttons:
@@ -227,9 +258,39 @@ func _fill_dialog(title: String, text: String, buttons: Array) -> void:
 	_dialog_btns.add_child(close)
 	_dialog.visible = true
 	_set_frozen(true)
+	if not _list_mode:
+		Voice.say_auto(text)
+
+
+## Bacakan isi dialog (tombol Dengar).
+func read_dialog() -> void:
+	Voice.say(_dialog_plain)
+
+
+func dialog_plain() -> String:
+	return _dialog_plain
+
+
+func _hook_voice() -> void:
+	var v: Node = Voice.shared
+	if v != null and not v.word.is_connected(_on_word):
+		v.word.connect(_on_word)
+		v.ended.connect(_on_voice_end)
+
+
+func _on_word(a: int, b: int) -> void:
+	if _dialog.visible and Voice.shared != null and str(Voice.shared.text) == _dialog_plain:
+		_dialog_text.text = UI.marked(_dialog_plain, a, b)
+
+
+func _on_voice_end() -> void:
+	if _dialog_text != null:
+		_dialog_text.text = UI.esc(_dialog_plain)
 
 
 func close_dialog() -> void:
+	if _dialog.visible and Voice.shared != null and str(Voice.shared.text) == _dialog_plain:
+		Voice.hush()
 	_dialog.visible = false
 	dialog_closed.emit()
 	if world != null and world.has_method("end_talk"):

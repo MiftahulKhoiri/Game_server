@@ -5,6 +5,7 @@ extends Control
 ## lain, atau belajar dulu di akademi. Jawaban ikut tercatat di statistik belajar (Learning Engine).
 
 const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
+const Voice := preload("res://games/education_sd/scripts/voice.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const Learning := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
 
@@ -65,6 +66,7 @@ func setup(engine, progress: Dictionary, random: RandomNumberGenerator, sound: N
 
 
 func _clear(ph: String) -> void:
+	Voice.hush()
 	phase = ph
 	UI.guard(300)
 	qview = null
@@ -87,9 +89,17 @@ func _head(title: String, back_text: String, back: Callable) -> void:
 func show_intro() -> void:
 	_clear("pembuka")
 	_head(str(def.get("title", "Tantangan")), "Nanti saja", func() -> void: closed.emit())
-	_box.add_child(UI.label(str(def.get("story", "")), 28, UI.INK))
-	_box.add_child(UI.label("Jawab %d soal. Kamu lulus bila %d soal terjawab benar. Boleh pakai petunjuk!" % [int(def.get("n", 3)),
-		int(def.get("pass", 2))], 24, UI.SOFT))
+	var story := str(def.get("story", ""))
+	var rule := "Jawab %d soal. Kamu lulus bila %d soal terjawab benar. Boleh pakai petunjuk!" % [int(def.get("n", 3)), int(def.get("pass", 2))]
+	var sh := UI.hbox(12)
+	var sl := UI.label(story, 28, UI.INK)
+	UI.expand(sl)
+	sh.add_child(sl)
+	if Voice.listen_ok():
+		sh.add_child(UI.listen_button(func() -> void: Voice.say(story + "\n" + rule)))
+	_box.add_child(sh)
+	_box.add_child(UI.label(rule, 24, UI.SOFT))
+	Voice.say_auto(story + "\n" + rule)
 	var go := UI.button("Mulai Tantangan", start, UI.GOOD, 30, 84)
 	go.name = "Start"
 	_box.add_child(go)

@@ -457,3 +457,29 @@ Daftar uji untuk orang tua & guru: [`SD_UJI_LAPANGAN.md`](SD_UJI_LAPANGAN.md). H
 - Isi Pulau 2–6 dibuat dari satu pola tata ruang (dicerminkan); bila anak merasa pulaunya mirip, tata ruang bisa dibedakan per pulau.
 - Gunung api Pulau 6 hanya bercahaya di puncak; efek asap/lava bisa ditambah.
 - Performa Pulau 2–6 setara Pulau 1 (bangunan & pohon sama banyak, +1 bukit) — tetap cek di HP anak dengan Grafis Hemat.
+
+---
+
+## Revisi 1 — Suara pembaca untuk kelas 1–2 (paket 4.1.0 + APK 0.84.4, 16 Nov 2026)
+
+Masukan uji lapangan: anak kelas 1–2 belum lancar membaca dialog & misi.
+
+| Bagian | Isi |
+|---|---|
+| Mesin suara | `scripts/voice.gd`: TTS bawaan HP (Google, bahasa Indonesia; kode "id" atau "in"), sedikit lebih pelan. Tanpa berkas suara di paket. Simbol soal dibaca sebagai kata (× kali, + tambah, = sama dengan, "?" berapa, "-" kurang, ___ titik titik); hiasan (★ ✓) dilewati |
+| Yang dibacakan | dialog penduduk & guru, misi, papan, hadiah, cerita pembuka, perayaan pulau, tamat, toast, sapaan & materi di akademi, cerita tantangan, soal + pilihan jawaban, umpan balik ("Belum tepat, coba lagi ya!") |
+| Potret pembaca | `scripts/ui/speaker_portrait.gd`: kepala & bahu tokoh 3D di dialog — penduduk yang berbicara, guru ruang kelas di akademi, atau **Bu Guru** untuk pesan tanpa penduduk. Bergoyang & mengangguk tiap kata, gelombang suara bergerak |
+| Sorot kata | kata yang sedang diucapkan disorot kuning (membantu belajar membaca) |
+| Tombol Dengar | di dialog, cerita, materi, tantangan, dan setiap soal |
+| Pengaturan | "Suara pembaca": **Otomatis kelas 1–2** (bawaan; kelas 3–6 lewat tombol Dengar) / Selalu / Mati, tombol "Coba suara pembaca", dan petunjuk bila suara belum tersedia |
+| APK | `project.godot`: `audio/general/text_to_speech=true` → **APK 0.84.4 wajib** untuk suara. Di APK lama game tetap jalan tanpa suara |
+
+Catatan HP: bila suara tidak keluar, buka Pengaturan HP → Text-to-speech → mesin Google → unduh Bahasa Indonesia.
+
+### Pengujian (Pi 5)
+
+| Uji | Hasil |
+|---|---|
+| `make sd-test` | LULUS (+25 pemeriksaan suara: mode per kelas, teks soal, sorot kata berurutan, berhenti saat dialog ditutup, potret penduduk/Bu Guru, soal & pilihan dibacakan, Pengaturan). Mesin suara diganti tiruan di headless |
+| `make client-test`, `go test ./...` | LULUS |
+| Tangkapan layar | dialog dengan potret Pak Lurah + kata tersorot; soal dengan tombol Dengar |

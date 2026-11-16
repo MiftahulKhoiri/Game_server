@@ -6,6 +6,8 @@ extends Control
 ##   hasil   — bintang, XP, koin, pesan positif, status penguasaan; Ulangi / Baca materi / Kembali
 ## Semua aturan & catatan lewat Learning Engine; layar ini hanya tampilan.
 
+const Voice := preload("res://games/education_sd/scripts/voice.gd")
+const Portrait := preload("res://games/education_sd/scripts/ui/speaker_portrait.gd")
 const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const Learning := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
@@ -71,6 +73,7 @@ func _layout() -> void:
 
 
 func _clear(id: String) -> void:
+	Voice.hush()
 	phase = id
 	UI.guard(300)
 	qview = null
@@ -100,6 +103,26 @@ func _sfx(n: String) -> void:
 		audio.play(n)
 
 
+## Guru (potret 3D yang membacakan) + teks + tombol Dengar. read: teks yang dibacakan (bawaan = text).
+func _teacher_row(text: String, read := "") -> Control:
+	var h := UI.hbox(12)
+	var pt := Portrait.new()
+	pt.name = "Teacher"
+	pt.custom_minimum_size = Vector2(120, 136)
+	pt.set_model(str(room.get("model", "")))
+	h.add_child(pt)
+	var l := UI.label(text, 26, UI.INK)
+	UI.expand(l)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(l)
+	if Voice.listen_ok():
+		var say := read if read != "" else text
+		var lb := UI.listen_button(func() -> void: Voice.say(say))
+		lb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(lb)
+	return h
+
+
 # --- Kelas: daftar materi -----------------------------------------------------------------------------------
 
 func show_class() -> void:
@@ -109,7 +132,8 @@ func show_class() -> void:
 	var greet := "Halo, %s! Aku %s. Pilih materi yang ingin kamu pelajari hari ini." % [str(p.profile.name), str(room.teacher)]
 	if ts.is_empty():
 		greet = "Halo, %s! Materi untuk kelas %d di ruang ini sedang disiapkan." % [str(p.profile.name), grade]
-	_box.add_child(UI.label(greet, 26, UI.INK))
+	_box.add_child(_teacher_row(greet))
+	Voice.say_auto(greet)
 	if not ts.is_empty():
 		var ex: Dictionary = Learning.exam_rec(p, grade, str(room.id))
 		var er := UI.panel(Color("fff4d6"), 20)
@@ -152,9 +176,15 @@ func show_lesson(id: String) -> void:
 	_clear("materi")
 	var les: Dictionary = learning.lesson(id, grade)
 	_head(str(les.get("title", id)), "Daftar materi", show_class)
-	_box.add_child(UI.label("%s menjelaskan:" % str(room.teacher), 22, UI.SOFT))
+	var read: Array = ["%s menjelaskan." % str(room.teacher)]
+	for line in les.get("text", []):
+		read.append(str(line))
+	if str(les.get("example", "")) != "":
+		read.append("Contoh: " + str(les.example))
+	_box.add_child(_teacher_row("%s menjelaskan:" % str(room.teacher), "\n".join(read)))
 	for line in les.get("text", []):
 		_box.add_child(UI.label("• " + str(line), 28, UI.INK))
+	Voice.say_auto("\n".join(read))
 	if str(les.get("example", "")) != "":
 		var ex := UI.panel(Color("e8f4ff"), 18)
 		ex.add_child(UI.label("Contoh: " + str(les.example), 26, Color("1f4f8a")))

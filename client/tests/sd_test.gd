@@ -33,6 +33,8 @@ func _initialize() -> void:
 	await _v3_battle_tests()
 	await _v4_data_tests()
 	await _v3_app_tests()
+	await _v5_voice_unit_tests()
+	await _v5_voice_app_tests()
 	print("SD: %d pemeriksaan, %s" % [_checks, "GAGAL" if _failed else "LULUS"])
 	print("HASIL: " + ("GAGAL" if _failed else "LULUS"))
 	quit(1 if _failed else 0)
@@ -1596,3 +1598,133 @@ func _v4_islands_play(app: Node) -> void:
 	app.save()
 	app.show_map()
 	await _frames(2)
+
+
+# --- 4.1 Suara pembaca untuk kelas 1–2 ---------------------------------------------------------------------------
+
+const VoiceT := preload("res://games/education_sd/scripts/voice.gd")
+
+
+func _v5_voice_unit_tests() -> void:
+	print("== 4.1 Suara pembaca (TTS): teks, sorot kata, mode")
+	var v := VoiceT.new()
+	root.add_child(v)
+	_check(not VoiceT.engine_on() and not v.available() and v.status() != "", "headless: mesin suara mati, ada pesan penjelasan")
+	v.fake = true
+	v.grade = 1
+	_check(v.available() and v.auto_read() and v.listen_enabled(), "kelas 1, mode otomatis: dibacakan otomatis")
+	v.grade = 3
+	_check(not v.auto_read() and v.listen_enabled(), "kelas 3, mode otomatis: hanya lewat tombol Dengar")
+	v.mode = "on"
+	_check(v.auto_read(), "mode Selalu: semua kelas dibacakan")
+	v.mode = "off"
+	_check(not v.auto_read() and not v.listen_enabled(), "mode Mati: tidak dibacakan, tombol Dengar disembunyikan")
+	v.mode = "auto"
+	v.grade = 1
+	v._build("3 + 4 = ?")
+	_check(v._spoken.contains("tambah") and v._spoken.contains("sama dengan") and v._spoken.contains("berapa"), "simbol soal dibaca: tambah, sama dengan, berapa (%s)" % v._spoken.strip_edges())
+	v._build("8 - 3 adalah teka-teki ×2 ★")
+	_check(v._spoken.contains("kurang") and v._spoken.contains("teka-teki") and v._spoken.contains("kali") and not v._spoken.contains("★"),
+		"kurang vs tanda hubung, kali, hiasan dilewati")
+	var words: Array = []
+	v.word.connect(func(a: int, b: int) -> void: words.append(v.text.substr(a, b - a)))
+	var done := [false]
+	v.ended.connect(func() -> void: done[0] = true)
+	v.speak("Halo Ana, ayo belajar!")
+	for i in 60:
+		await process_frame
+		if done[0]:
+			break
+	_check(words == ["Halo", "Ana,", "ayo", "belajar!"] and done[0] and not v.speaking, "kata disorot berurutan lalu selesai (%s)" % str(words))
+	v.speak("Satu dua tiga empat lima")
+	v.stop()
+	_check(not v.speaking, "berhenti membaca")
+	_check(SdUI.marked("a [b] c", 3, 6).contains("[bgcolor=#ffe08a]") and SdUI.marked("a [b] c", 3, 6).begins_with("a [lb]"), "sorot kata aman untuk tanda kurung")
+	v.queue_free()
+	await process_frame
+
+
+func _v5_voice_app_tests() -> void:
+	print("== 4.1 Suara pembaca di game: dialog dibacakan Bu Guru/penduduk, soal & pilihan dibacakan")
+	_clear_save()
+	var app := await _open()
+	app.foes_calm = 99999.0
+	app.voice.fake = true
+	app.voice.fake_step = 0.02
+	app.set_profile({"name": "Ana", "grade": 1, "hero": "perempuan", "outfit": "warna_biru"})
+	await _frames(2)
+	_check(app.modal_open() and str(app.voice.history.back()).contains("Kabut"), "cerita pembuka dibacakan untuk kelas 1")
+	_check(_btn(app._modal, "Listen") != null, "tombol Dengar di cerita pembuka")
+	app.close_modal()
+	_check(not app.voice.speaking, "menutup cerita menghentikan suara")
+	app.arrive("pulau1")
+	await _frames(4)
+	await _talk_to(app, "pak_lurah")
+	app.hud.close_dialog()
+	var n: Node3D = app.world.npc_node("pak_lurah")
+	app.world.player.place(n.position + Vector3(1.0, 0.3, 0.3), 0.0)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(2)
+	var hud = app.hud
+	_check(hud.dialog_open() and app.voice.speaking and str(app.voice.text) == hud.dialog_plain(), "dialog penduduk langsung dibacakan")
+	_check(hud.portrait.visible and str(hud.portrait.model) == str(app.npc.npcs.pak_lurah.model), "potret 3D Pak Lurah membacakan pesannya")
+	_check(hud._listen.visible, "tombol Dengar di dialog")
+	var marked := false
+	for i in 20:
+		await _frames(1)
+		if str(hud._dialog_text.text).contains("[bgcolor"):
+			marked = true
+			break
+	_check(marked and hud.portrait.talking, "kata yang sedang dibaca disorot, tokoh bergerak berbicara")
+	hud.close_dialog()
+	await _frames(1)
+	_check(not app.voice.speaking and not str(hud._dialog_text.text).contains("[bgcolor"), "tutup dialog: suara berhenti")
+	app.world.player.place(app.world.spot_pos("dock") + Vector3(0, 0.2, -0.8), 0.0)
+	await _frames(3)
+	app.hud.trigger_action()
+	await _frames(2)
+	_check(str(hud.portrait.model) == "warga_ibu" and app.voice.speaking, "pesan tanpa penduduk dibacakan Bu Guru")
+	hud.close_dialog()
+	# Soal: dibacakan beserta pilihan jawabannya.
+	app.open_challenge(str(app.quest.challenges.keys()[0]))
+	await _frames(2)
+	var cv = app.lesson
+	_check(cv != null and app.voice.speaking and _btn(cv, "Listen") != null, "tantangan: cerita dibacakan + tombol Dengar")
+	_press(cv, "Start")
+	await _frames(2)
+	var qv = cv.current_question_view()
+	_check(qv != null and str(app.voice.text) == qv.read_text() and _btn(qv, "Listen") != null, "soal dibacakan otomatis + tombol Dengar")
+	if str(qv.q.type) in ["mc", "logic", "fill"]:
+		_check(qv.read_text().contains("Pilihannya:") and qv.read_text().contains(str(qv._options[0])), "pilihan jawaban ikut dibacakan")
+	app.go_back()
+	await _frames(1)
+	app.close_class()
+	await _frames(1)
+	# Kelas 3 (mode otomatis): tidak dibacakan sendiri, tetapi tombol Dengar ada.
+	app.p.profile.grade = 3
+	app.save()
+	await _talk_to(app, "pak_lurah")
+	app.hud.close_dialog()
+	app.world.player.place(n.position + Vector3(1.0, 0.3, 0.3), 0.0)
+	await _frames(3)
+	app.voice.history.clear()
+	app.hud.trigger_action()
+	await _frames(2)
+	_check(hud.dialog_open() and app.voice.history.is_empty() and hud._listen.visible, "kelas 3: tidak dibacakan otomatis, tombol Dengar tersedia")
+	SdUI.guard_until_ms = 0
+	hud._listen.pressed.emit()
+	await _frames(1)
+	_check(app.voice.speaking and str(app.voice.text) == hud.dialog_plain(), "tekan Dengar: dibacakan")
+	hud.close_dialog()
+	app.go_back()
+	await _frames(2)
+	app.show_settings()
+	await _frames(2)
+	_check(_btn(app.current, "voice_auto") != null and _btn(app.current, "voice_off") != null and _btn(app.current, "VoiceTry") != null,
+		"Pengaturan: Suara pembaca (Otomatis kelas 1–2 / Selalu / Mati) + Coba suara")
+	_press(app.current, "voice_off")
+	await _frames(2)
+	_check(str(app.p.settings.voice) == "off" and str(app.voice.mode) == "off", "suara pembaca dimatikan dan tersimpan")
+	app.voice.fake = false
+	_clear_save()

@@ -27,9 +27,10 @@ const IslandScene := preload("res://games/education_sd/scripts/world/island_scen
 const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.gd")
 const Hud3D := preload("res://games/education_sd/scripts/world/w3d_hud.gd")
 const Rig3D := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
+const Voice := preload("res://games/education_sd/scripts/voice.gd")
 
 const GAME_ID := "education_sd"
-const VERSION := "4.0.1"
+const VERSION := "4.1.0"
 ## Jejak langkah di HP: setiap layar/tombol ditulis ke berkas. Bila aplikasi tertutup paksa, jejak tidak
 ## berakhir dengan END; saat dibuka lagi 30 langkah terakhir ikut tersimpan di progres (p.crash).
 const TRAIL_PATH := "user://education_sd_trail.txt"
@@ -51,6 +52,7 @@ var battle_seed := -1  # uji: pertarungan dengan acak tetap
 var foes_calm := 0.0  # uji: musuh diam selama n detik setelah pulau dibangun
 var p: Dictionary = {}
 var audio: Node
+var voice: Node  # suara pembaca (TTS) untuk kelas 1–2
 var screen := ""
 var current: Control  # layar yang sedang tampil
 var world: Node3D  # dunia 3D pulau (null di layar lain)
@@ -79,12 +81,16 @@ func _ready() -> void:
 	audio = SdAudio.new()
 	audio.name = "Audio"
 	add_child(audio)
+	voice = Voice.new()
+	voice.name = "Voice"
+	add_child(voice)
 	_build_toast()
 	rng.randomize()
 	if not data.load_data() or not worlds.load_data() or not learning.setup(data) or not rewards.setup(data):
 		_show_error("Data game tidak bisa dimuat:\n" + "\n".join((data.errors + worlds.errors + learning.errors + rewards.errors).slice(0, 5)))
 		return
 	_load_progress()
+	_voice_sync()
 	rewards.level_check(p)  # catat level sekarang (tanpa hadiah) untuk deteksi naik level berikutnya
 	_reset_safe_mode()
 	_check_last_trail()
@@ -163,9 +169,29 @@ func _try_restore() -> void:
 func save() -> void:
 	if p.is_empty():
 		return
+	_voice_sync()
 	var gm := _gm()
 	if gm != null:
 		gm.save_progress(GAME_ID, p, SaveEngine.SCHEMA)
+
+
+## Pengaturan suara pembaca mengikuti profil (kelas) dan Pengaturan.
+func _voice_sync() -> void:
+	if voice == null or p.is_empty():
+		return
+	voice.mode = str(p.get("settings", {}).get("voice", "auto"))
+	voice.grade = int(p.get("profile", {}).get("grade", 1))
+
+
+## Penutur dialog: penduduk pulau atau guru akademi (potret 3D yang membacakan).
+func _speaker_of(id: String) -> Dictionary:
+	var n: Dictionary = npc.npcs.get(id, {})
+	if not n.is_empty():
+		return {"model": str(n.get("model", "")), "tint": str(n.get("tint", "")), "height": float(n.get("height", 1.7))}
+	for r in LearningEngine.ROOMS:
+		if str(r.id) == id:
+			return {"model": str(r.get("model", "")), "height": 1.7}
+	return {}
 
 
 func grade() -> int:
@@ -209,6 +235,7 @@ func _clear(id: String) -> void:
 
 
 func _show(id: String, node: Control) -> void:
+	Voice.hush()
 	_clear(id)
 	node.name = id.capitalize().replace(" ", "")
 	current = node
@@ -296,6 +323,8 @@ func modal(title: String, text: String, buttons: Array) -> void:
 	body.name = "Body"
 	v.add_child(body)
 	var row := UI.hbox(12)
+	if Voice.listen_ok():
+		row.add_child(UI.listen_button(func() -> void: Voice.say(text), 26, 80))
 	for b in buttons:
 		var cb: Callable = b[1]
 		var btn := UI.button(str(b[0]), func() -> void:
@@ -312,10 +341,12 @@ func modal(title: String, text: String, buttons: Array) -> void:
 	panel.position = Vector2((get_viewport_rect().size.x - 760) / 2.0, get_viewport_rect().size.y * 0.16)
 	panel.reset_size.call_deferred()
 	_modal = shade
+	Voice.say_auto(text)
 
 
 func close_modal() -> void:
 	if _modal != null and is_instance_valid(_modal):
+		Voice.hush()
 		_modal.queue_free()
 	_modal = null
 
@@ -414,6 +445,7 @@ func show_settings() -> void:
 		["Efek suara", "sfx", [true, false], {true: "Nyala", false: "Mati"}],
 		["Grafis dunia 3D", "gfx", ["hemat", "seimbang", "tinggi"], {"hemat": "Hemat (HP lama)", "seimbang": "Seimbang", "tinggi": "Tinggi"}],
 		["Tampilkan FPS", "perf", [true, false], {true: "Nyala", false: "Mati"}],
+		["Suara pembaca", "voice", ["auto", "on", "off"], {"auto": "Otomatis kelas 1–2", "on": "Selalu", "off": "Mati"}],
 	]
 	for r in rows:
 		var row := UI.hbox(12)
@@ -432,6 +464,17 @@ func show_settings() -> void:
 			UI.expand(b)
 			row.add_child(b)
 		v.add_child(row)
+	var why: String = voice.status() if voice != null else ""
+	if why != "":
+		var vl := UI.label("Suara pembaca: " + why, 22, UI.SOFT)
+		vl.name = "VoiceStatus"
+		v.add_child(vl)
+	else:
+		var tb := UI.listen_button(func() -> void:
+			voice.speak("Halo, %s! Aku akan membacakan pesan dan soal untukmu." % str(p.profile.get("name", "teman"))), 24, 66)
+		tb.name = "VoiceTry"
+		tb.text = "       Coba suara pembaca"
+		v.add_child(tb)
 
 
 # --- Peta dunia enam pulau --------------------------------------------------------------------------------------
@@ -809,6 +852,7 @@ func _pages(id: String, title: String, pages: Array, final: Array, notes: Array 
 		return
 	if world.has_method("hold_talk"):
 		world.hold_talk(id)
+	hud.next_speaker = _speaker_of(id)
 	if i < pages.size() - 1:
 		hud.show_dialog(title, str(pages[i]), [["Lanjut", _pages.bind(id, title, pages, final, notes, i + 1), UI.PRIMARY]])
 	elif not notes.is_empty() and final.is_empty():
@@ -1123,6 +1167,8 @@ func _build_toast() -> void:
 
 ## Pesan singkat di bawah layar. Beberapa pesan sekaligus ditampilkan bergantian (tidak saling menimpa).
 func toast(text: String) -> void:
+	if voice != null and not bool(voice.speaking):
+		Voice.say_auto(text)
 	_toast_queue.append(text)
 	if _toast_queue.size() == 1:
 		_show_toast()

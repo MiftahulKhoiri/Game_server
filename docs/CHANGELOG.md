@@ -2,6 +2,19 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## v0.84.4 + paket education_sd 4.1.0 — suara pembaca untuk kelas 1–2 (16 November 2026)
+
+- APK 0.84.4: `audio/general/text_to_speech` dinyalakan di `project.godot` supaya game bisa memakai mesin suara
+  bawaan HP (TTS Android). Pengaturan mesin hanya dibaca saat aplikasi mulai, jadi **perlu APK baru** (paket saja
+  tidak cukup). The Last Dragon tidak berubah.
+- Paket education_sd 4.1.0 (Petualangan Ilmu SD): pesan penduduk, misi, papan, hadiah, cerita, toast, materi akademi,
+  cerita tantangan, soal + pilihan jawaban, dan umpan balik dibacakan. Penduduk/guru tampil sebagai potret 3D yang
+  bergerak saat berbicara; pesan tanpa penduduk dibacakan Bu Guru. Kata yang sedang dibaca disorot kuning.
+  Tombol "Dengar" untuk mengulang. Pengaturan "Suara pembaca": Otomatis kelas 1–2 (bawaan) / Selalu / Mati,
+  plus "Coba suara" dan petunjuk bila suara bahasa Indonesia belum terpasang di HP.
+- APK lama tetap bisa memainkan paket 4.1.0 (tanpa suara; Pengaturan menyarankan memperbarui aplikasi).
+- Server 0.84.4: versi klien terbaru 0.84.4 (pengingat pembaruan di launcher).
+
 ## v0.84.3 — ikon game unduhan di launcher (15 November 2026)
 
 - Server: `GET /v1/games/{id}/icon` melayani `icon.png` dari katalog (hanya PNG ≤ 1 MB, id tervalidasi).

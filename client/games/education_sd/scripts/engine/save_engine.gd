@@ -26,7 +26,7 @@ static func default_data() -> Dictionary:
 			"minigames": {}},
 		"quests": {},
 		"academy": {},
-		"settings": {"music": true, "sfx": true, "gfx": "seimbang", "perf": false},
+		"settings": {"music": true, "sfx": true, "gfx": "seimbang", "perf": false, "voice": "auto"},
 		"seen_intro": {},
 		"migrated_from": 0,
 		"legacy": {},
@@ -96,6 +96,8 @@ static func ensure(d: Dictionary) -> Dictionary:
 		d.profile.hero = "laki"
 	if not GFX.has(str(d.settings.gfx)):
 		d.settings.gfx = "seimbang"
+	if not str(d.settings.get("voice", "")) in ["auto", "on", "off"]:
+		d.settings.voice = "auto"
 	d.rpg.xp = maxi(int(d.rpg.xp), 0)
 	d.rpg.coins = maxi(int(d.rpg.coins), 0)
 	d.world.sailed = int(d.world.sailed)

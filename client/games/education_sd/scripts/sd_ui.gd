@@ -169,3 +169,53 @@ static func shuffle(arr: Array, rng: RandomNumberGenerator) -> void:
 		var t = arr[i]
 		arr[i] = arr[j]
 		arr[j] = t
+
+
+# --- Suara pembaca (Tahap revisi 1) ---------------------------------------------------------------------------
+
+class SpeakerIcon extends Control:
+	var ink := Color("1f2a6b")
+
+	func _draw() -> void:
+		draw_rect(Rect2(2, 9, 7, 10), ink)
+		draw_colored_polygon(PackedVector2Array([Vector2(9, 9), Vector2(17, 3), Vector2(17, 25), Vector2(9, 19)]), ink)
+		draw_arc(Vector2(18, 14), 6.0, -0.9, 0.9, 8, ink, 2.5)
+		draw_arc(Vector2(18, 14), 11.0, -0.9, 0.9, 10, ink, 2.5)
+
+
+## Tombol "Dengar" (ikon pengeras suara): membacakan teks dengan suara pembaca.
+static func listen_button(cb: Callable, size := 22, min_h := 56) -> Button:
+	var b := button("       Dengar", cb, Color("bfe0ff"), size, min_h)
+	b.name = "Listen"
+	var ic := SpeakerIcon.new()
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ic.size = Vector2(30, 28)
+	ic.position = Vector2(14, (min_h - 28) / 2.0)
+	b.add_child(ic)
+	return b
+
+
+## Label teks kaya (bbcode) untuk teks yang bisa disorot per kata saat dibacakan.
+static func rich(text: String, size := 26, color := INK) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.add_theme_font_size_override("normal_font_size", size)
+	r.add_theme_font_size_override("bold_font_size", size)
+	r.add_theme_color_override("default_color", color)
+	r.text = esc(text)
+	return r
+
+
+static func esc(t: String) -> String:
+	return t.replace("[", "[lb]")
+
+
+## Teks dengan kata [a, b) disorot kuning (kata yang sedang dibacakan).
+static func marked(t: String, a: int, b: int) -> String:
+	if a < 0 or b <= a or b > t.length():
+		return esc(t)
+	return esc(t.substr(0, a)) + "[bgcolor=#ffe08a][color=#1f2a6b]" + esc(t.substr(a, b - a)) + "[/color][/bgcolor]" + esc(t.substr(b))

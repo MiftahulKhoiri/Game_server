@@ -6,7 +6,7 @@
 			"name": "The Last Dragon",
 			"description": "Game petualangan RPG 3D: pahlawan, monster, desa, misi, dan bos. Progres tersimpan di server Game_server (butuh akun dan koneksi untuk bermain online).",
 			"category": "Petualangan",
-			"version": "0.84.3",
+			"version": "0.84.4",
 			"type": "builtin",
 			"entry_scene": "res://scenes/login.tscn",
 			"icon": "res://assets/icon/last_dragon_512.png",

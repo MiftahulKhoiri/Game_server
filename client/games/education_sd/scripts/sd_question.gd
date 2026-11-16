@@ -12,6 +12,7 @@ signal feedback(correct: bool)
 
 const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
 const SdArt := preload("res://games/education_sd/scripts/sd_art.gd")
+const Voice := preload("res://games/education_sd/scripts/voice.gd")
 
 const MAX_TRIES := 3
 
@@ -32,6 +33,7 @@ var _fb: Label
 var _next: Button
 var _hint_btn: Button
 var _body: VBoxContainer
+var _q_text := ""
 # susun (huruf/kata/angka)
 var _pool: Array = []
 var _placed: Array = []
@@ -64,6 +66,8 @@ func setup(question: Dictionary, play_mode: String, random: RandomNumberGenerato
 	var tag := UI.label(str(type_names.get(q.type, q.type)), 20, UI.SOFT, false)
 	tag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(tag)
+	if Voice.listen_ok():
+		head.add_child(UI.listen_button(func() -> void: Voice.say(read_text())))
 	if mode != "kuis":
 		_hint_btn = UI.button("Petunjuk", _hint, Color("ffe08a"), 22, 56)
 		head.add_child(_hint_btn)
@@ -71,6 +75,7 @@ func setup(question: Dictionary, play_mode: String, random: RandomNumberGenerato
 	var question_text := str(q.q)
 	if q.type == "tf":
 		question_text = "Benar atau salah?\n" + question_text
+	_q_text = question_text
 	add_child(UI.label(question_text, 32, UI.INK))
 	_body = UI.vbox(12)
 	add_child(_body)
@@ -111,6 +116,18 @@ func setup(question: Dictionary, play_mode: String, random: RandomNumberGenerato
 	_next = UI.button("Lanjut", _emit_finish, UI.PRIMARY, 30, 80)
 	_next.visible = false
 	add_child(_next)
+	Voice.say_auto(read_text())
+
+
+## Teks yang dibacakan suara pembaca: soal + pilihan jawaban (urutan seperti di layar).
+func read_text() -> String:
+	var t := _q_text
+	if str(q.type) in ["mc", "logic", "fill", "pick_image", "count"] and not _options.is_empty():
+		var opts: Array = _options.map(func(o): return str(o).replace("_", " "))
+		t += "\nPilihannya: " + ", ".join(opts) + "."
+	elif str(q.type) == "classify" and not _items.is_empty() and _item_i < _items.size():
+		t += "\n" + str(_items[_item_i][0])
+	return t
 
 
 # --- Pilihan (pilihan ganda, isian, logika, gambar, benar/salah, hitung) -------------------------------
@@ -407,6 +424,7 @@ func _mistake(node: Control) -> void:
 		_fb.visible = true
 		_fb.text = "Belum tepat, coba lagi ya! Kamu pasti bisa."
 		_fb.add_theme_color_override("font_color", UI.SOFT_BAD)
+		Voice.say_auto(_fb.text)
 
 
 ## Soal selesai. ok = jawaban akhirnya benar. partial = tipe bertahap (pasangkan/kelompokkan) yang
@@ -439,6 +457,7 @@ func _resolve(ok: bool, node: Control, partial := false) -> void:
 	_fb.add_theme_color_override("font_color", UI.GOOD if ok else UI.SOFT_BAD)
 	_next.visible = true
 	UI.fade_in(_fb)
+	Voice.say_auto(_fb.text)
 
 
 func _answer_text() -> String:
@@ -457,6 +476,7 @@ func _answer_text() -> String:
 
 
 func _emit_finish() -> void:
+	Voice.hush()
 	var correct := _is_correct()
 	finished.emit({"correct": correct, "first_try": correct and _mistakes == 0, "given": _given.replace("_", " "),
 		"answer": _answer_text(), "retried": _mistakes > 0 and correct, "question": q, "explain": str(q.explain)})
