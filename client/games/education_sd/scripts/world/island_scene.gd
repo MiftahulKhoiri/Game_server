@@ -12,11 +12,15 @@ signal place_changed(id: String)
 const Player := preload("res://games/education_sd/scripts/world/w3d_player.gd")
 const Rig := preload("res://games/education_sd/scripts/world/w3d_rig.gd")
 const IslandWorld := preload("res://games/education_sd/scripts/world/w3d_world.gd")
+const Terrain := preload("res://games/education_sd/scripts/world/w3d_terrain.gd")
+const Nature := preload("res://games/education_sd/scripts/world/w3d_nature.gd")
 
 const FOCUS_RANGE := 2.8
 const NPC_SPEED := 1.1
 const NPC_ACTIVE := 40.0
 const C_PATH := Color("c9a26b")
+const C_TRAIL := Color("b98e5c")  # jalan tanah yang dicat di medan (5.0)
+const C_PLAZA := Color("b9ab90")  # pelataran batu
 const C_STONE := Color("8a8174")
 const C_WOOD := Color("8a5a2b")
 
@@ -30,6 +34,9 @@ var radius := 36.0
 var spots: Array = []  # [{pos: Vector3, kind, id, text, node}]
 var npcs: Array = []  # [{id, node, rig, home, wander, target, wait, talking}]
 var hills: Array = []
+var terrain  # w3d_terrain.gd (pulau dengan tata letak); null = pulau bulat sederhana
+var flower_spots: Array = []
+var build_prof: Dictionary = {}  # waktu bangun per bagian (ms), untuk uji kinerja
 var place := ""
 var dock_z0 := 0.0
 var dock_z1 := 0.0
@@ -84,9 +91,15 @@ func build(c: Dictionary) -> void:
 	flags = c.get("flags", {})
 	dock_z0 = radius + 3.0
 	dock_z1 = radius + 14.0
+	if not layout.is_empty():
+		var tp := Time.get_ticks_usec()
+		_terrain_setup()
+		build_prof["terrain"] = (Time.get_ticks_usec() - tp) / 1000.0
 	_environment()
 	_sea()
+	var tg := Time.get_ticks_usec()
 	_ground()
+	build_prof["ground"] = (Time.get_ticks_usec() - tg) / 1000.0
 	_dock()
 	if layout.is_empty():
 		_trees_simple()
@@ -101,7 +114,9 @@ func build(c: Dictionary) -> void:
 		_fort()
 		_boulder()
 		_academy_door()
+		var tf := Time.get_ticks_usec()
 		_forest()
+		build_prof["forest"] = (Time.get_ticks_usec() - tf) / 1000.0
 		_npcs()
 		for qs in c.get("quest_spots", []):
 			_clue(qs)
@@ -109,11 +124,16 @@ func build(c: Dictionary) -> void:
 			add_pickup(str(pk.uid), str(pk.item), pk.pos)
 		for f in c.get("foes", []):
 			add_foe(f)
+		var tn := Time.get_ticks_usec()
+		_nature()
+		build_prof["nature"] = (Time.get_ticks_usec() - tn) / 1000.0
 	player = Player.new()
 	player.name = "Player"
 	add_child(player)
 	player.setup(c.get("hero", {}))
 	player.place(spawn_point(), 0.0)
+	if terrain != null and bool(profile.get("fx", false)):
+		Nature.motes(player, Color("fff4c8"))
 
 
 func spawn_point() -> Vector3:
@@ -124,6 +144,8 @@ func spawn_point() -> Vector3:
 
 ## Tinggi tanah di (x, z): 0 di dataran, naik landai di bukit.
 func ground_y(x: float, z: float) -> float:
+	if terrain != null:
+		return terrain.height(x, z)
 	var y := 0.0
 	for h in hills:
 		var d := Vector2(x - float(h.pos[0]), z - float(h.pos[1])).length()
@@ -144,40 +166,60 @@ func _v(xz, extra_y := 0.0) -> Vector3:
 
 
 func _environment() -> void:
+	# Paket visual 5.0: langit cerah bergradasi, cahaya ambien dari langit lebih tinggi (sisi bayangan tidak
+	# hitam), matahari hangat + cahaya isi kebiruan tanpa bayangan, kabut tipis warna cakrawala.
 	var env := Environment.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = _col("sky_top", Color("2f6fb8"))
-	sky_mat.sky_horizon_color = _col("sky_horizon", Color("bfe6ff"))
-	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
-	sky_mat.ground_bottom_color = Color("2a78b8")
+	var top := _col("sky_top", Color("3a7fd5"))
+	var hor := _col("sky_horizon", Color("cfeaff"))
+	sky_mat.sky_top_color = top
+	sky_mat.sky_horizon_color = hor
+	sky_mat.sky_curve = 0.11
+	sky_mat.ground_horizon_color = hor
+	sky_mat.ground_bottom_color = Color("3f6e55")
+	sky_mat.ground_curve = 0.04
+	sky_mat.sun_angle_max = 18.0
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.18
+	env.ambient_light_energy = 0.38
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 1.0
 	env.tonemap_white = 6.0
 	env.adjustment_enabled = true
-	env.adjustment_brightness = 0.95
-	env.adjustment_contrast = 1.1
-	env.adjustment_saturation = 1.15
+	env.adjustment_brightness = 1.0
+	env.adjustment_contrast = 1.06
+	env.adjustment_saturation = 1.14
 	if bool(profile.get("fog", false)):
 		env.fog_enabled = true
-		env.fog_light_color = Color("cfeaff")
-		env.fog_density = 0.003
-		env.fog_sky_affect = 0.3
+		env.fog_light_color = hor.lerp(Color.WHITE, 0.2)
+		env.fog_density = 0.0028
+		env.fog_sky_affect = 0.2
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation = Vector3(-0.9, 0.6, 0)
-	sun.light_energy = 0.7
-	sun.light_color = Color("fff1d6")
+	sun.rotation = Vector3(-0.85, 0.65, 0)
+	sun.light_energy = 0.95
+	sun.light_color = Color("fff0d6")
 	sun.shadow_enabled = bool(profile.get("shadow", false))
-	sun.directional_shadow_max_distance = 40.0
+	sun.shadow_opacity = 0.82
+	sun.shadow_blur = 1.5
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	sun.directional_shadow_max_distance = 42.0
 	add_child(sun)
+	var fill := DirectionalLight3D.new()
+	fill.name = "Fill"
+	fill.rotation = Vector3(-0.5, 0.65 + PI, 0)
+	fill.light_energy = 0.14
+	fill.light_color = hor.lerp(Color("9cc8ff"), 0.5)
+	fill.shadow_enabled = false
+	fill.light_specular = 0.0
+	add_child(fill)
 
 
 func _mesh(mesh: Mesh, col: Color, pos := Vector3.ZERO, rough := 0.9, parent: Node = null) -> MeshInstance3D:
@@ -222,10 +264,11 @@ func _sea() -> void:
 	pm.size = Vector2(600, 600)
 	var sea := MeshInstance3D.new()
 	sea.mesh = pm
-	var sm := StandardMaterial3D.new()
-	sm.albedo_color = Color("1f78c0")
-	sm.roughness = 0.35
-	sm.metallic_specular = 0.25
+	var sm := Nature.smat("sea")
+	sm.set_shader_parameter("shore_r", radius + (3.9 if terrain != null else 6.0))
+	sm.set_shader_parameter("move", 1.0 if bool(profile.get("fx", false)) else 0.0)
+	if layout.get("colors", {}).has("sea"):
+		sm.set_shader_parameter("deep", _col("sea", Color("0d55a0")))
 	sea.material_override = sm
 	sea.position = Vector3(0, -0.55, 0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -236,6 +279,9 @@ func _sea() -> void:
 func _ground() -> void:
 	var green := _col("ground", Color.from_string(str(island.get("color", "#7cc95a")), Color("7cc95a")))
 	var sand := Color.from_string(str(island.get("sand", "#f3dfa2")), Color("f3dfa2"))
+	if terrain != null:
+		_terrain_ground(green, sand)
+		return
 	var beach := _mesh(Rig.cyl(radius + 5.0, radius + 8.0, 1.2, 72), sand.darkened(0.12), Vector3(0, -0.62, 0))
 	beach.name = "Beach"
 	var ground := _mesh(Rig.cyl(radius, radius + 1.5, 1.0, 72), green.darkened(0.15), Vector3(0, -0.5, 0))
@@ -343,6 +389,9 @@ func _river_and_bridge() -> void:
 	var hw := float(_river.half_width)
 	var bh := float(_river.bridge_half)
 	var span := (radius + 8.0) * 2.0
+	if terrain != null:
+		_river_terrain(z, hw, bh, span)
+		return
 	var water := MeshInstance3D.new()
 	water.name = "River"
 	water.mesh = Rig.box(Vector3(span, 0.06, hw * 2.0))
@@ -399,6 +448,9 @@ func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 
 
 func _paths() -> void:
+	if terrain != null:
+		_path_stones()
+		return
 	for seg in layout.get("paths", []):
 		var a := Vector2(float(seg[0][0]), float(seg[0][1]))
 		var b := Vector2(float(seg[1][0]), float(seg[1][1]))
@@ -421,7 +473,7 @@ func near_path(x: float, z: float, margin: float) -> bool:
 
 func _places() -> void:
 	for pl in layout.get("places", []):
-		if pl.has("plaza"):
+		if pl.has("plaza") and terrain == null:
 			var plaza := _mesh(Rig.cyl(float(pl.plaza), float(pl.plaza), 0.04, 40), C_PATH.lightened(0.1), _v(pl.pos, 0.02))
 			plaza.name = "Plaza_" + str(pl.id)
 		if pl.has("sign"):
@@ -882,24 +934,27 @@ func _forest() -> void:
 		var kind: String = (kinds[1] if r < 0.55 else kinds[0]) if in_forest else (kinds[0] if r < 0.5 else (kinds[2] if r < 0.8 else kinds[3]))
 		if in_forest and _rng.randf() < 0.25:
 			kind = kinds[2]
-		var s := _rng.randf_range(0.9, 1.35)
-		var y := ground_y(pt.x, pt.y)
-		(xfs[kind] as Array).append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(pt.x, y, pt.y)))
+		var s := _rng.randf_range(0.85, 1.4)
+		var y := ground_y(pt.x, pt.y) - 0.05
+		var sc := Vector3(s, s * _rng.randf_range(0.88, 1.18), s)
+		(xfs[kind] as Array).append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(sc), Vector3(pt.x, y, pt.y)))
 		if kind in [kinds[0], kinds[1]]:
 			_static_cyl(0.35, 2.0, Vector3(pt.x, y + 1.0, pt.y))
 			trunks += 1
 		placed += 1
-	for k in kinds:
+	for k in xfs.keys():
 		var arr: Array = xfs[k]
-		var mesh = IslandWorld.env_mesh(k)
+		var mesh = _tree_mesh(k)
 		if arr.is_empty() or mesh == null:
 			continue
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
 		mm.mesh = mesh
 		mm.instance_count = arr.size()
 		for i in arr.size():
 			mm.set_instance_transform(i, arr[i])
+			mm.set_instance_custom_data(i, Color(_rng.randf(), _rng.randf() if _rng.randf() < 0.3 else 0.0, 0, 0))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.name = "Trees_" + k.get_file()
 		mmi.multimesh = mm
@@ -1068,3 +1123,192 @@ func spot_pos(kind: String, id := "") -> Vector3:
 		if str(s.kind) == kind and (id == "" or str(s.id) == id):
 			return s.pos
 	return Vector3.ZERO
+
+
+# --- Paket visual 5.0: medan, air, jembatan, flora, suasana ------------------------------------------------
+
+func _terrain_setup() -> void:
+	var fps := []
+	for o in layout.get("objects", []):
+		var mesh = IslandWorld.env_mesh(str(o.asset))
+		if mesh == null:
+			continue
+		var bb: AABB = (mesh as Mesh).get_aabb()
+		var r := float(o.radius) if o.has("radius") else maxf(bb.size.x, bb.size.z) * 0.5 * float(o.get("scale", 1.0))
+		fps.append([float(o.pos[0]), float(o.pos[1]), r])
+	var rects := []
+	var f: Dictionary = layout.get("farm", {})
+	if not f.is_empty():
+		rects.append([float(f.pos[0]), float(f.pos[1]), float(f.size[0]) / 2.0 + 0.8, float(f.size[1]) / 2.0 + 0.8])
+	var ft: Dictionary = layout.get("fort", {})
+	if not ft.is_empty():
+		rects.append([float(ft.pos[0]), float(ft.pos[1]), float(ft.half) + 2.6, float(ft.half) + 2.6])
+	rects.append([0.0, (dock_z0 + dock_z1) / 2.0, DOCK_HALF + 1.0, (dock_z1 - dock_z0) / 2.0 + 4.0])
+	var b: Dictionary = layout.get("boulder", {})
+	if not b.is_empty():
+		fps.append([float(b.pos[0]), float(b.pos[1]), 1.2 * float(b.get("scale", 2.5)) + 4.5])
+	for sh in layout.get("shapes", []):
+		fps.append([float(sh.pos[0]), float(sh.pos[1]), float(sh.r) + 1.0])
+	if layout.has("academy_door"):
+		fps.append([float(layout.academy_door[0]), float(layout.academy_door[1]), 2.0])
+	terrain = Terrain.new()
+	terrain.setup({"radius": radius, "hills": hills, "river": _river, "paths": layout.get("paths", []),
+		"places": layout.get("places", []), "footprints": fps, "rects": rects, "forest": layout.get("forest", {}),
+		"seed": hash(str(island.id))})
+
+
+func _terrain_ground(green: Color, sand: Color) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Ground"
+	mi.mesh = terrain.build_mesh(float(profile.get("terrain_step", 1.5)))
+	mi.material_override = Nature.terrain_mat(terrain, green, sand, _col("path", C_TRAIL), _col("plaza", C_PLAZA))
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	var body := StaticBody3D.new()
+	body.name = "GroundBody"
+	body.collision_layer = 1
+	var cs := CollisionShape3D.new()
+	cs.shape = terrain.collision_shape()
+	body.add_child(cs)
+	add_child(body)
+	var beach := Node3D.new()  # pantai kini bagian dari medan (pasir landai); simpul penanda untuk uji
+	beach.name = "Beach"
+	add_child(beach)
+	for h in hills:
+		var hn := Node3D.new()
+		hn.name = "Hill_" + str(h.get("id", ""))
+		hn.position = Vector3(float(h.pos[0]), float(h.height), float(h.pos[1]))
+		add_child(hn)
+
+
+## Sungai di alur yang menurun (medan), air beranimasi, jembatan papan dengan pagar & tiang.
+func _river_terrain(z: float, hw: float, bh: float, span: float) -> void:
+	var water := MeshInstance3D.new()
+	water.name = "River"
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(span, hw * 2.0 + 1.6)
+	water.mesh = pm
+	var wm := Nature.smat("river")
+	wm.set_shader_parameter("move", 1.0 if bool(profile.get("fx", false)) else 0.0)
+	water.material_override = wm
+	water.position = Vector3(0, -0.2, z)
+	water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(water)
+	for side in [-1.0, 1.0]:
+		# Dinding tak terlihat di tepi sungai (kecuali jembatan): pemain tidak tercebur.
+		var seg := (span / 2.0) - bh
+		for sx in [-1.0, 1.0]:
+			_static_box(Vector3(seg, 2.0, 0.4), Vector3(sx * (bh + seg / 2.0), 1.0, z + side * (hw + 0.2)))
+	var L := hw * 2.0 + 2.4
+	var bridge := Node3D.new()
+	bridge.name = "Bridge"
+	add_child(bridge)
+	var n := int(L / 0.42)
+	var plank := MultiMesh.new()
+	plank.transform_format = MultiMesh.TRANSFORM_3D
+	plank.use_colors = true
+	plank.mesh = Rig.box(Vector3(bh * 2.0 + 0.3, 0.1, L / n - 0.05))
+	plank.instance_count = n
+	for k in n:
+		var t := Transform3D(Basis(Vector3.UP, _rng.randf_range(-0.03, 0.03)), Vector3(0, 0.1 + _rng.randf_range(-0.01, 0.01), z - L / 2.0 + (k + 0.5) * L / n))
+		plank.set_instance_transform(k, t)
+		plank.set_instance_color(k, Color.WHITE * _rng.randf_range(0.85, 1.08))
+	var pmi := MultiMeshInstance3D.new()
+	pmi.multimesh = plank
+	var pmat: StandardMaterial3D = Rig.mat(Color("a8784a"), 0.9).duplicate()
+	pmat.vertex_color_use_as_albedo = true
+	pmi.material_override = pmat
+	bridge.add_child(pmi)
+	for sx in [-1.0, 1.0]:
+		_mesh(Rig.box(Vector3(0.28, 0.3, L + 0.4)), Color("6b4a2a"), Vector3(sx * (bh - 0.2), -0.08, z), 0.9, bridge)
+		_mesh(Rig.box(Vector3(0.12, 0.12, L)), Color("8a5a2b"), Vector3(sx * (bh + 0.05), 1.0, z), 0.9, bridge)
+		_mesh(Rig.box(Vector3(0.08, 0.08, L)), Color("8a5a2b"), Vector3(sx * (bh + 0.05), 0.6, z), 0.9, bridge)
+		for k in 5:
+			var pz := z - L / 2.0 + 0.2 + k * (L - 0.4) / 4.0
+			_mesh(Rig.cyl(0.09, 0.11, 1.25, 8), Color("6b4a2a"), Vector3(sx * (bh + 0.05), 0.55, pz), 0.9, bridge)
+			_mesh(Rig.sphere(0.12), Color("7a5232"), Vector3(sx * (bh + 0.05), 1.18, pz), 0.9, bridge)
+		_static_box(Vector3(0.25, 2.0, L), Vector3(sx * (bh + 0.05), 1.0, z))
+	# Lantai jembatan setinggi tepi sungai (y = 0) supaya pemain tidak tersandung.
+	_static_box(Vector3(bh * 2.0, 0.4, L), Vector3(0, -0.2, z))
+	# Batu-batu sungai.
+	var rock = IslandWorld.env_mesh("rocks/rock_b")
+	if rock != null:
+		for i in 10:
+			var rx := _rng.randf_range(bh + 3.0, radius - 6.0) * (1.0 if i % 2 == 0 else -1.0)
+			var rzz := z + _rng.randf_range(-hw * 0.8, hw * 0.8)
+			var mi := MeshInstance3D.new()
+			mi.mesh = rock
+			mi.position = Vector3(rx, -0.45, rzz)
+			mi.scale = Vector3.ONE * _rng.randf_range(0.35, 0.7)
+			mi.rotation.y = _rng.randf() * TAU
+			_far(mi)
+			add_child(mi)
+
+
+## Batu kecil di tepi jalan tanah (satu MultiMesh).
+func _path_stones() -> void:
+	var rock = IslandWorld.env_mesh("rocks/rock_a")
+	if rock == null:
+		return
+	var xs: Array = []
+	for seg in layout.get("paths", []):
+		var a := Vector2(float(seg[0][0]), float(seg[0][1]))
+		var b := Vector2(float(seg[1][0]), float(seg[1][1]))
+		var len := a.distance_to(b)
+		var dir := (b - a) / maxf(len, 0.001)
+		var nrm := Vector2(-dir.y, dir.x)
+		var d := 1.0
+		while d < len - 1.0:
+			d += _rng.randf_range(2.5, 6.0)
+			var side := 1.0 if _rng.randf() < 0.5 else -1.0
+			var p := a + dir * d + nrm * side * _rng.randf_range(1.9, 2.5)
+			if terrain.splat(0, p.x, p.y) > 0.6 or terrain.splat(1, p.x, p.y) > 0.3 or terrain.splat(3, p.x, p.y) > 0.3:
+				continue
+			var s := _rng.randf_range(0.12, 0.28)
+			xs.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s * 0.7, s)), Vector3(p.x, ground_y(p.x, p.y) - 0.04, p.y)))
+	if xs.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = rock
+	mm.instance_count = xs.size()
+	for i in xs.size():
+		mm.set_instance_transform(i, xs[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "PathStones"
+	mmi.multimesh = mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+
+
+static var _tree_meshes: Dictionary = {}
+
+
+## Mesh pohon GLB dengan bahan shader: daun bergoyang (bila efek aktif) + variasi warna per pohon.
+func _tree_mesh(k: String):
+	var sway := bool(profile.get("fx", false))
+	var key := k + ("|s" if sway else "")
+	if _tree_meshes.has(key):
+		return _tree_meshes[key]
+	var src = IslandWorld.env_mesh(k)
+	if src == null:
+		return null
+	var m: ArrayMesh = (src as ArrayMesh).duplicate()
+	for i in m.get_surface_count():
+		var mat := m.surface_get_material(i)
+		var col := (mat as BaseMaterial3D).albedo_color if mat is BaseMaterial3D else Color.GREEN
+		var leafy := m.surface_get_name(i).begins_with("Daun") or (col.g > col.r * 1.08 and col.g > col.b)
+		m.surface_set_material(i, Nature.leaf_mat(mat, sway) if leafy else Nature.bark_mat(mat))
+	_tree_meshes[key] = m
+	return m
+
+
+func _nature() -> void:
+	if terrain == null:
+		return
+	var green := _col("ground", Color.from_string(str(island.get("color", "#7cc95a")), Color("7cc95a")))
+	flower_spots = await Nature.plant_grass(self, terrain, green, int(profile.get("tufts", 3000)), float(profile.get("grass_far", 28.0)),
+		bool(profile.get("fx", false)), hash(str(island.id)) + 5)
+	if not is_inside_tree():
+		return
+	Nature.ambience(self, radius, profile, _col("sky_top", Color("3a7fd5")), flower_spots, hash(str(island.id)) + 9)

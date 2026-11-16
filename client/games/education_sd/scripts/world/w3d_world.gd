@@ -28,9 +28,9 @@ const PLAYER_LAYER := 2
 
 ## Profil grafis: skala render 3D, bayangan, MSAA, jumlah pohon, jarak gambar dekorasi.
 const PROFILES := {
-	"hemat": {"foes": 2, "rocks": 40, "grass": 120, "fog": false, "scale": 0.6, "shadow": false, "msaa": false, "trees": 60, "range": 38.0, "rain": 0, "animals": 2, "birds": 0, "fx": false, "cycle": true},
-	"seimbang": {"foes": 3, "rocks": 80, "grass": 300, "fog": true, "scale": 0.8, "shadow": true, "msaa": false, "trees": 130, "range": 60.0, "rain": 250, "animals": 3, "birds": 3, "fx": true, "cycle": true},
-	"tinggi": {"foes": 4, "rocks": 120, "grass": 600, "fog": true, "scale": 1.0, "shadow": true, "msaa": true, "trees": 220, "range": 95.0, "rain": 500, "animals": 5, "birds": 5, "fx": true, "cycle": true},
+	"hemat": {"foes": 2, "rocks": 40, "grass": 120, "fog": false, "scale": 0.6, "shadow": false, "msaa": false, "trees": 60, "range": 38.0, "rain": 0, "animals": 2, "birds": 0, "fx": false, "cycle": true, "tufts": 4000, "grass_far": 18.0, "terrain_step": 2.0},
+	"seimbang": {"foes": 3, "rocks": 80, "grass": 300, "fog": true, "scale": 0.8, "shadow": true, "msaa": false, "trees": 130, "range": 60.0, "rain": 250, "animals": 3, "birds": 3, "fx": true, "cycle": true, "tufts": 12000, "grass_far": 28.0, "terrain_step": 1.5},
+	"tinggi": {"foes": 4, "rocks": 120, "grass": 600, "fog": true, "scale": 1.0, "shadow": true, "msaa": true, "trees": 220, "range": 95.0, "rain": 500, "animals": 5, "birds": 5, "fx": true, "cycle": true, "tufts": 20000, "grass_far": 40.0, "terrain_step": 1.0},
 }
 
 const THEMES := {
