@@ -397,21 +397,54 @@ func _market_stall() -> void:
 			_add(sph(0.09, 6), "Buah" if k != 1 else "Buah2", Vector3(-0.8 + k * 0.8 + (j % 2) * 0.12 - 0.06, 1.13, (j / 2) * 0.12 - 0.06))
 
 
-## Rumah Gadang (Minangkabau, Sumatera Barat): rumah panggung memanjang, atap bergonjong melengkung ke atas.
+## Rumah Gadang (Minangkabau, Sumatera Barat): rumah panggung memanjang, dinding berukir merah-emas,
+## atap ijuk bergonjong yang melengkung tajam ke atas di kedua ujung + gonjong kecil di serambi depan.
+## (paket visual 5.0: bentuk atap melengkung dari ruas-ruas, jendela, tangga.)
 func _rumah_gadang() -> void:
-	_mat("Kayu", Color("6b3a24"), 0.85)
-	_mat("Ukiran", Color("b0302a"), 0.8)
-	_mat("Ijuk", Color("2a2622"), 0.95)
-	_mat("Emas", Color("d9a83a"), 0.4, 0.5)
-	for x in [-1.6, -0.5, 0.5, 1.6]:
-		for z in [-1.1, 1.1]:
-			_add(cyl(0.1, 0.12, 1.0, 6), "Kayu", Vector3(x, 0.5, z))
-	_add(box(Vector3(3.8, 1.6, 2.6)), "Ukiran", Vector3(0, 1.8, 0))
-	_add(box(Vector3(3.9, 0.15, 2.7)), "Emas", Vector3(0, 1.05, 0))
+	_mat("Kayu", Color("5e3320"), 0.85)
+	_mat("Ukiran", Color("a8322a"), 0.8)
+	_mat("Ijuk", Color("2e2a26"), 0.95)
+	_mat("Emas", Color("d9a83a"), 0.45, 0.4)
+	_mat("Gelap", Color("231a14"), 0.9)
+	# Tiang panggung & lantai
+	for x in [-2.0, -1.0, 0.0, 1.0, 2.0]:
+		for z in [-1.15, 1.15]:
+			_add(cyl(0.11, 0.13, 1.1, 6), "Kayu", Vector3(x, 0.55, z))
+	_add(box(Vector3(4.8, 0.18, 2.7)), "Kayu", Vector3(0, 1.12, 0))
+	# Badan rumah: kayu gelap + pita ukiran merah & garis emas di depan/belakang
+	_add(box(Vector3(4.5, 1.5, 2.4)), "Kayu", Vector3(0, 1.95, 0))
 	for side in [-1.0, 1.0]:
-		_add(box(Vector3(4.6, 0.12, 1.8)), "Ijuk", Vector3(0, 3.1, 0.75 * side), Vector3.ONE, Vector3(0.6 * side, 0, 0))
-	for x in [-2.2, -1.1, 1.1, 2.2]:
-		_add(cyl(0.0, 0.22, 1.4, 6), "Ijuk", Vector3(x, 3.95 + absf(x) * 0.25, 0), Vector3.ONE, Vector3(0, 0, -0.55 * signf(x)))
+		_add(box(Vector3(4.5, 0.32, 0.04)), "Ukiran", Vector3(0, 2.52, 1.21 * side))
+		_add(box(Vector3(4.5, 0.32, 0.04)), "Ukiran", Vector3(0, 1.38, 1.21 * side))
+		for y in [2.34, 2.7, 1.2, 1.56]:
+			_add(box(Vector3(4.5, 0.04, 0.05)), "Emas", Vector3(0, y, 1.215 * side))
+		for x in [-1.6, -0.55, 0.55, 1.6]:
+			_add(box(Vector3(0.5, 0.55, 0.05)), "Gelap", Vector3(x, 1.95, 1.22 * side))
+			_add(box(Vector3(0.6, 0.06, 0.06)), "Emas", Vector3(x, 2.25, 1.23 * side))
+			_add(box(Vector3(0.6, 0.06, 0.06)), "Emas", Vector3(x, 1.65, 1.23 * side))
+	# Atap utama: ruas-ruas yang naik tajam di ujung (gonjong), dua sisi miring
+	var n := 7
+	for side in [-1.0, 1.0]:
+		for k in range(-n, n + 1):
+			var t := float(k) / n
+			var y := 2.95 + pow(absf(t), 3.0) * 1.9
+			var slope := atan(1.9 * 3.0 * t * t / 2.75) * signf(t)
+			_add(box(Vector3(2.75 / n + 0.05, 0.16, 1.7)), "Ijuk", Vector3(t * 2.75, y, 0.72 * side), Vector3.ONE, Vector3(0.62 * side, 0, slope))
+	for k in range(-n, n + 1):
+		var t := float(k) / n
+		_add(box(Vector3(2.75 / n + 0.05, 0.1, 0.18)), "Emas", Vector3(t * 2.75, 3.47 + pow(absf(t), 3.0) * 1.9, 0))
+	for sx in [-1.0, 1.0]:
+		_add(cyl(0.0, 0.14, 0.9, 6), "Emas", Vector3(sx * 2.95, 5.55, 0), Vector3.ONE, Vector3(0, 0, -0.5 * sx))
+	# Gonjong kecil serambi depan (menghadap +z)
+	for k in range(0, 6):
+		var t := k / 5.0
+		_add(box(Vector3(1.5, 0.14, 0.32)), "Ijuk", Vector3(0, 3.0 + pow(t, 3.0) * 1.3, 1.1 + t * 0.95), Vector3.ONE, Vector3(-0.25 - t * 0.5, 0, 0))
+	_add(cyl(0.0, 0.11, 0.7, 6), "Emas", Vector3(0, 4.55, 2.15), Vector3.ONE, Vector3(0.6, 0, 0))
+	# Tangga depan
+	for k in 4:
+		_add(box(Vector3(0.9, 0.08, 0.32)), "Kayu", Vector3(0, 0.22 + k * 0.26, 2.15 - k * 0.28))
+	for sx in [-0.47, 0.47]:
+		_add(box(Vector3(0.06, 0.06, 1.3)), "Kayu", Vector3(sx, 0.75, 1.75), Vector3.ONE, Vector3(0.7, 0, 0))
 
 
 ## Joglo (Jawa Tengah / Yogyakarta): pendopo kayu terbuka, atap limas bertingkat menjulang di tengah.
@@ -440,12 +473,22 @@ func _tongkonan() -> void:
 	_add(box(Vector3(3.0, 1.3, 2.0)), "Ukiran", Vector3(0, 1.95, 0))
 	for k in 4:
 		_add(box(Vector3(3.0, 0.08, 0.04)), "Kuning", Vector3(0, 1.5 + k * 0.3, 1.02))
-	for k in 9:
-		var t := (k - 4) / 4.0
-		var y := 3.0 + t * t * 1.4
-		_add(box(Vector3(0.62, 0.15, 2.6)), "Hitam", Vector3(t * 2.4, y, 0), Vector3.ONE, Vector3(0, 0, -t * 0.55))
-	_add(cyl(0.08, 0.08, 1.6, 6), "Kayu", Vector3(2.4, 3.1, 0), Vector3.ONE, Vector3(0, 0, 0.0))
-	_add(cyl(0.08, 0.08, 1.6, 6), "Kayu", Vector3(-2.4, 3.1, 0))
+	# Atap pelana berbentuk perahu (paket visual 5.0): dua sisi miring dari ruas yang saling menutup,
+	# melengkung naik ke kedua ujung; tiang penyangga di ujung; dinding segitiga berukir.
+	var n := 6
+	for side in [-1.0, 1.0]:
+		for k in range(-n, n + 1):
+			var t := float(k) / n
+			var y := 2.85 + t * t * 1.5
+			_add(box(Vector3(2.6 / n + 0.12, 0.15, 1.45)), "Hitam", Vector3(t * 2.6, y, 0.6 * side), Vector3.ONE, Vector3(0.55 * side, 0, atan(2.0 * t * 1.5 / 2.6)))
+	for k in range(-n, n + 1):
+		var t := float(k) / n
+		_add(box(Vector3(2.6 / n + 0.12, 0.08, 0.16)), "Kuning", Vector3(t * 2.6, 3.27 + t * t * 1.5, 0), Vector3.ONE, Vector3(0, 0, atan(2.0 * t * 1.5 / 2.6)))
+	for sx in [-1.0, 1.0]:
+		_add(cyl(0.08, 0.1, 3.6, 6), "Kayu", Vector3(sx * 2.45, 1.8, 0))
+		var gable := PrismMesh.new()
+		gable.size = Vector3(1.9, 0.9, 0.06)
+		_add(gable, "Ukiran", Vector3(sx * 1.52, 3.05, 0), Vector3.ONE, Vector3(0, PI / 2.0, 0))
 
 
 func _lighthouse() -> void:
