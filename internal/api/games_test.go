@@ -198,7 +198,6 @@ func TestGameProgressPerGame(t *testing.T) {
 	}
 }
 
-
 func TestGameIcon(t *testing.T) {
 	ts, dir := newCatalogServer(t, []byte("pck"))
 	resp, err := http.Get(ts.URL + "/v1/games/education_sd/icon")
