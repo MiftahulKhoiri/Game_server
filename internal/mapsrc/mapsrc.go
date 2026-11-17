@@ -1,4 +1,4 @@
-// Package mapsrc membaca bentuk petak peta dari client/scripts/maps.gd (sumber kebenaran bentuk peta).
+// Package mapsrc membaca bentuk petak peta dari client/games/adventure/scripts/maps.gd (sumber kebenaran bentuk peta).
 //
 // Dipakai oleh tools/genmaps (membuat internal/game/tiles_gen.go) dan oleh tes yang memastikan data petak
 // server sama dengan klien. Server sendiri tidak membaca maps.gd saat berjalan.

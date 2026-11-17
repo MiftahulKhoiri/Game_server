@@ -130,7 +130,7 @@ Token yang ditolak (kedaluwarsa/dicabut) membawa pemain ke beranda untuk masuk l
 
 ## Platform Multi-Game (v0.84.0)
 
-Satu APK = **launcher** + game bawaan + mesin bersama. Game tambahan diunduh sebagai paket `.pck` per game,
+Satu APK = **launcher** + mesin bersama (sejak v0.85.0 tanpa game bawaan). Semua game diunduh sebagai paket `.pck` per game,
 diverifikasi, lalu bisa dimainkan tanpa internet. Audit sebelum perubahan: [AUDIT_REPORT.md](AUDIT_REPORT.md).
 
 ```
@@ -147,19 +147,29 @@ client/
 │   ├── version_manager.gd           semver + kecocokan launcher/mesin
 │   ├── save_manager.gd              progres per game, atomik, .bak, skema + migrasi
 │   └── api_client.gd                HTTP katalog & progres (server dan token sama dengan Api)
-├── config/games.json                game bawaan (Petualangan)
+├── config/games.json                game bawaan (kosong sejak v0.85.0)
 ├── config/platform.json             lokasi data platform
 ├── config/publisher_public.pem      kunci PUBLIK penerbit paket
 ├── shared/edu/                      mesin game pembelajaran (ikut APK)
+├── games/adventure/                 The Last Dragon — game unduhan (TIDAK ikut APK, sejak v0.85.0)
 ├── games/education_sd/              game unduhan (TIDAK ikut APK)
 ├── games/education_smp/             game unduhan (TIDAK ikut APK)
-└── scripts/, scenes/, assets/       Game Petualangan — tidak dipindah
+├── scripts/                         skrip platform yang tetap di APK: autoload Api, Session, Sound, Patcher,
+│                                    version, updater, build_info, perf, perf_overlay
+└── assets/                          aset bersama di APK: model karakter (models/*.glb, dipakai juga SD),
+                                     ikon aplikasi, musik/suara (autoload Sound)
 ```
 
-**Game Petualangan** tetap di `res://scripts` dan `res://scenes` (memindahkannya akan memutus patch, uji, dan
-semua path lama). Ia didaftarkan sebagai game bawaan dengan `entry_scene = res://scenes/login.tscn`. Perubahan
-pada game ini hanya: tombol "Semua Game" + tombol kembali Android di beranda kembali ke launcher, dan musik
-desa dijeda di luar game ini.
+**The Last Dragon** (`id adventure`, v0.85.0) dipindah dari `res://scripts`, `res://scenes`, dan aset khususnya
+ke `res://games/adventure/` dan kini **game unduhan** seperti SD: pembaruan (kode, adegan, gambar, font, model
+alam, model baru) cukup diunduh dari launcher (tombol UPDATE), tanpa APK baru. Alasannya: paket dimuat dengan
+`replace_files=false`, jadi game yang ikut APK tidak bisa ditimpa paket. Yang tetap di APK dan butuh **patch**
+(`make patch`) atau APK untuk diubah: autoload `Api`/`Session`/`Sound` (state pemain, akun, suara) dan model
+karakter bersama. Model: `models.gd` mencari `res://games/adventure/assets/models/<id>.glb` dulu, lalu
+`res://assets/models/` — jadi model baru/perbaikan model cukup ditaruh di paket. Skrip game tanpa `class_name`
+(kelas global paket tidak masuk cache kelas APK); pakai `const X = preload(...)`. Progres tetap di server
+(`players.state`). Rilis pembaruan: naikkan `version` di `client/games/adventure/game.json`, lalu
+`make game-pack GAMES=adventure`.
 
 **Siklus hidup** (`GameManager`): `play(id)` → (paket unduhan: verifikasi SHA-256 + direktori PCK, muat
 dengan `replace_files=false`, bila gagal dan ada versi lama → rollback otomatis) → `change_scene_to_file(entry)`.

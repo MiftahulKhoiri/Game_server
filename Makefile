@@ -14,7 +14,7 @@ run: build
 test:
 	go test ./...
 
-# Bentuk petak peta untuk server (internal/game/tiles_gen.go) dari client/scripts/maps.gd. Jalankan setiap kali
+# Bentuk petak peta untuk server (internal/game/tiles_gen.go) dari client/games/adventure/scripts/maps.gd. Jalankan setiap kali
 # peta di maps.gd berubah; TestTilesMatchClient gagal bila lupa.
 maps:
 	go run ./tools/genmaps

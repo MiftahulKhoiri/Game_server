@@ -68,7 +68,9 @@ memeriksa:
 ```
 
 `catalog.json` = `{"catalog_version": 1, "generated": "…", "games": [manifest, …]}` (game unduhan saja).
-Game bawaan ada di `client/config/games.json` (ikut APK, `type: "builtin"`).
+Game bawaan ada di `client/config/games.json` (ikut APK, `type: "builtin"`). Sejak v0.85.0 daftar ini kosong:
+The Last Dragon (`adventure`) juga game unduhan. Kolom tambahan opsional: `background_music: "platform"` (musik
+autoload Sound berbunyi selama game ini aktif).
 
 ## Batasan yang diketahui
 

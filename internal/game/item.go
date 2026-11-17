@@ -73,7 +73,7 @@ func init() {
 }
 
 // Daftar barang. Barang baru: tambahkan satu baris di sini lalu (opsional)
-// gambar client/assets/items/<id>.png. Draf harga untuk diseimbangkan.
+// gambar client/games/adventure/assets/items/<id>.png. Draf harga untuk diseimbangkan.
 var items = []ItemDef{
 	{ID: PotionID, Name: "Ramuan Penyembuh", Kind: KindConsumable, BuyPrice: 15, SellPrice: 6, Shop: ShopPotion},
 	{ID: "taring_goblin", Name: "Taring Goblin", Kind: KindMaterial, SellPrice: 12},

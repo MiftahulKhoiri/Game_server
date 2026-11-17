@@ -24,7 +24,7 @@ const MaxQuests = 100
 type QuestDef struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
-	Giver       string   `json:"giver"` // id NPC, sama dengan nama gambar di client/assets/characters/
+	Giver       string   `json:"giver"` // id NPC, sama dengan nama gambar di client/games/adventure/assets/characters/
 	Description string   `json:"description"`
 	TargetIDs   []string `json:"target_ids"` // id musuh yang dihitung
 	Count       int      `json:"target_count"`

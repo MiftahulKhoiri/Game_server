@@ -12,7 +12,7 @@ import (
 //
 // Jam dunia dihitung dari jam server (detik Unix), bukan dari kapan aplikasi dibuka, sehingga semua
 // pemain melihat siang/malam, hujan, dan kejadian yang sama, dan server bisa memeriksanya. Klien
-// memakai rumus yang sama (client/scripts/atmosphere.gd) dengan selisih jam dari GET /v1/time.
+// memakai rumus yang sama (client/games/adventure/scripts/atmosphere.gd) dengan selisih jam dari GET /v1/time.
 const (
 	DaySeconds    = 720 // 12 menit nyata = 24 jam permainan
 	WeatherBlockS = 150 // lama satu blok cuaca
@@ -197,7 +197,7 @@ type Secret struct {
 // SecretRange: jarak petak terjauh dari tempat rahasia agar dianggap menemukannya.
 const SecretRange = 2
 
-// Secrets: tempat rahasia. Posisi harus sama dengan client/scripts/maps.gd RAHASIA.
+// Secrets: tempat rahasia. Posisi harus sama dengan client/games/adventure/scripts/maps.gd RAHASIA.
 var Secrets = []Secret{
 	{ID: "batu_bertulis", Name: "Batu Bertulis Kuno", Map: MapPerbatasan, X: 2, Y: 47, Gold: 60, Item: "koin_kuno",
 		Hint: "Di sudut barat daya Perbatasan ada batu tua bertulis."},

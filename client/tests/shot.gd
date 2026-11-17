@@ -5,8 +5,8 @@ extends Node
 ## SHOT_OUT (berkas keluaran), SHOT_SCENE (world | battle).
 
 func _gallery() -> void:
-	const Models = preload("res://scripts/models.gd")
-	const Maps = preload("res://scripts/maps.gd")
+	const Models = preload("res://games/adventure/scripts/models.gd")
+	const Maps = preload("res://games/adventure/scripts/maps.gd")
 	var ids: Array = OS.get_environment("SHOT_IDS").split(",")
 	if OS.get_environment("SHOT_WARDROBE") != "":  # katalog kosmetik (JSON GET /v1/wardrobe) untuk warna asli
 		get_node("/root/Session").set_wardrobe_catalog(JSON.parse_string(FileAccess.get_file_as_string(OS.get_environment("SHOT_WARDROBE"))))
@@ -80,7 +80,7 @@ func _battle() -> void:
 		Session.player.state.hero = OS.get_environment("SHOT_HEROID")
 	var id := OS.get_environment("SHOT_ENEMY") if OS.get_environment("SHOT_ENEMY") != "" else "goblin"
 	Session.battle = {"enemy_id": id, "enemy_name": id, "enemy_hp": 20, "enemy_max_hp": 24}
-	var scene: Node = load("res://scenes/battle.tscn").instantiate()
+	var scene: Node = load("res://games/adventure/scenes/battle.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(1.2).timeout
 	# Tanpa server: isi keadaan pertarungan secara manual supaya tombol dan penunjuk tampak.
@@ -104,7 +104,7 @@ func _battle() -> void:
 
 func _profile() -> void:
 	Session.use_offline_player()
-	var scr: CanvasLayer = load("res://scripts/profile.gd").new()
+	var scr: CanvasLayer = load("res://games/adventure/scripts/profile.gd").new()
 	get_tree().root.add_child.call_deferred(scr)
 	await get_tree().create_timer(0.5).timeout
 	scr.open()
@@ -120,7 +120,7 @@ func _profile() -> void:
 ## SHOT_LOOKS (larik JSON; yang pertama dipakai sebagai penampilan).
 func _kreator() -> void:
 	if OS.get_environment("SHOT_NOMERGE") != "":
-		load("res://scripts/look_build.gd").merge_parts = false
+		load("res://games/adventure/scripts/look_build.gd").merge_parts = false
 	Session.use_offline_player()
 	Session.player.state["gold"] = 1500
 	Session.player.state["level"] = 12
@@ -130,7 +130,7 @@ func _kreator() -> void:
 		var lk: Dictionary = (JSON.parse_string(OS.get_environment("SHOT_LOOKS")) as Array)[0]
 		Session.player.state["look"] = Session.look_of(lk.get("look", {}))
 		Session.player.state["equipment"] = lk.get("equipment", {})
-	var scr: CanvasLayer = load("res://scripts/kreator.gd").new()
+	var scr: CanvasLayer = load("res://games/adventure/scripts/kreator.gd").new()
 	get_tree().root.add_child.call_deferred(scr)
 	await get_tree().create_timer(0.5).timeout
 	scr.open(OS.get_environment("SHOT_TAB") if OS.get_environment("SHOT_TAB") != "" else "Penampilan")
@@ -162,7 +162,7 @@ func _atribut() -> void:
 	Session.use_offline_player()
 	Session.player.state["soldiers"] = int(OS.get_environment("SHOT_SOLDIERS")) if OS.get_environment("SHOT_SOLDIERS") != "" else 5
 	Session.player.state["soldiers_rest"] = int(OS.get_environment("SHOT_REST")) if OS.get_environment("SHOT_REST") != "" else 0
-	var scr: Node = load("res://scenes/atribut.tscn").instantiate()
+	var scr: Node = load("res://games/adventure/scenes/atribut.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scr)
 	await get_tree().create_timer(0.8).timeout
 	scr._show_page(1)
@@ -180,7 +180,7 @@ func _atribut() -> void:
 func _dialog() -> void:
 	Session.use_offline_player()
 	Session.talk_npc = OS.get_environment("SHOT_NPC")
-	var scene: Node = load("res://scenes/dialog.tscn").instantiate()
+	var scene: Node = load("res://games/adventure/scenes/dialog.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(1.6).timeout
 	var img := get_viewport().get_texture().get_image()
@@ -189,7 +189,7 @@ func _dialog() -> void:
 	get_tree().quit()
 
 
-## Layar apa saja dari SHOT_PATH (mis. res://scenes/login.tscn), pemain uji tanpa server.
+## Layar apa saja dari SHOT_PATH (mis. res://games/adventure/scenes/login.tscn), pemain uji tanpa server.
 func _file() -> void:
 	if OS.get_environment("SHOT_OFFLINE") != "0":
 		Session.use_offline_player()
@@ -240,7 +240,7 @@ func _ready() -> void:
 		Session.show_perf = true
 		Session.apply_display()
 	# SHOT_HOUR (0-24) dan SHOT_RAIN (0-1) memaksa waktu dan hujan untuk tangkapan layar.
-	const Atmo = preload("res://scripts/atmosphere.gd")
+	const Atmo = preload("res://games/adventure/scripts/atmosphere.gd")
 	if OS.get_environment("SHOT_HOUR") != "":
 		Atmo.hour_override = float(OS.get_environment("SHOT_HOUR"))
 	if OS.get_environment("SHOT_RAIN") != "":
@@ -253,7 +253,7 @@ func _ready() -> void:
 	Session.player.state.fz = z
 	if OS.get_environment("SHOT_YAW") != "":  # pahlawan menghadap arah kamera (kamera kembali ke belakangnya)
 		Session.player.state.yaw = deg_to_rad(float(OS.get_environment("SHOT_YAW")))
-	var scene: Node = load("res://scenes/world3d.tscn").instantiate()
+	var scene: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_tree().root.add_child.call_deferred(scene)
 	await get_tree().create_timer(0.3).timeout
 	if OS.get_environment("SHOT_PERF") != "":

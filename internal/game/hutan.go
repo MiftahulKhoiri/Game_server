@@ -17,12 +17,12 @@ const (
 
 	HutanWaves = 3 // jumlah bos tiap wilayah (Level 1..3)
 
-	// Singgasana bos di tengah Hutan Lebat; posisinya sama dengan petak 'K' di client/scripts/maps.gd.
+	// Singgasana bos di tengah Hutan Lebat; posisinya sama dengan petak 'K' di client/games/adventure/scripts/maps.gd.
 	// (v0.49.0: dipindah ke dekat gerbang Gua Goblin, di sebelah persimpangan tiga jalan.)
 	HutanBossX = 142
 	HutanBossY = 47
 
-	// Kapten Rimba, penjaga kem hutan di Perbatasan (client/scripts/maps.gd, NPC "kapten_kem"), dan jarak
+	// Kapten Rimba, penjaga kem hutan di Perbatasan (client/games/adventure/scripts/maps.gd, NPC "kapten_kem"), dan jarak
 	// terjauh (petak) dari tempatnya berdiri agar pembicaraan dengannya sah.
 	KaptenX      = 23
 	KaptenY      = 4

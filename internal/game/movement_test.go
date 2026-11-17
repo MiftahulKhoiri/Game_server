@@ -186,7 +186,7 @@ func TestDoorsInsideMaps(t *testing.T) {
 // Daftar pintu server harus sama persis dengan EXITS di klien; kalau tidak, pemain jujur bisa ditolak saat
 // melewati pintu baru (atau pintu lama yang sudah dihapus masih bisa dipakai).
 func TestDoorsMatchClient(t *testing.T) {
-	f, err := os.Open("../../client/scripts/maps.gd")
+	f, err := os.Open("../../client/games/adventure/scripts/maps.gd")
 	if err != nil {
 		t.Skip("klien tidak ada:", err)
 	}
@@ -294,7 +294,7 @@ func TestDoorTilesWalkable(t *testing.T) {
 
 // Data petak server (tiles_gen.go) harus sama dengan maps.gd; jalankan `make maps` setelah mengubah peta.
 func TestTilesMatchClient(t *testing.T) {
-	f, err := os.Open("../../client/scripts/maps.gd")
+	f, err := os.Open("../../client/games/adventure/scripts/maps.gd")
 	if err != nil {
 		t.Skip("klien tidak ada:", err)
 	}
@@ -304,7 +304,7 @@ func TestTilesMatchClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	if m.Walkable != walkableTiles || !reflect.DeepEqual(m.Rows, mapRows) {
-		t.Fatal("internal/game/tiles_gen.go tidak sama dengan client/scripts/maps.gd: jalankan `make maps`")
+		t.Fatal("internal/game/tiles_gen.go tidak sama dengan client/games/adventure/scripts/maps.gd: jalankan `make maps`")
 	}
 }
 

@@ -12,6 +12,10 @@ Peta, skrip, dan adegan bisa diubah lewat server. Pemain cukup **menutup lalu me
 
 ## Yang bisa dan tidak bisa
 
+Sejak v0.85.0 isi The Last Dragon ada di `client/games/adventure/` dan diperbarui lewat **paket game**
+(`make game-pack GAMES=adventure`), bukan patch. Patch tetap untuk bagian platform di APK: launcher, `core/`,
+`shared/`, dan skrip `client/scripts/` (Api, Session, Sound, …).
+
 - **Bisa**: `client/scripts/*.gd`, `client/scenes/*.tscn` (termasuk peta di `maps.gd`).
 - **Tidak bisa**: aset (`client/assets/*`: model, gambar, suara), pengaturan proyek (daftar autoload,
   izin Android, ikon), versi Godot. Itu tetap butuh APK baru.

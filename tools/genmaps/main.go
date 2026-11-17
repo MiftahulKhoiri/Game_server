@@ -1,4 +1,4 @@
-// Perintah genmaps membuat internal/game/tiles_gen.go dari client/scripts/maps.gd.
+// Perintah genmaps membuat internal/game/tiles_gen.go dari client/games/adventure/scripts/maps.gd.
 //
 //	go run ./tools/genmaps        (atau: make maps)
 //
@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	f, err := os.Open("client/scripts/maps.gd")
+	f, err := os.Open("client/games/adventure/scripts/maps.gd")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 	var b bytes.Buffer
-	b.WriteString("// Kode ini dibuat oleh tools/genmaps dari client/scripts/maps.gd. JANGAN DIUBAH MANUAL: jalankan `make maps`.\n\n")
+	b.WriteString("// Kode ini dibuat oleh tools/genmaps dari client/games/adventure/scripts/maps.gd. JANGAN DIUBAH MANUAL: jalankan `make maps`.\n\n")
 	b.WriteString("package game\n\n")
 	fmt.Fprintf(&b, "// walkableTiles: lambang petak yang bisa diinjak (WALKABLE di maps.gd).\nconst walkableTiles = %q\n\n", m.Walkable)
 	b.WriteString("// mapRows: bentuk petak setiap peta (baris = sumbu z/y, kolom = sumbu x).\nvar mapRows = map[string][]string{\n")

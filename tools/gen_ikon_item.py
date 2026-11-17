@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Buat ikon item 192x192 (digambar 4x lalu diperkecil) ke client/assets/items/<id>.png."""
+"""Buat ikon item 192x192 (digambar 4x lalu diperkecil) ke client/games/adventure/assets/items/<id>.png."""
 import math, os, sys
 from PIL import Image, ImageDraw, ImageFilter
 

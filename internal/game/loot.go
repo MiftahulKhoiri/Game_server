@@ -57,7 +57,7 @@ type ChestDef struct {
 	Tier int    `json:"tier"`
 }
 
-// Posisi peti harus sama dengan CHESTS di client/scripts/maps.gd.
+// Posisi peti harus sama dengan CHESTS di client/games/adventure/scripts/maps.gd.
 var chests = []ChestDef{
 	{ID: "desa_1", Map: MapDesaAwal, X: 43, Y: 8, Tier: 1},
 	{ID: "desa_2", Map: MapDesaAwal, X: 2, Y: 22, Tier: 1},

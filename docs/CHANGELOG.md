@@ -2,6 +2,27 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## v0.85.0 — The Last Dragon jadi game unduhan (17 November 2026)
+
+**Butuh APK baru sekali.** Setelah itu pembaruan The Last Dragon cukup diunduh dari launcher (tombol UPDATE),
+seperti Petualangan Ilmu SD — termasuk gambar, font, dan model, bukan hanya kode.
+
+- Isi The Last Dragon dipindah ke `client/games/adventure/` (52 skrip, 10 adegan, gambar item & wajah NPC, font,
+  gambar judul, ikon, model alam). Jalur `res://` di semua skrip, adegan, uji, alat Go/Python diperbarui
+  (`make maps` membaca `client/games/adventure/scripts/maps.gd`).
+- `config/games.json` kosong: tidak ada lagi game bawaan. The Last Dragon tampil di launcher dari katalog server
+  (`adventure` 1.0.0, ±3,5 MB, ikon bertanda tangan), tombol DOWNLOAD saat pertama, lalu MAINKAN/UPDATE/HAPUS.
+  Progres The Last Dragon tetap di server (akun), jadi menghapus/mengunduh ulang tidak menghilangkan apa pun.
+- Tetap di APK (platform): autoload Api/Session/Sound/Patcher, launcher, `core/`, `shared/`, model karakter
+  `assets/models/*.glb` (dipakai juga SD), ikon aplikasi, musik. `models.gd` memakai model di paket bila ada
+  (`games/adventure/assets/models/`), jadi model baru/perbaikan model tetap bisa lewat unduhan.
+- `class_name ClockBadge/MenuBubble` diganti `preload` (kelas global dari paket tidak terdaftar di APK).
+- `gamepack.py`: `background_music` ikut katalog (musik desa berbunyi selama The Last Dragon aktif).
+- APK lama (≤ 0.84.6) tetap memakai The Last Dragon bawaannya; entri katalog `adventure` diabaikan di sana.
+- Uji: `client-test` 1162 ok; `platform-test` semua fase LULUS (+The Last Dragon tidak ada di APK, unduh, pasang,
+  buka dari PCK, aset/font/model alam termuat dari paket, model karakter dari APK, hapus & pasang ulang,
+  tersedia offline); bukti visual: layar judul & dunia 3D dari paket di salinan proyek tanpa `games/`.
+
 ## Launcher 0.84.6 (patch, tanpa APK baru) — 17 November 2026
 
 - Tombol **Pengaturan** pindah dari pojok kanan atas ke bawah daftar game (di bawah kartu terakhir), selebar kartu,

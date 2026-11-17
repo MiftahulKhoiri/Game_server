@@ -29,7 +29,7 @@ export TEST_SD_V1="$SD_V1" TEST_SD_V2="$SD_V2"
 openssl genrsa -out "$TMP/key.pem" 2048 2>/dev/null
 openssl rsa -in "$TMP/key.pem" -pubout -out "$TMP/pub.pem" 2>/dev/null
 export GAME_SIGNING_KEY="$TMP/key.pem" PUBLISHER_PUB="$TMP/pub.pem" CATALOG_DIR="$TMP/catalog" GODOT
-bash scripts/build-game-pack.sh education_sd education_smp
+bash scripts/build-game-pack.sh education_sd education_smp adventure
 
 go build -o "$TMP/gameserver" ./cmd/gameserver
 GAME_BACKUP_DIR=off GAME_CATALOG_DIR="$TMP/catalog" GAME_ADDR="127.0.0.1:$PORT" GAME_DB="$TMP/game.db" "$TMP/gameserver" >"$TMP/server.log" 2>&1 &

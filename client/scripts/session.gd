@@ -225,7 +225,7 @@ func rep_tier(id: String) -> String:
 func shop_discount(shop: String) -> int:
 	var keeper: String = SHOP_KEEPERS.get(shop, "")
 	var d := REP_DISCOUNT if keeper != "" and rep_points(keeper) >= REP_BEST else 0
-	if load("res://scripts/atmosphere.gd").market_active():
+	if load("res://games/adventure/scripts/atmosphere.gd").market_active():
 		d += 10  # Hari Pasar (roadmap no. 189; MarketPercent di server)
 	return d
 
@@ -310,7 +310,7 @@ func trial(map_id: String) -> Dictionary:
 	var tr: Dictionary = st.get("trials", {})
 	if tr.has(map_id):
 		return tr[map_id]
-	var nxt := str(load("res://scripts/maps.gd").TRIALS.get(map_id, {}).get("next", ""))
+	var nxt := str(load("res://games/adventure/scripts/maps.gd").TRIALS.get(map_id, {}).get("next", ""))
 	if nxt != "" and (st.get("visited", []) as Array).has(nxt):
 		return {"wave": 3, "kills": 0}
 	return {"wave": 0, "kills": 0}

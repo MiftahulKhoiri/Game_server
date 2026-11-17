@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Membuat peta Hutan Lebat (170x50) dan Gua Goblin (25x30) untuk client/scripts/maps.gd.
+"""Membuat peta Hutan Lebat (170x50) dan Gua Goblin (25x30) untuk client/games/adventure/scripts/maps.gd.
 
 Hasilnya deterministik (seed tetap). Skrip ini mencetak potongan GDScript (HUTAN_ROWS, GUA_GOBLIN_ROWS) ke
 berkas keluaran dan memeriksa bahwa pintu masuk, singgasana bos, gerbang, dan semua peti bisa dijangkau.
 
-Pakai:  python3 tools/gen_hutan.py client/scripts/maps_hutan.gen   (lalu salin ke maps.gd)
+Pakai:  python3 tools/gen_hutan.py client/games/adventure/scripts/maps_hutan.gen   (lalu salin ke maps.gd)
 Legenda petak: # pohon, . rumput, f bunga, = jalan, R batu, ~ air, K singgasana bos, N menara gapura, P pagar kayu,
 M lantai gua, G kerikil (tempat monster/pertemuan), (A tenda, U api unggun, Y tiang panji dipakai kem di Perbatasan.)
 """

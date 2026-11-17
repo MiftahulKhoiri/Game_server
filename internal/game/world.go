@@ -4,7 +4,7 @@ import "math"
 
 // Peta yang dikenal server. Server hanya tahu ukuran peta untuk memeriksa
 // posisi yang dikirim klien dan memilih musuh sesuai wilayah; bentuk petak
-// (tembok, air) masih milik klien (client/scripts/maps.gd).
+// (tembok, air) masih milik klien (client/games/adventure/scripts/maps.gd).
 const (
 	MapDesaAwal   = SpawnMap      // "desa_awal"
 	MapPerbatasan = "perbatasan"  // ladang di luar gerbang selatan desa

@@ -2,8 +2,8 @@ extends SceneTree
 ## Uji ujung-ke-ujung klien <-> server. Dijalankan lewat: make client-test
 ## (butuh server Go yang hidup di GAME_URL, bawaan http://127.0.0.1:8099).
 
-const Maps = preload("res://scripts/maps.gd")
-const Movement = preload("res://scripts/movement.gd")
+const Maps = preload("res://games/adventure/scripts/maps.gd")
+const Movement = preload("res://games/adventure/scripts/movement.gd")
 const Version = preload("res://scripts/version.gd")
 ## v0.77.0: server menolak posisi yang tidak bisa dicapai secepat itu (9 petak/detik + 8 petak). Uji yang
 ## memindahkan pemain lewat simpan posisi menunggu sebanyak ini dulu (cukup untuk ±100 petak / 2-3 peta).
@@ -86,7 +86,7 @@ func _run() -> void:
 	# Jam dunia bersama (v0.59.0) mengikuti jam server; supaya uji tidak bergantung kapan dijalankan,
 	# dunia dimulai pagi (jam 8, seperti sebelum v0.59.0) pada hari biasa tanpa serbuan/pasar, dan cuaca
 	# cerah kecuali diuji.
-	var AtmoT = load("res://scripts/atmosphere.gd")
+	var AtmoT = load("res://games/adventure/scripts/atmosphere.gd")
 	AtmoT.clock_offset = (3000000.0 * 720.0 + 240.0) - Time.get_unix_time_from_system()
 	AtmoT.clock_locked = true
 	AtmoT.weather_override = 0
@@ -94,7 +94,7 @@ func _run() -> void:
 	# memakai ukuran dasar 1280x720 mendatar ("keep", sejak v0.68.0); tata letak layar lain diuji tersendiri (v0.60.0).
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	print("== peta")
-	var WB: GDScript = load("res://scripts/world_build.gd")
+	var WB: GDScript = load("res://games/adventure/scripts/world_build.gd")
 	for y in Maps.height(Maps.DEFAULT_MAP):
 		_check(Maps.rows(Maps.DEFAULT_MAP)[y].length() == 85, "baris peta %d lebar 85" % y)
 	_check(Maps.walkable(Maps.DEFAULT_MAP, Maps.SPAWN.x, Maps.SPAWN.y), "titik awal bisa dilewati")
@@ -181,7 +181,7 @@ func _run() -> void:
 	Api.client_version = Version.app_version()
 
 	print("== layar masuk")
-	var login: Control = load("res://scenes/login.tscn").instantiate()
+	var login: Control = load("res://games/adventure/scenes/login.tscn").instantiate()
 	root.add_child(login)
 	await create_timer(0.6).timeout
 	_check(login._page == "home" and login._pages.home.visible and not login._pages.login.visible and not login._pages.register.visible and not login._pages.settings.visible, "beranda: hanya tombol utama yang tampil")
@@ -254,7 +254,7 @@ func _run() -> void:
 	print("== world: gerak lalu simpan otomatis")
 	Session.offline = false
 	Session.safe_steps = 100000  # cegah pertemuan acak mengganggu uji gerak
-	var world: Node2D = load("res://scenes/world.tscn").instantiate()
+	var world: Node2D = load("res://games/adventure/scenes/world.tscn").instantiate()
 	root.add_child(world)
 	await process_frame
 	world._try_move(Vector2i.RIGHT)  # (5,5) -> (6,5)
@@ -296,7 +296,7 @@ func _run() -> void:
 		Session.battle = start.data.battle
 		_check(Vector2i(Session.player.state.x, Session.player.state.y) == pos_before, "merge tidak mengubah posisi lokal")
 		_check(typeof(Session.player.state.hp) == TYPE_INT, "hasil merge memakai int")
-		var scene: Control = load("res://scenes/battle.tscn").instantiate()
+		var scene: Control = load("res://games/adventure/scenes/battle.tscn").instantiate()
 		root.add_child(scene)
 		await process_frame
 		_check(scene._enemy_name.text == str(Session.battle.enemy_name), "layar pertarungan menampilkan nama musuh")
@@ -379,7 +379,7 @@ func _run() -> void:
 	var shop_list: Dictionary = await Api.shop_get()
 	_check(shop_list.ok and shop_list.data.items.size() > 0, "daftar toko")
 	var gold_before: int = Session.player.state.gold
-	var shop_scene: Control = load("res://scenes/shop.tscn").instantiate()
+	var shop_scene: Control = load("res://games/adventure/scenes/shop.tscn").instantiate()
 	root.add_child(shop_scene)
 	await create_timer(0.8).timeout
 	_check(shop_scene._list.get_child_count() > 2, "layar toko menampilkan barang")
@@ -413,7 +413,7 @@ func _run() -> void:
 	_check(not uneq_empty.ok and uneq_empty.status == 422, "melepas slot kosong ditolak 422")
 	var eq_alien: Dictionary = await Api.inventory_equip("naga")
 	_check(not eq_alien.ok and eq_alien.status == 404, "barang asing 404")
-	var bag_scene: Control = load("res://scenes/inventory.tscn").instantiate()
+	var bag_scene: Control = load("res://games/adventure/scenes/inventory.tscn").instantiate()
 	root.add_child(bag_scene)
 	await create_timer(0.8).timeout
 	_check(bag_scene._list.get_child_count() >= 4, "layar tas menampilkan perlengkapan dan barang")
@@ -472,8 +472,8 @@ func _run() -> void:
 	await process_frame
 
 	print("== misi dan cerita utama The Last Dragon")
-	var WD = load("res://scripts/warga_dialog.gd")
-	var StoryMod = load("res://scripts/story.gd")
+	var WD = load("res://games/adventure/scripts/warga_dialog.gd")
+	var StoryMod = load("res://games/adventure/scripts/story.gd")
 	var q0: Dictionary = await Api.quests_get()
 	_check(q0.ok and q0.data.quests.size() > 0 and q0.data.quests[0].id == "kebun_babi" and q0.data.quests[0].status == "locked", "misi sampingan terkunci sebelum prolog cerita")
 	var early: Dictionary = await Api.quest_accept("kebun_babi")
@@ -495,7 +495,7 @@ func _run() -> void:
 		Session.set_player(sv_chief.data)
 	Session.talk_npc = "warga:kepala_suku"
 	Session.talk_counts["warga:kepala_suku"] = 1
-	var dialog_chief: Control = load("res://scenes/dialog.tscn").instantiate()
+	var dialog_chief: Control = load("res://games/adventure/scenes/dialog.tscn").instantiate()
 	root.add_child(dialog_chief)
 	await create_timer(1.0).timeout
 	_check(Session.story() == 1 and dialog_chief._text.text.contains("Elara telah dibawa pergi"), "bicara dengan Kepala Desa: prolog selesai, kalimat kuncinya tampil (%d)" % Session.story())
@@ -506,7 +506,7 @@ func _run() -> void:
 	var again: Dictionary = await Api.story_talk("kepala_suku")
 	_check(not again.ok and again.status == 422, "langkah cerita tidak bisa diulang")
 	Session.talk_npc = "nenek_penjual"
-	var dialog: Control = load("res://scenes/dialog.tscn").instantiate()
+	var dialog: Control = load("res://games/adventure/scenes/dialog.tscn").instantiate()
 	root.add_child(dialog)
 	await create_timer(0.8).timeout
 	_check(dialog._action.visible and dialog._action.text == "Terima misi", "dialog Nenek menawarkan misi sampingan")
@@ -561,7 +561,7 @@ func _run() -> void:
 	_check(dialog_ok, "semua warga di peta punya dialog")
 	Session.talk_npc = "warga:bu_sari"
 	Session.talk_counts["warga:bu_sari"] = 1
-	var dialog3: Control = load("res://scenes/dialog.tscn").instantiate()
+	var dialog3: Control = load("res://games/adventure/scenes/dialog.tscn").instantiate()
 	root.add_child(dialog3)
 	await create_timer(0.8).timeout
 	_check(dialog3._name_label.text == "Bu Sari  ·  Juru Masak  ·  Kenalan" and not dialog3._action.visible and dialog3._text.text.ends_with(WD.line("bu_sari", 0, 0)), "bicara dengan Bu Sari: nama, peran, keakraban, dan kalimat bab prolog, tanpa tombol misi")
@@ -587,7 +587,7 @@ func _run() -> void:
 	Session.player.state.x = 22
 	Session.player.state.y = 48
 	Session.safe_steps = 100000
-	var world2: Node2D = load("res://scenes/world.tscn").instantiate()
+	var world2: Node2D = load("res://games/adventure/scenes/world.tscn").instantiate()
 	root.add_child(world2)
 	await process_frame
 	await create_timer(LEGAL_MOVE_WAIT).timeout  # posisi (22,48) dipasang lokal: beri waktu "berjalan" ke sana
@@ -624,7 +624,7 @@ func _run() -> void:
 	var boss: Dictionary = await Api.battle_start(true)
 	_check(not boss.ok and boss.status == 422, "bos tetap tidak bisa dipanggil setelah lompatan ditolak")
 	if boss.ok:
-		var bscene: Control = load("res://scenes/battle.tscn").instantiate()
+		var bscene: Control = load("res://games/adventure/scenes/battle.tscn").instantiate()
 		Session.merge_server_player(boss.data.player)
 		Session.battle = boss.data.battle
 		root.add_child(bscene)
@@ -643,9 +643,9 @@ func _run() -> void:
 	_check(Session.player.state.x == 1, "merge dengan adopt_position memakai posisi server")
 
 	print("== dunia 3D: gerak, tabrakan, model")
-	var Movement = load("res://scripts/movement.gd")
-	var WorldBuild = load("res://scripts/world_build.gd")
-	var Models = load("res://scripts/models.gd")
+	var Movement = load("res://games/adventure/scripts/movement.gd")
+	var WorldBuild = load("res://games/adventure/scripts/world_build.gd")
+	var Models = load("res://games/adventure/scripts/models.gd")
 	# Titik tengah petak awal bebas tabrakan; tembok/air memblokir.
 	_check(not Movement.collides(Maps.DEFAULT_MAP, Vector2(5.5, 5.5)), "tengah petak awal bebas tabrakan")
 	_check(Movement.collides(Maps.DEFAULT_MAP, Vector2(-0.5, 5.5)), "di luar peta menabrak")
@@ -741,7 +741,7 @@ func _run() -> void:
 	var q_orw: Node3D = Models.create("ogre_rawa")
 	_check(q_orw != null and q_orw.name == "ogre_rawa", "model Ogre Rawa ada")
 	q_orw.free()
-	var q_RoamerC = load("res://scripts/roamer.gd")
+	var q_RoamerC = load("res://games/adventure/scripts/roamer.gd")
 	var q_pm_map := Maps.PERBATASAN
 	var q_mspot := Vector2.ZERO
 	for q_my in range(6, 20):
@@ -803,7 +803,7 @@ func _run() -> void:
 
 	Session.offline = true
 	Session.player = {"name": "Uji", "state": {"map": Maps.DEFAULT_MAP, "x": 5, "y": 5, "fx": 5.5, "fz": 5.5, "yaw": 0.0, "hp": 30, "max_hp": 30, "level": 1, "xp": 0, "gold": 0, "inventory": [], "equipment": {"weapon": "", "armor": ""}}, "version": 1}
-	var w3: Node = load("res://scenes/world3d.tscn").instantiate()
+	var w3: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	root.add_child(w3)
 	await process_frame
 	await process_frame
@@ -813,7 +813,7 @@ func _run() -> void:
 	_check(Session.player.state.x == 7 and absf(float(Session.player.state.fx) - 7.5) < 0.001, "posisi 3D tersalin ke data pemain (petak 7, fx 7.5)")
 
 	# Dunia hidup: siang-malam, hujan, NPC.
-	const Atmo = preload("res://scripts/atmosphere.gd")
+	const Atmo = preload("res://games/adventure/scripts/atmosphere.gd")
 	var env_a: Environment = w3._env.environment
 	Atmo.hour_override = 12.0
 	Atmo.rain = 0.0
@@ -956,7 +956,7 @@ func _run() -> void:
 	var rb := (rina.model.find_child("Rogue_Body", true, false) as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
 	var db := (dika.model.find_child("Rogue_Body", true, false) as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
 	_check(not rb.albedo_color.is_equal_approx(db.albedo_color), "variasi baju: Rina dan Dika (model sama) berbeda warna")
-	var HA = load("res://scripts/hero_actions.gd")
+	var HA = load("res://games/adventure/scripts/hero_actions.gd")
 	# Roadmap no. 135, 145: stamina dan layar tempa di pandai besi.
 	_check(w3._tempa != null and not w3._tempa.is_open, "layar tempa tersedia (tertutup)")
 	var g_karta = by_id.get("mpu_karta")
@@ -971,7 +971,7 @@ func _run() -> void:
 	_check(not w3._tired and w3.stamina > 90.0, "berjalan/diam: stamina pulih")
 	_check(HA.ACTIONS.has("bicara") and HA.ACTIONS.has("palu") and HA.POSES.has("duduk") and HA.POSES.has("tidur"), "gerakan bicara, menempa, duduk, tidur tersedia")
 	# Roadmap no. 45-60: jadwal, pergi bekerja, obrolan, takut monster, optimasi.
-	var WargaC = load("res://scripts/warga.gd")
+	var WargaC = load("res://games/adventure/scripts/warga.gd")
 	var defs := {}
 	for d: Dictionary in Maps.WARGA:
 		defs[str(d.id)] = d
@@ -1042,7 +1042,7 @@ func _run() -> void:
 	_check(dekat_w != null and jauh_w != null and jauh_w.steps * 3 <= dekat_w.steps, "optimasi: warga jauh diperbarui jarang (%s vs %s langkah) (no. 60)" % [str(jauh_w.steps if jauh_w else -1), str(dekat_w.steps if dekat_w else -1)])
 	Atmo.hour_override = -1.0
 	# Roadmap no. 111-128: bangunan, pasar, ruangan baru.
-	var b_medan: Node3D = load("res://scripts/world_build.gd").build(Maps.DEFAULT_MAP)
+	var b_medan: Node3D = load("res://games/adventure/scripts/world_build.gd").build(Maps.DEFAULT_MAP)
 	var b_jenis: Array = b_medan.get_meta("bangunan", [])
 	var b_kurang: Array = []
 	for b_k in ["pandai_besi", "kuil", "bangsawan", "lumbung", "markas", "penginapan", "rumah_pemain", "kepala_suku", "toko", "rumah_sakit"]:
@@ -1052,14 +1052,14 @@ func _run() -> void:
 	_check(int(b_medan.get_meta("pasar", 0)) >= 6, "pasar desa: lapak dan barang dagangan (%d)" % int(b_medan.get_meta("pasar", 0)))
 	b_medan.free()
 	for b_map in [Maps.PENGINAPAN, Maps.RUMAH_PEMAIN]:
-		var b_in: Node3D = load("res://scripts/world_build.gd").build(b_map)
+		var b_in: Node3D = load("res://games/adventure/scripts/world_build.gd").build(b_map)
 		_check(b_in != null and b_in.get_child_count() > 20, "ruangan %s tergambar dengan perabot" % b_map)
 		b_in.free()
 		var b_ex: Dictionary = Maps.EXITS[b_map][0]
 		_check(Maps.walkable(b_map, b_ex.pos.x, b_ex.pos.y) and Maps.walkable(b_map, 4, 4), "ruangan %s: pintu keluar dan lantai bisa dilewati" % b_map)
 	_check(str(Maps.exit_at(Maps.DEFAULT_MAP, 15, 39).get("to", "")) == Maps.RUMAH_PEMAIN and str(Maps.exit_at(Maps.DEFAULT_MAP, 29, 39).get("to", "")) == Maps.PENGINAPAN, "pintu rumah pemain dan penginapan di Desa Awal")
 	# Roadmap no. 89-110: air hidup, pasir tepi air, ilalang, semak, jamur, angin, kabut pagi.
-	var d_WB = load("res://scripts/world_build.gd")
+	var d_WB = load("res://games/adventure/scripts/world_build.gd")
 	var d_medan_desa: Node3D = d_WB.build(Maps.DEFAULT_MAP)
 	var d_hias: Dictionary = d_medan_desa.get_meta("hiasan", {})
 	_check(int(d_hias.get("pasir", 0)) > 10 and int(d_hias.get("ilalang", 0)) > 5 and int(d_hias.get("semak", 0)) > 5, "Desa Awal: tepi pasir, ilalang, dan semak (%s)" % str(d_hias))
@@ -1158,7 +1158,7 @@ func _run() -> void:
 		_check(Movement.tile_blocked(str(c.map), c.pos.x, c.pos.y), "peti %s menghalangi jalan" % c.id)
 	var wt_hero := str(Session.player.state.get("hero", "ksatria"))
 	Session.player.state.hero = "ksatria"  # tes tombol aksi di bawah memakai kombo pedang
-	var wt: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wt: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	Session.offline = true
 	get_root().add_child(wt)
 	await process_frame
@@ -1214,7 +1214,7 @@ func _run() -> void:
 		if e.to == "desa_awal":
 			spawn_ok = Maps.walkable("desa_awal", e.at.x, e.at.y)
 	_check(spawn_ok, "pemain yang kembali dari Perbatasan muncul di jalan depan gapura")
-	var pal_world: Node3D = load("res://scripts/world_build.gd").build("desa_awal")
+	var pal_world: Node3D = load("res://games/adventure/scripts/world_build.gd").build("desa_awal")
 	_check(pal_world != null and pal_world.get_child_count() > 20, "dunia Desa Awal dengan pagar dan gapura terbangun")
 	var has_sign := false
 	for ch3 in pal_world.get_children():
@@ -1223,7 +1223,7 @@ func _run() -> void:
 	_check(has_sign, "gapura punya papan nama DESA AWAL")
 	pal_world.free()
 	print("== HUD: warna nyawa, nama, koin, tombol Bicara di atas NPC")
-	var HB: Script = load("res://scripts/hud_bars.gd")
+	var HB: Script = load("res://games/adventure/scripts/hud_bars.gd")
 	var c_full: Color = HB.hp_color(1.0)
 	var c_half: Color = HB.hp_color(0.5)
 	var c_low: Color = HB.hp_color(0.1)
@@ -1250,7 +1250,7 @@ func _run() -> void:
 	Session.player.state.inventory = [{"id": "berlian", "qty": 4}]
 	_check(Session.item_count("berlian") == 4 and Session.item_count("ramuan") == 0, "Session.item_count menghitung isi ransel")
 	Session.player.state.inventory = inv_backup_v45
-	var WBv45: Script = load("res://scripts/world_build.gd")
+	var WBv45: Script = load("res://games/adventure/scripts/world_build.gd")
 	var rows_v45: Array[String] = ["....", ".FFF", ".F..", ".F.."]
 	_check(WBv45._tile_f(rows_v45, 1, 1) and not WBv45._tile_f(rows_v45, 0, 0) and not WBv45._tile_f(rows_v45, 9, 9), "_tile_f mengenali petak pagar kandang")
 	var posts_v45: Array[Transform3D] = []
@@ -1266,7 +1266,7 @@ func _run() -> void:
 	var rails_c_v45: Array[Transform3D] = []
 	WBv45._add_pagar_kandang(rows_v45, 1, 1, Vector3(1.5, 0, 1.5), posts_v45, rails_c_v45)
 	_check(rails_c_v45.size() == 4, "tikungan pagar kandang punya palang ke dua arah")
-	var PUv45: Script = load("res://scripts/pengaturan_umum.gd")
+	var PUv45: Script = load("res://games/adventure/scripts/pengaturan_umum.gd")
 	var pu_v45: Control = PUv45.new()
 	root.add_child(pu_v45)
 	await process_frame
@@ -1353,10 +1353,10 @@ func _run() -> void:
 	_check((wt._pos - p0).length() > 0.5 and not wt._guard, "ketuk Perisai dua kali cepat = menghindar (perisai turun)")
 
 	print("== v0.57: gaya senjata, kombo, peluru, darah, penyihir (roadmap no. 154-170)")
-	var SHeroes = load("res://scripts/heroes.gd")
-	var SHeroActions = load("res://scripts/hero_actions.gd")
-	var SModels = load("res://scripts/models.gd")
-	var SHeroFx = load("res://scripts/hero_fx.gd")
+	var SHeroes = load("res://games/adventure/scripts/heroes.gd")
+	var SHeroActions = load("res://games/adventure/scripts/hero_actions.gd")
+	var SModels = load("res://games/adventure/scripts/models.gd")
+	var SHeroFx = load("res://games/adventure/scripts/hero_fx.gd")
 	_check(wt.combo_list() == wt.COMBO, "Ksatria (pedang) memakai kombo lama")
 	var sty_ok := true
 	for sty_h: Dictionary in SHeroes.LIST:
@@ -1437,7 +1437,7 @@ func _run() -> void:
 			wf_saleh = SModels.warga_face_of(wf_d3)
 	_check(wf_saleh.has("glasses"), "Pak Saleh (penjaga bank) berkacamata")
 	_check(SModels.has_glb("belalang_raksasa"), "Belalang Raksasa punya model belalang")
-	_check(ResourceLoader.exists("res://assets/models/alam/kuil_quaternius.glb") and str((load("res://scripts/world_build.gd") as GDScript).get_script_constant_map().BANGUNAN_MODEL.kuil) == "kuil_quaternius", "kuil desa memakai model kuil sendiri (bukan gereja Rumah Sehat)")
+	_check(ResourceLoader.exists("res://games/adventure/assets/models/alam/kuil_quaternius.glb") and str((load("res://games/adventure/scripts/world_build.gd") as GDScript).get_script_constant_map().BANGUNAN_MODEL.kuil) == "kuil_quaternius", "kuil desa memakai model kuil sendiri (bukan gereja Rumah Sehat)")
 	mage.queue_free()
 	var bl0: int = wt.get_child_count()
 	SHeroFx.blood(wt, Vector3(0, 1, 0), 6)
@@ -1564,20 +1564,20 @@ func _run() -> void:
 	await process_frame
 	wt._layout_hud()
 	var ui_vs: Vector2 = wt.get_viewport().get_visible_rect().size
-	var ui_menu_x: float = (wt._hud_items.filter(func(it: Array) -> bool: return it[0] is MenuBubble)[0][0] as Control).position.x
+	var ui_menu_x: float = (wt._hud_items.filter(func(it: Array) -> bool: return (it[0] as Object).get_script() == preload("res://games/adventure/scripts/menu_bubble.gd"))[0][0] as Control).position.x
 	_check(ui_vs.x >= 1280.0 and ui_menu_x > 574.0 + (ui_vs.x - 720.0) - 1.0 and wt._btn_tangan.position.x >= tg0 - 0.5, "layar mendatar: tombol Menu dan tombol aksi menempel ke kanan (%.0f)" % ui_vs.x)
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	await process_frame
 	wt._layout_hud()
 	_check(absf(wt._btn_tangan.position.x - tg0) < 0.5, "tata letak kembali ke ukuran dasar")
-	var ks: Node = load("res://scripts/kontrol_settings.gd").new()
+	var ks: Node = load("res://games/adventure/scripts/kontrol_settings.gd").new()
 	root.add_child(ks)
 	await process_frame
 	ks._size_buttons[0].emit_signal("pressed")
 	_check(Session.ui_size == 0, "pengaturan Kontrol: ukuran Kecil")
 	ks._size_buttons[1].emit_signal("pressed")
 	ks.queue_free()
-	var lg: Node = load("res://scenes/login.tscn").instantiate()
+	var lg: Node = load("res://games/adventure/scenes/login.tscn").instantiate()
 	root.add_child(lg)
 	await process_frame
 	lg._name_edit.text = "ab"
@@ -1673,7 +1673,7 @@ func _run() -> void:
 	_check(pf_objs[7] <= pf_objs[3] * 1.08 + 200, "uji ketahanan: jumlah objek tidak bocor (%d -> %d)" % [pf_objs[3], pf_objs[7]])
 	_check(pf_orph[7] <= pf_orph[3] + 1, "uji ketahanan: tidak ada node yatim yang menumpuk (%d -> %d)" % [pf_orph[3], pf_orph[7]])
 	var pf_o0: int = int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
-	var pf_hero: Node = load("res://scripts/models.gd").create("ksatria")
+	var pf_hero: Node = load("res://games/adventure/scripts/models.gd").create("ksatria")
 	pf_hero.free()
 	_check(int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)) == pf_o0, "membuat lalu membuang model pahlawan tidak meninggalkan node yatim")
 
@@ -1689,7 +1689,7 @@ func _run() -> void:
 		a5_chest.set_open(true, false)
 		_check(a5_chest._lid.rotation.x != 0.0, "tutup peti tetap bisa membuka setelah digabung")
 		a5_chest.set_open(false, false)
-	var AtN = load("res://scripts/atmosphere.gd")
+	var AtN = load("res://games/adventure/scripts/atmosphere.gd")
 	var a5_hour: float = AtN.hour_override
 	AtN.hour_override = 1.0
 	wt._update_lamps()
@@ -1728,7 +1728,7 @@ func _run() -> void:
 	# Layar bicara: nama + peran panjang tidak boleh mendorong layar melebar (laporan dari HP, v0.66.0).
 	var dl_prev: String = Session.talk_npc
 	Session.talk_npc = "warga:kapten_kem"
-	var dl: Control = load("res://scenes/dialog.tscn").instantiate()
+	var dl: Control = load("res://games/adventure/scenes/dialog.tscn").instantiate()
 	get_root().add_child(dl)
 	await process_frame
 	dl._name_label.text = "Kapten Rimba  ·  Penjaga Kem Hutan Lebat yang Sangat Panjang Sekali"
@@ -1741,7 +1741,7 @@ func _run() -> void:
 	await process_frame
 
 	print("== v0.59: dunia yang hidup (roadmap no. 186-200)")
-	var AtL = load("res://scripts/atmosphere.gd")
+	var AtL = load("res://games/adventure/scripts/atmosphere.gd")
 	var lf: Node = wt._life
 	var lf_ok := true
 	for lf_s: Dictionary in Maps.RAHASIA:
@@ -1825,7 +1825,7 @@ func _run() -> void:
 		Session.player.state.xp = 10
 		Session.player.state.level = 1
 		Session.offline = true
-		var wr: Node = load("res://scenes/world3d.tscn").instantiate()
+		var wr: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 		get_root().add_child(wr)
 		await process_frame
 		if mid == Maps.DEFAULT_MAP:
@@ -1894,7 +1894,7 @@ func _run() -> void:
 
 
 	print("== desa malam: menara lampu, lampu gapura dan rumah, rumah kepala suku, warga pulang")
-	var Wg: GDScript = load("res://scripts/warga.gd")
+	var Wg: GDScript = load("res://games/adventure/scripts/warga.gd")
 	var terrain: Node3D = WB.build(Maps.DEFAULT_MAP)
 	_check(terrain.has_meta("malam"), "desa punya lampu malam")
 	var lamp_reg: Dictionary = terrain.get_meta("malam")
@@ -1995,7 +1995,7 @@ func _run() -> void:
 	Session.player.state.y = 20
 	Session.player.state.fx = 0.0
 	Session.player.state.fz = 0.0
-	var wn: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wn: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wn)
 	await process_frame
 	var inside_n := 0
@@ -2044,7 +2044,7 @@ func _run() -> void:
 	_check(saved_f.ok, "posisi di hutan Perbatasan tersimpan")
 	if saved_f.ok:
 		Session.set_player(saved_f.data)
-		var wf: Node = load("res://scenes/world3d.tscn").instantiate()
+		var wf: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 		get_root().add_child(wf)
 		await process_frame
 		await process_frame
@@ -2099,7 +2099,7 @@ func _run() -> void:
 
 	print("== jam, suara, atribut, pendamping")
 	var saved_misc: Dictionary = Session.player.state.duplicate(true)
-	var wc: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wc: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wc)
 	await process_frame
 	await process_frame
@@ -2154,7 +2154,7 @@ func _run() -> void:
 		_check(not buy1.ok and buy1.status == 422, "emas kurang (%d): beli pendamping ditolak 422" % gold_now)
 	var bad_party: Dictionary = await Api.set_party(["ksatria", "ksatria"])
 	_check(not bad_party.ok and bad_party.status == 422, "pendamping dobel / belum dibeli ditolak 422")
-	var atr: Node = load("res://scenes/atribut.tscn").instantiate()
+	var atr: Node = load("res://games/adventure/scenes/atribut.tscn").instantiate()
 	get_root().add_child(atr)
 	var ta := Time.get_ticks_msec()
 	while atr._catalog.is_empty() and Time.get_ticks_msec() - ta < 4000:
@@ -2192,7 +2192,7 @@ func _run() -> void:
 
 	print("== energi, makanan, toko per-jenis, penjaga")
 	var saved_toko_v39: Dictionary = Session.player.state.duplicate(true)
-	var wtk: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wtk: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wtk)
 	await process_frame
 	await process_frame
@@ -2293,7 +2293,7 @@ func _run() -> void:
 	var norm_v43: Dictionary = Session._normalize_state({"hero_levels": {"pemanah": 99}, "soldier_level": 7, "training": [{"kind": "prajurit", "to_level": 3, "ready_at": 5}]})
 	_check(norm_v43.hero_levels.pemanah == 20 and norm_v43.soldier_level == 7 and norm_v43.training.size() == 1 and norm_v43.training[0].ready_at == 5, "state latihan dinormalkan (level dibatasi 20)")
 	Session.train_kind = "pahlawan"
-	var tr_v43: Control = load("res://scenes/train.tscn").instantiate()
+	var tr_v43: Control = load("res://games/adventure/scenes/train.tscn").instantiate()
 	get_root().add_child(tr_v43)
 	await process_frame
 	await process_frame
@@ -2302,7 +2302,7 @@ func _run() -> void:
 	tr_v43.queue_free()
 	await process_frame
 	Session.train_kind = "prajurit"
-	var tr2_v43: Control = load("res://scenes/train.tscn").instantiate()
+	var tr2_v43: Control = load("res://games/adventure/scenes/train.tscn").instantiate()
 	get_root().add_child(tr2_v43)
 	await process_frame
 	await process_frame
@@ -2311,14 +2311,14 @@ func _run() -> void:
 	await process_frame
 	Session.train_kind = "pahlawan"
 	Session.player.state = saved_v43
-	var chest_cls: GDScript = load("res://scripts/chest.gd")
-	var shop_cls: GDScript = load("res://scripts/shop.gd")
+	var chest_cls: GDScript = load("res://games/adventure/scripts/chest.gd")
+	var shop_cls: GDScript = load("res://games/adventure/scripts/shop.gd")
 	_check(chest_cls.SIZE < 1.0 and chest_cls.SIZE > 0.4, "peti harta diperkecil (skala %.2f)" % chest_cls.SIZE)
 	_check(shop_cls.barter_cost(15) == 1 and shop_cls.barter_cost(240) == 1 and shop_cls.barter_cost(540) == 2 and shop_cls.DIAMOND_GOLD == 500, "tukar berlian: biaya = harga/500 dibulatkan ke atas, minimal 1")
 	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))
 	var back_door: Dictionary = Maps.exit_at("toko_ramuan", 4, 7)
 	wtk._go_to_map("toko_ramuan", Vector2i(4, 6))
-	var atmo_i = load("res://scripts/atmosphere.gd")
+	var atmo_i = load("res://games/adventure/scripts/atmosphere.gd")
 	_check(not atmo_i.outdoors("toko_ramuan") and atmo_i.outdoors(Maps.DEFAULT_MAP) and wtk._env.environment != null, "di dalam ruangan tanpa cuaca dan waktu luar")
 	wtk._go_to_map(Maps.DEFAULT_MAP, back_door.at)
 	await process_frame
@@ -2362,14 +2362,14 @@ func _run() -> void:
 		Session.merge_server_player(sol_ok_v42.data)
 		_check(int(Session.player.state.soldiers) >= 1, "prajurit tersimpan di state pemain")
 	Session.recruit_kind = "prajurit"
-	var rec_v42: Control = load("res://scenes/recruit.tscn").instantiate()
+	var rec_v42: Control = load("res://games/adventure/scenes/recruit.tscn").instantiate()
 	get_root().add_child(rec_v42)
 	await process_frame
 	await process_frame
 	_check(rec_v42.is_inside_tree(), "layar rekrut prajurit terbuka")
 	rec_v42.queue_free()
 	Session.recruit_kind = "pahlawan"
-	var rec2_v42: Control = load("res://scenes/recruit.tscn").instantiate()
+	var rec2_v42: Control = load("res://games/adventure/scenes/recruit.tscn").instantiate()
 	get_root().add_child(rec2_v42)
 	await process_frame
 	await process_frame
@@ -2382,7 +2382,7 @@ func _run() -> void:
 	_check(not no_shop_v39.ok and no_shop_v39.status == 404, "toko tak dikenal ditolak 404")
 	Session.shop_id = "makan"
 	Session.shop_keeper = "Bu Wati"
-	var food_shop_v39: Control = load("res://scenes/shop.tscn").instantiate()
+	var food_shop_v39: Control = load("res://games/adventure/scenes/shop.tscn").instantiate()
 	get_root().add_child(food_shop_v39)
 	var tf_v39 := Time.get_ticks_msec()
 	while food_shop_v39._catalog.is_empty() and Time.get_ticks_msec() - tf_v39 < 4000:
@@ -2430,7 +2430,7 @@ func _run() -> void:
 	for ex_v46: Dictionary in Maps.EXITS[Maps.HUTAN]:
 		_check(Maps.walkable(ex_v46.to, ex_v46.at.x, ex_v46.at.y), "tujuan pintu hutan %s dapat dipijak" % str(ex_v46.pos))
 	for kid_v46: String in ["kancil_hutan", "rubah_hutan", "ular_belang", "babi_bertaring", "serigala_hitam", "beruang_hutan", "goblin_hutan_1", "goblin_hutan_2", "goblin_hutan_3"]:
-		_check(load("res://scripts/models.gd").VARIANTS.has(kid_v46), "model musuh %s terdaftar" % kid_v46)
+		_check(load("res://games/adventure/scripts/models.gd").VARIANTS.has(kid_v46), "model musuh %s terdaftar" % kid_v46)
 	_check(Maps.ROAMERS[Maps.HUTAN].kinds.size() == 7 and int(Maps.ROAMERS[Maps.HUTAN].n) >= 10, "hutan punya tujuh jenis binatang berkeliaran (termasuk Kelelawar Terkutuk)")
 	var ps_v46: Dictionary = Session._normalize_state({"hutan": {"wave": 9, "kills": 500}})
 	_check(ps_v46.hutan.wave == 3 and ps_v46.hutan.kills == 100, "kemajuan hutan dibatasi 3 / 100")
@@ -2438,7 +2438,7 @@ func _run() -> void:
 	Session.merge_server_player({"state": {"hutan": {"wave": 1, "kills": 42}}})
 	_check(Session.hutan_wave() == 1 and Session.hutan_kills() == 42, "state hutan dari server digabung ke Session")
 	Session.player.state["hutan"] = saved_h_v46
-	var CPv46: Script = load("res://scripts/companions.gd")
+	var CPv46: Script = load("res://games/adventure/scripts/companions.gd")
 	_check(CPv46.CHARGE_SPEED > CPv46.MAX_SPEED and CPv46.ENGAGE_DIST > 3.0, "pendamping maju lebih cepat saat musuh mengejar")
 
 	print("== v0.47.3: pemuat patch (editor/uji tidak menarik patch)")
@@ -2446,11 +2446,11 @@ func _run() -> void:
 	_check(ResourceLoader.exists("res://scripts/patcher.gd"), "skrip pemuat patch ada")
 
 	print("== v0.47: kem hutan, jalan menyambung, bos di dunia, papan misi")
-	var HHv47: Script = load("res://scripts/hutan_hud.gd")
+	var HHv47: Script = load("res://games/adventure/scripts/hutan_hud.gd")
 	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(10, 0), 0.0)) < 0.01, "panah ke utara saat kamera menghadap utara menunjuk lurus ke atas")
 	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(20, 10), 0.0) - PI / 2.0) < 0.01, "panah ke timur menunjuk ke kanan")
 	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(20, 10), PI / 2.0) - PI) < 0.01, "kamera diputar: panah ikut berputar")
-	var WDv47: Script = load("res://scripts/warga_dialog.gd")
+	var WDv47: Script = load("res://games/adventure/scripts/warga_dialog.gd")
 	_check(WDv47.display_name("kapten_kem") == "Kapten Rimba", "Kapten Rimba punya nama dialog")
 	_check(WDv47.kapten_line(0, 0, 0).contains("25 binatang") and WDv47.kapten_line(0, 17, 1).contains("17") and WDv47.kapten_line(1, 40, 1).contains("40 dari 75"), "Kapten menjelaskan tugas bertahap (25/75/100) dan kemajuan binatang")
 	_check(WDv47.kapten_line(1, 100, 0).contains("Level 2"), "Kapten menyebut Goblin berikutnya bila binatang habis")
@@ -2478,7 +2478,7 @@ func _run() -> void:
 	Session.player.state.level = 4
 	Session.player.state["hutan"] = {"wave": 1, "kills": 100}
 	Session.offline = true
-	var wh_v47: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wh_v47: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wh_v47)
 	await process_frame
 	await process_frame
@@ -2529,7 +2529,7 @@ func _run() -> void:
 	Session.player.state.level = 6
 	Session.player.state["trials"] = {"gua_goblin": {"wave": 0, "kills": 25}}
 	Session.offline = true
-	var wg_v65: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wg_v65: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wg_v65)
 	await process_frame
 	await process_frame
@@ -2612,7 +2612,7 @@ func _run() -> void:
 	_check(Session.hutan_started() and Session._hutan({"briefed": true}).briefed, "briefed dibaca dari server")
 	st0_v49["hutan"] = saved_h_v49
 	_check(WDv47.kapten_line(0, 0, 0, false).contains("Radar Musuh") and not WDv47.kapten_line(0, 0, 0, true).is_empty(), "Kapten memberi radar saat pertemuan pertama")
-	var RMv49: Script = load("res://scripts/radar_musuh.gd")
+	var RMv49: Script = load("res://games/adventure/scripts/radar_musuh.gd")
 	var b_up_v49: Dictionary = RMv49.blip(Vector2(50, 50), Vector2(50, 40), 0.0, 85.0)
 	var b_right_v49: Dictionary = RMv49.blip(Vector2(50, 50), Vector2(60, 50), 0.0, 85.0)
 	_check(absf(b_up_v49.at.x) < 0.01 and b_up_v49.at.y < -10.0 and not b_up_v49.clamped, "titik radar: musuh di utara tampil di atas")
@@ -2624,9 +2624,9 @@ func _run() -> void:
 	rm_v691.set_roads(Maps.HUTAN, Maps.rows(Maps.HUTAN))
 	_check(rm_v691.roads.size() > 50, "radar: petak jalan Hutan Lebat terbaca untuk rute")
 	rm_v691.free()
-	var W691: Script = load("res://scripts/world3d.gd")
-	_check(W691._model_bulk(load("res://scripts/models.gd").create("beruang_hutan")) > W691._model_bulk(load("res://scripts/models.gd").create("kancil_hutan")), "ukuran badan beruang > kancil")
-	var gob_v691: Node3D = load("res://scripts/models.gd").create("goblin")
+	var W691: Script = load("res://games/adventure/scripts/world3d.gd")
+	_check(W691._model_bulk(load("res://games/adventure/scripts/models.gd").create("beruang_hutan")) > W691._model_bulk(load("res://games/adventure/scripts/models.gd").create("kancil_hutan")), "ukuran badan beruang > kancil")
+	var gob_v691: Node3D = load("res://games/adventure/scripts/models.gd").create("goblin")
 	var gob_lit := false
 	for mi in gob_v691.find_children("*", "MeshInstance3D", true, false):
 		var sm := (mi as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
@@ -2689,9 +2689,9 @@ func _run() -> void:
 	for ex_g2_70: Dictionary in Maps.EXITS[Maps.HUTAN] + Maps.EXITS[Maps.GUNUNG]:
 		if ex_g2_70.to == gg_70:
 			_check(Maps.walkable(gg_70, ex_g2_70.at.x, ex_g2_70.at.y), "masuk ke gua dari %s di petak lantai" % str(ex_g2_70.pos))
-	var Atmo70: Script = load("res://scripts/atmosphere.gd")
+	var Atmo70: Script = load("res://games/adventure/scripts/atmosphere.gd")
 	_check(not Atmo70.outdoors(gg_70) and Atmo70.misty(gg_70) and not Atmo70.misty(Maps.HUTAN), "Gua Goblin: tanpa hujan/siang-malam, berasap tipis")
-	var WB70: Script = load("res://scripts/world_build.gd")
+	var WB70: Script = load("res://games/adventure/scripts/world_build.gd")
 	var torches_70: Array[Vector3] = WB70.cave_torch_spots(Maps.rows(gg_70))
 	_check(torches_70.size() >= 40, "obor gua banyak (%d)" % torches_70.size())
 	var rm70: Control = RMv49.new()
@@ -2702,7 +2702,7 @@ func _run() -> void:
 	rm70.free()
 
 	print("== v0.71.0: bos Gua Goblin memburu pemain ke seluruh gua")
-	var RoamerS71: Script = load("res://scripts/roamer.gd")
+	var RoamerS71: Script = load("res://games/adventure/scripts/roamer.gd")
 	var path71: Array[Vector2i] = RoamerS71.find_path(Maps.GUA_GOBLIN, Vector2i(30, 59), Vector2i(4, 4))
 	_check(path71.size() > 60 and path71[-1] == Vector2i(4, 4), "jalur lorong dari singgasana ke ujung lorong buntu barat laut (%d petak)" % path71.size())
 	var tg71: Dictionary = Maps.TRIALS[Maps.GUA_GOBLIN]
@@ -2734,7 +2734,7 @@ func _run() -> void:
 	_check(not gua72.has("beruang_hutan") and not gua72.has("rubah_hutan") and gua72.has("goblin") and gua72.has("rubah_tulang") and gua72.has("ular_tulang") and gua72.has("babi_tulang") and gua72.has("serigala_tulang") and gua72.has("beruang_tulang") and not gua72.has("ogre_batu"), "Gua Goblin: goblin + binatang tulang (tanpa binatang hutan), belum ada orc batu")
 	_check(gun72.has("serigala_lava") and gun72.has("beruang_lava") and not gun72.has("serigala_hitam") and gun72.has("goblin_pemburu") and gun72.has("ogre_batu") and not gun72.has("naga_api"), "Gunung Berapi: binatang lava + goblin + orc batu")
 	_check(ist72.has("rubah_bayangan") and not ist72.has("rubah_hutan") and ist72.has("goblin") and ist72.has("ogre_batu") and ist72.has("naga_bayangan") and ist72.has("naga_api"), "Istana Kegelapan: binatang bayangan + goblin + orc batu + dua naga kecil")
-	var M72: Script = load("res://scripts/models.gd")
+	var M72: Script = load("res://games/adventure/scripts/models.gd")
 	for id72: String in ["rubah_tulang", "ular_tulang", "babi_tulang", "serigala_tulang", "beruang_tulang", "ular_lava", "beruang_lava", "serigala_batu", "babi_bayangan", "ular_bayangan", "naga_bayangan", "naga_api", "kepala_goblin_1", "ogre_gunung_3"]:
 		var n72: Node3D = M72.create(id72)
 		_check(n72 != null and n72.find_children("*", "MeshInstance3D", true, false).size() > 0, "model %s dibuat" % id72)
@@ -2780,7 +2780,7 @@ func _run() -> void:
 	Session.player.state.y = 2
 	Session.player.state["hutan"] = {"wave": 0, "kills": 0, "briefed": false}
 	Session.offline = true
-	var wr_v49: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wr_v49: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wr_v49)
 	await process_frame
 	await process_frame
@@ -2902,7 +2902,7 @@ func _run() -> void:
 	for k75b: Dictionary in cfg75.kinds:
 		ids75.append(str(k75b.id))
 	_check(int(cfg75.n) == 50 and ids75.has("serigala_lava") and ids75.has("goblin") and ids75.has("ogre_batu") and not ids75.has("ogre_rawa"), "50 musuh: binatang tengkorak lava + goblin + orc batu")
-	var M75: Script = load("res://scripts/models.gd")
+	var M75: Script = load("res://games/adventure/scripts/models.gd")
 	for id75: String in ["goblin", "goblin_pemburu", "goblin_penjaga", "ogre_batu"]:
 		var sk75: String = M75.skin(id75, gn75)
 		_check(sk75 != id75 and bool(M75.VARIANTS[sk75].lava) and M75.skin(id75, Maps.GUA_GOBLIN) == id75, "%s bermodel merah lava hanya di gunung" % id75)
@@ -2926,7 +2926,7 @@ func _run() -> void:
 	Session.player.state.level = 12
 	Session.offline = true
 	var t0_75 := Time.get_ticks_msec()
-	var w75: Node = load("res://scenes/world3d.tscn").instantiate()
+	var w75: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(w75)
 	await process_frame
 	await process_frame
@@ -2948,11 +2948,11 @@ func _run() -> void:
 	Session.player.state = saved75
 
 	print("== v0.76.0: Naga Lava lebih besar, menyembur api, memburu ke seluruh lereng; prajurit gugur satu per satu; angin")
-	var M76: Script = load("res://scripts/models.gd")
+	var M76: Script = load("res://games/adventure/scripts/models.gd")
 	_check(float(M76.VARIANTS.ogre_gunung_1.size) >= 1.0 and float(M76.VARIANTS.ogre_gunung_3.size) > float(M76.VARIANTS.ogre_gunung_1.size), "Naga Lava diperbesar")
 	var tg76: Dictionary = Maps.TRIALS[Maps.GUNUNG]
 	_check(bool(tg76.get("hunt", false)) and float(tg76.boss_speed[2]) > float(tg76.boss_speed[0]), "Naga Lava memburu ke seluruh lereng, makin cepat tiap tahap")
-	var R76: Script = load("res://scripts/roamer.gd")
+	var R76: Script = load("res://games/adventure/scripts/roamer.gd")
 	var t0_76 := Time.get_ticks_msec()
 	var path76: Array[Vector2i] = R76.find_path(Maps.GUNUNG, Vector2i(160, 39), Vector2i(22, 2))
 	var ms76 := Time.get_ticks_msec() - t0_76
@@ -2972,12 +2972,12 @@ func _run() -> void:
 	_check(caught76, "Naga Lava menyusul pemain di pintu masuk lereng (%.0f d)" % tt76)
 	var fx_root76 := Node3D.new()
 	get_root().add_child(fx_root76)
-	var FX76: Script = load("res://scripts/hero_fx.gd")
+	var FX76: Script = load("res://games/adventure/scripts/hero_fx.gd")
 	FX76.fire_breath(fx_root76, Vector3(0, 1.2, 0), Vector3(4, 0.5, 0))
 	var fire76 := fx_root76.find_children("*", "CPUParticles3D", true, false)
 	_check(fire76.size() >= 1 and (fire76[0] as CPUParticles3D).emitting and fx_root76.find_children("*", "OmniLight3D", true, false).size() == 1, "semburan api naga: kobaran api + cahaya")
 	fx_root76.queue_free()
-	var Atmo76: Script = load("res://scripts/atmosphere.gd")
+	var Atmo76: Script = load("res://games/adventure/scripts/atmosphere.gd")
 	_check(Atmo76.windy(Maps.GUNUNG) and Atmo76.windy(Maps.HUTAN) and not Atmo76.windy(Maps.GUA_GOBLIN) and Atmo76.embers(Maps.GUNUNG) and not Atmo76.embers(Maps.HUTAN), "angin di luar ruangan, bara api terbawa angin di gunung")
 	var g_lo76 := 99.0
 	var g_hi76 := -1.0
@@ -2994,7 +2994,7 @@ func _run() -> void:
 	Session.player.state["soldiers"] = 4
 	Session.player.state["soldiers_rest"] = 0
 	Session.offline = true
-	var w76: Node = load("res://scenes/world3d.tscn").instantiate()
+	var w76: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(w76)
 	await process_frame
 	await process_frame
@@ -3022,7 +3022,7 @@ func _run() -> void:
 	Session.player.state = saved76
 
 	print("== v0.67: cerita The Last Dragon (peta Bab 4, model, Batu Sihir, narasi)")
-	var Mdl67 = load("res://scripts/models.gd")
+	var Mdl67 = load("res://games/adventure/scripts/models.gd")
 	for mid67: String in ["aldragor", "kelelawar_hutan", "malzareth", "raja_goblin", "kelelawar_istana", "prajurit_kutukan", "orc_kegelapan", "iblis_bayangan", "orc_gua", "iblis_biru"]:
 		var m67: Node3D = Mdl67.create(mid67)
 		_check(m67 != null and m67.name == mid67, "model %s dibuat" % mid67)
@@ -3059,7 +3059,7 @@ func _run() -> void:
 	Session.player.state.fz = 2.5
 	Session.player.state["story"] = 9
 	Session.offline = true
-	var wi67: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wi67: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wi67)
 	await process_frame
 	await process_frame
@@ -3074,7 +3074,7 @@ func _run() -> void:
 	Session.player.state.fx = 10.5
 	Session.player.state.fz = 2.5
 	Session.player.state["story"] = 10
-	var wt67: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wt67: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wt67)
 	await process_frame
 	await process_frame
@@ -3091,7 +3091,7 @@ func _run() -> void:
 	Session.player.state.fx = 9.5
 	Session.player.state.fz = 13.3
 	Session.player.state["story"] = 7
-	var wg67: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wg67: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wg67)
 	await process_frame
 	await process_frame
@@ -3115,7 +3115,7 @@ func _run() -> void:
 
 	print("== v0.68.3: kamera kembali ke belakang pahlawan")
 	Session.offline = true
-	var wcam: Node = load("res://scenes/world3d.tscn").instantiate()
+	var wcam: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
 	get_root().add_child(wcam)
 	await process_frame
 	wcam._yaw = 0.5
@@ -3147,7 +3147,7 @@ func _run() -> void:
 	Session.offline = false
 
 	print("== v0.69.0: gerak bertarung musuh")
-	var RoamerT = load("res://scripts/roamer.gd")
+	var RoamerT = load("res://games/adventure/scripts/roamer.gd")
 	var rf = RoamerT.new({"id": "serigala_hitam", "name": "Serigala", "lv": 4}, Maps.HUTAN, Vector2(30.5, 6.5), 7)
 	rf.fight = true
 	var me_f := Vector2(32.0, 6.5)
@@ -3179,7 +3179,7 @@ func _run() -> void:
 ## sudah membuka peti (punya sedikit emas).
 func _test_kreator(login_name: String, pw: String) -> void:
 	print("== Character Creator, toko, perlengkapan (v0.82.0)")
-	var KModels: GDScript = load("res://scripts/models.gd")
+	var KModels: GDScript = load("res://games/adventure/scripts/models.gd")
 	var me: Dictionary = await Api.get_me()
 	_check(me.ok, "ambil data pemain untuk Character Creator")
 	if not me.ok:
@@ -3193,7 +3193,7 @@ func _test_kreator(login_name: String, pw: String) -> void:
 	_check(wr.ok and (wr.data.cosmetics as Array).size() >= 30 and (wr.data.gear as Array).size() >= 20 and (wr.data.tiers as Array).size() == 6, "katalog kosmetik & perlengkapan dari server (6 kelangkaan)")
 	if wr.ok:
 		Session.set_wardrobe_catalog(wr.data)
-	var KT: GDScript = load("res://scripts/kreator.gd")
+	var KT: GDScript = load("res://games/adventure/scripts/kreator.gd")
 	var kr: CanvasLayer = KT.new()
 	root.add_child(kr)
 	await process_frame
@@ -3645,7 +3645,7 @@ func _test_drafts(KT: GDScript, login_name: String, pw: String) -> void:
 
 ## v0.82.2 (C): tempelan di tulang yang benar, posisi/tembus, bahan, dan ikut animasi.
 func _check_attachments(KModels: GDScript) -> void:
-	var LB: GDScript = load("res://scripts/look_build.gd")
+	var LB: GDScript = load("res://games/adventure/scripts/look_build.gd")
 	var rig: Node3D = KModels.create("ksatria")
 	root.add_child(rig)
 	var look := {"made": true, "hair": "rambut_panjang", "hair_color": "#a8321e", "skin_color": "#7a4a2c", "eyes": "besar", "nose": "mancung",
@@ -3738,7 +3738,7 @@ func _check_attachments(KModels: GDScript) -> void:
 
 ## v0.82.2 (D): pembuatan mesh/bahan berulang dan buka-tutup Character Creator tidak membocorkan memori.
 func _test_leaks(KModels: GDScript, KT: GDScript) -> void:
-	var LB: GDScript = load("res://scripts/look_build.gd")
+	var LB: GDScript = load("res://games/adventure/scripts/look_build.gd")
 	var rig: Node3D = KModels.create("pemanah")
 	root.add_child(rig)
 	var looks := [

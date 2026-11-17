@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Ikon 128x128 untuk kosmetik dan perlengkapan Character Creator (v0.82.0).
 
-Pakai:  python3 tools/gen_ikon_kreator.py katalog.json client/assets/items
+Pakai:  python3 tools/gen_ikon_kreator.py katalog.json client/games/adventure/assets/items
 katalog.json = jawaban GET /v1/wardrobe (cosmetics + gear). Latar mengikuti kelangkaan, gambar mengikuti
 jenis barang, warna utama dari katalog. Ikon yang sudah ada (dibuat gen_ikon_item.py) tidak ditimpa.
 """

@@ -31,7 +31,7 @@ var (
 )
 
 // Door adalah satu petak pintu: menginjak (X, Y) di Map memindahkan pemain ke To di petak (AtX, AtY).
-// Daftar ini HARUS sama dengan EXITS di client/scripts/maps.gd.
+// Daftar ini HARUS sama dengan EXITS di client/games/adventure/scripts/maps.gd.
 type Door struct {
 	Map      string
 	X, Y     int

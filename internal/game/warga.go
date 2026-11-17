@@ -7,7 +7,7 @@ import "errors"
 // menyelesaikan misi dari warga itu, dan saat berbelanja di tokonya. Keakraban tinggi memberi
 // potongan harga di toko penjaganya.
 
-// WargaIDs adalah warga yang bisa diajak bicara (sama dengan id di client/scripts/maps.gd).
+// WargaIDs adalah warga yang bisa diajak bicara (sama dengan id di client/games/adventure/scripts/maps.gd).
 var WargaIDs = []string{
 	"nenek_penjual", "petani", "bu_sari", "mbak_dewi", "pak_joko", "pak_budi", "rina", "dika",
 	"kepala_suku", "penjaga", "ayam", "mpu_karta", "tuan_wira", "prajurit_damar", "laras", "nyai_sekar",

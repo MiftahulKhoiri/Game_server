@@ -191,8 +191,8 @@ func _phase_install() -> void:
 	var ids: Array = []
 	for e: Dictionary in GM.games():
 		ids.append(e.id)
-	_check(ids.has("adventure"), "game bawaan Petualangan selalu ada")
-	_check(GM.game("adventure").state == State.INSTALLED, "Petualangan berstatus INSTALLED (bawaan APK)")
+	_check(not ids.has("adventure") or GM.game("adventure").state == State.NOT_INSTALLED, "The Last Dragon belum terpasang sebelum katalog (bukan bawaan APK lagi)")
+	_check(not ResourceLoader.exists("res://games/adventure/scenes/login.tscn"), "The Last Dragon tidak ada di APK (harus diunduh)")
 	_check(not ResourceLoader.exists("res://games/education_sd/main.tscn"), "game SD tidak ada di APK (harus diunduh)")
 
 	print("== Katalog server")
@@ -200,6 +200,7 @@ func _phase_install() -> void:
 	_check(ok and GM.online, "katalog bertanda tangan diterima, status online")
 	_check(GM.game("education_sd").state == State.NOT_INSTALLED, "SD: NOT_INSTALLED")
 	_check(GM.game("education_smp").state == State.NOT_INSTALLED, "SMP: NOT_INSTALLED")
+	_check(GM.game("adventure").state == State.NOT_INSTALLED and GM.game("adventure").type == "download", "The Last Dragon: game unduhan, NOT_INSTALLED")
 	_check(FileAccess.file_exists(GameRegistry.CATALOG_PATH), "katalog disimpan untuk offline")
 	_check(GM.registry.accept_catalog("{\"games\":[]}".to_utf8_buffer(), "AAAA") != "" and GM.registry.catalog.has("education_sd"),
 		"katalog palsu ditolak dan katalog lama tetap dipakai")
@@ -210,7 +211,7 @@ func _phase_install() -> void:
 	await _wait(0.5)
 	var launcher = current_scene
 	_check(launcher._cards.has("adventure") and launcher._cards.has("education_sd") and launcher._cards.has("education_smp"),
-		"launcher menampilkan game bawaan + game unduhan")
+		"launcher menampilkan The Last Dragon + game unduhan lain")
 	var sd_m: Dictionary = GM.game("education_sd").manifest
 	_check(str(sd_m.get("icon_sha256", "")).length() == 64, "manifest SD bertanda tangan memuat icon_sha256")
 	var icon_rect: TextureRect = null
@@ -220,14 +221,16 @@ func _phase_install() -> void:
 			break
 		await _wait(0.1)
 	_check(icon_rect.texture != null and icon_rect.texture.get_width() > 0, "ikon game SD diunduh dari server & tampil di kartu sebelum dipasang")
-	var cached := DirAccess.get_files_at(launcher.ICON_DIR)
-	_check(cached.size() == 1 and cached[0].begins_with("education_sd-"), "ikon disimpan di user://icons untuk offline")
+	var cached := Array(DirAccess.get_files_at(launcher.ICON_DIR)).filter(func(f: String) -> bool: return f.begins_with("education_sd-"))
+	_check(cached.size() == 1, "ikon disimpan di user://icons untuk offline")
+	_check(Array(DirAccess.get_files_at(launcher.ICON_DIR)).any(func(f: String) -> bool: return f.begins_with("adventure-")),
+		"ikon The Last Dragon juga diunduh & disimpan")
 	var raw := FileAccess.get_file_as_bytes(launcher.ICON_DIR + cached[0])
 	_check(launcher._png_texture(raw, "0".repeat(64)) == null, "ikon dengan sha256 berbeda dari manifest ditolak")
 	launcher._select("education_sd")
 	_check(launcher._b_download.visible and not launcher._b_play.visible, "SD: tombol DOWNLOAD tampil, MAINKAN tidak")
 	launcher._select("adventure")
-	_check(launcher._b_play.visible and not launcher._b_delete.visible, "Petualangan: MAINKAN tampil, HAPUS tidak")
+	_check(launcher._b_download.visible and not launcher._b_play.visible, "The Last Dragon: tombol DOWNLOAD tampil, MAINKAN tidak")
 
 	print("== Pengaturan launcher: server & pembaruan aplikasi")
 	launcher.open_settings()
@@ -388,10 +391,22 @@ func _phase_install() -> void:
 	await GM.exit_to_launcher()
 	await _wait_scene("res://launcher/scenes/main_menu.tscn")
 
-	print("== Game Petualangan (bawaan)")
+	print("== The Last Dragon: unduh, pasang, main dari paket")
+	GM.install("adventure")
+	e = await _wait_idle("adventure")
+	_check(e.state == State.INSTALLED, "The Last Dragon: INSTALLED dari paket unduhan (%s)" % e.reason)
 	GM.play("adventure")
-	_check(await _wait_scene("res://scenes/login.tscn"), "Petualangan (layar masuk lama) terbuka dari launcher")
+	_check(await _wait_scene("res://games/adventure/scenes/login.tscn"), "The Last Dragon (layar masuk) terbuka dari paket PCK")
 	await _wait(0.5)
+	for res_path in ["res://games/adventure/scripts/world3d.gd", "res://games/adventure/scenes/world3d.tscn",
+			"res://games/adventure/assets/fonts/LilitaOne-Regular.ttf", "res://games/adventure/assets/items/belati.png",
+			"res://games/adventure/assets/ui/judul.jpg", "res://games/adventure/assets/models/alam/barrel.gltf"]:
+		_check(ResourceLoader.exists(res_path) and load(res_path) != null, "dari paket termuat: " + res_path.get_file())
+	var models_s = load("res://games/adventure/scripts/models.gd")
+	_check(str(models_s.glb_path("ksatria")) == "res://assets/models/ksatria.glb" and models_s.has_glb("ksatria"),
+		"model karakter bersama dibaca dari APK (paket tidak membawa salinan)")
+	var w3d = (load("res://games/adventure/scenes/world3d.tscn") as PackedScene)
+	_check(w3d != null and w3d.can_instantiate(), "adegan dunia 3D The Last Dragon dari paket bisa dibuat")
 	var has_btn := false
 	for b in current_scene.find_children("*", "Button", true, false):
 		if (b as Button).text == "Semua Game":
@@ -450,7 +465,10 @@ func _phase_update() -> void:
 	_check(GM.game("education_smp").state == State.NOT_INSTALLED, "SMP dihapus -> NOT_INSTALLED")
 	_check(not DirAccess.dir_exists_absolute("user://user_data/packages/education_smp"), "folder paket SMP dihapus")
 	GM.uninstall("adventure")
-	_check(GM.game("adventure").state == State.INSTALLED, "game bawaan tidak bisa dihapus")
+	_check(GM.game("adventure").state == State.NOT_INSTALLED, "The Last Dragon bisa dihapus seperti game unduhan lain")
+	GM.install("adventure")
+	e = await _wait_idle("adventure")
+	_check(e.state == State.INSTALLED, "The Last Dragon dipasang ulang")
 	GM.install("education_smp")
 	e = await _wait_idle("education_smp")
 	_check(e.state == State.INSTALLED, "SMP dipasang ulang")
@@ -497,7 +515,7 @@ func _phase_offline() -> void:
 	l._select("education_sd")
 	_check(l._b_play.visible, "MAINKAN tetap tampil saat offline")
 	l._select("education_smp")
-	_check(GM.game("adventure").state == State.INSTALLED, "Petualangan tetap tersedia")
+	_check(GM.game("adventure").state == State.INSTALLED, "The Last Dragon terpasang tetap tersedia saat offline")
 	GM.play("education_sd")
 	_check(await _wait_scene("res://games/education_sd/main.tscn"), "game unduhan dimainkan offline")
 	await _wait(0.3)

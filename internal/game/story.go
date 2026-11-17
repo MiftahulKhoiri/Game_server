@@ -7,7 +7,7 @@ import (
 
 // Cerita utama "The Last Dragon" (docs/STORY.md). Kemajuan pemain disimpan di State.Story: nomor langkah cerita
 // yang sedang dijalani (0 = baru mulai, StoryEnd = tamat). Server yang memeriksa dan memajukan setiap langkah;
-// klien hanya menampilkan tujuan, dialog, dan narasinya (client/scripts/story.gd).
+// klien hanya menampilkan tujuan, dialog, dan narasinya (client/games/adventure/scripts/story.gd).
 //
 // Jenis langkah:
 //   - talk : bicara dengan NPC tertentu (posisi tersimpan pemain harus dekat NPC itu), lewat POST /v1/story/talk.
@@ -24,7 +24,7 @@ const (
 	StoryKill  = "kill"
 )
 
-// Id NPC, benda, dan bos cerita (sama dengan client/scripts/maps.gd dan enemy.go).
+// Id NPC, benda, dan bos cerita (sama dengan client/games/adventure/scripts/maps.gd dan enemy.go).
 const (
 	KepalaDesaID  = "kepala_suku"
 	PenjagaHutan  = "penjaga_hutan"

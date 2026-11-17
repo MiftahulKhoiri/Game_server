@@ -1,4 +1,4 @@
-// Kode ini dibuat oleh tools/genmaps dari client/scripts/maps.gd. JANGAN DIUBAH MANUAL: jalankan `make maps`.
+// Kode ini dibuat oleh tools/genmaps dari client/games/adventure/scripts/maps.gd. JANGAN DIUBAH MANUAL: jalankan `make maps`.
 
 package game
 

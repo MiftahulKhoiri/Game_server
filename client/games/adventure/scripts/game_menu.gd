@@ -1,0 +1,408 @@
+extends CanvasLayer
+## Menu dalam game (dibuka tombol "Menu" atau tombol kembali Android):
+## Lanjutkan, Pengaturan (kualitas grafis, sensitivitas kamera), Ke Beranda,
+## Keluar akun, Tutup game. Tindakan yang berisiko (keluar akun, tutup game) minta
+## ketukan kedua dalam 3 detik. Pemilik menu (world3d.gd) yang melakukan tindakannya.
+
+signal resumed
+signal profile_requested
+signal creator_requested
+signal inventory_requested
+signal atribut_requested
+signal trade_requested
+signal journal_requested(tab: int)
+signal go_home
+signal logout
+signal quit_game
+signal settings_changed
+
+const QUALITY_NAMES := ["Hemat", "Normal", "Tinggi"]
+const QUALITY_HINTS := [
+	"Hemat: tanpa bayangan, 30 FPS, musuh dan efek lebih sedikit. Paling ringan dan hemat baterai.",
+	"Normal: bayangan di sekitar pemain, 60 FPS.",
+	"Tinggi: bayangan dan jarak pandang lebih jauh, efek lebih ramai, tepi gambar halus.",
+]
+
+var is_open := false
+
+var _main: VBoxContainer
+var _settings: VBoxContainer
+var _settings_scroll: ScrollContainer
+var _toggle_npc: CheckButton
+var _toggle_music: CheckButton
+var _toggle_keep: CheckButton
+var _toggle_follow: CheckButton
+var _toggle_lock: CheckButton
+var _dist_value: Label
+var _pitch_value: Label
+var _toggle_perf: CheckButton
+var _vol_npc_value: Label
+var _vol_music_value: Label
+var _quality_buttons: Array[Button] = []
+var _quality_hint: Label
+var _sens_value: Label
+var _btn_logout: Button
+var _btn_tas: Button
+var _btn_atribut: Button
+var _btn_dagang: Button
+var _btn_jurnal: Button
+var _btn_kabar: Button
+var _akun: VBoxContainer
+var _confirm_key := ""
+var _confirm_btn: Button
+var _confirm_text := ""
+var _confirm_timer: Timer
+var panel: PanelContainer  # dipakai uji: lebar panel tidak boleh melebihi layar
+
+
+func _init() -> void:
+	layer = 10
+	visible = false
+
+
+func _ready() -> void:
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.62)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var center := CenterContainer.new()
+	add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(960, 0)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("1d2b22")
+	sb.border_color = Color("5fb35a")
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(22)
+	sb.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+
+	var holder := VBoxContainer.new()
+	panel.add_child(holder)
+
+	_main = VBoxContainer.new()
+	_main.add_theme_constant_override("separation", 14)
+	holder.add_child(_main)
+	_main.add_child(_title("Menu"))
+	# Layar mendatar (v0.68.0): tombol menu tersusun tiga kolom supaya muat tanpa digulir.
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 12)
+	_main.add_child(grid)
+	grid.add_child(_button("Lanjutkan", func() -> void: resumed.emit()))
+	_btn_tas = _button("Ransel", func() -> void: inventory_requested.emit())
+	grid.add_child(_btn_tas)
+	_btn_jurnal = _button("Misi dan Peta", func() -> void: journal_requested.emit(0))
+	grid.add_child(_btn_jurnal)
+	_btn_kabar = _button("Kabar", func() -> void: journal_requested.emit(2))
+	grid.add_child(_btn_kabar)
+	_btn_atribut = _button("Atribut", func() -> void: atribut_requested.emit())
+	grid.add_child(_btn_atribut)
+	_btn_dagang = _button("Dagang dengan pemain", func() -> void: trade_requested.emit())
+	grid.add_child(_btn_dagang)
+	grid.add_child(_button("Profil dan pahlawan", func() -> void: profile_requested.emit()))
+	grid.add_child(_button("Karakter dan Toko", func() -> void: creator_requested.emit()))
+	grid.add_child(_button("Pengaturan", func() -> void: _show_page(false)))
+	grid.add_child(_button("Ke Beranda", func() -> void: go_home.emit()))
+	_btn_logout = _button("Keluar akun", Callable())
+	_btn_logout.pressed.connect(func() -> void: _ask(_btn_logout, "logout", "Yakin? Ketuk lagi", func() -> void: logout.emit()))
+	grid.add_child(_btn_logout)
+	var btn_quit := _button("Tutup game", Callable())
+	btn_quit.pressed.connect(func() -> void: _ask(btn_quit, "quit", "Yakin? Ketuk lagi", func() -> void: quit_game.emit()))
+	grid.add_child(btn_quit)
+
+	_settings_scroll = ScrollContainer.new()
+	_settings_scroll.custom_minimum_size = Vector2(0, 560)
+	_settings_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_settings_scroll.visible = false
+	holder.add_child(_settings_scroll)
+	_settings = VBoxContainer.new()
+	_settings.add_theme_constant_override("separation", 14)
+	_settings.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_settings_scroll.add_child(_settings)
+	_settings.add_child(_title("Pengaturan"))
+	_settings.add_child(_label("Kualitas grafis"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	_settings.add_child(row)
+	var group := ButtonGroup.new()
+	for i in QUALITY_NAMES.size():
+		var b := _button(QUALITY_NAMES[i], Callable())
+		b.toggle_mode = true
+		b.button_group = group
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(_on_quality.bind(i))
+		row.add_child(b)
+		_quality_buttons.append(b)
+	_quality_hint = _label("")
+	_quality_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_quality_hint.add_theme_font_size_override("font_size", 22)
+	_quality_hint.add_theme_color_override("font_color", Color("b9c9bd"))
+	_settings.add_child(_quality_hint)
+	_settings.add_child(_label("Kecepatan putar kamera"))
+	var slider := HSlider.new()
+	slider.min_value = 0.5
+	slider.max_value = 2.0
+	slider.step = 0.1
+	slider.custom_minimum_size = Vector2(0, 56)
+	slider.value = Session.cam_sens
+	slider.value_changed.connect(_on_sens)
+	_settings.add_child(slider)
+	_sens_value = _label("")
+	_settings.add_child(_sens_value)
+	# Kamera (v0.68.4): jarak dan sudut pandang, lalu kunci supaya tetap seperti itu. Perubahan langsung terlihat.
+	_settings.add_child(_label("Jarak kamera"))
+	_settings.add_child(_cam_slider(Session.CAM_DIST_MIN, Session.CAM_DIST_MAX, 0.1, Session.cam_dist, func(v: float) -> void:
+		Session.cam_dist = v
+		Session.save_config()
+		_refresh_cam()))
+	_dist_value = _label("")
+	_settings.add_child(_dist_value)
+	_settings.add_child(_label("Sudut kamera (dari atas)"))
+	_settings.add_child(_cam_slider(rad_to_deg(Session.CAM_PITCH_MIN), rad_to_deg(Session.CAM_PITCH_MAX), 1.0, rad_to_deg(Session.cam_pitch), func(v: float) -> void:
+		Session.cam_pitch = deg_to_rad(v)
+		Session.save_config()
+		_refresh_cam()))
+	_pitch_value = _label("")
+	_settings.add_child(_pitch_value)
+	_toggle_lock = _toggle("Kunci kamera (tidak bisa digeser, selalu di belakang)", func(on: bool) -> void:
+		Session.cam_lock = on
+		Session.save_config())
+	_settings.add_child(_toggle_lock)
+	_toggle_follow = _toggle("Kamera kembali ke belakang pahlawan", func(on: bool) -> void:
+		Session.cam_follow = on
+		Session.save_config())
+	_settings.add_child(_toggle_follow)
+	_toggle_keep = _toggle("Layar tetap menyala", _on_toggle_keep)
+	_settings.add_child(_toggle_keep)
+	_toggle_perf = _toggle("Tampilkan FPS & memori", _on_toggle_perf)
+	_settings.add_child(_toggle_perf)
+
+	_settings.add_child(load("res://games/adventure/scripts/kontrol_settings.gd").new())
+	_akun = load("res://games/adventure/scripts/akun_settings.gd").new()
+	_settings.add_child(_akun)
+	_settings.add_child(_section("Suara"))
+	_toggle_npc = _toggle("Suara orang (NPC)", _on_toggle_npc)
+	_settings.add_child(_toggle_npc)
+	_toggle_music = _toggle("Musik", _on_toggle_music)
+	_settings.add_child(_toggle_music)
+	_settings.add_child(_label("Volume suara NPC"))
+	_settings.add_child(_volume_slider(Session.vol_npc, _on_vol_npc))
+	_vol_npc_value = _label("")
+	_settings.add_child(_vol_npc_value)
+	_settings.add_child(_label("Volume musik"))
+	_settings.add_child(_volume_slider(Session.vol_music, _on_vol_music))
+	_vol_music_value = _label("")
+	_settings.add_child(_vol_music_value)
+	_settings.add_child(_button("Kembali", func() -> void: _show_page(true)))
+
+	_confirm_timer = Timer.new()
+	_confirm_timer.one_shot = true
+	_confirm_timer.timeout.connect(_reset_confirm)
+	add_child(_confirm_timer)
+	_refresh_settings()
+
+
+func open() -> void:
+	_reset_confirm()
+	_show_page(true)
+	_btn_logout.disabled = Session.offline
+	_btn_tas.disabled = Session.offline  # tas butuh server
+	_btn_atribut.disabled = Session.offline
+	_btn_dagang.disabled = Session.offline
+	var unread := Session.unread_notices()
+	_btn_kabar.text = "Kabar (%d baru)" % unread if unread > 0 else "Kabar"
+	visible = true
+	is_open = true
+
+
+func close() -> void:
+	_reset_confirm()
+	visible = false
+	is_open = false
+
+
+## Tombol kembali Android / Esc: dari Pengaturan balik ke menu, dari menu utama menutup.
+func back() -> void:
+	if _settings_scroll.visible:
+		_show_page(true)
+	else:
+		resumed.emit()
+
+
+func _show_page(main: bool) -> void:
+	_reset_confirm()
+	_main.visible = main
+	_settings_scroll.visible = not main
+	if _akun != null:
+		_akun.visible = not main and not Session.offline
+
+
+func _on_quality(i: int) -> void:
+	Session.quality = i
+	Session.apply_display()
+	Session.save_config()
+	_refresh_settings()
+	settings_changed.emit()
+
+
+func _on_sens(v: float) -> void:
+	Session.cam_sens = v
+	Session.save_config()
+	_refresh_settings()
+
+
+func _on_toggle_keep(on: bool) -> void:
+	Session.keep_on = on
+	Session.apply_display()
+	Session.save_config()
+
+
+func _on_toggle_perf(on: bool) -> void:
+	Session.show_perf = on
+	Session.apply_display()
+	Session.save_config()
+
+
+func _on_toggle_npc(on: bool) -> void:
+	Session.snd_npc = on
+	_sound_changed()
+
+
+func _on_toggle_music(on: bool) -> void:
+	Session.snd_music = on
+	_sound_changed()
+
+
+func _on_vol_npc(v: float) -> void:
+	Session.vol_npc = v
+	_sound_changed()
+
+
+func _on_vol_music(v: float) -> void:
+	Session.vol_music = v
+	_sound_changed()
+
+
+func _sound_changed() -> void:
+	Session.save_config()
+	Sound.apply_settings()
+	_refresh_settings()
+
+
+func _refresh_settings() -> void:
+	_toggle_npc.set_pressed_no_signal(Session.snd_npc)
+	_toggle_music.set_pressed_no_signal(Session.snd_music)
+	_toggle_follow.set_pressed_no_signal(Session.cam_follow)
+	_toggle_lock.set_pressed_no_signal(Session.cam_lock)
+	_refresh_cam()
+	_toggle_keep.set_pressed_no_signal(Session.keep_on)
+	_toggle_perf.set_pressed_no_signal(Session.show_perf)
+	_vol_npc_value.text = "%d%%" % roundi(Session.vol_npc * 100.0)
+	_vol_music_value.text = "%d%%" % roundi(Session.vol_music * 100.0)
+	for i in _quality_buttons.size():
+		_quality_buttons[i].set_pressed_no_signal(i == Session.quality)
+	_quality_hint.text = QUALITY_HINTS[clampi(Session.quality, 0, 2)]
+	_sens_value.text = "%.1fx" % Session.cam_sens
+
+
+func _ask(btn: Button, key: String, text_confirm: String, action: Callable) -> void:
+	if _confirm_key == key:
+		_reset_confirm()
+		action.call()
+		return
+	_reset_confirm()
+	_confirm_key = key
+	_confirm_btn = btn
+	_confirm_text = btn.text
+	btn.text = text_confirm
+	_confirm_timer.start(3.0)
+
+
+func _reset_confirm() -> void:
+	if _confirm_btn != null:
+		_confirm_btn.text = _confirm_text
+	_confirm_btn = null
+	_confirm_key = ""
+	if _confirm_timer != null:
+		_confirm_timer.stop()
+
+
+func _section(text: String) -> Label:
+	var l := _label(text)
+	l.add_theme_font_size_override("font_size", 34)
+	l.add_theme_color_override("font_color", Color("e0c070"))
+	return l
+
+
+func _cam_slider(lo: float, hi: float, step: float, value: float, cb: Callable) -> HSlider:
+	var sl := HSlider.new()
+	sl.min_value = lo
+	sl.max_value = hi
+	sl.step = step
+	sl.custom_minimum_size = Vector2(0, 56)
+	sl.value = value
+	sl.value_changed.connect(cb)
+	return sl
+
+
+func _refresh_cam() -> void:
+	if _dist_value != null:
+		_dist_value.text = "%.1f petak" % Session.cam_dist
+		_pitch_value.text = "%d°" % roundi(rad_to_deg(Session.cam_pitch))
+
+
+func _toggle(text: String, cb: Callable) -> CheckButton:
+	var t := CheckButton.new()
+	t.text = text
+	t.custom_minimum_size = Vector2(0, 76)
+	t.focus_mode = Control.FOCUS_NONE
+	t.add_theme_font_size_override("font_size", 30)
+	t.toggled.connect(cb)
+	return t
+
+
+func _volume_slider(value: float, cb: Callable) -> HSlider:
+	var sl := HSlider.new()
+	sl.min_value = 0.0
+	sl.max_value = 1.0
+	sl.step = 0.05
+	sl.custom_minimum_size = Vector2(0, 56)
+	sl.value = value
+	sl.value_changed.connect(cb)
+	return sl
+
+
+func _title(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 44)
+	l.add_theme_color_override("font_color", Color("d8f0c8"))
+	return l
+
+
+func _label(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 28)
+	return l
+
+
+func _button(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(290, 76)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 28)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if cb.is_valid():
+		b.pressed.connect(cb)
+	return b
