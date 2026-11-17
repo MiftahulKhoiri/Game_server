@@ -56,10 +56,31 @@ func _body(v: VBoxContainer) -> void:
 	var acc := _pct(float(rep.correct) / maxf(1.0, float(rep.answered)))
 	v.add_child(UI.label("Total: %d soal, %d persen benar sejak percobaan pertama, rekor %d benar berturut-turut" % [int(rep.answered), acc,
 		int(rep.best_streak)], 22, UI.SOFT))
-	v.add_child(UI.label("Mata Pelajaran", 30, UI.PRIMARY, false))
+	if not (rep.get("next", []) as Array).is_empty():
+		v.add_child(UI.label("Saran Materi Berikutnya", 30, UI.PRIMARY, false))
+		var np := UI.panel(Color("eaf7ea"), 20)
+		np.name = "Next"
+		var nv := UI.vbox(4)
+		for n in rep.next:
+			nv.add_child(UI.label("%s · %s: %s." % [str(n.subject), str(n.name), str(n.why)], 22, Color("2c6b3a")))
+		np.add_child(nv)
+		v.add_child(np)
+	v.add_child(UI.label("Mata Pelajaran (rincian materi kelas %d)" % int(rep.get("focus_grade", rep.grade)), 30, UI.PRIMARY, false))
 	for r in rep.rooms:
 		v.add_child(_room_card(r))
-	v.add_child(UI.label("Aktivitas Terakhir", 30, UI.PRIMARY, false))
+	v.add_child(UI.label("Perkembangan Mingguan", 30, UI.PRIMARY, false))
+	var any_week := false
+	for w in rep.get("weeks", []):
+		if int(w.total) == 0:
+			continue
+		any_week = true
+		var line := "%s: %d soal dalam %d hari belajar" % [str(w.label), int(w.total), int(w.days)]
+		if int(w.total) >= 5:
+			line += ", %d persen benar" % _pct(float(w.correct) / float(w.total))
+		v.add_child(UI.label(line, 22, UI.INK, false))
+	if not any_week:
+		v.add_child(UI.label("Belum ada catatan mingguan.", 22, UI.SOFT))
+	v.add_child(UI.label("Aktivitas Harian", 30, UI.PRIMARY, false))
 	if (rep.days as Array).is_empty():
 		v.add_child(UI.label("Belum ada aktivitas.", 22, UI.SOFT))
 	for d in rep.days:
@@ -93,6 +114,13 @@ func _room_card(r: Dictionary) -> PanelContainer:
 		cv.add_child(UI.label("Sudah dikuasai: " + ", ".join(r.mastered), 20, UI.GOOD))
 	if not (r.practice as Array).is_empty():
 		cv.add_child(UI.label("Bisa dilatih lagi: " + ", ".join(r.practice), 20, Color("b5743a")))
+	for t in r.get("topics", []):
+		var info := str(t.status_text)
+		if int(t.answered) > 0:
+			info += " · %d soal" % int(t.answered)
+			info += ", %d persen benar" % _pct(float(t.rate)) if bool(t.enough) else " (belum cukup untuk dinilai)"
+		var col := UI.GOOD if str(t.status) == "kuasai" else (Color("b5743a") if str(t.status) == "perlu_latihan" else UI.SOFT)
+		cv.add_child(UI.label("• %s: %s" % [str(t.name), info], 19, col))
 	var ex: Dictionary = r.exam
 	if not ex.is_empty():
 		var t := "Ujian: LULUS, nilai terbaik %d" if bool(ex.passed) else "Ujian: nilai terbaik %d, ayo coba lagi"

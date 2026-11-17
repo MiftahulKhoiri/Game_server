@@ -354,12 +354,38 @@ func exam_finish(p: Dictionary, session: Dictionary) -> Dictionary:
 		"correct": int(session.correct), "total": total, "xp": int(session.xp), "coins": int(session.coins) + bonus}
 
 
+# --- Mini-game di ruang kelas ------------------------------------------------------------------------------------
+
+## Catat satu permainan mini-game selesai. Hadiah kecil untuk usaha: 3 XP dan 2 koin per jawaban benar.
+static func minigame_finish(p: Dictionary, id: String, subject: String, score: int, total: int, extra: Dictionary = {}) -> Dictionary:
+	var k := "mini/" + id
+	var r: Dictionary = (p.academy as Dictionary).get(k, {"plays": 0, "best": 0})
+	var pct := int(round(100.0 * score / maxf(1.0, total)))
+	var new_best := pct > int(r.get("best", 0))
+	r.plays = int(r.get("plays", 0)) + 1
+	r.best = maxi(int(r.get("best", 0)), pct)
+	p.academy[k] = r
+	var xp := 3 * score
+	var coins := 2 * score
+	p.rpg.xp = int(p.rpg.xp) + xp
+	p.rpg.coins = int(p.rpg.coins) + coins
+	for a in extra.get("animals", []):
+		if not (p.learning.animals as Array).has(a):
+			(p.learning.animals as Array).append(a)
+	(p.learning.history as Array).push_front({"at": Time.get_datetime_string_from_system(false, true), "mode": "permainan",
+		"subject": subject, "topic": "", "grade": int(p.profile.grade), "correct": score, "total": total, "score": pct})
+	p.learning.history = (p.learning.history as Array).slice(0, MAX_HISTORY)
+	return {"xp": xp, "coins": coins, "score": score, "total": total, "best": int(r.best), "new_best": new_best}
+
+
 # --- Laporan belajar (untuk anak, orang tua, guru) ------------------------------------------------------------------
 
 ## Ringkasan belajar: per mata pelajaran (akurasi, materi dikuasai/perlu latihan, ujian), aktivitas 7 hari,
 ## riwayat terakhir, dan kesimpulan dengan bahasa positif. Hanya menyimpulkan bila jawaban cukup banyak.
 func report(p: Dictionary) -> Dictionary:
 	var grade := int(p.profile.grade)
+	var focus := focus_grade(p)
+	var cand: Array = []
 	var rooms_out: Array = []
 	var best := ""
 	var best_rate := -1.0
@@ -391,8 +417,19 @@ func report(p: Dictionary) -> Dictionary:
 		var n := c + w
 		var rate := float(c) / n if n > 0 else 0.0
 		var ex := exam_rec(p, grade, str(r.id))
+		# Tabel semua materi kelas yang paling banyak dikerjakan anak (bukan hanya daftar nama).
+		var rows: Array = []
+		for t in data.topics_for(region, focus):
+			var ts: Dictionary = (p.learning.topics as Dictionary).get(_key(focus, str(t.id)), {})
+			var tn := int(ts.get("correct", 0)) + int(ts.get("wrong", 0))
+			var stt := status(p, focus, str(t.id))
+			rows.append({"id": str(t.id), "name": str(t.name), "status": stt, "status_text": str(STATUS_TEXT.get(stt, "")), "answered": tn,
+				"rate": float(ts.get("correct", 0)) / tn if tn > 0 else 0.0, "enough": tn >= 5})
+			if stt != "kuasai":
+				cand.append({"room": str(r.id), "subject": str(r.subject), "topic": str(t.id), "name": str(t.name), "status": stt,
+					"answered": tn, "order": {"perlu_latihan": 0, "belajar": 1, "baru": 2}.get(stt, 3)})
 		rooms_out.append({"id": str(r.id), "name": str(r.subject), "answered": n, "rate": rate, "mastered": mastered, "practice": practice,
-			"exam": ex, "enough": n >= 5})
+			"exam": ex, "enough": n >= 5, "topics": rows})
 		if n >= 5 and rate > best_rate:
 			best_rate = rate
 			best = str(r.subject)
@@ -415,5 +452,64 @@ func report(p: Dictionary) -> Dictionary:
 			summary += " Paling kuat di %s." % best
 		if weak != "" and weak != best:
 			summary += " %s bisa dilatih lagi supaya makin mahir." % weak
-	return {"name": str(p.profile.name), "grade": grade, "answered": int(t.answered), "correct": int(t.correct), "best_streak": int(t.best_streak),
-		"rooms": rooms_out, "days": days, "history": (p.learning.history as Array).slice(0, 6), "summary": summary}
+	# Rekomendasi materi berikutnya (maks 3): yang perlu dilatih dulu, lalu yang sedang dipelajari, lalu yang belum.
+	cand.sort_custom(func(x, y):
+		if int(x.order) != int(y.order):
+			return int(x.order) < int(y.order)
+		return int(x.answered) > int(y.answered))
+	var next: Array = []
+	var per_room := {}
+	for c in cand:
+		if next.size() >= 3:
+			break
+		if int(per_room.get(c.room, 0)) >= 1 and cand.size() > 3:
+			continue  # sebarkan ke mata pelajaran berbeda bila pilihannya banyak
+		per_room[c.room] = int(per_room.get(c.room, 0)) + 1
+		var why := "belum pernah dipelajari, ayo dicoba"
+		match str(c.status):
+			"perlu_latihan":
+				why = "sudah dicoba dan masih perlu latihan lagi"
+			"belajar":
+				why = "sedang dipelajari, lanjutkan supaya makin mahir"
+		next.append({"subject": str(c.subject), "name": str(c.name), "topic": str(c.topic), "status": str(c.status), "why": why})
+	return {"name": str(p.profile.name), "grade": grade, "focus_grade": focus, "answered": int(t.answered), "correct": int(t.correct),
+		"best_streak": int(t.best_streak), "rooms": rooms_out, "days": days, "weeks": weeks(p), "next": next,
+		"history": (p.learning.history as Array).slice(0, 12), "summary": summary}
+
+
+## Kelas yang paling banyak dikerjakan anak (materi mengikuti pulau, jadi bisa berbeda dari kelas profil).
+## Belum ada jawaban -> kelas profil.
+static func focus_grade(p: Dictionary) -> int:
+	var per := {}
+	for key in (p.learning.topics as Dictionary):
+		var parts := str(key).split("/")
+		if parts.size() != 2:
+			continue
+		var st: Dictionary = p.learning.topics[key]
+		per[int(parts[0])] = int(per.get(int(parts[0]), 0)) + int(st.get("correct", 0)) + int(st.get("wrong", 0))
+	var best := int(p.profile.grade)
+	var bn := 0
+	for g in per:
+		if int(per[g]) > bn or (int(per[g]) == bn and bn > 0 and int(g) > best):
+			best = int(g)
+			bn = int(per[g])
+	return best
+
+
+## Perkembangan mingguan dari catatan harian (maks 4 minggu, terbaru dulu). Minggu = 7 hari dihitung mundur dari `today`.
+static func weeks(p: Dictionary, today := "") -> Array:
+	if today == "":
+		today = Time.get_date_string_from_system()
+	var t0 := Time.get_unix_time_from_datetime_string(today)
+	var out: Array = []
+	for i in 4:
+		out.append({"label": ["7 hari terakhir", "Minggu lalu", "2 minggu lalu", "3 minggu lalu"][i], "total": 0, "correct": 0, "days": 0})
+	for k in (p.learning.daily as Dictionary):
+		var age := int((t0 - Time.get_unix_time_from_datetime_string(str(k))) / 86400)
+		if age < 0 or age >= 28:
+			continue
+		var w: Dictionary = out[age / 7]
+		w.total = int(w.total) + int(p.learning.daily[k][1])
+		w.correct = int(w.correct) + int(p.learning.daily[k][0])
+		w.days = int(w.days) + 1
+	return out

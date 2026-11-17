@@ -9,6 +9,9 @@ const SdData := preload("res://games/education_sd/scripts/sd_data.gd")
 const SdGen := preload("res://games/education_sd/scripts/sd_gen.gd")
 const BankAudit := preload("res://games/education_sd/scripts/engine/bank_audit.gd")
 const Adaptive := preload("res://games/education_sd/scripts/engine/adaptive.gd")
+const ExperimentEngine := preload("res://games/education_sd/scripts/engine/experiment_engine.gd")
+const LessonViewT := preload("res://games/education_sd/scripts/ui/lesson_view.gd")
+const ReportViewT := preload("res://games/education_sd/scripts/ui/report_view.gd")
 const SdProgress := preload("res://games/education_sd/scripts/sd_progress.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
@@ -33,6 +36,7 @@ func _initialize() -> void:
 	await _v3_learning_tests()
 	await _p3_bugfix_tests()
 	await _p4_adaptive_tests()
+	await _p5_8_tests()
 	await _v3_quest_tests()
 	await _v3_reward_tests()
 	await _v3_battle_tests()
@@ -941,6 +945,204 @@ func _p4_adaptive_tests() -> void:
 	var fair := 600.0 / ts.size()
 	_check(hits > 2.0 * fair, "Jurus Ilmu memilih topik lemah lebih sering (%d kali vs rata-rata %d)" % [hits, int(fair)])
 	_check(le.pick_topic(pt, "tidak_ada", 3, rng) == "", "ruang tanpa topik: tidak memilih apa pun")
+
+# --- Prioritas 5–8: soal cerita, laporan, mini-game di kelas, Laboratorium Eksperimen -----------------------------
+
+func _nums(text: String) -> Array:
+	var re := RegEx.create_from_string("[0-9][0-9.]*")
+	var out: Array = []
+	for m in re.search_all(text):
+		var v := m.get_string().rstrip(".").replace(".", "")
+		if v.is_valid_int():
+			out.append(int(v))
+	return out
+
+
+func _lesson(d, p: Dictionary, room_id: String, grade: int, rng: RandomNumberGenerator) -> Control:
+	var le := LearningEngine.new()
+	le.setup(d)
+	var lv: Control = LessonViewT.new()
+	root.add_child(lv)
+	lv.setup(le, p, rng, null, d.doc.get("type_names", {}), room_id, grade)
+	return lv
+
+
+func _p5_8_tests() -> void:
+	print("== Prioritas 5–8: soal cerita, laporan, mini-game, laboratorium")
+	var d := SdData.new()
+	d.load_data()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 58
+	# P5: soal cerita & bentuk matematika baru — kunci dihitung ulang secara mandiri.
+	var bad: Array = []
+	for spec in ["story_add:1:10", "story_add:100:500", "story_sub:10:99", "story_sub:100:999", "money:1", "money:2", "clock:1", "clock:2",
+			"fpb", "kpk", "mixed"]:
+		for i in 60:
+			var q := SdGen.make(spec, "penjumlahan", 4, rng)
+			var why := d.validate_question(q)
+			var key := str(q.options[int(q.answer)])
+			var n := _nums(str(q.q))
+			var want := ""
+			match spec.split(":")[0]:
+				"story_add":
+					want = str(n[0] + n[1])
+				"story_sub":
+					want = str(n[0] - n[1])
+				"mixed":
+					want = str(n[0] + n[1] * n[2])
+				"fpb", "kpk":
+					var g: int = n[0]
+					var h: int = n[1]
+					while h != 0:
+						var t: int = g % h
+						g = h
+						h = t
+					want = str(g) if spec == "fpb" else str(n[0] * n[1] / g)
+				"money":
+					var tot: int = n[0] * (n[1] if n.size() == 3 else 1)
+					want = "Rp" + SdGen._n(n[n.size() - 1] - tot)
+				"clock":
+					want = key if str(q.explain).contains(key) else "?"
+			if why != "" or (want != key and want != key.replace(".", "")) or int(q.difficulty) != 2 or (q.options as Array).size() != 4:
+				bad.append("%s: %s %s -> %s (seharusnya %s) %s" % [spec, str(q.q), str(q.options), key, want, why])
+	for b in bad.slice(0, 5):
+		print("    ", b)
+	_check(bad.is_empty(), "660 soal cerita/uang/jam/FPB/KPK/operasi campuran: kunci benar, 4 pilihan, kesulitan 2")
+	var story_topics := 0
+	for t in d.topics.values():
+		for g in t.get("gen", {}):
+			for spec in t.gen[g]:
+				if str(spec).begins_with("story") or str(spec).begins_with("money") or str(spec).begins_with("clock") or spec in ["fpb", "kpk", "mixed"]:
+					story_topics += 1
+	_check(story_topics >= 14, "bentuk soal baru terpasang di bank (%d spesifikasi)" % story_topics)
+
+	# P6: laporan — tabel semua materi, rekomendasi, mingguan, kelas fokus.
+	var le := LearningEngine.new()
+	le.setup(d)
+	var p := _prof(2)
+	for i in 6:
+		LearningEngine.answer(p, le.start(p, "pecahan", 4, rng), {"id": "r%d" % i, "grade": 4, "points": 10}, i > 0, i > 0)
+	var sw := LearningEngine.stats(p, 4, "perkalian")
+	sw.correct = 2
+	sw.wrong = 7
+	sw.recent_own = [0, 0, 1, 0, 0, 0, 1, 0]
+	_check(LearningEngine.focus_grade(p) == 4, "kelas fokus laporan = kelas yang paling banyak dikerjakan (4, profil kelas 2)")
+	var rep: Dictionary = le.report(p)
+	var mat: Dictionary = (rep.rooms as Array).filter(func(r): return str(r.id) == "matematika")[0]
+	_check((mat.topics as Array).size() == d.topics_for("matematika", 4).size(), "laporan memuat SEMUA materi matematika kelas 4 (%d)" % (mat.topics as Array).size())
+	_check((rep.next as Array).size() in [1, 2, 3] and str(rep.next[0].topic) == "perkalian" and str(rep.next[0].why).contains("perlu latihan"),
+		"rekomendasi materi berikutnya: yang perlu dilatih didahulukan (%s)" % str(rep.next[0].name if not (rep.next as Array).is_empty() else "-"))
+	var subj := {}
+	for n in rep.next:
+		subj[str(n.subject)] = true
+	_check(subj.size() == (rep.next as Array).size(), "rekomendasi tersebar ke mata pelajaran berbeda")
+	var pw := _prof(3)
+	var today := Time.get_date_string_from_system()
+	var t0 := Time.get_unix_time_from_datetime_string(today)
+	pw.learning.daily[today] = [4, 6]
+	pw.learning.daily[Time.get_date_string_from_unix_time(t0 - 3 * 86400)] = [3, 4]
+	pw.learning.daily[Time.get_date_string_from_unix_time(t0 - 9 * 86400)] = [5, 5]
+	pw.learning.daily[Time.get_date_string_from_unix_time(t0 - 40 * 86400)] = [9, 9]
+	var wk := LearningEngine.weeks(pw, today)
+	_check(int(wk[0].total) == 10 and int(wk[0].correct) == 7 and int(wk[0].days) == 2 and int(wk[1].total) == 5 and int(wk[3].total) == 0,
+		"perkembangan mingguan dari catatan harian (>4 minggu tidak dihitung)")
+	var rv: Control = ReportViewT.new()
+	root.add_child(rv)
+	rv.setup(le.report(p))
+	_check(_label_has(rv, "Saran Materi Berikutnya") and _label_has(rv, "Perkembangan Mingguan") and _label_has(rv, "rincian materi kelas 4"),
+		"layar laporan menampilkan saran, mingguan, dan rincian materi")
+	rv.queue_free()
+
+	# P7: mini-game bisa dimainkan dari ruang kelas & tercatat.
+	var pm := _prof(2)
+	var xp0 := int(pm.rpg.xp)
+	var lv := _lesson(d, pm, "matematika", 2, rng)
+	_check(lv.find_child("Mini", true, false) != null, "Ruang Matematika punya tombol permainan")
+	lv.start_mini()
+	_check(lv.mini != null and lv.find_child("MiniGame", true, false) != null, "Pintu Kode Angka terbuka di ruang kelas")
+	lv._on_mini_done(4, 5, {}, "kode")
+	_check(int(pm.academy["mini/kode"].plays) == 1 and int(pm.academy["mini/kode"].best) == 80 and int(pm.rpg.xp) == xp0 + 12,
+		"hasil permainan tercatat (main 1 kali, terbaik 80) + hadiah kecil")
+	_check(lv.find_child("MiniAgain", true, false) != null, "tombol Main lagi tersedia")
+	lv.queue_free()
+	var pa := _prof(2)
+	LearningEngine.minigame_finish(pa, "hewan", "IPAS", 3, 4, {"animals": ["kucing", "elang"]})
+	_check((pa.learning.animals as Array).has("elang"), "hewan yang dikenali di permainan masuk koleksi")
+	var room_mini := 0
+	for rid in ["matematika", "bahasa", "ipas_alam", "ipas_sosial"]:
+		var lr := _lesson(d, _prof(3), rid, 3, rng)
+		if lr.find_child("Mini", true, false) != null:
+			room_mini += 1
+		lr.queue_free()
+	_check(room_mini == 4, "keempat mini-game terpasang di ruang mapelnya (%d/4)" % room_mini)
+	await process_frame
+
+	# P8: Laboratorium Eksperimen IPA.
+	var lab := ExperimentEngine.new()
+	_check(lab.load_data() and lab.errors.is_empty() and lab.list.size() >= 8, "data eksperimen sah (%d percobaan) %s" % [lab.list.size(), str(lab.errors)])
+	for g in range(1, 7):
+		_check(lab.for_grade(_prof(g), g).size() >= 3, "kelas %d punya >= 3 percobaan" % g)
+	var broken: Dictionary = (lab.by_id["wujud"] as Dictionary).duplicate(true)
+	(broken.outcomes as Dictionary).erase("2,1")
+	_check(ExperimentEngine.validate(broken).contains("2,1"), "validasi menolak percobaan yang hasil kombinasinya tidak lengkap")
+	var all_ok := true
+	for e in lab.list:
+		var st: Dictionary = lab.start(str(e.id))
+		_check_quiet_ready(lab, st, e)
+		if not bool(st.ready):
+			all_ok = false
+	_check(all_ok, "setiap percobaan bisa diselesaikan (uji semua benda / susunan benar / kombinasi cukup)")
+	var su: Dictionary = lab.start("tata_surya")
+	var wrong: Dictionary = lab.place(su, "Bumi")
+	_check(not bool(wrong.ok) and (su.placed as Array).is_empty() and str(wrong.hint) != "", "susunan salah tidak dipasang, ada petunjuk ramah")
+	var ko: Dictionary = lab.start("tanaman")
+	lab.run(ko, [0, 0])
+	var rep2: Dictionary = lab.run(ko, [0, 0])
+	_check(not bool(rep2.new) and int(rep2.tried) == 1 and not bool(ko.ready), "percobaan kondisi yang sama tidak dihitung dua kali")
+	var pe := _prof(3)
+	_check(lab.finish(pe, ko, 2, 2).is_empty(), "percobaan belum selesai tidak bisa diklaim")
+	var t1: Dictionary = lab.start("terapung")
+	var tr: Dictionary = lab.test(t1, 0, 0)
+	_check(not bool(tr.ok) and int(tr.result) == 1 and str(tr.why).contains("tenggelam"), "tebakan salah tetap memberi hasil + alasan (batu tenggelam)")
+	# Alur penuh lewat ruang kelas: Laboratorium IPAS -> Eksperimen -> percobaan -> penjelasan -> evaluasi -> hasil.
+	var xp1 := int(pe.rpg.xp)
+	var ll := _lesson(d, pe, "ipas_alam", 3, rng)
+	_check(ll.find_child("Lab", true, false) != null, "Laboratorium IPAS punya tombol Eksperimen")
+	ll.show_lab()
+	_check(ll.find_child("Exp_terapung", true, false) != null, "daftar percobaan kelas 3 tampil")
+	ll.start_experiment("terapung")
+	var ev: Node = ll.expview
+	_check(str(ev.phase) == "masalah" and _label_has(ev, "Perahu mainan"), "1. masalah dari NPC")
+	ev.start()
+	for i in (lab.by_id["terapung"].items as Array).size():
+		ev.choose_item(i)
+		ev.guess(0)
+	_check(bool(ev.state.ready) and (ev.find_child("ToScience", true, false) as Button).visible, "2–5. semua benda diuji, hasil tampil")
+	ev.show_science()
+	_check(str(ev.phase) == "sains" and _label_has(ev, "massa jenis"), "6. penjelasan ilmiah")
+	ev.show_check()
+	_check(ev.qview != null and ll.current_question_view() == ev.qview, "7. evaluasi memakai tampilan soal (bisa dibacakan)")
+	ev._on_answer({"correct": true, "first_try": true})
+	ev._on_answer({"correct": true, "first_try": true})
+	_check(str(ll.phase) == "hasil_eksperimen" and bool(pe.academy["eksperimen/terapung"].done) and int(pe.rpg.xp) > xp1,
+		"hasil percobaan tercatat + hadiah")
+	ll.show_lab()
+	_check(_label_has(ll, "Sudah dicoba 1 kali"), "daftar percobaan menandai yang sudah dicoba")
+	ll.queue_free()
+	await process_frame
+
+
+func _check_quiet_ready(lab, st: Dictionary, e: Dictionary) -> void:
+	match str(e.kind):
+		"uji":
+			for i in (e.items as Array).size():
+				lab.test(st, i, 0)
+		"susun":
+			for n in e.items:
+				lab.place(st, str(n))
+		"kondisi":
+			for key in ExperimentEngine.combos(e):
+				lab.run(st, Array(str(key).split(",")).map(func(x): return int(x)))
 
 func _v3_quest_tests() -> void:
 	print("== 3.x Quest Engine (data misi Pulau 1)")

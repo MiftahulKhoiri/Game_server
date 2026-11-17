@@ -83,6 +83,81 @@ static func make(spec: String, topic: String, grade: int, rng: RandomNumberGener
 			var den := rng.randi_range(num + 1, 6)
 			var k := rng.randi_range(2, 5)
 			q = _mc("%d/%d = …/%d" % [num, den, den * k], num * k, rng, "Penyebut dikali %d, maka pembilang juga dikali %d: %d × %d = %d." % [k, k, num, k, num * k])
+		"story_add":
+			var x := rng.randi_range(a, b)
+			var y := rng.randi_range(a, b)
+			var who: String = NAMES[rng.randi_range(0, NAMES.size() - 1)]
+			var item: String = ITEMS[rng.randi_range(0, ITEMS.size() - 1)]
+			q = _mc("%s punya %s %s. Ia mendapat %s %s lagi. Berapa %s %s sekarang?" % [who, _n(x), item, _n(y), item, item, who], x + y, rng,
+				"Mendapat lagi berarti ditambah: %s + %s = %s." % [_n(x), _n(y), _n(x + y)], [absi(x - y), x + y - _carry(x, y)])
+			q["story"] = true
+		"story_sub":
+			var x := rng.randi_range(a, b)
+			var y := rng.randi_range(a, b)
+			if y == x:
+				x += 1
+			if y > x:
+				var t := x
+				x = y
+				y = t
+			var who: String = NAMES[rng.randi_range(0, NAMES.size() - 1)]
+			var item: String = ITEMS[rng.randi_range(0, ITEMS.size() - 1)]
+			q = _mc("%s punya %s %s. Ia memberikan %s %s kepada temannya. Berapa sisa %s %s?" % [who, _n(x), item, _n(y), item, item, who], x - y, rng,
+				"Memberikan berarti dikurangi: %s − %s = %s." % [_n(x), _n(y), _n(x - y)], [x + y, x - y + _borrow(x, y)])
+			q["story"] = true
+		"money":
+			# Uang kembalian. Tingkat 1: harga ribuan bulat; tingkat 2: harga kelipatan 500 dan beberapa barang.
+			var thing: Array = GOODS[rng.randi_range(0, GOODS.size() - 1)]
+			var n := 1 if a <= 1 else rng.randi_range(2, 4)
+			var price: int = int(thing[1]) if a <= 1 else int(thing[1]) + 500 * rng.randi_range(0, 1)
+			var total := price * n
+			var pay := 0
+			for note in [2000, 5000, 10000, 20000, 50000, 100000]:
+				if note > total:
+					pay = note
+					break
+			var text := "Harga %s Rp%s. %s membayar dengan uang Rp%s. Berapa kembaliannya?" % [str(thing[0]), _n(price),
+				NAMES[rng.randi_range(0, NAMES.size() - 1)], _n(pay)]
+			var ex := "Kembalian = uang yang dibayar − harga = Rp%s − Rp%s = Rp%s." % [_n(pay), _n(total), _n(pay - total)]
+			if n > 1:
+				text = "Harga satu %s Rp%s. %s membeli %d dan membayar Rp%s. Berapa kembaliannya?" % [str(thing[0]), _n(price),
+					NAMES[rng.randi_range(0, NAMES.size() - 1)], n, _n(pay)]
+				ex = "Harga semua = %d × Rp%s = Rp%s. Kembalian = Rp%s − Rp%s = Rp%s." % [n, _n(price), _n(total), _n(pay), _n(total), _n(pay - total)]
+			q = _mc(text, pay - total, rng, ex, [pay - price if n > 1 else pay + total, total, pay - total + 1000])
+			q.options = (q.options as Array).map(func(o): return "Rp" + str(o))
+			q["story"] = true
+		"clock":
+			var h := rng.randi_range(6, 15)
+			var dur := rng.randi_range(1, 4)
+			if a <= 1:
+				q = _mc("Sekarang pukul %s. Pukul berapa %d jam lagi?" % [_hour(h), dur], h + dur, rng,
+					"%d + %d = %d, jadi pukul %s." % [h, dur, h + dur, _hour(h + dur)], [h - dur, h + dur + 1])
+				q.options = (q.options as Array).map(func(o): return _hour(int(o)))
+			else:
+				q = _mc("%s belajar dari pukul %s sampai pukul %s. Berapa jam lamanya?" % [NAMES[rng.randi_range(0, NAMES.size() - 1)],
+					_hour(h), _hour(h + dur)], dur, rng, "Lama waktu = %d − %d = %d jam." % [h + dur, h, dur], [dur + 1, h + dur])
+				q.options = (q.options as Array).map(func(o): return str(o) + " jam")
+			q["story"] = true
+		"fpb", "kpk":
+			var pairs := [[4, 6], [6, 8], [6, 9], [8, 12], [9, 12], [10, 15], [12, 18], [12, 16], [15, 20], [6, 10], [4, 10], [8, 10]]
+			var pr: Array = pairs[rng.randi_range(0, pairs.size() - 1)]
+			var g := _gcd(int(pr[0]), int(pr[1]))
+			var l := int(pr[0]) * int(pr[1]) / g
+			if kind == "fpb":
+				q = _mc("FPB dari %d dan %d adalah …" % [pr[0], pr[1]], g, rng,
+					"FPB adalah faktor persekutuan terbesar: bilangan terbesar yang dapat membagi habis %d dan %d, yaitu %d." % [pr[0], pr[1], g], [l, 1])
+			else:
+				q = _mc("KPK dari %d dan %d adalah …" % [pr[0], pr[1]], l, rng,
+					"KPK adalah kelipatan persekutuan terkecil: bilangan terkecil yang merupakan kelipatan %d dan %d, yaitu %d." % [pr[0], pr[1], l],
+					[g, int(pr[0]) * int(pr[1]) if int(pr[0]) * int(pr[1]) != l else l * 2])
+			q["story"] = true
+		"mixed":
+			var x := rng.randi_range(2, 20)
+			var y := rng.randi_range(2, 9)
+			var z := rng.randi_range(2, 9)
+			q = _mc("%d + %d × %d = …" % [x, y, z], x + y * z, rng,
+				"Perkalian dikerjakan lebih dulu: %d × %d = %d, lalu %d + %d = %d." % [y, z, y * z, x, y * z, x + y * z], [(x + y) * z])
+			q["story"] = true
 		"conv":
 			q = _conv(str(p[1]) if p.size() > 1 else "m_cm", rng)
 		"pattern":
@@ -97,7 +172,8 @@ static func make(spec: String, topic: String, grade: int, rng: RandomNumberGener
 	q["grade"] = grade
 	q["generated"] = true
 	q["id"] = "gen-%s-%d-%s" % [topic, grade, str(q.q).md5_text().substr(0, 8)]
-	var diff := 3 if q.type == "logic" else (2 if q.type == "sort_numbers" else 1 + int(grade >= 4))
+	var diff := 3 if q.type == "logic" else (2 if q.type == "sort_numbers" or q.has("story") else 1 + int(grade >= 4))
+	q.erase("story")
 	q["difficulty"] = diff
 	q["points"] = 10 * diff
 	return q
@@ -190,13 +266,30 @@ static func _pattern(level: int, rng: RandomNumberGenerator) -> Dictionary:
 	return q
 
 
+const NAMES := ["Dina", "Budi", "Siti", "Rafi", "Wayan", "Meli"]
+const ITEMS := ["kelereng", "pensil", "stiker", "buku", "permen", "manik-manik"]
+const GOODS := [["pensil", 2000], ["buku tulis", 3000], ["penghapus", 1000], ["roti", 4000], ["susu kotak", 5000], ["penggaris", 3000]]
+
+
+static func _hour(h: int) -> String:
+	return "%02d.00" % (((h % 24) + 24) % 24)
+
+
+static func _gcd(x: int, y: int) -> int:
+	while y != 0:
+		var t := x % y
+		x = y
+		y = t
+	return x
+
+
 ## traps = pengecoh diagnostik (kesalahan umum: lupa menyimpan/meminjam, operasi tertukar). Dipakai lebih dulu bila
 ## sah (berbeda dari kunci, tidak negatif bila kunci tidak negatif); sisanya pengecoh acak di sekitar kunci.
 static func _mc(text: String, ans: int, rng: RandomNumberGenerator, explain: String, traps: Array = []) -> Dictionary:
 	var opts: Array = [ans]
 	for t in traps:
 		var w := int(t)
-		if opts.size() < 3 and w != ans and not opts.has(w) and (w >= 0 or ans < 0):
+		if opts.size() < 4 and w != ans and not opts.has(w) and (w >= 0 or ans < 0):
 			opts.append(w)
 	var spread := maxi(2, absi(ans) / 8)
 	var guard := 0

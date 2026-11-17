@@ -1,0 +1,510 @@
+{
+ "schema": 1,
+ "experiments": [
+  {
+   "id": "terapung",
+   "title": "Terapung atau Tenggelam?",
+   "grades": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "kind": "uji",
+   "visual": "tangki",
+   "problem": "Perahu mainan Dodi tenggelam di sungai! Dodi bingung: mengapa ada benda yang terapung dan ada yang tenggelam?",
+   "instruction": "Pilih satu benda, tebak dulu apa yang terjadi, lalu masukkan ke dalam bak air.",
+   "labels": [
+    "Terapung",
+    "Tenggelam"
+   ],
+   "items": [
+    {
+     "name": "batu kerikil",
+     "result": 1,
+     "why": "Batu lebih berat daripada air untuk ukuran yang sama, jadi tenggelam."
+    },
+    {
+     "name": "gabus",
+     "result": 0,
+     "why": "Gabus sangat ringan dan berisi banyak rongga udara, jadi terapung."
+    },
+    {
+     "name": "paku besi",
+     "result": 1,
+     "why": "Besi jauh lebih berat daripada air untuk ukuran yang sama. Paku kecil pun tenggelam."
+    },
+    {
+     "name": "ranting kayu kering",
+     "result": 0,
+     "why": "Kayu kering lebih ringan daripada air untuk ukuran yang sama, jadi terapung."
+    },
+    {
+     "name": "uang logam",
+     "result": 1,
+     "why": "Logam lebih berat daripada air untuk ukuran yang sama, jadi tenggelam."
+    },
+    {
+     "name": "bola plastik berisi udara",
+     "result": 0,
+     "why": "Bola berisi udara sangat ringan untuk ukurannya, jadi terapung."
+    }
+   ],
+   "science": "Benda terapung bila lebih ringan daripada air untuk ukuran yang sama (massa jenisnya lebih kecil daripada air). Jadi bukan besar atau kecilnya benda yang menentukan: paku kecil tenggelam, tetapi kapal besar terapung karena badannya berongga dan berisi udara.",
+   "check": [
+    {
+     "type": "tf",
+     "q": "Benda yang besar pasti tenggelam.",
+     "answer": false,
+     "explain": "Salah. Kapal besar bisa terapung, sedangkan paku kecil tenggelam.",
+     "id": "eks-terapung-1",
+     "grade": 1
+    },
+    {
+     "type": "mc",
+     "q": "Mengapa kapal besi yang besar bisa terapung?",
+     "options": [
+      "karena badannya berongga dan berisi udara",
+      "karena besi lebih ringan daripada air",
+      "karena air laut sangat dangkal",
+      "karena kapal tidak punya berat"
+     ],
+     "answer": 0,
+     "explain": "Rongga berisi udara membuat kapal secara keseluruhan lebih ringan daripada air untuk ukurannya.",
+     "id": "eks-terapung-2",
+     "grade": 1
+    }
+   ]
+  },
+  {
+   "id": "wujud",
+   "title": "Es, Air, dan Uap",
+   "grades": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "kind": "kondisi",
+   "need": 4,
+   "problem": "Es batu untuk minuman Bu Wati hilang dari gelas, padahal tidak ada yang mengambil. Ke mana perginya?",
+   "instruction": "Pilih bendanya dan pilih perlakuannya, lalu tekan Coba. Lakukan paling sedikit 4 percobaan berbeda.",
+   "vars": [
+    {
+     "name": "Benda",
+     "options": [
+      "es batu",
+      "air",
+      "uap air"
+     ]
+    },
+    {
+     "name": "Perlakuan",
+     "options": [
+      "dipanaskan",
+      "didinginkan"
+     ]
+    }
+   ],
+   "outcomes": {
+    "0,0": {
+     "result": "Es mencair menjadi air.",
+     "why": "Panas mengubah benda padat menjadi cair. Peristiwa ini disebut mencair."
+    },
+    "0,1": {
+     "result": "Es tetap padat.",
+     "why": "Es sudah dingin dan padat. Didinginkan lagi, wujudnya tidak berubah."
+    },
+    "1,0": {
+     "result": "Air berubah menjadi uap air.",
+     "why": "Air yang dipanaskan terus berubah menjadi gas. Peristiwa ini disebut menguap."
+    },
+    "1,1": {
+     "result": "Air membeku menjadi es.",
+     "why": "Air yang didinginkan di lemari pembeku berubah menjadi padat. Peristiwa ini disebut membeku."
+    },
+    "2,0": {
+     "result": "Uap air tetap berupa gas.",
+     "why": "Uap air sudah berwujud gas. Dipanaskan lagi, wujudnya tidak berubah."
+    },
+    "2,1": {
+     "result": "Uap air berubah menjadi titik-titik air.",
+     "why": "Gas yang didinginkan berubah menjadi cair. Peristiwa ini disebut mengembun."
+    }
+   },
+   "science": "Air punya tiga wujud: padat (es), cair (air), dan gas (uap air). Wujudnya berubah bila dipanaskan atau didinginkan: mencair, menguap, membeku, dan mengembun. Es Bu Wati tidak hilang; es itu mencair menjadi air karena udara di sekitarnya lebih hangat.",
+   "check": [
+    {
+     "type": "mc",
+     "q": "Perubahan wujud dari cair menjadi padat disebut …",
+     "options": [
+      "membeku",
+      "mencair",
+      "menguap",
+      "mengembun"
+     ],
+     "answer": 0,
+     "explain": "Contohnya air yang menjadi es di lemari pembeku.",
+     "id": "eks-wujud-1",
+     "grade": 1
+    },
+    {
+     "type": "tf",
+     "q": "Es yang dipanaskan akan membeku.",
+     "answer": false,
+     "explain": "Salah. Es yang dipanaskan mencair menjadi air.",
+     "id": "eks-wujud-2",
+     "grade": 1
+    }
+   ]
+  },
+  {
+   "id": "tanaman",
+   "title": "Apa yang Dibutuhkan Biji untuk Tumbuh?",
+   "grades": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "kind": "kondisi",
+   "need": 4,
+   "problem": "Pak Budi menanam biji kacang hijau di empat pot. Ia ingin tahu apa saja yang dibutuhkan biji supaya tumbuh dengan baik.",
+   "instruction": "Atur air dan cahaya untuk satu pot, lalu tekan Coba untuk melihat keadaannya setelah satu minggu. Coba keempat pot.",
+   "vars": [
+    {
+     "name": "Air",
+     "options": [
+      "disiram",
+      "tidak disiram"
+     ]
+    },
+    {
+     "name": "Cahaya",
+     "options": [
+      "kena cahaya matahari",
+      "di tempat gelap"
+     ]
+    }
+   ],
+   "outcomes": {
+    "0,0": {
+     "result": "Biji tumbuh menjadi tanaman yang hijau dan kuat.",
+     "why": "Air membuat biji mulai tumbuh, dan cahaya membantu daun membuat makanan."
+    },
+    "0,1": {
+     "result": "Biji tumbuh, tetapi batangnya panjang, kurus, dan pucat kekuningan.",
+     "why": "Biji cukup air untuk tumbuh, tetapi tanpa cahaya daunnya tidak bisa membuat makanan dan tidak menjadi hijau."
+    },
+    "1,0": {
+     "result": "Biji tidak tumbuh.",
+     "why": "Tanpa air, biji tidak bisa mulai tumbuh walaupun ada cahaya."
+    },
+    "1,1": {
+     "result": "Biji tidak tumbuh.",
+     "why": "Tanpa air, biji tidak bisa mulai tumbuh."
+    }
+   },
+   "science": "Biji membutuhkan air untuk mulai tumbuh (berkecambah). Setelah tumbuh, tanaman membutuhkan cahaya supaya daunnya hijau dan dapat membuat makanan sendiri. Tanaman yang tumbuh di tempat gelap menjadi panjang, kurus, dan pucat.",
+   "check": [
+    {
+     "type": "mc",
+     "q": "Apa yang dibutuhkan biji agar mulai tumbuh?",
+     "options": [
+      "air",
+      "pasir kering",
+      "kegelapan",
+      "angin kencang"
+     ],
+     "answer": 0,
+     "explain": "Pot yang tidak disiram tidak tumbuh, walaupun terkena cahaya.",
+     "id": "eks-tanaman-1",
+     "grade": 1
+    },
+    {
+     "type": "tf",
+     "q": "Tanaman yang tumbuh di tempat gelap menjadi hijau dan kuat.",
+     "answer": false,
+     "explain": "Salah. Tanpa cahaya, tanaman menjadi pucat, panjang, dan kurus.",
+     "id": "eks-tanaman-2",
+     "grade": 1
+    }
+   ]
+  },
+  {
+   "id": "rantai_makanan",
+   "title": "Siapa Makan Siapa?",
+   "grades": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "kind": "susun",
+   "problem": "Di sawah Pak Budi ada padi, tikus, ular, dan elang. Bagaimana mereka saling berhubungan?",
+   "instruction": "Susun rantai makanan: mulai dari yang dimakan sampai pemangsa terakhir.",
+   "order_label": "Dari yang dimakan ke yang memakan",
+   "items": [
+    "padi",
+    "tikus",
+    "ular",
+    "elang"
+   ],
+   "why": "Padi dimakan tikus, tikus dimakan ular, dan ular dimakan elang.",
+   "science": "Rantai makanan menunjukkan perpindahan energi dari satu makhluk hidup ke makhluk hidup lain. Rantai selalu dimulai dari tumbuhan hijau (produsen) yang membuat makanan sendiri dengan bantuan cahaya Matahari. Hewan yang memakannya disebut konsumen.",
+   "check": [
+    {
+     "type": "mc",
+     "q": "Rantai makanan selalu dimulai dari …",
+     "options": [
+      "tumbuhan hijau (produsen)",
+      "hewan pemakan daging",
+      "hewan paling besar",
+      "burung elang"
+     ],
+     "answer": 0,
+     "explain": "Hanya tumbuhan hijau yang membuat makanan sendiri.",
+     "id": "eks-rantai_makanan-1",
+     "grade": 3
+    },
+    {
+     "type": "tf",
+     "q": "Pada rantai padi → tikus → ular, ular adalah produsen.",
+     "answer": false,
+     "explain": "Salah. Produsennya padi; ular adalah konsumen.",
+     "id": "eks-rantai_makanan-2",
+     "grade": 3
+    }
+   ]
+  },
+  {
+   "id": "energi",
+   "title": "Sumber Energi untuk Desa",
+   "grades": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "kind": "uji",
+   "problem": "Lampu-lampu desa membutuhkan listrik. Pak Lurah ingin memakai sumber energi yang tidak akan habis.",
+   "instruction": "Pilih satu sumber energi dan tebak: terbarukan (selalu tersedia lagi) atau tidak terbarukan (bisa habis)?",
+   "labels": [
+    "Terbarukan",
+    "Tidak terbarukan"
+   ],
+   "items": [
+    {
+     "name": "cahaya Matahari",
+     "result": 0,
+     "why": "Matahari bersinar setiap hari. Panel surya mengubah cahayanya menjadi listrik."
+    },
+    {
+     "name": "batu bara",
+     "result": 1,
+     "why": "Batu bara terbentuk selama jutaan tahun. Bila terus digali, lama-lama habis."
+    },
+    {
+     "name": "angin",
+     "result": 0,
+     "why": "Angin selalu bertiup lagi. Kincir angin mengubah geraknya menjadi listrik."
+    },
+    {
+     "name": "minyak bumi",
+     "result": 1,
+     "why": "Minyak bumi terbentuk selama jutaan tahun dan jumlahnya terbatas."
+    },
+    {
+     "name": "air sungai yang mengalir",
+     "result": 0,
+     "why": "Air terus mengalir karena siklus air. Aliran air dapat memutar turbin pembangkit listrik."
+    },
+    {
+     "name": "panas bumi",
+     "result": 0,
+     "why": "Panas dari dalam Bumi tersedia terus-menerus. Indonesia punya banyak sumber panas bumi."
+    }
+   ],
+   "science": "Energi terbarukan berasal dari sumber yang selalu tersedia lagi di alam: Matahari, angin, air, dan panas bumi. Batu bara, minyak bumi, dan gas alam tidak terbarukan karena terbentuk sangat lama dan bisa habis. Menghemat listrik membantu menjaga sumber energi.",
+   "check": [
+    {
+     "type": "tf",
+     "q": "Batu bara termasuk sumber energi terbarukan.",
+     "answer": false,
+     "explain": "Salah. Batu bara terbentuk jutaan tahun dan bisa habis.",
+     "id": "eks-energi-1",
+     "grade": 3
+    },
+    {
+     "type": "mc",
+     "q": "Manakah yang termasuk sumber energi terbarukan?",
+     "options": [
+      "angin",
+      "minyak bumi",
+      "batu bara",
+      "gas alam"
+     ],
+     "answer": 0,
+     "explain": "Angin selalu tersedia lagi di alam.",
+     "id": "eks-energi-2",
+     "grade": 3
+    }
+   ]
+  },
+  {
+   "id": "penyaringan",
+   "title": "Menjernihkan Air Keruh",
+   "grades": [
+    4,
+    5,
+    6
+   ],
+   "kind": "susun",
+   "problem": "Setelah hujan deras, air sungai desa menjadi keruh. Warga butuh air yang lebih jernih untuk mencuci.",
+   "instruction": "Susun bahan penyaring di dalam botol dari lapisan paling ATAS sampai paling BAWAH.",
+   "order_label": "Dari lapisan atas ke lapisan bawah",
+   "items": [
+    "kerikil",
+    "pasir kasar",
+    "pasir halus",
+    "arang",
+    "kapas"
+   ],
+   "why": "Bahan yang kasar di atas menahan kotoran besar; semakin ke bawah bahannya semakin halus. Arang menyerap bau dan warna, dan kapas menahan butiran yang paling halus.",
+   "science": "Saringan bertingkat menahan kotoran dari yang besar sampai yang halus, sehingga air menjadi lebih jernih. Tetapi air jernih belum tentu aman diminum: kuman tidak tersaring. Air harus dimasak sampai mendidih sebelum diminum.",
+   "check": [
+    {
+     "type": "tf",
+     "q": "Air hasil saringan sederhana ini langsung aman diminum.",
+     "answer": false,
+     "explain": "Salah. Kuman belum hilang; air harus dimasak sampai mendidih.",
+     "id": "eks-penyaringan-1",
+     "grade": 4
+    },
+    {
+     "type": "mc",
+     "q": "Apa tugas arang pada saringan air?",
+     "options": [
+      "menyerap bau dan warna",
+      "menahan batu besar",
+      "membuat air menjadi dingin",
+      "menambah rasa manis"
+     ],
+     "answer": 0,
+     "explain": "Arang punya banyak pori kecil yang menyerap bau dan warna.",
+     "id": "eks-penyaringan-2",
+     "grade": 4
+    }
+   ]
+  },
+  {
+   "id": "ekosistem",
+   "title": "Keseimbangan di Sawah",
+   "grades": [
+    5,
+    6
+   ],
+   "kind": "kondisi",
+   "need": 3,
+   "problem": "Di sawah hidup padi, tikus, ular, dan elang. Apa yang terjadi bila salah satunya hilang?",
+   "instruction": "Pilih satu perubahan, lalu tekan Coba untuk melihat keadaan sawah beberapa bulan kemudian. Coba ketiganya.",
+   "vars": [
+    {
+     "name": "Perubahan",
+     "options": [
+      "tidak ada perubahan",
+      "semua ular ditangkap",
+      "padi dan rumput habis"
+     ]
+    }
+   ],
+   "outcomes": {
+    "0": {
+     "result": "Jumlah padi, tikus, ular, dan elang tetap seimbang.",
+     "why": "Setiap makhluk hidup mendapat cukup makanan, dan jumlah mangsa dijaga oleh pemangsanya."
+    },
+    "1": {
+     "result": "Tikus bertambah sangat banyak dan memakan habis padi.",
+     "why": "Tanpa ular, tidak ada yang cukup banyak memangsa tikus, sehingga tikus berkembang biak dengan cepat."
+    },
+    "2": {
+     "result": "Tikus kelaparan dan berkurang; ular dan elang pun ikut berkurang.",
+     "why": "Tanpa tumbuhan, tikus kehilangan makanan. Pemangsa tikus lalu kehilangan mangsanya."
+    }
+   },
+   "science": "Dalam ekosistem, makhluk hidup saling bergantung. Dalam model sawah sederhana ini, hilangnya satu jenis makhluk hidup mengganggu yang lain. Karena itu kita tidak boleh memburu hewan liar sembarangan atau merusak tumbuhan.",
+   "check": [
+    {
+     "type": "mc",
+     "q": "Jika semua pemangsa tikus hilang, jumlah tikus akan …",
+     "options": [
+      "bertambah banyak",
+      "tetap sama",
+      "langsung habis",
+      "berubah menjadi ular"
+     ],
+     "answer": 0,
+     "explain": "Tidak ada lagi yang mengendalikan jumlah tikus.",
+     "id": "eks-ekosistem-1",
+     "grade": 5
+    },
+    {
+     "type": "tf",
+     "q": "Makhluk hidup dalam satu ekosistem saling bergantung.",
+     "answer": true,
+     "explain": "Benar. Perubahan pada satu jenis memengaruhi jenis lainnya.",
+     "id": "eks-ekosistem-2",
+     "grade": 5
+    }
+   ]
+  },
+  {
+   "id": "tata_surya",
+   "title": "Urutan Planet",
+   "grades": [
+    5,
+    6
+   ],
+   "kind": "susun",
+   "problem": "Peta langit di observatorium berantakan! Bantu Profesor Kiko menyusun kembali delapan planet.",
+   "instruction": "Susun planet dari yang paling dekat dengan Matahari sampai yang paling jauh.",
+   "order_label": "Dari yang paling dekat dengan Matahari",
+   "items": [
+    "Merkurius",
+    "Venus",
+    "Bumi",
+    "Mars",
+    "Yupiter",
+    "Saturnus",
+    "Uranus",
+    "Neptunus"
+   ],
+   "why": "Urutannya: Merkurius, Venus, Bumi, Mars, Yupiter, Saturnus, Uranus, Neptunus.",
+   "science": "Tata surya kita memiliki delapan planet yang mengelilingi Matahari. Empat planet terdekat (Merkurius, Venus, Bumi, Mars) berbatu; empat planet berikutnya (Yupiter, Saturnus, Uranus, Neptunus) jauh lebih besar. Bumi adalah planet ketiga.",
+   "check": [
+    {
+     "type": "mc",
+     "q": "Planet ketiga dari Matahari adalah …",
+     "options": [
+      "Bumi",
+      "Mars",
+      "Venus",
+      "Yupiter"
+     ],
+     "answer": 0,
+     "explain": "Urutannya: Merkurius, Venus, Bumi.",
+     "id": "eks-tata_surya-1",
+     "grade": 5
+    },
+    {
+     "type": "tf",
+     "q": "Neptunus adalah planet yang paling jauh dari Matahari.",
+     "answer": true,
+     "explain": "Benar. Neptunus adalah planet kedelapan.",
+     "id": "eks-tata_surya-2",
+     "grade": 5
+    }
+   ]
+  }
+ ]
+}

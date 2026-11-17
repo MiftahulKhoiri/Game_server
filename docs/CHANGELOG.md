@@ -2,6 +2,34 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd 5.2.0 — Prioritas 4–8 + perapian (17 November 2026)
+
+Berisi sistem adaptif (Prioritas 4, di bawah) dan:
+
+- **Soal cerita matematika** (`sd_gen.gd`, Prioritas 5): bentuk baru `story_add`, `story_sub` (cerita mendapat/memberikan
+  benda), `money` (uang kembalian, satu atau beberapa barang), `clock` (pukul berapa / berapa lama), `fpb`, `kpk`,
+  `mixed` (operasi campuran: kali dulu). Kesulitan 2, pengecoh diagnostik (operasi tertukar, lupa kali dulu, harga satuan
+  sebagai kembalian). Terpasang di 16 spesifikasi bank (penjumlahan/pengurangan kelas 1–3, uang kelas 5–6, jam kelas 2–3,
+  FPB/KPK kelas 5–6, operasi campuran kelas 5–6).
+- **Laporan belajar** (Prioritas 6): tabel SEMUA materi per mata pelajaran untuk kelas yang paling banyak dikerjakan
+  (status, jumlah soal, persen benar bila >= 5 soal), **saran materi berikutnya** (maks 3, yang perlu dilatih dulu, tersebar
+  ke mapel berbeda, dengan alasan), **perkembangan mingguan** (4 minggu dari catatan harian), riwayat 12 entri.
+- **Mini-game tersambung** (Prioritas 7): keempat permainan yang sebelumnya tidak bisa dimainkan kini ada di ruang kelasnya
+  (Pintu Kode Angka — Matematika, Huruf yang Hilang — Bahasa, Kelompokkan Hewan — Lab IPAS, Pasangan Nusantara — Balai
+  Sosial). Hasil tercatat (`academy["mini/…"]`: main, nilai terbaik) + hadiah kecil; hewan yang dikenali masuk koleksi.
+- **Laboratorium Eksperimen IPA** (Prioritas 8): 8 percobaan (`data/experiments.json`, dibuat
+  `tools/gamepack/make_sd_experiments.py` dengan validasi) — terapung/tenggelam, es-air-uap, kebutuhan biji tumbuh, rantai
+  makanan, sumber energi, penyaringan air, keseimbangan ekosistem sawah, urutan planet; >= 3 percobaan per kelas.
+  Alur sesuai rancangan: masalah dari NPC -> instruksi (bisa dibacakan) -> pilih alat/benda -> lakukan (tebak & uji,
+  susun, atau atur variabel) -> hasil + alasan -> penjelasan ilmiah -> 2 pertanyaan evaluasi. Tebakan salah tidak dihukum.
+  Penyederhanaan disebut terus terang; air saringan diingatkan tetap harus dimasak. Mesin: `experiment_engine.gd`,
+  tampilan: `ui/experiment_view.gd` (bak air beranimasi untuk terapung/tenggelam).
+- **Perapian** (Prioritas 10): `w3d_missions.gd` (tidak dirujuk di mana pun) dihapus. Berkas w3d 2.x lain tetap karena
+  masih dimuat `w3d_world.gd`; `data/course.json` tetap karena ditulis `make_courses.py` yang juga dipakai SMP.
+- Uji: `sd_test.gd` 887 pemeriksaan (+35): 660 soal cerita dihitung ulang mandiri, laporan, mini-game lewat ruang kelas,
+  setiap percobaan bisa diselesaikan, alur laboratorium penuh lewat tampilan.
+- Belum: pengukuran FPS/RAM di HP (Prioritas 9) butuh perangkat Android.
+
 ## Sistem pembelajaran adaptif SD — Prioritas 4 (17 November 2026)
 
 Belum diterbitkan (paket tetap 5.1.0). Progres lama tetap terbaca; field adaptif dilengkapi otomatis dari riwayat lama.

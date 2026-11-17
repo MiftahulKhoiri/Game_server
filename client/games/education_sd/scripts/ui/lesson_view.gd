@@ -11,6 +11,9 @@ const Portrait := preload("res://games/education_sd/scripts/ui/speaker_portrait.
 const UI := preload("res://games/education_sd/scripts/sd_ui.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const Learning := preload("res://games/education_sd/scripts/engine/learning_engine.gd")
+const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
+const ExperimentEngine := preload("res://games/education_sd/scripts/engine/experiment_engine.gd")
+const ExperimentView := preload("res://games/education_sd/scripts/ui/experiment_view.gd")
 
 signal closed
 signal changed  # progres berubah: simpan
@@ -29,6 +32,9 @@ var topic_id := ""
 var session: Dictionary = {}
 var result: Dictionary = {}
 var qview: Node
+var lab  # ExperimentEngine (hanya di Laboratorium IPAS)
+var mini: Node
+var expview: Node
 var _panel: PanelContainer
 var _box: VBoxContainer
 
@@ -151,6 +157,7 @@ func show_class() -> void:
 		eh.add_child(eb)
 		er.add_child(eh)
 		_box.add_child(er)
+	_activity_rows()
 	for t in ts:
 		var row := UI.panel(Color.WHITE, 20)
 		var h := UI.hbox(12)
@@ -166,6 +173,138 @@ func show_class() -> void:
 		h.add_child(b)
 		row.add_child(h)
 		_box.add_child(row)
+
+
+# --- Kegiatan interaktif: mini-game & Laboratorium Eksperimen ----------------------------------------------------
+
+func _mini_info() -> Dictionary:
+	for m in SdMini.LIST:
+		if str(m.region) == str(room.get("region", "")):
+			return m
+	return {}
+
+
+func _activity_row(title: String, text: String, btn: String, btn_name: String, cb: Callable, col: Color) -> void:
+	var pn := UI.panel(Color("eef7ff"), 20)
+	var h := UI.hbox(12)
+	var v := UI.vbox(2)
+	UI.expand(v)
+	v.add_child(UI.label(title, 28, col, false))
+	v.add_child(UI.label(text, 20, UI.SOFT))
+	h.add_child(v)
+	var b := UI.button(btn, cb, col, 24, 66)
+	b.name = btn_name
+	h.add_child(b)
+	pn.add_child(h)
+	_box.add_child(pn)
+
+
+func _activity_rows() -> void:
+	if str(room.id) == "ipas_alam":
+		if lab == null:
+			lab = ExperimentEngine.new()
+			lab.load_data()
+		var exps: Array = lab.for_grade(p, grade)
+		if not exps.is_empty():
+			var n_done := exps.filter(func(e): return bool(e.done)).size()
+			_activity_row("Laboratorium Eksperimen", "Lakukan percobaan sendiri: tebak, coba, lalu lihat hasilnya. Selesai %d dari %d." % [n_done, exps.size()],
+				"Eksperimen", "Lab", show_lab, Color("2a8f86"))
+	var m := _mini_info()
+	if not m.is_empty():
+		var r: Dictionary = (p.academy as Dictionary).get("mini/" + str(m.id), {})
+		var txt := str(m.goal)
+		if not r.is_empty():
+			txt += " Nilai terbaik %d (%d kali main)." % [int(r.get("best", 0)), int(r.get("plays", 0))]
+		_activity_row("Permainan: " + str(m.name), txt, "Main", "Mini", start_mini, Color("7a5bd0"))
+
+
+func start_mini() -> void:
+	var m := _mini_info()
+	if m.is_empty():
+		return
+	_sfx("klik")
+	_clear("permainan")
+	_head(str(m.name), "Kelas", show_class)
+	_box.add_child(UI.label(str(m.goal), 22, UI.SOFT))
+	mini = SdMini.create(str(m.id))
+	mini.name = "MiniGame"
+	_box.add_child(mini)
+	mini.setup(grade, learning.data.doc, rng, audio)
+	mini.done.connect(_on_mini_done.bind(str(m.id)))
+
+
+func _on_mini_done(score: int, total: int, extra: Dictionary, id: String) -> void:
+	var res := Learning.minigame_finish(p, id, str(room.subject), score, total, extra)
+	changed.emit()
+	_sfx("bintang")
+	var pn := UI.panel(Color("fff4d6"), 20)
+	pn.name = "MiniResult"
+	var v := UI.vbox(8)
+	var msg := "Kamu menjawab %d dari %d dengan benar. +%d XP · +%d koin." % [score, total, int(res.xp), int(res.coins)]
+	if bool(res.new_best):
+		msg += " Nilai terbaik baru!"
+	v.add_child(UI.label(msg, 24, UI.INK))
+	var row := UI.hbox(12)
+	for b in [["Main lagi", start_mini, UI.GOOD, "MiniAgain"], ["Kembali ke kelas", show_class, Color("cfc8dc"), "ToClass"]]:
+		var btn := UI.button(str(b[0]), b[1], b[2], 24, 70)
+		btn.name = str(b[3])
+		UI.expand(btn)
+		row.add_child(btn)
+	v.add_child(row)
+	pn.add_child(v)
+	_box.add_child(pn)
+
+
+func show_lab() -> void:
+	_sfx("klik")
+	_clear("lab")
+	_head("Laboratorium Eksperimen", "Kelas", show_class)
+	var greet := "Di laboratorium, kita mencari jawaban dengan mencoba sendiri. Pilih satu percobaan!"
+	_box.add_child(_teacher_row(greet))
+	Voice.say_auto(greet)
+	for e in lab.for_grade(p, grade):
+		var row := UI.panel(Color.WHITE, 20)
+		var h := UI.hbox(12)
+		var v := UI.vbox(4)
+		UI.expand(v)
+		v.add_child(UI.label(str(e.title), 28, UI.INK, false))
+		v.add_child(UI.label("Sudah dicoba %d kali" % int(e.plays) if bool(e.done) else "Belum dicoba", 22, UI.GOOD if bool(e.done) else UI.SOFT, false))
+		h.add_child(v)
+		var b := UI.button("Ulangi" if bool(e.done) else "Mulai", start_experiment.bind(str(e.id)), Color("2a8f86"), 24, 66)
+		b.name = "Exp_" + str(e.id)
+		h.add_child(b)
+		row.add_child(h)
+		_box.add_child(row)
+
+
+func start_experiment(id: String) -> void:
+	_sfx("klik")
+	_clear("eksperimen")
+	_head(str(lab.by_id[id].title), "Laboratorium", show_lab)
+	expview = ExperimentView.new()
+	expview.name = "Experiment"
+	_box.add_child(expview)
+	expview.setup(lab, id, rng, audio, type_names, str(room.teacher))
+	expview.done.connect(_on_experiment_done)
+
+
+func _on_experiment_done(r: Dictionary) -> void:
+	var res: Dictionary = lab.finish(p, expview.state, int(r.check_ok), int(r.check_total))
+	changed.emit()
+	_sfx("bintang")
+	_clear("hasil_eksperimen")
+	_head("Percobaan selesai!", "Laboratorium", show_lab)
+	_box.add_child(UI.label(str(res.message), 28, UI.INK))
+	_box.add_child(UI.label("Pertanyaan benar: %d dari %d   ·   +%d XP   ·   +%d koin" % [int(res.check_ok), int(res.check_total), int(res.xp),
+		int(res.coins)], 24, UI.SOFT))
+	var row := UI.hbox(12)
+	for b in [["Percobaan lain", show_lab, UI.GOOD, "ToLab"], ["Kembali ke kelas", show_class, Color("cfc8dc"), "ToClass"]]:
+		var btn := UI.button(str(b[0]), b[1], b[2], 24, 70)
+		btn.name = str(b[3])
+		UI.expand(btn)
+		row.add_child(btn)
+	_box.add_child(row)
+	Voice.say_auto(str(res.message))
 
 
 # --- Materi singkat ------------------------------------------------------------------------------------------
@@ -222,6 +361,8 @@ func _show_question() -> void:
 
 
 func current_question_view() -> Node:
+	if phase == "eksperimen" and expview != null and is_instance_valid(expview):
+		return expview.qview
 	return qview
 
 
