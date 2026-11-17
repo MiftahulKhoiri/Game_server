@@ -2,6 +2,22 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket adventure 1.1.0 — tanah & rumput lebih hidup (17 November 2026)
+
+Lewat unduhan (tombol UPDATE di launcher), tanpa APK baru.
+
+- `games/adventure/scripts/ground_fx.gd` (baru), dipakai Desa Awal, Perbatasan, Hutan Binatang. Hanya tampilan:
+  petak, jalan, tabrakan, data server tidak berubah (tanah tetap datar).
+- Tanah: satu shader untuk petak rumput/jalan/pasir. Jenis petak dari tekstur kecil (1 piksel = 1 petak) + derau →
+  tepi jalan tanah berkelok alami dengan pinggiran rumput lebih gelap, rumput dua nada berbercak + bercak kering,
+  lantai hutan lebih gelap di bawah pohon, pasir tepi air menyatu, bintik kelopak bunga (tanpa geometri).
+- Rumput: rumpun helai gaya Petualangan Ilmu SD (terang ke ujung, bergoyang, ikut angin hujan), mengecil lalu hilang
+  di kejauhan; rumput yang bisa dipukul tetap (bentuk baru). Rumput hias tambahan per petak: Hemat 0,8 / Normal 1,8 /
+  Tinggi 2,8, jarak 18 / 26 / 36 m, sel 12 m dengan batas jarak gambar. Bunga berkelompok, 6 warna.
+- Diukur di Pi (llvmpipe, 3 titik × 3 profil): panggilan gambar +2–5 %, segitiga +0–10 % dibanding sebelumnya.
+- Alat: `tests/shot.gd` menerima `SHOT_HOUR` (jam dunia tetap) dan `SHOT_STATS` (cetak angka render).
+- Uji: `client-test` 1162 ok.
+
 ## v0.85.0 — The Last Dragon jadi game unduhan (17 November 2026)
 
 **Butuh APK baru sekali.** Setelah itu pembaruan The Last Dragon cukup diunduh dari launcher (tombol UPDATE),

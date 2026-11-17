@@ -230,6 +230,8 @@ func _ready() -> void:
 		return
 	if OS.get_environment("SHOT_QUALITY") != "":
 		Session.quality = int(OS.get_environment("SHOT_QUALITY"))
+	if OS.get_environment("SHOT_HOUR") != "":  # jam dunia tetap (mis. 11 = siang) supaya tangkapan bisa dibandingkan
+		load("res://games/adventure/scripts/atmosphere.gd").hour_override = float(OS.get_environment("SHOT_HOUR"))
 	var map_id := OS.get_environment("SHOT_MAP")
 	var x := float(OS.get_environment("SHOT_X")) if OS.get_environment("SHOT_X") != "" else 5.5
 	var z := float(OS.get_environment("SHOT_Z")) if OS.get_environment("SHOT_Z") != "" else 7.5
@@ -287,6 +289,9 @@ func _ready() -> void:
 		if OS.get_environment("SHOT_MENU") == "pengaturan":
 			scene._menu._show_page(false)
 	await get_tree().create_timer(0.8).timeout
+	if OS.get_environment("SHOT_STATS") != "":  # angka render bingkai ini (bandingkan sebelum/sesudah)
+		print("STATS draw=%d prim=%d nodes=%d" % [int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))])
 	var img := get_viewport().get_texture().get_image()
 	img.resize(960, int(960.0 * img.get_height() / img.get_width()), Image.INTERPOLATE_BILINEAR)
 	img.save_png(OS.get_environment("SHOT_OUT"))

@@ -14,6 +14,7 @@ const TREE_H := 2.0
 const Interior = preload("res://games/adventure/scripts/interior.gd")
 const MeshMerge = preload("res://games/adventure/scripts/mesh_merge.gd")
 const Plang = preload("res://games/adventure/scripts/plang.gd")
+const GroundFx = preload("res://games/adventure/scripts/ground_fx.gd")
 const ALAM_DIR := "res://games/adventure/assets/models/alam/"
 
 ## Model bangunan KayKit (CC0, atap merah-cokelat) untuk rumah-rumah di desa. Paket ini tidak punya
@@ -270,6 +271,7 @@ static func set_wind(v: float) -> void:
 	for m: ShaderMaterial in [_tree_mat, _grass_mat]:
 		if m != null:
 			m.set_shader_parameter("angin", v)
+	GroundFx.set_wind(v)
 
 
 static func wind() -> float:
@@ -516,6 +518,10 @@ static func build(map_id: String) -> Node3D:
 	var cave := map_id == Maps.GUA or map_id == Maps.GUA_GOBLIN or map_id == Maps.TAKHTA
 	var istana := map_id == Maps.ISTANA or map_id == Maps.TAKHTA
 	var mountain := map_id == Maps.GUNUNG or cave or istana
+	# Desa, Perbatasan, Hutan: tanah & rumput bergaya baru (ground_fx.gd). Hanya tampilan, petak tetap sama.
+	var lush := GroundFx.applies(map_id)
+	var lush_x: Array[Transform3D] = []
+	var lush_sand: Dictionary = {}
 
 	# Alas luas di bawah peta, supaya tidak ada ruang kosong di tepi layar.
 	var floor_mesh := PlaneMesh.new()
@@ -589,12 +595,18 @@ static func build(map_id: String) -> Node3D:
 				if tepi:  # tepi pasir di pinggir sungai/danau (roadmap no. 96)
 					gc = SAND.lerp(gc, 0.25 * _jitter(x, z, 90))
 					n_pasir += 1
-				ground_x.append(_xf(c))
+					lush_sand[Vector2i(x, z)] = true
+				var alami := lush and GroundFx.is_natural(t)
+				if alami:
+					lush_x.append(_xf(c))
+				else:
+					ground_x.append(_xf(c))
 				if t == "O":  # lantai istana: ubin berselang-seling
 					gc = gc.darkened(0.08) if (x + z) % 2 == 0 else gc.lightened(0.03)
 				if gob and t == "=":  # jalan utama gua: tanah terinjak, sedikit lebih terang dari lantai batu
 					gc = Color("857258").lightened(0.06 * (j - 0.5))
-				ground_c.append(gc.lightened(0.025 * (j - 0.5) * 2.0) if t == "." or t == "f" else gc)
+				if not alami:
+					ground_c.append(gc.lightened(0.025 * (j - 0.5) * 2.0) if t == "." or t == "f" else gc)
 				if tepi and t == "." and _jitter(x, z, 91) < 0.45:  # ilalang di tepi air
 					var oi := Vector3(_jitter(x, z, 92) - 0.5, 0.0, _jitter(x, z, 93) - 0.5) * 0.6
 					reed_x.append(_xf(c + oi, Vector3.ONE * (0.8 + 0.5 * _jitter(x, z, 94)), _jitter(x, z, 95) * TAU))
@@ -736,6 +748,8 @@ static func build(map_id: String) -> Node3D:
 	var quad := PlaneMesh.new()
 	quad.size = Vector2(1.0, 1.0)
 	_multi(root, quad, mat(Color.WHITE, true), ground_x, ground_c, false)
+	if lush:
+		_multi(root, quad, GroundFx.ground_mat(rows, w, h, lush_sand, map_id == Maps.HUTAN), lush_x, [], false)
 	var water := PlaneMesh.new()
 	water.size = Vector2(1.0, 1.0)
 	_multi(root, water, _cave_water_material() if cave else _water_material(), water_x, [], false)
@@ -756,7 +770,13 @@ static func build(map_id: String) -> Node3D:
 	for id: String in static_by:
 		var bk := "batu" if (id in ROCKS or id in MOUNTAINS) else ""
 		_multi(root, _dekor_mesh(id), null, static_by[id], [], true, breakables, bk, id)
-	_multi(root, _tuft_mesh(), _grass_material(), tufts, [], false, breakables, "rumput")
+	if lush:
+		_multi(root, GroundFx.tuft_mesh(), GroundFx.grass_mat(), tufts, [], false, breakables, "rumput")
+		var hias := GroundFx.plant(root, rows, func(x: int, z: int) -> bool:
+			return Vector2i(x, z) == Maps.SPAWN or Maps.npc_at(map_id, x, z) != "")
+		root.set_meta("rumput_hias", hias)
+	else:
+		_multi(root, _tuft_mesh(), _grass_material(), tufts, [], false, breakables, "rumput")
 	root.set_meta("breakables", breakables)
 	_multi(root, _box(Vector3(1, 1, 1)), mat(Color("8d8d95")), stone_x)
 	_multi(root, _box(Vector3(0.8, 0.07, 1.0)), mat(Color("9a6b3c")), plank_x, [], false)

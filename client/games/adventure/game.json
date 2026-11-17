@@ -3,7 +3,7 @@
 	"name": "The Last Dragon",
 	"description": "Game petualangan RPG 3D: pahlawan, monster, desa, misi, dan bos. Progres tersimpan di server Game_server (butuh akun dan koneksi). Pembaruan cukup diunduh dari launcher, tanpa memasang APK baru.",
 	"category": "Petualangan",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"entry_scene": "res://games/adventure/scenes/login.tscn",
 	"min_launcher_version": "0.85.0",
 	"icon": "res://games/adventure/assets/icon/last_dragon_512.png",
