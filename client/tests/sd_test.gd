@@ -205,9 +205,23 @@ func _bank_audit_tests() -> void:
 	for t in d.topics.values():
 		n_tg += (t.get("grades", []) as Array).size()
 	_check((res.coverage as Array).size() == n_tg, "cakupan dihitung untuk setiap topik×kelas (%d)" % n_tg)
-	# Garis dasar peringatan dicetak (bukan syarat lulus): daftar kerja penyempurnaan materi.
 	for line in BankAudit.summary_text(res).split("\n"):
 		print("    " + line)
+	# Prioritas 2: peringatan pedagogis ini sudah dibereskan di bank, jadi kini WAJIB 0 agar tidak muncul lagi.
+	# (Peringatan heuristik lain — kalimat panjang, jawaban terpanjang, "semua benar" — tetap dicetak sebagai saran.)
+	for kind in ["cakupan_tipis", "tanpa_kompetensi", "petunjuk_kosong", "penjelasan_minim", "benar_salah_timpang",
+			"kesulitan_datar", "soal_kembar", "kalimat_negatif"]:
+		_check(int((res.counts as Dictionary).get(kind, 0)) == 0, "bank soal: 0 \"%s\" (%d)" % [str(BankAudit.KIND_TEXT[kind]),
+			int((res.counts as Dictionary).get(kind, 0))])
+	var thin := 0
+	for c in res.coverage:
+		if not bool(c.gen) and int(c.static) < BankAudit.MIN_PER_TOPIC_GRADE:
+			thin += 1
+	_check(thin == 0, "setiap topik×kelas tanpa pembuat soal punya >= %d soal" % BankAudit.MIN_PER_TOPIC_GRADE)
+	var lvl := {}
+	for q in raw:
+		lvl[int(q.get("difficulty", 1))] = true
+	_check(lvl.has(1) and lvl.has(2) and lvl.has(3), "bank memakai tingkat kesulitan 1, 2, dan 3")
 
 	# Setiap jenis GALAT terdeteksi pada soal rusak buatan.
 	var base: Dictionary = {}
@@ -223,7 +237,7 @@ func _bank_audit_tests() -> void:
 		"mapel_tidak_cocok": {"subject": "matematika"},
 		"kelas_di_luar_topik": {"topic": "tata_surya", "subject": "ipa"},
 		"kesulitan_tidak_sah": {"difficulty": 5},
-		"pilihan_kembar": {"options": ["Apel", "apel ", "jeruk", "mangga"], "answer": 2},
+		"pilihan_kembar": {"options": ["apel", " apel  ", "jeruk", "mangga"], "answer": 2},
 		"kunci_salah": {"topic": "berhitung", "subject": "matematika", "q": "7 + 5 = …", "options": ["13", "12", "11", "14"], "answer": 0},
 	}
 	for kind in bad:

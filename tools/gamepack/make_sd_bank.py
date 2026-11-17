@@ -165,50 +165,61 @@ TOPICS = [
 ]
 
 
-def mc(t, g, q, correct, *wrong, explain, hint=""):
-    return dict(topic=t, grade=g, type="mc", q=q, options=[correct, *wrong], answer=0, explain=explain, hint=hint)
+def _opt(d, kw):
+    """Field opsional soal: hint (petunjuk teks), diff (kesulitan 1–3), competency (kompetensi khusus soal)."""
+    for k in ("hint", "diff", "competency"):
+        v = kw.pop(k, None)
+        if v:
+            d[k] = v
+    if kw:
+        raise TypeError(f"field tidak dikenal: {sorted(kw)}")
+    return d
 
 
-def logic(t, g, q, correct, *wrong, explain, hint=""):
-    d = mc(t, g, q, correct, *wrong, explain=explain, hint=hint)
+def mc(t, g, q, correct, *wrong, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="mc", q=q, options=[correct, *wrong], answer=0, explain=explain), kw)
+
+
+def logic(t, g, q, correct, *wrong, explain, **kw):
+    d = mc(t, g, q, correct, *wrong, explain=explain, **kw)
     d["type"] = "logic"
     return d
 
 
-def tf(t, g, q, ans, explain):
-    return dict(topic=t, grade=g, type="tf", q=q, answer=ans, explain=explain)
+def tf(t, g, q, ans, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="tf", q=q, answer=ans, explain=explain), kw)
 
 
-def fill(t, g, q, correct, *wrong, explain):
-    return dict(topic=t, grade=g, type="fill", q=q, options=[correct, *wrong], answer=0, explain=explain)
+def fill(t, g, q, correct, *wrong, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="fill", q=q, options=[correct, *wrong], answer=0, explain=explain), kw)
 
 
-def pick(t, g, q, correct, *wrong, explain):
-    return dict(topic=t, grade=g, type="pick_image", q=q, options=[correct, *wrong], answer=0, explain=explain)
+def pick(t, g, q, correct, *wrong, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="pick_image", q=q, options=[correct, *wrong], answer=0, explain=explain), kw)
 
 
-def match(t, g, q, pairs, explain):
-    return dict(topic=t, grade=g, type="match", q=q, pairs=[list(p) for p in pairs], explain=explain)
+def match(t, g, q, pairs, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="match", q=q, pairs=[list(p) for p in pairs], explain=explain), kw)
 
 
-def letters(t, g, q, word, explain):
-    return dict(topic=t, grade=g, type="order_letters", q=q, word=word, explain=explain)
+def letters(t, g, q, word, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="order_letters", q=q, word=word, explain=explain), kw)
 
 
-def words(t, g, q, items, explain):
-    return dict(topic=t, grade=g, type="order_words", q=q, items=list(items), explain=explain)
+def words(t, g, q, items, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="order_words", q=q, items=list(items), explain=explain), kw)
 
 
-def sortn(t, g, q, nums, desc, explain):
-    return dict(topic=t, grade=g, type="sort_numbers", q=q, numbers=list(nums), desc=desc, explain=explain)
+def sortn(t, g, q, nums, desc, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="sort_numbers", q=q, numbers=list(nums), desc=desc, explain=explain), kw)
 
 
-def count(t, g, q, shape, n, explain):
-    return dict(topic=t, grade=g, type="count", q=q, shape=shape, count=n, explain=explain)
+def count(t, g, q, shape, n, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="count", q=q, shape=shape, count=n, explain=explain), kw)
 
 
-def classify(t, g, q, bins, items, explain):
-    return dict(topic=t, grade=g, type="classify", q=q, bins=list(bins), items=[list(i) for i in items], explain=explain)
+def classify(t, g, q, bins, items, explain, **kw):
+    return _opt(dict(topic=t, grade=g, type="classify", q=q, bins=list(bins), items=[list(i) for i in items], explain=explain), kw)
 
 
 Q = [
@@ -274,10 +285,10 @@ Q = [
     mc("huruf", 1, "Kata \"bola\" diawali huruf …", "B", "D", "P", "L", explain="B-O-L-A, huruf pertamanya B."),
     match("huruf", 1, "Pasangkan huruf kecil dengan huruf besarnya", [("a", "A"), ("b", "B"), ("d", "D"), ("g", "G")],
           explain="Setiap huruf kecil punya pasangan huruf kapital."),
-    tf("kata_kalimat", 1, "Kata \"meja\" terdiri atas 2 suku kata.", True, "Benar: me-ja."),
+    tf("kata_kalimat", 1, "Kata \"meja\" terdiri atas 2 suku kata.", True, "Benar. Meja dipenggal menjadi me-ja, jadi ada 2 suku kata."),
     words("kata_kalimat", 1, "Susun kata menjadi kalimat:", ["Adik", "minum", "susu"], "Kalimat yang benar: Adik minum susu."),
-    mc("kata_kalimat", 1, "Huruf pertama nama orang ditulis dengan huruf …", "kapital (besar)", "kecil", "miring", "angka", explain="Contoh: Budi, Siti."),
-    mc("kata_kalimat", 1, "Penulisan kata yang benar adalah …", "rumah", "ruamh", "rmuah", "rumha", explain="R-U-M-A-H."),
+    mc("kata_kalimat", 1, "Huruf pertama nama orang ditulis dengan huruf …", "kapital (besar)", "kecil semua", "miring tebal", "angka romawi", explain="Nama orang diawali huruf kapital. Contoh: Budi, Siti."),
+    mc("kata_kalimat", 1, "Penulisan kata yang benar adalah …", "rumah", "ruamh", "rmuah", "rumha", explain="Huruf-hurufnya R-U-M-A-H, dibaca rumah."),
     letters("huruf", 2, "Susun huruf menjadi tempat belajar:", "SEKOLAH", "S-E-K-O-L-A-H dibaca sekolah."),
     mc("sinonim_antonim", 2, "Lawan kata \"besar\" adalah …", "kecil", "tinggi", "panjang", "berat", explain="Besar lawannya kecil."),
     mc("sinonim_antonim", 2, "Persamaan kata \"pandai\" adalah …", "pintar", "malas", "lambat", "lupa", explain="Pandai dan pintar artinya sama."),
@@ -320,7 +331,7 @@ Q = [
        explain="Contoh: Wajahnya bagai bulan purnama."),
     mc("bacaan", 5, "Teks yang berisi langkah-langkah membuat sesuatu disebut teks …", "prosedur", "narasi", "deskripsi", "puisi", explain="Contoh: cara membuat layang-layang."),
     mc("bacaan", 5, "Bacalah: \"Hutan bakau melindungi pantai dari abrasi. Akar bakau menahan tanah agar tidak terbawa ombak.\" Apa manfaat akar bakau?",
-       "menahan tanah agar tidak terbawa ombak", "membuat air laut asin", "menjadi makanan ikan paus", "menambah tinggi ombak",
+       "menahan tanah agar tidak terbawa ombak", "membuat air laut menjadi lebih asin", "menjadi makanan utama ikan paus", "menambah tinggi ombak di pantai",
        explain="Bacaan menyebut akar bakau menahan tanah."),
     tf("cerita", 5, "Wawancara adalah kegiatan tanya jawab untuk mendapatkan informasi.", True, "Benar. Ada pewawancara dan narasumber."),
     mc("kata_kalimat", 5, "Penulisan kata serapan yang benar adalah …", "kualitas", "kwalitas", "kwalitet", "qualitas", explain="Kata bakunya kualitas."),
@@ -333,7 +344,7 @@ Q = [
        explain="Pembukaan pidato berisi salam dan sapaan kepada hadirin."),
     mc("bacaan", 6, "Bacalah: \"Ki Hajar Dewantara mendirikan Taman Siswa pada tahun 1922 untuk memberi pendidikan bagi rakyat.\" Apa tujuan Taman Siswa?",
        "memberi pendidikan bagi rakyat", "membangun jalan raya", "berdagang rempah", "membuat kapal", explain="Bacaan menyebut tujuannya memberi pendidikan bagi rakyat."),
-    tf("bacaan", 6, "Teks eksplanasi menjelaskan proses terjadinya suatu peristiwa, misalnya terjadinya hujan.", True, "Benar."),
+    tf("bacaan", 6, "Teks eksplanasi menjelaskan proses terjadinya suatu peristiwa, misalnya terjadinya hujan.", True, "Benar. Teks eksplanasi menjelaskan bagaimana dan mengapa suatu peristiwa terjadi."),
     mc("kata_kalimat", 6, "Kalimat efektif yang benar adalah …", "Para siswa berbaris di lapangan.", "Para siswa-siswa berbaris di lapangan.",
        "Para siswa-siswi pada berbaris di lapangan.", "Siswa-siswa para berbaris di lapangan.", explain="\"Para\" sudah berarti banyak, jadi kata tidak perlu diulang."),
     match("cerita", 6, "Pasangkan unsur cerita dengan artinya", [("tokoh", "pelaku dalam cerita"), ("latar", "tempat dan waktu"), ("alur", "rangkaian peristiwa"), ("amanat", "pesan cerita")],
@@ -354,14 +365,14 @@ Q = [
     mc("tubuh", 1, "Cara merawat gigi yang benar adalah …", "menggosok gigi dua kali sehari", "makan permen sebelum tidur", "tidak pernah menggosok gigi", "menggigit benda keras",
        explain="Gosok gigi pagi dan sebelum tidur."),
     tf("tumbuhan", 1, "Tumbuhan membutuhkan air dan cahaya matahari.", True, "Benar. Tanpa air dan cahaya, tumbuhan layu."),
-    mc("tubuh", 1, "Tubuh kita bisa bergerak berkat …", "tulang dan otot", "rambut", "kuku", "pakaian", explain="Tulang dan otot bekerja sama untuk bergerak."),
+    mc("tubuh", 1, "Tubuh kita bisa bergerak berkat …", "tulang dan otot", "rambut dan kuku", "baju dan celana", "kulit dan bulu", explain="Tulang dan otot bekerja sama untuk bergerak."),
     classify("wujud_benda", 2, "Kelompokkan benda: padat atau cair?", ["Padat", "Cair"],
              [("batu", 0), ("kayu", 0), ("buku", 0), ("air", 1), ("susu", 1), ("minyak goreng", 1)], explain="Benda cair bentuknya mengikuti wadah."),
     mc("wujud_benda", 2, "Es batu yang dibiarkan di luar kulkas akan …", "mencair", "membeku", "mengeras", "menjadi batu", explain="Panas membuat es mencair."),
     mc("hewan", 2, "Hewan yang hidup di dua alam (air dan darat) adalah …", "katak", "ikan", "sapi", "burung", explain="Katak disebut hewan amfibi."),
     tf("lingkungan", 2, "Membuang sampah ke sungai menjaga kebersihan lingkungan.", False, "Salah. Sampah di sungai bisa menyebabkan banjir dan mencemari air."),
     mc("tumbuhan", 2, "Bagian tumbuhan tempat membuat makanan adalah …", "daun", "akar", "batang", "bunga", explain="Daun hijau membuat makanan dengan bantuan cahaya matahari."),
-    mc("hewan", 2, "Ciri makhluk hidup adalah …", "bernapas, tumbuh, dan berkembang biak", "tidak pernah berubah", "terbuat dari plastik", "tidak butuh makan",
+    mc("hewan", 2, "Ciri makhluk hidup adalah …", "bernapas, tumbuh, dan berkembang biak", "diam dan tidak pernah berubah", "terbuat dari plastik dan besi", "tidak butuh makan dan minum",
        explain="Manusia, hewan, dan tumbuhan bernapas, tumbuh, dan berkembang biak."),
     match("hewan", 2, "Pasangkan hewan dengan makanan kesukaannya", [("kelinci", "wortel"), ("sapi", "rumput"), ("monyet", "pisang"), ("kucing", "ikan")],
           explain="Setiap hewan punya makanan yang berbeda."),
@@ -380,7 +391,7 @@ Q = [
     match("wujud_benda", 3, "Pasangkan benda dengan wujudnya", [("es batu", "padat"), ("air sirup", "cair"), ("uap air", "gas")], explain="Benda bisa padat, cair, atau gas."),
     mc("energi", 3, "Bunyi paling cepat merambat melalui …", "benda padat", "benda cair", "udara", "ruang hampa", explain="Bunyi merambat paling cepat di benda padat dan tidak bisa merambat di ruang hampa."),
     mc("tumbuhan", 4, "Proses tumbuhan membuat makanan sendiri disebut …", "fotosintesis", "respirasi", "evaporasi", "metamorfosis", explain="Fotosintesis terjadi di daun dengan bantuan cahaya matahari."),
-    mc("tubuh", 4, "Rangka tubuh berfungsi untuk …", "menegakkan tubuh dan melindungi organ", "mencerna makanan", "melihat benda", "mengatur suhu ruangan",
+    mc("tubuh", 4, "Rangka tubuh berfungsi untuk …", "menegakkan tubuh dan melindungi organ", "mencerna makanan di dalam perut", "melihat benda di sekitar kita", "mengatur suhu ruangan kelas",
        explain="Contoh: tengkorak melindungi otak."),
     mc("energi", 4, "Gaya yang membuat benda jatuh ke bawah adalah gaya …", "gravitasi", "magnet", "gesek", "pegas", explain="Gravitasi Bumi menarik benda ke bawah."),
     classify("energi", 4, "Kelompokkan sumber energi: dapat diperbarui atau tidak?", ["Dapat diperbarui", "Tidak dapat diperbarui"],
@@ -401,7 +412,7 @@ Q = [
        "belalang → rumput → ular → katak", "katak → rumput → ular → belalang", explain="Rantai makanan dimulai dari tumbuhan (produsen)."),
     tf("energi", 5, "Air yang dipanaskan sampai mendidih berubah menjadi uap.", True, "Benar. Panas mengubah air menjadi gas (uap)."),
     mc("hewan", 5, "Bunglon mengubah warna kulitnya untuk …", "menyamar dari musuh", "bernapas di air", "mencari makan di laut", "bertelur",
-       explain="Cara menyamar dengan mengubah warna kulit disebut mimikri."),
+       explain="Bunglon dapat mengubah warna kulitnya, salah satunya untuk menyamar agar tidak terlihat musuh. Penyesuaian warna seperti ini disebut mimikri."),
     mc("energi", 5, "Rangkaian listrik yang lampunya tetap menyala walau satu lampu putus adalah rangkaian …", "paralel", "seri", "terbuka", "pendek",
        explain="Pada rangkaian paralel, setiap lampu punya jalur sendiri."),
     match("hewan", 5, "Pasangkan hewan dengan alat pernapasannya", [("ikan", "insang"), ("cacing", "kulit"), ("belalang", "trakea"), ("kucing", "paru-paru")],
@@ -418,7 +429,7 @@ Q = [
     match("tata_surya", 6, "Pasangkan planet dengan cirinya", [("Saturnus", "cincinnya terlihat jelas"), ("Mars", "dijuluki planet merah"),
                                                                     ("Bumi", "planet tempat kita tinggal"), ("Merkurius", "paling dekat dengan Matahari")],
           explain="Setiap planet punya ciri khas."),
-    mc("ekosistem", 6, "Kelelawar dapat terbang di malam gelap karena memakai …", "pantulan bunyi (ekolokasi)", "cahaya lampu", "penciuman saja", "insang",
+    mc("ekosistem", 6, "Kelelawar dapat terbang di malam gelap karena memakai …", "pantulan bunyi (ekolokasi)", "cahaya bulan purnama", "penciuman yang tajam", "insang di lehernya",
        explain="Kelelawar mengeluarkan bunyi dan mendengar pantulannya."),
     mc("energi", 6, "Cara menghemat listrik di rumah adalah …", "mematikan lampu saat tidak dipakai", "menyalakan TV tanpa ditonton", "membuka kulkas lama-lama", "menyalakan semua lampu siang hari",
        explain="Peralatan yang tidak dipakai sebaiknya dimatikan."),
@@ -482,8 +493,8 @@ Q = [
     match("sejarah", 5, "Pasangkan pahlawan dengan perjuangannya", [("R.A. Kartini", "pendidikan perempuan"), ("Pangeran Diponegoro", "Perang Jawa"),
                                                                        ("Cut Nyak Dhien", "perlawanan di Aceh"), ("Pattimura", "perlawanan di Maluku")],
           explain="Mereka adalah pahlawan nasional Indonesia."),
-    mc("masyarakat", 5, "Interaksi sosial terjadi bila ada …", "kontak sosial dan komunikasi", "uang dan pasar", "rumah dan jalan", "pohon dan sungai", explain="Interaksi = hubungan saling memengaruhi antarmanusia."),
-    mc("sejarah", 6, "Teks Proklamasi Kemerdekaan dibacakan oleh …", "Soekarno, didampingi Mohammad Hatta", "Soeharto", "Ki Hajar Dewantara", "Jenderal Sudirman",
+    mc("masyarakat", 5, "Interaksi sosial terjadi bila ada …", "kontak sosial dan komunikasi", "uang dan barang dagangan", "rumah dan jalan raya", "pohon dan sungai besar", explain="Interaksi = hubungan saling memengaruhi antarmanusia."),
+    mc("sejarah", 6, "Teks Proklamasi Kemerdekaan dibacakan oleh …", "Soekarno, didampingi Mohammad Hatta", "Soeharto, didampingi Adam Malik", "Ki Hajar Dewantara", "Jenderal Sudirman",
        explain="Pembacaan dilakukan di Jalan Pegangsaan Timur 56, Jakarta."),
     mc("sejarah", 6, "Proklamasi Kemerdekaan dibacakan pada tanggal …", "17 Agustus 1945", "28 Oktober 1928", "20 Mei 1908", "1 Juni 1945", explain="Hari Kemerdekaan Indonesia."),
     mc("geografi", 6, "Organisasi negara-negara Asia Tenggara disebut …", "ASEAN", "PBB", "NATO", "OPEC", explain="ASEAN = Perhimpunan Bangsa-Bangsa Asia Tenggara."),
@@ -506,6 +517,15 @@ _extra_regions, _extra_topics, _extra_q = sd_bank_extra.build(mc, tf, match, cla
 REGIONS += _extra_regions
 TOPICS += _extra_topics
 Q += _extra_q
+
+# Prioritas 2 (17 Nov 2026): kompetensi per topik × fase (CP BSKAP 046/H/KR/2025) dan soal tambahan agar setiap
+# topik × kelas punya >= MIN_STATIC soal. Ditambahkan SETELAH soal lama supaya ID soal lama tidak berubah
+# (ID = topik-kelas-urutan; progres anak menyimpan ID soal yang sudah dilihat). Lihat sd_bank_more.py.
+import sd_bank_more  # noqa: E402
+
+COMPETENCY = sd_bank_more.COMPETENCY
+Q += sd_bank_more.build(mc=mc, tf=tf, fill=fill, pick=pick, match=match, classify=classify, words=words,
+                        letters=letters, logic=logic)
 
 # Mini-game: data dipakai langsung oleh mini-game (lihat client/games/education_sd/scripts/mg_*.gd).
 MINIGAMES = {
@@ -571,6 +591,15 @@ SHOP = [  # kostum dibeli dengan koin hasil belajar (tanpa uang sungguhan)
     {"id": "aks_syal", "slot": "acc", "name": "Syal", "price": 60, "value": "syal"},
     {"id": "aks_ransel", "slot": "acc", "name": "Ransel", "price": 80, "value": "ransel"},
 ]
+
+
+# Minimal soal statis per (topik, kelas) yang tidak punya pembuat soal otomatis (latihan = 5 soal).
+MIN_STATIC = 5
+
+
+def fase(g):
+    """Fase Kurikulum Merdeka: A = kelas 1–2, B = kelas 3–4, C = kelas 5–6."""
+    return "A" if g <= 2 else ("B" if g <= 4 else "C")
 
 
 def validate():
@@ -644,17 +673,27 @@ def validate():
                 errs.append(f"{tag}: kelompok tidak sah")
             if len({i[0] for i in items}) != len(items):
                 errs.append(f"{tag}: benda kembar")
+        opts = q.get("options", [])
+        if opts and len({" ".join(str(o).split()) for o in opts}) != len(opts):
+            errs.append(f"{tag}: pilihan kembar (beda spasi saja)")
         d = dict(q)
         d["id"] = qid
         d["subject"] = next(x for x in TOPICS if x["id"] == t)["region"] if t in topic_ids else ""
-        d["difficulty"] = DIFF.get(ty, 2)
+        d["difficulty"] = int(d.pop("diff", 0) or DIFF.get(ty, 2))
+        if not 1 <= d["difficulty"] <= 3:
+            errs.append(f"{tag}: kesulitan {d['difficulty']} (harus 1–3)")
         d["points"] = 10 * d["difficulty"]
+        if not str(d.get("hint", "")).strip():
+            d.pop("hint", None)  # petunjuk kosong tidak ditulis: game memakai petunjuk bawaannya
+        d["competency"] = str(d.get("competency") or COMPETENCY.get(t, {}).get(fase(g), "")).strip()
+        if not d["competency"]:
+            errs.append(f"{tag}: tanpa kompetensi (COMPETENCY[{t}][{fase(g)}])")
         out.append(d)
     # Setiap (topik, kelas) harus punya soal: dari bank atau pembuat soal.
     for t in TOPICS:
         for g in t["grades"]:
-            if per_tg.get((t["id"], g), 0) == 0 and str(g) not in t.get("gen", {}):
-                errs.append(f"topik {t['id']} kelas {g}: tidak ada soal")
+            if per_tg.get((t["id"], g), 0) < MIN_STATIC and str(g) not in t.get("gen", {}):
+                errs.append(f"topik {t['id']} kelas {g}: {per_tg.get((t['id'], g), 0)} soal (minimal {MIN_STATIC})")
     for name, animals in MINIGAMES["hewan"].items():
         for a in animals:
             if a not in ANIMAL_FACTS:

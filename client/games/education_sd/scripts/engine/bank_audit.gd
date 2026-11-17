@@ -31,7 +31,7 @@ const KIND_TEXT := {
 	"mapel_tidak_cocok": "mata pelajaran tidak cocok dengan topik",
 	"kelas_di_luar_topik": "kelas soal di luar kelas topik",
 	"kesulitan_tidak_sah": "tingkat kesulitan bukan 1–3",
-	"pilihan_kembar": "pilihan jawaban kembar (beda huruf besar/spasi saja)",
+	"pilihan_kembar": "pilihan jawaban kembar (beda spasi saja)",
 	"kunci_salah": "kunci jawaban hitungan salah",
 	# peringatan
 	"cakupan_tipis": "soal per topik×kelas terlalu sedikit (tanpa pembuat soal)",
@@ -140,7 +140,7 @@ static func check_question(q, data) -> Array:
 	if type in OPTION_TYPES and opts.size() >= 2:
 		var norm := {}
 		for o in opts:
-			norm[_norm(str(o))] = true
+			norm[_squash(str(o))] = true  # peka huruf besar: soal huruf kapital membedakan "Adik" dan "adik"
 		if norm.size() != opts.size():
 			out.append(_issue("galat", "pilihan_kembar", qid, str(opts)))
 	var key := arithmetic_key(q)
@@ -276,6 +276,11 @@ static func _issue(level: String, kind: String, id: String, msg: String) -> Dict
 static func _norm(s: String) -> String:
 	var parts := s.to_lower().strip_edges().split(" ", false)
 	return " ".join(parts)
+
+
+## Spasi dirapikan, huruf besar/kecil dipertahankan.
+static func _squash(s: String) -> String:
+	return " ".join(s.strip_edges().split(" ", false))
 
 
 static func _words(s: String) -> int:

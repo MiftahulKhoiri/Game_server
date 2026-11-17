@@ -2,6 +2,31 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Bank soal SD diperkaya — Prioritas 2 (17 November 2026)
+
+Data soal saja (gameplay, progres, dan versi paket tidak berubah; paket belum diterbitkan ulang).
+
+- **328 → 802 soal** (+474) di `tools/gamepack/sd_bank_more.py`, ditambahkan SETELAH soal lama sehingga **ID soal lama
+  tidak berubah** (diverifikasi: 328 ID lama ada semua, topik/kelas/tipe/kunci sama). Setiap topik × kelas tanpa pembuat
+  soal kini punya **6 soal** (sebelumnya 124 dari 169 kurang dari 5; 23 hanya 1 soal).
+- **Kompetensi** di setiap soal (`competency`), dari tabel topik × fase yang dipetakan ke elemen Capaian Pembelajaran
+  Keputusan Kepala BSKAP No. 046/H/KR/2025 (Fase A kelas 1–2, B kelas 3–4, C kelas 5–6). Soal IPA/IPS kelas 1–2 diberi
+  label "pengenalan lingkungan (Fase A, terpadu)" karena IPAS baru menjadi mata pelajaran mulai kelas 3. Materi IPAS
+  kelas 3–6 diselaraskan dengan daftar bab buku teks IPAS Kurikulum Merdeka (buku.kemdikbud.go.id).
+- **Kesulitan per soal** 1–3 (sebelumnya hanya dari tipe soal; tidak ada soal statis level 3): kini 591 / 184 / 27.
+- **Benar/Salah seimbang** per mapel (mis. Pancasila 14:1 → 38:24; Bahasa, Seni, PJOK sebelumnya tanpa jawaban Salah).
+- **Petunjuk kosong** tidak lagi ditulis ke data (210 soal); game memakai petunjuk bawaannya. Petunjuk teks nyata di 7 soal baru.
+- Soal lama dirapikan tanpa memindah posisi: 8 penjelasan terlalu singkat, 16 soal yang jawabannya ketahuan karena paling
+  panjang (pengecoh disamakan panjangnya), `hidup_sehat-1-02` ("kuman hilang" → "membantu membuang kuman"),
+  `olahraga-2-02` (pengecualian penjaga gawang), penjelasan bunglon/mimikri.
+- `make_sd_bank.py`: helper soal menerima `hint`, `diff`, `competency`; validasi baru: kompetensi wajib, kesulitan 1–3,
+  minimal 5 soal per topik × kelas, pilihan kembar beda spasi. Pemeriksa bank: pilihan kembar kini peka huruf besar
+  (soal huruf kapital membedakan "Adik" dan "adik").
+- Pemeriksa kualitas: **0 galat, 0 peringatan** (sebelumnya 696 peringatan). `sd_test.gd` +10: peringatan cakupan,
+  kompetensi, petunjuk kosong, penjelasan minim, B/S timpang, kesulitan datar, soal kembar, kalimat negatif kini wajib 0.
+- Catatan jujur: kompetensi adalah ringkasan penyusun yang dipetakan ke elemen CP, bukan kutipan resmi. Fakta dipilih yang
+  stabil dan diperiksa, tetapi seluruh soal baru tetap perlu ditinjau guru sebelum dianggap final.
+
 ## Pemeriksa kualitas bank soal SD — Prioritas 1 (17 November 2026)
 
 Hanya alat uji; tidak mengubah gameplay, data soal, progres, atau paket yang sudah terbit (tanpa naik versi).
