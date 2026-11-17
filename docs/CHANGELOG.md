@@ -2,6 +2,11 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket education_sd 5.1.0 — terbit (17 November 2026)
+
+Berisi Prioritas 1–3 di bawah: pemeriksa bank soal, bank soal 802 soal dengan kompetensi CP, dan perbaikan bug Learning
+Engine. Tanpa APK baru (launcher 0.84.x cukup); di HP cukup buka launcher lalu perbarui game. Progres anak tetap.
+
 ## Perbaikan bug Learning Engine SD — Prioritas 3 (17 November 2026)
 
 Tiga bug dari audit Fase A. Tanpa perubahan data soal; progres lama tetap terbaca (tanpa naik versi paket).
