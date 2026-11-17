@@ -184,10 +184,18 @@ func pick(topic_id: String, grade: int, n: int, stats: Dictionary, rng: RandomNu
 		if easy.size() >= mini(n, 2):
 			pool = easy
 	_shuffle(pool, rng)
-	# Soal yang belum pernah dilihat lebih dulu.
-	pool.sort_custom(func(x, y): return int(seen.has(str(x.id))) < int(seen.has(str(y.id))))
-	if mode == "tantang":
-		pool.sort_custom(func(x, y): return int(x.get("difficulty", 1)) > int(y.get("difficulty", 1)))
+	# Satu urutan gabungan: soal yang belum pernah dilihat SELALU lebih dulu; pada mode "tantang", di dalam
+	# kelompok yang sama soal sulit didahulukan. (Dulu dua sort_custom berturut-turut: sort kedua tidak stabil
+	# sehingga menimpa urutan "belum dilihat" dan soal lama bisa muncul lagi.)
+	var hard_first := mode == "tantang"
+	pool.sort_custom(func(x, y):
+		var sx := int(seen.has(str(x.id)))
+		var sy := int(seen.has(str(y.id)))
+		if sx != sy:
+			return sx < sy
+		if hard_first:
+			return int(x.get("difficulty", 1)) > int(y.get("difficulty", 1))
+		return false)
 	var out: Array = pool.slice(0, n)
 	var specs: Array = (topics.get(topic_id, {}).get("gen", {}) as Dictionary).get(str(g), [])
 	var guard := 0

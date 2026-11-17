@@ -2,6 +2,22 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Perbaikan bug Learning Engine SD — Prioritas 3 (17 November 2026)
+
+Tiga bug dari audit Fase A. Tanpa perubahan data soal; progres lama tetap terbaca (tanpa naik versi paket).
+
+- **Petunjuk kosong** (`sd_question.gd`): bila kolom `hint` ada tetapi kosong, tombol Petunjuk dulu menampilkan pesan kosong
+  (soal Benar/Salah, dan pilihan ganda setelah pengecoh habis disembunyikan). Kini memakai kalimat bawaan.
+- **Urutan soal mode "tantang"** (`sd_data.gd` `pick`): dua `sort_custom` berturut-turut — sort kedua (kesulitan) tidak
+  stabil dan menimpa urutan "belum dilihat", sehingga soal yang sudah dilihat bisa didahulukan. Kini satu urutan gabungan:
+  belum dilihat dulu, lalu (mode tantang) soal sulit dulu.
+- **Penguasaan dari soal kelas lain** (`learning_engine.gd`): pada mode "mudah" soal diambil dari kelas lebih rendah, tetapi
+  jawabannya ikut dihitung untuk status "dikuasai" kelas yang sedang dipelajari. Kini statistik punya `recent_own`
+  (hanya soal kelas itu sendiri) untuk status penguasaan & laporan; `recent` (semua jawaban) tetap dipakai adaptasi.
+  Data lama tanpa `recent_own`: riwayat lama disalin saat jawaban berikutnya, sehingga status lama tidak tiba-tiba hilang.
+- Uji: `sd_test.gd` +13 pemeriksaan (809 total). Dibuktikan gagal pada kode lama (3 uji GAGAL + galat skrip) dan lulus pada
+  kode baru. Dua uji lama yang menyusun statistik langsung disesuaikan agar mengisi `recent_own` juga (maksud uji sama).
+
 ## Bank soal SD diperkaya — Prioritas 2 (17 November 2026)
 
 Data soal saja (gameplay, progres, dan versi paket tidak berubah; paket belum diterbitkan ulang).

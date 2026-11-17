@@ -512,9 +512,9 @@ func _hint() -> void:
 				_opt_buttons[wrong[rng.randi_range(0, wrong.size() - 1)]].disabled = true
 				_say("Satu jawaban yang kurang tepat sudah disembunyikan.")
 			else:
-				_say(str(q.get("hint", "Baca soalnya pelan-pelan sekali lagi.")))
+				_say(_hint_text("Baca soalnya pelan-pelan sekali lagi."))
 		"tf":
-			_say(str(q.get("hint", "Baca kalimatnya pelan-pelan. Apakah semuanya sesuai kenyataan?")))
+			_say(_hint_text("Baca kalimatnya pelan-pelan. Apakah semuanya sesuai kenyataan?"))
 		"count":
 			for l in _count_icons:
 				l.visible = true
@@ -538,6 +538,12 @@ func _hint() -> void:
 			var want := int(_items[_item_i][1])
 			UI.pop(_bin_btns[want])
 			_say("%s termasuk kelompok %s." % [str(_items[_item_i][0]), str(q.bins[want])])
+
+
+## Petunjuk teks soal; bila tidak ada ATAU kosong (data lama menulis hint ""), pakai kalimat bawaan.
+func _hint_text(fallback: String) -> String:
+	var h := str(q.get("hint", "")).strip_edges()
+	return h if h != "" else fallback
 
 
 func _say(text: String) -> void:

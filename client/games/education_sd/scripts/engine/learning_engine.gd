@@ -108,7 +108,7 @@ static func topic_rec(p: Dictionary, grade: int, topic_id: String) -> Dictionary
 static func stats(p: Dictionary, grade: int, topic_id: String) -> Dictionary:
 	var k := _key(grade, topic_id)
 	if not p.learning.topics.has(k):
-		p.learning.topics[k] = {"correct": 0, "wrong": 0, "recent": [], "seen": []}
+		p.learning.topics[k] = {"correct": 0, "wrong": 0, "recent": [], "recent_own": [], "seen": []}
 	return p.learning.topics[k]
 
 
@@ -122,9 +122,11 @@ static func _rate(arr: Array) -> float:
 
 
 ## "baru" | "belajar" | "perlu_latihan" | "kuasai" — dari cukup banyak jawaban terakhir.
+## Memakai recent_own: hanya jawaban atas soal KELAS ITU SENDIRI, sehingga soal kelas lebih rendah (mode "mudah")
+## tidak membuat materi kelas ini tampak dikuasai. Data lama tanpa recent_own memakai recent seperti dulu.
 static func status(p: Dictionary, grade: int, topic_id: String) -> String:
 	var st: Dictionary = (p.learning.topics as Dictionary).get(_key(grade, topic_id), {})
-	var recent: Array = st.get("recent", [])
+	var recent: Array = st.get("recent_own", st.get("recent", []))
 	var n := int(st.get("correct", 0)) + int(st.get("wrong", 0))
 	if n == 0:
 		return "baru"
@@ -164,8 +166,16 @@ static func answer(p: Dictionary, session: Dictionary, q: Dictionary, correct: b
 		st.correct = int(st.correct) + 1
 	else:
 		st.wrong = int(st.wrong) + 1
+	# Data lama (sebelum recent_own ada): kelas soal tidak tercatat, jadi riwayat lama dianggap kelas ini.
+	if not st.has("recent_own"):
+		st["recent_own"] = (st.recent as Array).duplicate()
+	# recent = semua jawaban di sesi kelas ini (untuk adaptasi: kapan soal dipermudah/diperberat).
 	(st.recent as Array).append(1 if ok else 0)
 	st.recent = (st.recent as Array).slice(-MAX_RECENT)
+	# recent_own = hanya soal yang memang kelas ini (untuk status penguasaan & laporan).
+	if int(q.get("grade", grade)) == grade:
+		(st.recent_own as Array).append(1 if ok else 0)
+		st.recent_own = (st.recent_own as Array).slice(-MAX_RECENT)
 	var qid := str(q.get("id", ""))
 	if qid != "" and not (st.seen as Array).has(qid):
 		(st.seen as Array).append(qid)

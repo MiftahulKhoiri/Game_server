@@ -30,6 +30,7 @@ func _initialize() -> void:
 	await _v3_engine_tests()
 	await _v3_npc_tests()
 	await _v3_learning_tests()
+	await _p3_bugfix_tests()
 	await _v3_quest_tests()
 	await _v3_reward_tests()
 	await _v3_battle_tests()
@@ -607,10 +608,12 @@ func _v3_learning_tests() -> void:
 	var p2 := _prof(2)
 	var st := LearningEngine.stats(p2, 2, "pengurangan")
 	st.recent = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+	st.recent_own = st.recent.duplicate()  # jawaban atas soal kelas 2 sendiri
 	st.correct = 9
 	_check(LearningEngine.status(p2, 2, "pengurangan") == "kuasai", "banyak jawaban benar terakhir: dikuasai")
 	_check(str(le.start(p2, "pengurangan", 2, rng).mode) == "tantang", "sudah mahir: soal lebih menantang")
 	st.recent = [0, 0, 1, 0, 0, 0, 0]
+	st.recent_own = st.recent.duplicate()
 	_check(LearningEngine.status(p2, 2, "pengurangan") == "perlu_latihan", "sering salah: perlu latihan lagi")
 	var sm: Dictionary = le.room_summary(p, 2)
 	_check(sm.size() == 7 and int(sm.matematika.stars) >= 3, "ringkasan rapor per ruang")
@@ -635,6 +638,94 @@ func _v3_learning_tests() -> void:
 	var p0 := _prof(1)
 	_check(str(le.report(p0).summary).contains("baru mulai"), "laporan anak baru: bahasa positif, tanpa kesimpulan")
 
+
+# --- Prioritas 3: perbaikan bug Learning Engine ----------------------------------------------------------------
+
+func _p3_bugfix_tests() -> void:
+	print("== Prioritas 3: perbaikan bug Learning Engine")
+	var d := SdData.new()
+	d.load_data()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 33
+	# 1) Petunjuk: kolom hint kosong ("" dari data lama) tidak boleh menghasilkan pesan kosong.
+	var holder := Control.new()
+	root.add_child(holder)
+	var tfq := {"id": "uji-tf", "type": "tf", "q": "Ikan hidup di air.", "answer": true, "explain": "Benar.", "hint": "", "topic": "hewan", "grade": 1}
+	var qv: VBoxContainer = SdQuestion.new()
+	holder.add_child(qv)
+	qv.setup(tfq, "latihan", rng, d.doc.type_names, null)
+	qv._hint()
+	_check(qv._fb.visible and str(qv._fb.text).strip_edges() != "", "petunjuk B/S dengan hint \"\" memakai kalimat bawaan (\"%s\")" % str(qv._fb.text))
+	var mcq := {"id": "uji-mc", "type": "mc", "q": "2 + 2 = …", "options": ["4", "3", "5", "6"], "answer": 0, "explain": "2 + 2 = 4.",
+		"hint": "", "topic": "penjumlahan", "grade": 1}
+	var qm: VBoxContainer = SdQuestion.new()
+	holder.add_child(qm)
+	qm.setup(mcq, "latihan", rng, d.doc.type_names, null)
+	for i in 3:
+		qm._hint()
+	_check(str(qm._fb.text).strip_edges() != "", "petunjuk ganda ke-3 (pengecoh habis) tidak kosong (\"%s\")" % str(qm._fb.text))
+	var hq := tfq.duplicate()
+	hq.hint = "Ingat tempat tinggal ikan."
+	var qh: VBoxContainer = SdQuestion.new()
+	holder.add_child(qh)
+	qh.setup(hq, "latihan", rng, d.doc.type_names, null)
+	qh._hint()
+	_check(str(qh._fb.text) == "Ingat tempat tinggal ikan.", "petunjuk teks dari data tetap dipakai bila ada")
+	holder.queue_free()
+	await process_frame
+
+	# 2) Mode "tantang": soal yang belum dilihat tetap didahulukan, baru soal sulit.
+	var pool: Array = d.by_topic_grade.get("bangun_datar/4", [])
+	var hard: Array = []
+	var easy: Array = []
+	for q in pool:
+		(hard if int(q.difficulty) >= 2 else easy).append(str(q.id))
+	_check(hard.size() >= 2 and easy.size() >= 2, "contoh uji: bangun datar kelas 4 punya soal mudah (%d) & sulit (%d)" % [easy.size(), hard.size()])
+	var unseen_ok := true
+	var hard_ok := true
+	for s in 25:
+		rng.seed = 100 + s
+		var pk := d.pick("bangun_datar", 4, easy.size(), {"recent": [1, 1, 1, 1, 1, 1, 1, 1], "seen": hard}, rng)
+		if str(pk.mode) != "tantang":
+			unseen_ok = false
+		for q in pk.questions:
+			if hard.has(str(q.id)):
+				unseen_ok = false
+		var pk2 := d.pick("bangun_datar", 4, 1, {"recent": [1, 1, 1, 1, 1, 1, 1, 1], "seen": []}, rng)
+		if int(pk2.questions[0].difficulty) < 2:
+			hard_ok = false
+	_check(unseen_ok, "mode tantang: soal yang sudah dilihat tidak didahulukan (25 acakan)")
+	_check(hard_ok, "mode tantang tanpa riwayat: soal sulit tetap didahulukan (25 acakan)")
+
+	# 3) Penguasaan hanya dari soal kelas itu sendiri.
+	var le := LearningEngine.new()
+	le.setup(d)
+	var p := _prof(3)
+	var ses: Dictionary = le.start(p, "bangun_datar", 3, rng)
+	var low := {"id": "uji-k2", "grade": 2, "points": 10}
+	for i in 10:
+		LearningEngine.answer(p, ses, low, true, true)
+	var st: Dictionary = p.learning.topics["3/bangun_datar"]
+	_check((st.recent as Array).size() == 10 and (st.recent_own as Array).is_empty(), "10 jawaban soal kelas 2 dicatat untuk adaptasi, bukan penguasaan kelas 3")
+	_check(LearningEngine.status(p, 3, "bangun_datar") != "kuasai", "materi kelas 3 TIDAK dinyatakan dikuasai dari soal kelas 2 (status: %s)" % LearningEngine.status(p, 3, "bangun_datar"))
+	_check(str(le.start(p, "bangun_datar", 3, rng).mode) != "mudah", "setelah lancar di soal lebih mudah, adaptasi tidak macet di mode mudah")
+	var own := {"id": "uji-k3", "grade": 3, "points": 10}
+	for i in 8:
+		LearningEngine.answer(p, ses, own, true, true)
+	_check(LearningEngine.status(p, 3, "bangun_datar") == "kuasai", "8 jawaban benar soal kelas 3 sendiri: dikuasai")
+	# Data lama (tanpa recent_own): riwayat lama tetap dihitung, tidak tiba-tiba hilang.
+	var p2 := _prof(2)
+	var st2 := LearningEngine.stats(p2, 2, "pengurangan")
+	st2.erase("recent_own")
+	st2.recent = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+	st2.correct = 9
+	_check(LearningEngine.status(p2, 2, "pengurangan") == "kuasai", "save lama tanpa recent_own: status lama dipertahankan")
+	var ses2: Dictionary = le.start(p2, "pengurangan", 2, rng)
+	LearningEngine.answer(p2, ses2, {"id": "uji-k2b", "grade": 2, "points": 10}, false, false)
+	_check((st2.recent_own as Array).size() == 10 and LearningEngine.status(p2, 2, "pengurangan") == "kuasai",
+		"jawaban pertama setelah pembaruan: riwayat lama ikut disalin, satu salah tidak menghapus penguasaan")
+	var js: Dictionary = JSON.parse_string(JSON.stringify(p))
+	_check((js.learning.topics["3/bangun_datar"].recent_own as Array).size() == 8, "recent_own ikut tersimpan lewat JSON")
 
 func _v3_quest_tests() -> void:
 	print("== 3.x Quest Engine (data misi Pulau 1)")
