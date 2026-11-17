@@ -7,6 +7,7 @@ extends SceneTree
 
 const SdData := preload("res://games/education_sd/scripts/sd_data.gd")
 const SdGen := preload("res://games/education_sd/scripts/sd_gen.gd")
+const BankAudit := preload("res://games/education_sd/scripts/engine/bank_audit.gd")
 const SdProgress := preload("res://games/education_sd/scripts/sd_progress.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
@@ -24,6 +25,7 @@ func _initialize() -> void:
 	for f in ["save.json", "save.json.bak"]:
 		DirAccess.remove_absolute(SaveManager.dir_for("education_sd") + "/" + f)
 	await _data_tests()
+	await _bank_audit_tests()
 	await _question_tests()
 	await _v3_engine_tests()
 	await _v3_npc_tests()
@@ -178,6 +180,137 @@ func _data_tests() -> void:
 	_check(int(SdProgress.area_rec(pp, 1, "matematika", "penjumlahan").stars) == 3 and str(area2.card) == "", "bintang terbaik dipertahankan, kartu tidak ganda")
 	var rep := SdProgress.report(pp, d)
 	_check((rep.mastered as Array).is_empty() and int(rep.little_data) >= 1, "laporan tidak menyimpulkan dari 2 jawaban")
+
+
+# --- Pemeriksa kualitas bank soal (Prioritas 1: struktur + pedagogis + cakupan) -------------------------------
+
+func _audit_has(res: Dictionary, kind: String, id: String) -> bool:
+	for it in (res.errors as Array) + (res.warnings as Array):
+		if str(it.kind) == kind and str(it.id) == id:
+			return true
+	return false
+
+
+func _bank_audit_tests() -> void:
+	print("== Pemeriksa kualitas bank soal")
+	var d := SdData.new()
+	d.load_data()
+	var raw: Array = d.doc.get("questions", [])
+	var res := BankAudit.audit(raw, d)
+	_check(int(res.checked) == raw.size() and raw.size() > 0, "semua %d soal bank diperiksa" % raw.size())
+	_check((res.errors as Array).is_empty(), "bank soal terbit: 0 galat (%d)" % (res.errors as Array).size())
+	for it in (res.errors as Array).slice(0, 10):
+		print("    galat: %s %s %s" % [it.kind, it.id, it.msg])
+	var n_tg := 0
+	for t in d.topics.values():
+		n_tg += (t.get("grades", []) as Array).size()
+	_check((res.coverage as Array).size() == n_tg, "cakupan dihitung untuk setiap topik×kelas (%d)" % n_tg)
+	# Garis dasar peringatan dicetak (bukan syarat lulus): daftar kerja penyempurnaan materi.
+	for line in BankAudit.summary_text(res).split("\n"):
+		print("    " + line)
+
+	# Setiap jenis GALAT terdeteksi pada soal rusak buatan.
+	var base: Dictionary = {}
+	for q in raw:
+		if str(q.type) == "mc" and str(q.topic) == "sila_pancasila" and int(q.grade) == 1:
+			base = q.duplicate(true)
+			break
+	_check(not base.is_empty(), "soal contoh untuk uji pemeriksa tersedia")
+	var bad := {
+		"data_tidak_lengkap": {"subject": ""},
+		"struktur": {"answer": 9},
+		"topik_tidak_dikenal": {"topic": "astrologi"},
+		"mapel_tidak_cocok": {"subject": "matematika"},
+		"kelas_di_luar_topik": {"topic": "tata_surya", "subject": "ipa"},
+		"kesulitan_tidak_sah": {"difficulty": 5},
+		"pilihan_kembar": {"options": ["Apel", "apel ", "jeruk", "mangga"], "answer": 2},
+		"kunci_salah": {"topic": "berhitung", "subject": "matematika", "q": "7 + 5 = …", "options": ["13", "12", "11", "14"], "answer": 0},
+	}
+	for kind in bad:
+		var q := base.duplicate(true)
+		q.merge(bad[kind], true)
+		q.id = "uji-" + kind
+		var r := BankAudit.audit([q], d)
+		_check(_audit_has(r, kind, q.id), "pemeriksa mendeteksi galat: " + str(BankAudit.KIND_TEXT[kind]))
+	var twin := base.duplicate(true)
+	var r2 := BankAudit.audit([base, twin], d)
+	_check(_audit_has(r2, "id_kembar", str(base.id)), "pemeriksa mendeteksi galat: ID soal kembar")
+
+	# Setiap jenis PERINGATAN pedagogis terdeteksi.
+	var good := base.duplicate(true)
+	good.id = "uji-baik"
+	good.competency = "menyebutkan jumlah sila Pancasila"
+	good.hint = "Hitung lambang di perisai Garuda."
+	good.explain = "Pancasila punya lima sila, masing-masing punya lambang."
+	var clean := BankAudit.check_question(good, d)
+	_check(clean.is_empty(), "soal lengkap & baik tidak diberi temuan " + str(clean))
+	var warn := {
+		"tanpa_kompetensi": {"competency": ""},
+		"petunjuk_kosong": {"hint": ""},
+		"penjelasan_minim": {"explain": "Benar."},
+		"kalimat_panjang": {"q": "Pada suatu pagi yang cerah di desa yang sangat ramai itu ada berapa banyak sila yang ada pada Pancasila kita?"},
+		"kalimat_negatif": {"q": "Manakah yang bukan lambang sila Pancasila?"},
+		"petunjuk_panjang": {"options": ["bintang emas bersinar terang", "rantai", "padi", "kapas"], "answer": 0},
+		"pilihan_semua": {"options": ["bintang", "rantai", "padi", "semua benar"], "answer": 0},
+	}
+	for kind in warn:
+		var q := good.duplicate(true)
+		q.merge(warn[kind], true)
+		q.id = "uji-" + kind
+		_check(_audit_has(BankAudit.audit([q], d), kind, q.id), "pemeriksa memperingatkan: " + str(BankAudit.KIND_TEXT[kind]))
+	var copy := good.duplicate(true)
+	copy.id = "uji-salinan"
+	_check(_audit_has(BankAudit.audit([good, copy], d), "soal_kembar", "uji-salinan"), "pemeriksa memperingatkan: isi soal kembar")
+	_check(_audit_has(BankAudit.audit([good], d), "cakupan_tipis", "sila_pancasila/1"), "pemeriksa memperingatkan: cakupan topik×kelas tipis")
+	var tfs: Array = []
+	var flat: Array = []
+	for i in 10:
+		var t := good.duplicate(true)
+		t.id = "uji-bs-%d" % i
+		t.type = "tf"
+		t.erase("options")
+		t.answer = true
+		t.q = "Pernyataan benar nomor %d." % i
+		tfs.append(t)
+		var f := good.duplicate(true)
+		f.id = "uji-datar-%d" % i
+		f.q = "Soal mudah nomor %d?" % i
+		flat.append(f)
+	_check(_audit_has(BankAudit.audit(tfs, d), "benar_salah_timpang", "pancasila"), "pemeriksa memperingatkan: jawaban Benar/Salah tidak seimbang")
+	_check(_audit_has(BankAudit.audit(flat, d), "kesulitan_datar", "pancasila"), "pemeriksa memperingatkan: kesulitan datar")
+
+	# Kunci hitungan dihitung sendiri (bilangan ribuan, negatif, isian kosong, bagi tidak bulat).
+	var cases := {"12 + 7 = …": "19", "1.250 + 750 = …": "2000", "15.000 − 2.500 = …": "12500", "6 × 7 = …": "42",
+		"45 : 9 = …": "5", "-5 + (-3) = …": "-8", "-4 − (-6) = …": "2", "5 + ___ = 12": "7", "20 − ___ = 8": "12",
+		"___ × 4 = 20": "5", "___ : 3 = 6": "18", "7 : 2 = …": "", "Pukul 07.00 ditambah 2 jam menjadi pukul …": "",
+		"1/2 = …/6": ""}
+	var arith_ok := true
+	for text in cases:
+		var got := BankAudit.arithmetic_key({"type": "mc", "q": text})
+		if got != cases[text]:
+			arith_ok = false
+			print("    hitungan salah: ", text, " -> ", got, " seharusnya ", cases[text])
+	_check(arith_ok, "kunci hitungan dihitung benar untuk %d bentuk soal" % cases.size())
+
+	# Soal buatan pembuat soal juga lolos pemeriksa, dan kuncinya cocok dengan hitungan pemeriksa.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2611
+	var gen: Array = []
+	for id in d.topics:
+		var gens: Dictionary = d.topics[id].get("gen", {})
+		for g in gens:
+			for spec in gens[g]:
+				for i in 20:
+					var q := SdGen.make(str(spec), str(id), int(g), rng)
+					if not q.is_empty():
+						q.subject = str(d.topics[id].region)
+						gen.append(q)
+	var gr := BankAudit.audit(gen, d)
+	var gen_err: Array = (gr.errors as Array).filter(func(it): return str(it.kind) != "id_kembar")
+	for it in gen_err.slice(0, 5):
+		print("    galat soal buatan: %s %s %s" % [it.kind, it.id, it.msg])
+	_check(gen_err.is_empty(), "%d soal buatan: 0 galat pemeriksa" % gen.size())
+	_check(int(gr.arithmetic) >= 300, "kunci %d soal hitungan buatan dicek ulang oleh pemeriksa" % int(gr.arithmetic))
 
 
 # --- Setiap tipe soal di setiap mode --------------------------------------------------------------------------

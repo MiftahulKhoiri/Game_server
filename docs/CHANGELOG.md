@@ -2,6 +2,26 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Pemeriksa kualitas bank soal SD — Prioritas 1 (17 November 2026)
+
+Hanya alat uji; tidak mengubah gameplay, data soal, progres, atau paket yang sudah terbit (tanpa naik versi).
+
+- **`client/games/education_sd/scripts/engine/bank_audit.gd`** (baru): memeriksa bank soal dalam dua tingkat.
+  *Galat* (harus 0): data tidak lengkap, struktur tidak sah, ID kembar, topik tidak dikenal, mata pelajaran tidak
+  cocok dengan topik, kelas di luar kelas topik, kesulitan bukan 1–3, pilihan kembar (beda huruf besar/spasi),
+  **kunci hitungan salah** (soal "A op B = …", "A op ___ = C", "___ op B = C" dihitung sendiri).
+  *Peringatan pedagogis* (daftar kerja, tidak menggagalkan): cakupan topik×kelas < 5 soal tanpa pembuat soal,
+  tanpa kompetensi, petunjuk kosong, penjelasan terlalu singkat, kalimat terlalu panjang untuk kelasnya, kalimat
+  negatif di kelas 1–2, jawaban benar jauh lebih panjang dari pengecoh, pilihan "semua benar", isi soal kembar,
+  jawaban Benar/Salah timpang, kesulitan datar per mata pelajaran.
+- **`client/tests/sd_bank_report.gd`** (baru): laporan lengkap per soal + tabel cakupan topik×kelas
+  (`godot --headless --path client -s res://tests/sd_bank_report.gd`; exit 1 bila ada galat).
+- **`client/tests/sd_test.gd`**: +28 pemeriksaan (bank terbit 0 galat; setiap jenis galat & peringatan terdeteksi
+  pada soal rusak buatan; 14 bentuk soal hitungan; 960 soal buatan pembuat soal lolos pemeriksa).
+- Garis dasar bank saat ini: 328 soal, **0 galat**, 696 peringatan (328 tanpa kompetensi, 210 petunjuk kosong,
+  124 topik×kelas tipis, 16 jawaban terpanjang, 8 penjelasan minim, 6 mapel Benar/Salah timpang, 4 mapel kesulitan
+  datar). Pemeriksa tidak bisa memastikan fakta non-hitungan atau kesesuaian kurikulum resmi; itu tetap ditinjau guru.
+
 ## Paket education_sd 5.0.0 — Paket visual 5.0: dunia 3D lebih indah & hidup (17 November 2026)
 
 Tanpa APK baru (launcher 0.84.x cukup); paket diunduh ulang dari server. Gameplay, data misi, NPC, progres tidak berubah.
