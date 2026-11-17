@@ -251,6 +251,36 @@ func _phase_install() -> void:
 	await ls.test_server()
 	_check(ls.server_msg.text.begins_with("Server tersambung") and GM.api.base_url() == good, "alamat benar: server tersambung & disimpan")
 	await _wait(0.5)
+
+	print("== Pengaturan launcher: akun (daftar, keluar, masuk)")
+	var settings_parent: Node = launcher.settings_btn.get_parent()
+	_check(settings_parent != null and settings_parent.get_child(0) == launcher._grid and launcher.settings_btn.get_index() == 1
+		and launcher.settings_btn.icon != null, "tombol Pengaturan ber-ikon roda gigi di bawah daftar game")
+	var api_node := root.get_node("Api")
+	_check(not ls.logged_in() and ls.login_box.visible and not ls.logged_box.visible, "belum masuk: formulir Masuk tampil")
+	ls.show_account_tab("register")
+	_check(ls.register_box.visible and not ls.login_box.visible, "tab Daftar tampil")
+	ls.reg_name.text = "Peluncur_Uji"
+	ls.reg_email.text = "peluncur@uji.id"
+	ls.reg_pass.text = "sandi-peluncur-1"
+	ls.reg_pass2.text = "beda-sandi-999"
+	await ls.do_register()
+	_check(not ls.logged_in() and ls.account_msg.text.contains("tidak sama"), "kata sandi ulangan berbeda ditolak di HP")
+	ls.reg_pass2.text = "sandi-peluncur-1"
+	await ls.do_register()
+	_check(ls.logged_in() and ls.logged_box.visible and ls.account_status.text.contains("Peluncur_Uji"), "daftar dari Pengaturan launcher: langsung masuk (%s)" % ls.account_msg.text)
+	_check(str(root.get_node("Session").saved_name) == "Peluncur_Uji", "nama akun disimpan Session (dipakai juga The Last Dragon)")
+	await ls.do_logout()
+	_check(not ls.logged_in() and str(api_node.token) == "" and ls.login_box.visible, "keluar: token dihapus, formulir Masuk tampil")
+	ls.login_name.text = "Peluncur_Uji"
+	ls.login_pass.text = "salah-sandi-123"
+	await ls.do_login()
+	_check(not ls.logged_in(), "masuk dengan sandi salah ditolak (%s)" % ls.account_msg.text)
+	ls.login_pass.text = "sandi-peluncur-1"
+	await ls.do_login()
+	_check(ls.logged_in() and ls.account_status.text.contains("Peluncur_Uji"), "masuk dari Pengaturan launcher berhasil")
+	await ls.do_logout()
+	_check(str(api_node.token) == "", "keluar lagi (uji berikutnya mulai tanpa akun)")
 	ls.close()
 	await _wait(0.1)
 	_check(launcher.settings == null and quit_on_go_back, "Pengaturan ditutup, kembali ke daftar game")

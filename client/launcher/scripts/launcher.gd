@@ -108,10 +108,6 @@ func _build() -> void:
 	_refresh_btn = _button("Muat ulang katalog", 22)
 	_refresh_btn.pressed.connect(_refresh)
 	head.add_child(_refresh_btn)
-	settings_btn = _button("Pengaturan", 22)
-	settings_btn.name = "Settings"
-	settings_btn.pressed.connect(open_settings)
-	head.add_child(settings_btn)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -124,12 +120,31 @@ func _build() -> void:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_stretch_ratio = 1.15
 	body.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 14)
+	scroll.add_child(list)
 	_grid = GridContainer.new()
 	_grid.columns = 1  # satu kolom: nama game panjang tetap terbaca di layar HP
 	_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_grid.add_theme_constant_override("h_separation", 14)
 	_grid.add_theme_constant_override("v_separation", 14)
-	scroll.add_child(_grid)
+	list.add_child(_grid)
+
+	# Tombol Pengaturan (ikon roda gigi) tepat di bawah kartu game terakhir.
+	settings_btn = _button("Pengaturan", 24)
+	settings_btn.name = "Settings"
+	settings_btn.icon = gear_icon(64, Color.WHITE)
+	settings_btn.add_theme_constant_override("icon_max_width", 44)
+	settings_btn.add_theme_constant_override("h_separation", 16)
+	settings_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	settings_btn.custom_minimum_size = Vector2(0, 76)
+	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	settings_btn.tooltip_text = "Akun (masuk/daftar), alamat server, pembaruan aplikasi"
+	for st in ["normal", "hover", "pressed"]:
+		settings_btn.add_theme_stylebox_override(st, _box(CARD if st == "normal" else CARD_SEL, 14))
+	settings_btn.pressed.connect(open_settings)
+	list.add_child(settings_btn)
 
 	# Kanan: rincian game terpilih.
 	var detail := PanelContainer.new()
@@ -213,7 +228,7 @@ func _build() -> void:
 	add_child(_confirm)
 
 
-## Pengaturan launcher: server (untuk semua game) dan pembaruan aplikasi.
+## Pengaturan launcher: akun (masuk/daftar), server (untuk semua game), dan pembaruan aplikasi.
 func open_settings() -> void:
 	if settings != null and is_instance_valid(settings):
 		return
@@ -242,8 +257,32 @@ func _check_update() -> void:
 func _set_update(av: bool) -> void:
 	update_available = av
 	if settings_btn != null:
-		settings_btn.text = "Pengaturan  (ada update)" if av else "Pengaturan"
+		settings_btn.text = "Pengaturan  ·  ada update aplikasi" if av else "Pengaturan"
 		settings_btn.add_theme_color_override("font_color", ACCENT if av else Color.WHITE)
+		settings_btn.icon = gear_icon(64, ACCENT if av else Color.WHITE)
+
+
+## Ikon roda gigi digambar lewat kode (tanpa berkas gambar, jadi ikut terkirim lewat patch biasa).
+## 8 gigi, lubang di tengah, tepi dihaluskan (anti-alias) satu piksel.
+static func gear_icon(px: int, col: Color) -> ImageTexture:
+	var img := Image.create_empty(px, px, false, Image.FORMAT_RGBA8)
+	var c := (px - 1) / 2.0
+	var r_out := px * 0.48
+	var r_root := px * 0.36
+	var r_hole := px * 0.15
+	var teeth := 8.0
+	for y in px:
+		for x in px:
+			var dx := x - c
+			var dy := y - c
+			var r := sqrt(dx * dx + dy * dy)
+			var phase := fposmod(atan2(dy, dx) * teeth / TAU + 0.25, 1.0)
+			# Lebar gigi = separuh jarak antargigi; dihaluskan selebar satu piksel pada jari-jari r.
+			var tooth := clampf((0.25 - absf(phase - 0.5)) * TAU * r / teeth + 0.5, 0.0, 1.0)
+			var edge := lerpf(r_root, r_out, tooth)
+			var a := clampf(edge - r + 0.5, 0.0, 1.0) * clampf(r - r_hole + 0.5, 0.0, 1.0)
+			img.set_pixel(x, y, Color(col.r, col.g, col.b, a))
+	return ImageTexture.create_from_image(img)
 
 
 func _refresh() -> void:

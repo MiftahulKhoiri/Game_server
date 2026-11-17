@@ -1,5 +1,7 @@
 extends Control
 ## Pengaturan launcher (berlaku untuk semua game di aplikasi):
+##   Akun              : masuk / daftar / keluar. Satu akun untuk semua game (The Last Dragon, SD, SMP);
+##                       token disimpan Session seperti layar masuk The Last Dragon, kata sandi tidak disimpan.
 ##   Server            : alamat server Raspberry Pi + tombol tes. Dipakai bersama oleh semua game
 ##                       (sebelumnya ada di Pengaturan The Last Dragon).
 ##   Pembaruan aplikasi: versi terpasang, versi terbaru dari server, unduh & pasang APK baru
@@ -18,6 +20,34 @@ const ACCENT := Color("f0b429")
 const OK_COL := Color("5ccf7a")
 const ERR_COL := Color("ff7b6b")
 const YELLOW := Color("f0d040")
+const TAB_ON := Color("33507a")
+const TAB_OFF := Color("263142")
+const MIN_PASSWORD := 8
+const KB_MARGIN := 28.0
+
+# Akun
+var account_status: Label
+var account_msg: Label
+var tab_row: HBoxContainer
+var tab_login: Button
+var tab_register: Button
+var login_box: VBoxContainer
+var register_box: VBoxContainer
+var logged_box: VBoxContainer
+var login_name: LineEdit
+var login_pass: LineEdit
+var reg_name: LineEdit
+var reg_email: LineEdit
+var reg_pass: LineEdit
+var reg_pass2: LineEdit
+var btn_login: Button
+var btn_register: Button
+var btn_logout: Button
+var account_tab := "login"
+var _acc_busy := false
+var _scroll: ScrollContainer
+var _kb_spacer: Control
+var _kb_px := -1
 
 var url_edit: LineEdit
 var server_msg: Label
@@ -46,6 +76,7 @@ func _ready() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var sc := ScrollContainer.new()
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll = sc
 	add_child(sc)
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var mg := MarginContainer.new()
@@ -70,6 +101,8 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", ACCENT)
 	head.add_child(title)
 	v.add_child(head)
+
+	_build_account(v)
 
 	v.add_child(_panel_title("Server (untuk semua game)"))
 	v.add_child(_label("Alamat server Raspberry Pi. Dipakai untuk katalog game, akun, dan menyimpan progres.", 20, true))
@@ -123,6 +156,8 @@ func _ready() -> void:
 	progress.visible = false
 	v.add_child(progress)
 	v.add_child(_label("Game unduhan (mis. Petualangan Ilmu SD) diperbarui dari halaman utama launcher (tombol UPDATE).", 18, true))
+	_kb_spacer = Control.new()  # ruang papan ketik layar HP supaya isian tidak tertutup
+	v.add_child(_kb_spacer)
 
 	_updater = Updater.new()
 	add_child(_updater)
@@ -132,6 +167,8 @@ func _ready() -> void:
 			progress.value = 100.0 * r / t
 			_msg(update_msg, "Mengunduh... %.1f / %.1f MB" % [r / 1048576.0, t / 1048576.0], Color.WHITE))
 	check_update()
+	refresh_account()
+	_check_session()
 
 
 func close() -> void:
@@ -263,6 +300,299 @@ func _on_update() -> void:
 	if res.get("web", false):
 		_open_web = true
 		btn_update.text = "Buka halaman unduhan"
+
+
+# --- Akun: masuk / daftar / keluar --------------------------------------------------------
+
+func _build_account(v: VBoxContainer) -> void:
+	v.add_child(_panel_title("Akun"))
+	account_status = _label("", 22, true)
+	account_status.name = "AccountStatus"
+	v.add_child(account_status)
+
+	tab_row = HBoxContainer.new()
+	tab_row.add_theme_constant_override("separation", 10)
+	tab_login = _button("Masuk", 24)
+	tab_login.name = "TabLogin"
+	tab_register = _button("Daftar", 24)
+	tab_register.name = "TabRegister"
+	for b: Button in [tab_login, tab_register]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 62)
+		tab_row.add_child(b)
+	tab_login.pressed.connect(func() -> void: show_account_tab("login"))
+	tab_register.pressed.connect(func() -> void: show_account_tab("register"))
+	v.add_child(tab_row)
+
+	# Masuk
+	login_box = _vbox()
+	login_name = _edit("Nama atau email", false)
+	login_name.text = str(Session.saved_name)
+	login_name.max_length = 254
+	login_pass = _edit("Kata sandi", true)
+	login_box.add_child(login_name)
+	login_box.add_child(login_pass)
+	login_box.add_child(_show_pass([login_pass]))
+	btn_login = _button("Masuk", 24)
+	btn_login.name = "DoLogin"
+	btn_login.custom_minimum_size = Vector2(0, 66)
+	btn_login.add_theme_stylebox_override("normal", _box(Color("2f7d46")))
+	btn_login.pressed.connect(do_login)
+	login_box.add_child(btn_login)
+	login_name.text_submitted.connect(func(_t: String) -> void: login_pass.grab_focus())
+	login_pass.text_submitted.connect(func(_t: String) -> void:
+		login_pass.release_focus()
+		do_login())
+	v.add_child(login_box)
+
+	# Daftar
+	register_box = _vbox()
+	reg_name = _edit("Nama petualang (3-20 huruf/angka/_)", false)
+	reg_name.max_length = 20
+	reg_email = _edit("Email, mis. nama@contoh.com", false)
+	reg_email.max_length = 254
+	reg_email.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
+	reg_pass = _edit("Kata sandi (minimal %d karakter)" % MIN_PASSWORD, true)
+	reg_pass2 = _edit("Ulangi kata sandi", true)
+	for e: LineEdit in [reg_name, reg_email, reg_pass, reg_pass2]:
+		register_box.add_child(e)
+	register_box.add_child(_show_pass([reg_pass, reg_pass2]))
+	btn_register = _button("Daftar akun baru", 24)
+	btn_register.name = "DoRegister"
+	btn_register.custom_minimum_size = Vector2(0, 66)
+	btn_register.add_theme_stylebox_override("normal", _box(Color("2f7d46")))
+	btn_register.pressed.connect(do_register)
+	register_box.add_child(btn_register)
+	reg_name.text_submitted.connect(func(_t: String) -> void: reg_email.grab_focus())
+	reg_email.text_submitted.connect(func(_t: String) -> void: reg_pass.grab_focus())
+	reg_pass.text_submitted.connect(func(_t: String) -> void: reg_pass2.grab_focus())
+	reg_pass2.text_submitted.connect(func(_t: String) -> void:
+		reg_pass2.release_focus()
+		do_register())
+	v.add_child(register_box)
+
+	# Sudah masuk
+	logged_box = _vbox()
+	btn_logout = _button("Keluar dari akun ini", 22)
+	btn_logout.name = "DoLogout"
+	btn_logout.custom_minimum_size = Vector2(0, 62)
+	btn_logout.pressed.connect(do_logout)
+	logged_box.add_child(btn_logout)
+	v.add_child(logged_box)
+
+	account_msg = _label("", 20, true)
+	account_msg.name = "AccountMsg"
+	v.add_child(account_msg)
+
+
+func logged_in() -> bool:
+	return str(Api.token) != ""
+
+
+## Tampilkan bagian akun sesuai keadaan: sudah masuk (nama + tombol keluar) atau belum (Masuk/Daftar).
+func refresh_account() -> void:
+	var on := logged_in()
+	if on:
+		var nm := str(Session.saved_name)
+		account_status.text = ("Masuk sebagai %s." % nm if nm != "" else "Sudah masuk di HP ini.") \
+			+ " Progres semua game tersimpan di server."
+		account_status.add_theme_color_override("font_color", OK_COL)
+	else:
+		account_status.text = "Belum masuk. Masuk atau daftar supaya progres semua game tersimpan di server dan bisa dipulihkan di HP lain."
+		account_status.add_theme_color_override("font_color", Color.WHITE)
+	tab_row.visible = not on
+	logged_box.visible = on
+	login_box.visible = not on and account_tab == "login"
+	register_box.visible = not on and account_tab == "register"
+	tab_login.add_theme_stylebox_override("normal", _box(TAB_ON if account_tab == "login" else TAB_OFF))
+	tab_register.add_theme_stylebox_override("normal", _box(TAB_ON if account_tab == "register" else TAB_OFF))
+
+
+func show_account_tab(tab: String) -> void:
+	account_tab = tab
+	account_msg.text = ""
+	for e: LineEdit in [login_pass, reg_pass, reg_pass2]:
+		e.text = ""  # kata sandi tidak terbawa antar tab
+	refresh_account()
+
+
+## Saat dibuka: pastikan token tersimpan masih berlaku (dicabut dari HP lain / kedaluwarsa -> keluar).
+func _check_session() -> void:
+	if not logged_in():
+		return
+	var res: Dictionary = await Api.get_me()
+	if not is_inside_tree() or _acc_busy:
+		return
+	if res.ok:
+		Session.saved_name = str(res.data.get("name", Session.saved_name))
+		refresh_account()
+	elif int(res.get("status", 0)) == 401:
+		_forget_session()
+		_msg(account_msg, "Sesi sudah berakhir. Masuk lagi dengan nama dan kata sandimu.", ERR_COL)
+
+
+func do_login() -> void:
+	if _acc_busy:
+		return
+	var n := login_name.text.strip_edges()
+	if n == "" or login_pass.text == "":
+		_msg(account_msg, "Isi nama (atau email) dan kata sandi.", ERR_COL)
+		return
+	_set_acc_busy(true, "Masuk...")
+	var res: Dictionary = await Api.login(n, login_pass.text)
+	if not is_inside_tree():
+		return
+	_set_acc_busy(false, "")
+	if not res.ok:
+		# 401 = nama/email atau kata sandi salah; 429 = terlalu banyak percobaan; 0 = server tidak terjangkau.
+		_msg(account_msg, str(res.error), ERR_COL)
+		return
+	_signed_in(res.data, "Berhasil masuk")
+
+
+func do_register() -> void:
+	if _acc_busy:
+		return
+	var nm := reg_name.text.strip_edges()
+	var em := reg_email.text.strip_edges()
+	if RegEx.create_from_string("^[A-Za-z0-9_]{3,20}$").search(nm) == null:
+		_msg(account_msg, "Nama 3-20 karakter: huruf, angka, atau _ (tanpa spasi).", ERR_COL)
+		return
+	if RegEx.create_from_string("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").search(em) == null:
+		_msg(account_msg, "Isi email yang benar, mis. nama@contoh.com.", ERR_COL)
+		return
+	if reg_pass.text.length() < MIN_PASSWORD:
+		_msg(account_msg, "Kata sandi minimal %d karakter." % MIN_PASSWORD, ERR_COL)
+		return
+	if reg_pass.text != reg_pass2.text:
+		_msg(account_msg, "Kata sandi dan ulangannya tidak sama.", ERR_COL)
+		return
+	_set_acc_busy(true, "Mendaftar...")
+	var res: Dictionary = await Api.register(nm, em, reg_pass.text)
+	if not is_inside_tree():
+		return
+	_set_acc_busy(false, "")
+	if not res.ok:
+		_msg(account_msg, str(res.error), ERR_COL)
+		return
+	_signed_in(res.data, "Akun dibuat")
+
+
+## Simpan sesi dari jawaban daftar/masuk ({"player", "token"}), sama seperti layar masuk The Last Dragon.
+func _signed_in(data: Dictionary, what: String) -> void:
+	Api.token = str(data.get("token", ""))
+	Session.offline = false
+	var p: Dictionary = data.get("player", {}) if typeof(data.get("player")) == TYPE_DICTIONARY else {}
+	if not p.is_empty():
+		Session.set_player(p)
+	Session.saved_name = str(p.get("name", login_name.text.strip_edges()))
+	Session.save_config()
+	for e: LineEdit in [login_pass, reg_name, reg_email, reg_pass, reg_pass2]:
+		e.text = ""
+	login_name.text = Session.saved_name
+	refresh_account()
+	_msg(account_msg, "%s: %s. Progres game akan disinkronkan ke server." % [what, Session.saved_name], OK_COL)
+	# Progres yang tersimpan saat belum masuk langsung dikirim ke server.
+	if GameManager.has_method("_flush_sync"):
+		GameManager._flush_sync.call_deferred()
+
+
+func do_logout() -> void:
+	if _acc_busy:
+		return
+	_set_acc_busy(true, "Keluar...")
+	await Api.logout()  # gagal terhubung pun tidak apa: token di HP tetap dihapus
+	if not is_inside_tree():
+		return
+	_set_acc_busy(false, "")
+	_forget_session()
+	_msg(account_msg, "Kamu sudah keluar. Progres tetap tersimpan di server.", OK_COL)
+
+
+func _forget_session() -> void:
+	Api.token = ""
+	Session.saved_name = ""
+	Session.player = {}
+	Session.save_config()
+	account_tab = "login"
+	refresh_account()
+
+
+func _set_acc_busy(on: bool, text: String) -> void:
+	_acc_busy = on
+	for b: Button in [btn_login, btn_register, btn_logout, tab_login, tab_register]:
+		b.disabled = on
+	if text != "":
+		_msg(account_msg, text, Color.WHITE)
+
+
+# --- Papan ketik layar HP ------------------------------------------------------------------
+
+func _process(_delta: float) -> void:
+	if not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		return
+	var kb := DisplayServer.virtual_keyboard_get_height()
+	if kb == _kb_px:
+		return
+	_kb_px = kb
+	var view := get_viewport().get_visible_rect().size
+	var win := Vector2(DisplayServer.window_get_size())
+	var k := minf(win.x / view.x, win.y / view.y)
+	_kb_spacer.custom_minimum_size.y = maxf(0.0, kb / k) if kb > 0 else 0.0
+	_scroll_to_focus()
+
+
+func _scroll_to_focus() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var f := get_viewport().gui_get_focus_owner()
+	if not (f is LineEdit) or not is_inside_tree():
+		return
+	var limit := get_viewport().get_visible_rect().size.y - _kb_spacer.custom_minimum_size.y - KB_MARGIN
+	var r := (f as Control).get_global_rect()
+	if r.end.y > limit:
+		_scroll.scroll_vertical += int(ceil(r.end.y - limit))
+	elif r.position.y < KB_MARGIN:
+		_scroll.scroll_vertical -= int(ceil(KB_MARGIN - r.position.y))
+
+
+func _vbox() -> VBoxContainer:
+	var b := VBoxContainer.new()
+	b.add_theme_constant_override("separation", 10)
+	return b
+
+
+func _edit(placeholder: String, secret: bool) -> LineEdit:
+	var e := LineEdit.new()
+	e.placeholder_text = placeholder
+	e.secret = secret
+	e.max_length = 128
+	e.custom_minimum_size = Vector2(0, 62)
+	e.add_theme_font_size_override("font_size", 24)
+	e.focus_entered.connect(_scroll_to_focus)
+	return e
+
+
+func _show_pass(edits: Array) -> CheckBox:
+	var c := CheckBox.new()
+	c.text = "Tampilkan kata sandi"
+	c.focus_mode = Control.FOCUS_NONE
+	c.add_theme_font_size_override("font_size", 20)
+	c.toggled.connect(func(on: bool) -> void:
+		for e: LineEdit in edits:
+			e.secret = not on)
+	return c
+
+
+static func _box(c: Color) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = c
+	s.set_corner_radius_all(12)
+	s.content_margin_left = 14
+	s.content_margin_right = 14
+	s.content_margin_top = 8
+	s.content_margin_bottom = 8
+	return s
 
 
 func _msg(l: Label, text: String, c: Color) -> void:

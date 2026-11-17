@@ -2,6 +2,19 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Launcher 0.84.6 (patch, tanpa APK baru) — 17 November 2026
+
+- Tombol **Pengaturan** pindah dari pojok kanan atas ke bawah daftar game (di bawah kartu terakhir), selebar kartu,
+  dengan **ikon roda gigi** (digambar lewat kode, jadi ikut patch). Bila ada APK baru: ikon & teks berwarna kuning
+  ("Pengaturan · ada update aplikasi").
+- Halaman Pengaturan launcher kini berisi berurutan: **Akun** (tab Masuk / Daftar; bila sudah masuk: nama akun +
+  "Keluar dari akun ini"), **Server** (alamat + Tes & simpan), **Pembaruan aplikasi** (periksa, unduh & pasang APK).
+  Akun memakai token yang sama dengan The Last Dragon (Session), jadi sekali masuk berlaku untuk semua game; progres SD/SMP
+  yang menunggu langsung disinkronkan. Token yang dicabut/kedaluwarsa dideteksi saat Pengaturan dibuka. Kata sandi tidak
+  disimpan. Isian bergeser di atas papan ketik HP.
+- Uji: `platform-test` +9 pemeriksaan (posisi & ikon tombol, daftar, ulangan sandi beda ditolak, keluar, sandi salah
+  ditolak, masuk).
+
 ## Paket education_sd 5.2.0 — Prioritas 4–8 + perapian (17 November 2026)
 
 Berisi sistem adaptif (Prioritas 4, di bawah) dan:
