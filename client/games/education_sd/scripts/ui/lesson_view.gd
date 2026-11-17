@@ -226,7 +226,7 @@ func current_question_view() -> Node:
 
 
 func _on_answer(res: Dictionary) -> void:
-	Learning.answer(p, session, res.question, bool(res.correct), bool(res.first_try))
+	Learning.answer(p, session, res.question, bool(res.correct), bool(res.first_try), str(res.get("first_wrong", "")))
 	changed.emit()
 	if int(session.i) >= (session.questions as Array).size():
 		_finish()

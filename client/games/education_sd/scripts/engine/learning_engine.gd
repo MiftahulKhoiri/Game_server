@@ -5,6 +5,7 @@ extends RefCounted
 ## Progres disimpan di p.learning (statistik, riwayat) dan p.academy (bintang & penguasaan per materi).
 ## Murni data: bisa diuji tanpa layar.
 
+const Adaptive := preload("res://games/education_sd/scripts/engine/adaptive.gd")
 const LESSONS := "res://games/education_sd/data/lessons.json"
 const SESSION := 5
 const MAX_RECENT := 12
@@ -142,23 +143,46 @@ const STATUS_TEXT := {"baru": "Belum dipelajari", "belajar": "Sedang dipelajari"
 
 
 ## Mulai latihan: pilih soal adaptif. Mengembalikan sesi {topic, grade, questions, mode, i, correct, ...}.
+## Keputusan adaptif (Adaptive.decide) disimpan ke statistik topik lalu dipakai memilih soal.
 func start(p: Dictionary, topic_id: String, grade: int, rng: RandomNumberGenerator, n := SESSION) -> Dictionary:
-	var picked: Dictionary = data.pick(topic_id, grade, n, stats(p, grade, topic_id), rng)
+	var st := stats(p, grade, topic_id)
+	Adaptive.ensure(st)
+	var dec := Adaptive.decide(st)
+	Adaptive.apply(st, dec)
+	var picked: Dictionary = data.pick(topic_id, grade, n, st, rng, dec)
 	return {"topic": topic_id, "grade": grade, "questions": picked.questions, "mode": str(picked.mode),
-		"q_grade": int(picked.grade), "i": 0, "correct": 0, "first_try": 0, "xp": 0, "coins": 0, "answers": []}
+		"q_grade": int(picked.grade), "level": int(dec.level), "changed": bool(dec.changed), "reason": str(dec.reason),
+		"tip": Adaptive.tip(st), "i": 0, "correct": 0, "first_try": 0, "xp": 0, "coins": 0, "answers": []}
+
+
+## Latihan penguatan: pilih topik ruang `room_id` dengan bobot — topik yang perlu dilatih lebih sering muncul
+## (perlu latihan 4, sedang dipelajari 3, belum dipelajari 2, sudah dikuasai 1). "" bila ruang tanpa topik.
+func pick_topic(p: Dictionary, room_id: String, grade: int, rng: RandomNumberGenerator) -> String:
+	var ts := topics(room_id, grade, p)
+	var w: Array = ts.map(func(t): return int(Adaptive.TOPIC_WEIGHT.get(str(t.status), 2)))
+	var i := Adaptive.pick_weighted(ts, w, rng)
+	return str(ts[i].id) if i >= 0 else ""
 
 
 static func adapt_note(session: Dictionary) -> String:
+	var note := ""
 	match str(session.get("mode", "normal")):
 		"mudah":
-			return "Soal dibuat sedikit lebih mudah dulu, supaya kamu makin paham."
+			note = "Soal dibuat sedikit lebih mudah dulu, supaya kamu makin paham."
 		"tantang":
-			return "Kamu hebat! Soal kali ini lebih menantang."
-	return ""
+			note = "Kamu hebat! Soal kali ini lebih menantang, ada satu soal pengayaan."
+		_:
+			if bool(session.get("changed", false)) and int(session.get("level", 1)) > 1:
+				note = "Kamu makin lancar! Soal dibuat sedikit lebih menantang."
+	var tip := str(session.get("tip", ""))
+	if tip != "":
+		note = (note + "\n" if note != "" else "") + "Saran: " + tip
+	return note
 
 
 ## Catat satu jawaban. correct = akhirnya benar; first_try = benar tanpa salah. Usaha tetap dihargai.
-static func answer(p: Dictionary, session: Dictionary, q: Dictionary, correct: bool, first_try: bool) -> Dictionary:
+## first_wrong = jawaban salah PERTAMA anak (untuk mengenali jenis kesalahan); "" bila tidak ada.
+static func answer(p: Dictionary, session: Dictionary, q: Dictionary, correct: bool, first_try: bool, first_wrong := "") -> Dictionary:
 	var grade := int(session.grade)
 	var st := stats(p, grade, str(session.topic))
 	var ok := correct and first_try
@@ -176,6 +200,7 @@ static func answer(p: Dictionary, session: Dictionary, q: Dictionary, correct: b
 	if int(q.get("grade", grade)) == grade:
 		(st.recent_own as Array).append(1 if ok else 0)
 		st.recent_own = (st.recent_own as Array).slice(-MAX_RECENT)
+	Adaptive.record(st, q, ok, first_wrong)
 	var qid := str(q.get("id", ""))
 	if qid != "" and not (st.seen as Array).has(qid):
 		(st.seen as Array).append(qid)

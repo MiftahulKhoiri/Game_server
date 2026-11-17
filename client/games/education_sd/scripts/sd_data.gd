@@ -3,6 +3,7 @@ extends RefCounted
 ## tools/gamepack/make_sd_bank.py), lalu memilih soal secara adaptif per topik dan kelas.
 
 const SdGen := preload("res://games/education_sd/scripts/sd_gen.gd")
+const Adaptive := preload("res://games/education_sd/scripts/engine/adaptive.gd")
 
 const PATH := "res://games/education_sd/data/pulau_ilmu.json"
 const TYPES := ["mc", "tf", "fill", "match", "order_letters", "order_words", "sort_numbers", "count", "pick_image",
@@ -161,18 +162,18 @@ func easier_grade(topic_id: String, grade: int) -> int:
 	return 0
 
 
-## Pilih `n` soal untuk topik/kelas. stats = statistik topik dari progres ({recent, seen}).
-## Adaptif: bila anak sering salah (>= 4 percobaan terakhir, benar < 50%), soal diambil dari kelas lebih
-## rendah dengan konsep sama dan tingkat kesulitan rendah. Bila sangat baik (>= 5, benar >= 80%), soal
-## sulit didahulukan. Kecepatan menjawab TIDAK dipakai.
-func pick(topic_id: String, grade: int, n: int, stats: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
-	var recent: Array = stats.get("recent", [])
+## Pilih `n` soal untuk topik/kelas. stats = statistik topik dari progres ({recent, at_level, level, mode, seen}).
+## plan = keputusan Adaptive ({mode, level}); bila kosong, dihitung dari stats tanpa mengubahnya.
+## Aturan adaptif lengkap ada di scripts/engine/adaptive.gd. Ringkasnya: soal belum dilihat didahulukan, lalu soal
+## yang tingkat kesulitannya paling dekat dengan level sasaran (1–3); mode "mudah" mengambil soal kelas lebih rendah
+## (konsep sama); mode "tantang" mendahulukan soal sulit + 1 soal pengayaan kelas berikutnya.
+## level 0 = tanpa sasaran kesulitan (dipakai ujian). Kecepatan menjawab TIDAK dipakai.
+func pick(topic_id: String, grade: int, n: int, stats: Dictionary, rng: RandomNumberGenerator, plan: Dictionary = {}) -> Dictionary:
+	if plan.is_empty():
+		plan = Adaptive.decide(stats)
 	var seen: Array = stats.get("seen", [])
-	var mode := "normal"
-	if recent.size() >= 4 and _rate(recent.slice(-6)) < 0.5:
-		mode = "mudah"
-	elif recent.size() >= 5 and _rate(recent.slice(-8)) >= 0.8:
-		mode = "tantang"
+	var mode := str(plan.get("mode", "normal"))
+	var level := int(plan.get("level", 0))
 	var g := grade
 	if mode == "mudah":
 		var eg := easier_grade(topic_id, grade)
@@ -188,6 +189,7 @@ func pick(topic_id: String, grade: int, n: int, stats: Dictionary, rng: RandomNu
 	# kelompok yang sama soal sulit didahulukan. (Dulu dua sort_custom berturut-turut: sort kedua tidak stabil
 	# sehingga menimpa urutan "belum dilihat" dan soal lama bisa muncul lagi.)
 	var hard_first := mode == "tantang"
+	var target := 0 if mode == "mudah" else level
 	pool.sort_custom(func(x, y):
 		var sx := int(seen.has(str(x.id)))
 		var sy := int(seen.has(str(y.id)))
@@ -195,6 +197,8 @@ func pick(topic_id: String, grade: int, n: int, stats: Dictionary, rng: RandomNu
 			return sx < sy
 		if hard_first:
 			return int(x.get("difficulty", 1)) > int(y.get("difficulty", 1))
+		if target > 0:
+			return absi(int(x.get("difficulty", 1)) - target) < absi(int(y.get("difficulty", 1)) - target)
 		return false)
 	var out: Array = pool.slice(0, n)
 	var specs: Array = (topics.get(topic_id, {}).get("gen", {}) as Dictionary).get(str(g), [])
@@ -225,7 +229,30 @@ func pick(topic_id: String, grade: int, n: int, stats: Dictionary, rng: RandomNu
 					ids[str(q.id)] = true
 					out.append(q)
 	_shuffle(out, rng)
-	return {"questions": out, "mode": mode, "grade": g}
+	# Pengayaan (mode tantang): satu soal dari kelas berikutnya, konsep sama, bila ada. Ditandai "pengayaan"; karena
+	# kelasnya berbeda, jawabannya tidak dihitung untuk penguasaan kelas ini.
+	if mode == "tantang" and out.size() >= 2:
+		var extra := _enrichment(topic_id, g + 1, seen, rng)
+		if not extra.is_empty():
+			out[out.size() - 1] = extra
+	return {"questions": out, "mode": mode, "grade": g, "level": level, "reason": str(plan.get("reason", ""))}
+
+
+func _enrichment(topic_id: String, g: int, seen: Array, rng: RandomNumberGenerator) -> Dictionary:
+	if g > 6:
+		return {}
+	var cand: Array = (by_topic_grade.get("%s/%d" % [topic_id, g], []) as Array).filter(func(q): return not seen.has(str(q.id)))
+	var q: Dictionary = {}
+	if not cand.is_empty():
+		q = (cand[rng.randi_range(0, cand.size() - 1)] as Dictionary).duplicate()
+	else:
+		var specs: Array = (topics.get(topic_id, {}).get("gen", {}) as Dictionary).get(str(g), [])
+		if not specs.is_empty():
+			q = SdGen.make(str(specs[rng.randi_range(0, specs.size() - 1)]), topic_id, g, rng)
+	if q.is_empty() or validate_question(q) != "":
+		return {}
+	q["pengayaan"] = true
+	return q
 
 
 ## Soal campuran untuk ujian akhir wilayah / mode kuis: beberapa dari setiap topik kelas itu.
@@ -237,7 +264,7 @@ func pick_mixed(region_id: String, grade: int, n: int, progress_topics: Dictiona
 	var per := ceili(float(n) / ts.size())
 	for t in ts:
 		var st: Dictionary = progress_topics.get("%d/%s" % [grade, t.id], {})
-		var picked: Dictionary = pick(str(t.id), grade, per, {"seen": st.get("seen", [])}, rng)
+		var picked: Dictionary = pick(str(t.id), grade, per, {"seen": st.get("seen", [])}, rng, {"mode": "normal", "level": 0})
 		out.append_array(picked.questions)
 	_shuffle(out, rng)
 	return out.slice(0, n)

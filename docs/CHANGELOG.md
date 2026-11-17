@@ -2,6 +2,31 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Sistem pembelajaran adaptif SD — Prioritas 4 (17 November 2026)
+
+Belum diterbitkan (paket tetap 5.1.0). Progres lama tetap terbaca; field adaptif dilengkapi otomatis dari riwayat lama.
+
+- **`scripts/engine/adaptive.gd` (baru)**: semua aturan adaptif di satu modul murni yang transparan dan diuji. Aturan
+  berurutan dengan data minimal yang jelas (lihat kepala berkas):
+  A. keluar dari mode "mudah" setelah >= 5 jawaban dan 3 dari 5 benar; B. < 5 jawaban: tidak ada perubahan;
+  C. level 3 + >= 8 jawaban + >= 85% benar: mode "tantang" + 1 soal **pengayaan** kelas berikutnya;
+  D. 4 dari 5 benar: **kesulitan naik satu level** (1 -> 2 -> 3, tidak melompat); E. level > 1, >= 6 jawaban, < 40%:
+  **kesulitan turun satu level, kelas tetap**; F. level 1, **>= 8 jawaban**, < 40%: soal kelas lebih rendah (konsep sama).
+  Dulu kelas turun setelah 4 jawaban dan tidak ada tingkat kesulitan bertahap.
+- **Jenis kesalahan**: jawaban salah PERTAMA anak kini dikirim tampilan soal (`first_wrong`) dan dicatat
+  (`mistakes`): lupa menyimpan/meminjam (nilai tempat), operasi tertukar, meleset sedikit, hitung lain, benar/salah,
+  konsep. Bila jenis yang sama muncul >= 2 kali, latihan berikutnya menampilkan saran singkat yang ramah.
+- **Pengecoh diagnostik** (`sd_gen.gd`): soal penjumlahan bersimpan selalu memuat jawaban "lupa menyimpan"
+  (27 + 15 -> 32); pengurangan meminjam memuat jawaban "salah meminjam" (42 − 15 -> 33); juga hasil operasi tertukar.
+- **Latihan penguatan**: Jurus Ilmu memilih topik dengan bobot (perlu latihan 4, sedang dipelajari 3, baru 2,
+  dikuasai 1), sehingga topik lemah lebih sering diulang dengan soal berbeda (`Learning.pick_topic`).
+- **Pemilihan soal**: belum dilihat dulu, lalu tingkat kesulitan terdekat dengan level sasaran. Ujian tanpa sasaran level.
+- Uji: `sd_test.gd` 852 pemeriksaan (+43): setiap aturan A–F termasuk batas data (7 vs 8 jawaban), satu jawaban salah di
+  posisi mana pun tidak pernah menurunkan kelas, simulasi 12 acakan per tipe anak (95% benar: level naik bertahap sampai 3;
+  15% benar: dibantu soal mudah, tidak pernah sebelum 8 jawaban; 70% benar: 119/120 latihan tetap di kelasnya), jenis
+  kesalahan, pengecoh diagnostik (200 soal), pengayaan, pilihan topik berbobot, save lama. 6 uji lama disesuaikan karena
+  aturan lama (turun kelas setelah 4 jawaban, langsung "tantang") memang diganti.
+
 ## Paket education_sd 5.1.0 — terbit (17 November 2026)
 
 Berisi Prioritas 1–3 di bawah: pemeriksa bank soal, bank soal 802 soal dengan kompetensi CP, dan perbaikan bug Learning

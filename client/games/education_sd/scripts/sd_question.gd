@@ -5,7 +5,7 @@ extends VBoxContainer
 ##   petualangan : satu kesempatan, penjelasan langsung, jawaban benar membuka jalan
 ##   kuis        : tanpa umpan balik; pembahasan di akhir sesi
 ## Sinyal finished(result) dipancarkan saat pemain lanjut ke soal berikutnya:
-##   {correct: bool, first_try: bool, given: String, answer: String, retried: bool}
+##   {correct: bool, first_try: bool, given: String, answer: String, retried: bool, first_wrong: String}
 
 signal finished(result: Dictionary)
 signal feedback(correct: bool)
@@ -26,6 +26,7 @@ var _tries := 0
 var _mistakes := 0
 var _done := false
 var _given := ""
+var _first_wrong := ""  # jawaban salah pertama (untuk mengenali jenis kesalahan)
 var _options: Array = []      # pilihan teks (sudah diacak) untuk tipe pilihan
 var _answer := -1
 var _opt_buttons: Array = []
@@ -412,6 +413,8 @@ func _put(b: int) -> void:
 # --- Hasil -----------------------------------------------------------------------------------------
 
 func _mistake(node: Control) -> void:
+	if _mistakes == 0:
+		_first_wrong = _given.replace("_", " ")
 	_tries += 1
 	_mistakes += 1
 	feedback.emit(false)
@@ -479,7 +482,7 @@ func _emit_finish() -> void:
 	Voice.hush()
 	var correct := _is_correct()
 	finished.emit({"correct": correct, "first_try": correct and _mistakes == 0, "given": _given.replace("_", " "),
-		"answer": _answer_text(), "retried": _mistakes > 0 and correct, "question": q, "explain": str(q.explain)})
+		"answer": _answer_text(), "retried": _mistakes > 0 and correct, "question": q, "explain": str(q.explain), "first_wrong": _first_wrong})
 
 
 func _is_correct() -> bool:

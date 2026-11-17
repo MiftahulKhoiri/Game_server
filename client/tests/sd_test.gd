@@ -8,6 +8,7 @@ extends SceneTree
 const SdData := preload("res://games/education_sd/scripts/sd_data.gd")
 const SdGen := preload("res://games/education_sd/scripts/sd_gen.gd")
 const BankAudit := preload("res://games/education_sd/scripts/engine/bank_audit.gd")
+const Adaptive := preload("res://games/education_sd/scripts/engine/adaptive.gd")
 const SdProgress := preload("res://games/education_sd/scripts/sd_progress.gd")
 const SdQuestion := preload("res://games/education_sd/scripts/sd_question.gd")
 const SdMini := preload("res://games/education_sd/scripts/sd_minigames.gd")
@@ -31,6 +32,7 @@ func _initialize() -> void:
 	await _v3_npc_tests()
 	await _v3_learning_tests()
 	await _p3_bugfix_tests()
+	await _p4_adaptive_tests()
 	await _v3_quest_tests()
 	await _v3_reward_tests()
 	await _v3_battle_tests()
@@ -142,11 +144,15 @@ func _data_tests() -> void:
 	_check(pw.options[int(pw.answer)] != "", "soal pangkat punya kunci")
 
 	print("== Adaptif")
-	var st := {"recent": [0, 0, 0, 1, 0, 0], "seen": []}
-	var easy := d.pick("penjumlahan", 3, 5, st, rng)
-	_check(easy.mode == "mudah" and int(easy.grade) == 2, "sering salah -> soal kelas lebih rendah, konsep sama (kelas %d)" % int(easy.grade))
-	var good := d.pick("penjumlahan", 3, 5, {"recent": [1, 1, 1, 1, 1, 1], "seen": []}, rng)
-	_check(good.mode == "tantang" and int(good.grade) == 3, "sering benar -> tetap kelas sendiri, soal sulit didahulukan")
+	# Aturan adaptif Prioritas 4 (scripts/engine/adaptive.gd): turun kelas baru setelah >= 8 jawaban di level 1.
+	var few := d.pick("penjumlahan", 3, 5, {"at_level": [0, 0, 0, 1, 0, 0], "level": 1, "seen": []}, rng)
+	_check(few.mode == "normal" and int(few.grade) == 3, "6 jawaban (5 salah) belum cukup untuk turun kelas")
+	var easy := d.pick("penjumlahan", 3, 5, {"at_level": [0, 0, 0, 1, 0, 0, 0, 0], "level": 1, "seen": []}, rng)
+	_check(easy.mode == "mudah" and int(easy.grade) == 2, "8 jawaban, sering salah di level 1 -> soal kelas lebih rendah, konsep sama (kelas %d)" % int(easy.grade))
+	var rise := d.pick("penjumlahan", 3, 5, {"at_level": [1, 1, 1, 1, 1, 1], "level": 1, "seen": []}, rng)
+	_check(rise.mode == "normal" and int(rise.level) == 2 and int(rise.grade) == 3, "sering benar di level 1 -> naik ke level 2 dulu (bertahap)")
+	var good := d.pick("penjumlahan", 3, 5, {"at_level": [1, 1, 1, 1, 1, 1, 1, 1], "level": 3, "seen": []}, rng)
+	_check(good.mode == "tantang" and int(good.grade) == 3, "level 3 & sangat lancar -> tantang, tetap kelas sendiri")
 	var normal := d.pick("bacaan", 4, 5, {"recent": [1, 0], "seen": []}, rng)
 	_check(normal.mode == "normal" and (normal.questions as Array).size() == 5, "data sedikit -> tidak disimpulkan, 5 soal")
 	var seen_ids: Array = []
@@ -603,15 +609,24 @@ func _v3_learning_tests() -> void:
 	_check(int(res2.stars) == 1 and int(p.academy["2/penjumlahan"].stars) == 3 and int(p.academy["2/penjumlahan"].sessions) == 2,
 		"latihan buruk: 1 bintang, bintang terbaik tetap 3")
 	_check(int(res2.coins) > 0 and str(res2.message).contains("berusaha"), "usaha tetap dihargai, pesan positif")
+	# Setelah 5 benar kesulitan naik ke level 2; 5 salah di level 2 belum cukup (butuh 6) untuk mengubah apa pun.
 	var ses3: Dictionary = le.start(p, "penjumlahan", 2, rng)
-	_check(str(ses3.mode) == "mudah" and int(ses3.q_grade) == 1 and LearningEngine.adapt_note(ses3) != "", "sering salah: soal dari kelas lebih rendah + catatan")
+	_check(str(ses3.mode) == "normal" and int(ses3.level) == 2 and int(ses3.q_grade) == 2, "5 salah setelah naik level: belum ada perubahan (data belum cukup)")
+	LearningEngine.answer(p, ses3, ses3.questions[0], false, false)
+	var ses4: Dictionary = le.start(p, "penjumlahan", 2, rng)
+	_check(str(ses4.mode) == "normal" and int(ses4.level) == 1 and int(ses4.q_grade) == 2, "6 salah di level 2: kesulitan turun ke level 1, KELAS tetap")
+	for i in 8:
+		LearningEngine.answer(p, ses4, ses4.questions[i % (ses4.questions as Array).size()], false, false)
+	var ses5: Dictionary = le.start(p, "penjumlahan", 2, rng)
+	_check(str(ses5.mode) == "mudah" and int(ses5.q_grade) == 1 and LearningEngine.adapt_note(ses5) != "", "8 salah di level 1: soal dari kelas lebih rendah + catatan")
 	var p2 := _prof(2)
 	var st := LearningEngine.stats(p2, 2, "pengurangan")
 	st.recent = [1, 1, 1, 1, 1, 1, 1, 1, 1]
 	st.recent_own = st.recent.duplicate()  # jawaban atas soal kelas 2 sendiri
 	st.correct = 9
 	_check(LearningEngine.status(p2, 2, "pengurangan") == "kuasai", "banyak jawaban benar terakhir: dikuasai")
-	_check(str(le.start(p2, "pengurangan", 2, rng).mode) == "tantang", "sudah mahir: soal lebih menantang")
+	var adv: Dictionary = le.start(p2, "pengurangan", 2, rng)
+	_check(str(adv.mode) == "normal" and int(adv.level) == 2, "sudah mahir: kesulitan naik bertahap ke level 2 (tidak melompat)")
 	st.recent = [0, 0, 1, 0, 0, 0, 0]
 	st.recent_own = st.recent.duplicate()
 	_check(LearningEngine.status(p2, 2, "pengurangan") == "perlu_latihan", "sering salah: perlu latihan lagi")
@@ -685,13 +700,13 @@ func _p3_bugfix_tests() -> void:
 	var hard_ok := true
 	for s in 25:
 		rng.seed = 100 + s
-		var pk := d.pick("bangun_datar", 4, easy.size(), {"recent": [1, 1, 1, 1, 1, 1, 1, 1], "seen": hard}, rng)
+		var pk := d.pick("bangun_datar", 4, easy.size(), {"at_level": [1, 1, 1, 1, 1, 1, 1, 1], "level": 3, "seen": hard}, rng)
 		if str(pk.mode) != "tantang":
 			unseen_ok = false
 		for q in pk.questions:
 			if hard.has(str(q.id)):
 				unseen_ok = false
-		var pk2 := d.pick("bangun_datar", 4, 1, {"recent": [1, 1, 1, 1, 1, 1, 1, 1], "seen": []}, rng)
+		var pk2 := d.pick("bangun_datar", 4, 1, {"at_level": [1, 1, 1, 1, 1, 1, 1, 1], "level": 3, "seen": []}, rng)
 		if int(pk2.questions[0].difficulty) < 2:
 			hard_ok = false
 	_check(unseen_ok, "mode tantang: soal yang sudah dilihat tidak didahulukan (25 acakan)")
@@ -726,6 +741,206 @@ func _p3_bugfix_tests() -> void:
 		"jawaban pertama setelah pembaruan: riwayat lama ikut disalin, satu salah tidak menghapus penguasaan")
 	var js: Dictionary = JSON.parse_string(JSON.stringify(p))
 	_check((js.learning.topics["3/bangun_datar"].recent_own as Array).size() == 8, "recent_own ikut tersimpan lewat JSON")
+
+# --- Prioritas 4: sistem pembelajaran adaptif -------------------------------------------------------------------
+
+func _dec(at_level: Array, level := 1, mode := "normal") -> Dictionary:
+	return Adaptive.decide({"at_level": at_level, "level": level, "mode": mode})
+
+
+## Simulasi anak dengan peluang benar `pc` selama `n` latihan pada satu topik. Mengembalikan jejak keputusan.
+func _simulate(d, pc: float, n: int, seed: int, topic := "bangun_datar", grade := 3) -> Dictionary:
+	var le := LearningEngine.new()
+	le.setup(d)
+	var p := _prof(grade)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var levels: Array = []
+	var modes: Array = []
+	var answers := 0
+	var first_drop := -1
+	for s in n:
+		var ses: Dictionary = le.start(p, topic, grade, rng)
+		levels.append(int(ses.level))
+		modes.append(str(ses.mode))
+		if str(ses.mode) == "mudah" and first_drop < 0:
+			first_drop = answers
+		for q in ses.questions:
+			var ok := rng.randf() < pc
+			LearningEngine.answer(p, ses, q, ok, ok, "" if ok else "x")
+			answers += 1
+	return {"levels": levels, "modes": modes, "first_drop": first_drop, "p": p}
+
+
+func _p4_adaptive_tests() -> void:
+	print("== Prioritas 4: sistem adaptif (scripts/engine/adaptive.gd)")
+	var d := SdData.new()
+	d.load_data()
+	# Aturan satu per satu, termasuk batas jumlah data.
+	_check(str(_dec([0, 0, 0, 0]).reason).contains("belum cukup") and int(_dec([0, 0, 0, 0]).level) == 1, "B: 4 jawaban salah -> data belum cukup, tidak berubah")
+	_check(str(_dec([0, 0, 0, 0, 0, 0, 0]).mode) == "normal", "F: 7 jawaban salah di level 1 -> BELUM turun kelas")
+	_check(str(_dec([0, 0, 0, 0, 0, 0, 0, 0]).mode) == "mudah", "F: 8 jawaban, < 40% benar di level 1 -> soal kelas lebih rendah")
+	_check(str(_dec([1, 0, 1, 0, 1, 0, 0, 1]).mode) == "normal", "F: 4 dari 8 benar (50%) -> tidak turun kelas")
+	_check(int(_dec([1, 1, 1, 1, 0]).level) == 2, "D: 4 dari 5 benar -> naik ke level 2")
+	_check(int(_dec([1, 1, 1, 0, 0]).level) == 1, "D: 3 dari 5 benar -> tetap level 1")
+	_check(int(_dec([1, 1, 1, 1, 1], 2).level) == 3 and int(_dec([1, 1, 1, 1, 1], 3).level) == 3, "D: naik satu langkah, maksimal level 3")
+	_check(str(_dec([1, 1, 1, 1, 1, 1, 1, 1], 3).mode) == "tantang" and str(_dec([1, 1, 1, 1, 1, 1, 0], 3).mode) != "tantang",
+		"C: tantang butuh level 3 dan >= 8 jawaban lancar")
+	_check(int(_dec([0, 0, 0, 0, 0], 2).level) == 2 and int(_dec([0, 0, 1, 0, 0, 0], 2).level) == 1, "E: turun level butuh >= 6 jawaban; kelas tetap")
+	_check(str(_dec([0, 1, 0, 0, 0, 1], 2).mode) == "normal", "E: di level 2 tidak pernah langsung turun kelas")
+	_check(str(_dec([1, 1, 0], 1, "mudah").mode) == "mudah" and str(_dec([1, 1, 0, 1, 0], 1, "mudah").mode) == "normal",
+		"A: keluar dari mode mudah setelah >= 5 jawaban dan 3 dari 5 benar")
+	var one_wrong := true
+	for k in 12:
+		var h: Array = []
+		for i in 12:
+			h.append(0 if i == k else 1)
+		for lv in [1, 2, 3]:
+			if str(_dec(h.slice(0, maxi(1, k + 1)), lv).mode) == "mudah":
+				one_wrong = false
+	_check(one_wrong, "satu jawaban salah tidak pernah menurunkan kelas (semua posisi, semua level)")
+	var st := {"at_level": [1, 1, 1, 1, 1], "level": 1, "mode": "normal"}
+	var dec := Adaptive.decide(st)
+	Adaptive.apply(st, dec)
+	_check(int(st.level) == 2 and (st.at_level as Array).is_empty(), "apply: level berubah -> riwayat level dikosongkan (tidak naik dua kali dari data sama)")
+	var st2 := {"at_level": [1, 0], "level": 2, "mode": "normal"}
+	Adaptive.apply(st2, Adaptive.decide(st2))
+	_check((st2.at_level as Array).size() == 2, "apply: tanpa perubahan -> riwayat dipertahankan")
+	var legacy := {"correct": 6, "wrong": 0, "recent": [1, 1, 1, 1, 1, 1], "seen": []}
+	Adaptive.ensure(legacy)
+	_check(int(legacy.level) == 1 and (legacy.at_level as Array).size() == 6 and str(legacy.mode) == "normal", "save lama: field adaptif dilengkapi, riwayat lama dipakai")
+
+	# Simulasi anak (bank soal sungguhan, 10 latihan x 5 soal, 12 acakan per tipe anak).
+	var steps_ok := true
+	var strong_top := 0
+	var weak_drop := 0
+	var drop_late := true
+	var mid_own := 0
+	var mid_total := 0
+	for s in 12:
+		var strong := _simulate(d, 0.95, 10, 500 + s)
+		for i in range(1, (strong.levels as Array).size()):
+			if absi(int(strong.levels[i]) - int(strong.levels[i - 1])) > 1:
+				steps_ok = false
+		if (strong.levels as Array).has(3):
+			strong_top += 1
+		var weak := _simulate(d, 0.15, 10, 700 + s)
+		if int(weak.first_drop) >= 0:
+			weak_drop += 1
+			if int(weak.first_drop) < Adaptive.DROP_N:
+				drop_late = false
+		var mid := _simulate(d, 0.7, 10, 900 + s)
+		for m in mid.modes:
+			mid_total += 1
+			if str(m) != "mudah":
+				mid_own += 1
+	_check(steps_ok, "simulasi anak pintar: level naik bertahap 1 -> 2 -> 3, tidak melompat")
+	_check(strong_top >= 10, "simulasi anak pintar (95%% benar): mencapai level 3 di %d/12 acakan" % strong_top)
+	_check(weak_drop >= 10 and drop_late, "simulasi anak kesulitan (15%% benar): dibantu soal lebih mudah di %d/12 acakan, tidak pernah sebelum 8 jawaban" % weak_drop)
+	_check(mid_own >= int(0.85 * mid_total), "simulasi anak rata-rata (70%% benar): %d dari %d latihan tetap di soal kelasnya" % [mid_own, mid_total])
+
+	# Jenis kesalahan.
+	var add := {"type": "mc", "q": "27 + 15 = …"}
+	var sub := {"type": "mc", "q": "42 − 15 = …"}
+	var kinds := {
+		"lupa menyimpan (27+15 -> 32)": [Adaptive.error_kind(add, "32"), "nilai_tempat"],
+		"operasi tertukar (27+15 -> 12)": [Adaptive.error_kind(add, "12"), "operasi_tertukar"],
+		"meleset sedikit (27+15 -> 43)": [Adaptive.error_kind(add, "43"), "hitung_meleset"],
+		"hitung lain (27+15 -> 50)": [Adaptive.error_kind(add, "50"), "hitung_lain"],
+		"salah meminjam (42-15 -> 33)": [Adaptive.error_kind(sub, "33"), "nilai_tempat"],
+		"operasi tertukar (42-15 -> 57)": [Adaptive.error_kind(sub, "57"), "operasi_tertukar"],
+		"benar/salah": [Adaptive.error_kind({"type": "tf", "q": "x"}, "Benar"), "benar_salah"],
+		"soal fakta": [Adaptive.error_kind({"type": "mc", "q": "Ibu kota Jawa Barat adalah …"}, "Semarang"), "konsep"],
+	}
+	for label in kinds:
+		_check(str(kinds[label][0]) == str(kinds[label][1]), "jenis kesalahan: %s = %s" % [label, str(kinds[label][0])])
+	var ms := {}
+	Adaptive.record(ms, add, false, "32")
+	_check(Adaptive.main_error(ms) == "" and Adaptive.tip(ms) == "", "satu kesalahan belum cukup untuk menyebut jenis kesalahan")
+	Adaptive.record(ms, {"type": "mc", "q": "38 + 45 = …"}, false, "73")
+	_check(Adaptive.main_error(ms) == "nilai_tempat" and Adaptive.tip(ms).contains("menyimpan"), "dua kesalahan sejenis: saran tentang nilai tempat")
+	Adaptive.record(ms, add, true, "")
+	_check((ms.mistakes as Array).size() == 2 and (ms.at_level as Array).size() == 3, "jawaban benar tidak dicatat sebagai kesalahan")
+
+	# Pengecoh diagnostik pembuat soal.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 404
+	var carry_n := 0
+	var carry_hit := 0
+	var borrow_n := 0
+	var borrow_hit := 0
+	for i in 200:
+		var qa := SdGen.make("add:10:99", "penjumlahan", 2, rng)
+		var parts: PackedStringArray = str(qa.q).replace(" = …", "").split(" + ")
+		var x := int(parts[0])
+		var y := int(parts[1])
+		if SdGen._carry(x, y) != 0:
+			carry_n += 1
+			if (qa.options as Array).has(str(x + y - SdGen._carry(x, y))):
+				carry_hit += 1
+		var qs := SdGen.make("sub:10:99", "pengurangan", 2, rng)
+		var ps: PackedStringArray = str(qs.q).replace(" = …", "").split(" − ")
+		var a := int(ps[0])
+		var b := int(ps[1])
+		if SdGen._borrow(a, b) != 0:
+			borrow_n += 1
+			if (qs.options as Array).has(str(a - b + SdGen._borrow(a, b))):
+				borrow_hit += 1
+	_check(carry_n > 20 and carry_hit == carry_n, "penjumlahan bersimpan: pengecoh \"lupa menyimpan\" selalu ada (%d/%d)" % [carry_hit, carry_n])
+	_check(borrow_n > 20 and borrow_hit == borrow_n, "pengurangan meminjam: pengecoh \"salah meminjam\" selalu ada (%d/%d)" % [borrow_hit, borrow_n])
+
+	# Jawaban salah pertama dikirim tampilan soal.
+	var holder := Control.new()
+	root.add_child(holder)
+	var qv: VBoxContainer = SdQuestion.new()
+	holder.add_child(qv)
+	qv.setup({"id": "uji-fw", "type": "mc", "q": "27 + 15 = …", "options": ["42", "32", "12", "43"], "answer": 0, "explain": "27 + 15 = 42.",
+		"topic": "penjumlahan", "grade": 2}, "latihan", rng, d.doc.type_names, null)
+	var got: Array = []
+	qv.finished.connect(func(r: Dictionary) -> void: got.append(r))
+	qv._choose((qv._options as Array).find("32"))
+	qv._choose((qv._options as Array).find("43"))
+	qv._choose(qv._answer)
+	qv._emit_finish()
+	_check(got.size() == 1 and str(got[0].first_wrong) == "32" and bool(got[0].correct) and not bool(got[0].first_try),
+		"tampilan soal mengirim jawaban salah PERTAMA (%s)" % (str(got[0].first_wrong) if got.size() > 0 else "-"))
+	holder.queue_free()
+	await process_frame
+
+	# Pengayaan: mode tantang memuat tepat satu soal kelas berikutnya, tidak dihitung untuk penguasaan kelas ini.
+	var le := LearningEngine.new()
+	le.setup(d)
+	var p := _prof(3)
+	var stt := LearningEngine.stats(p, 3, "bangun_datar")
+	stt.at_level = [1, 1, 1, 1, 1, 1, 1, 1]
+	stt.level = 3
+	var ses: Dictionary = le.start(p, "bangun_datar", 3, rng)
+	var enr: Array = (ses.questions as Array).filter(func(q): return bool(q.get("pengayaan", false)))
+	_check(str(ses.mode) == "tantang" and enr.size() == 1 and int(enr[0].grade) == 4, "tantang: 1 soal pengayaan kelas 4 dalam latihan kelas 3")
+	_check(LearningEngine.adapt_note(ses).contains("pengayaan"), "catatan untuk anak menyebut soal pengayaan")
+	var own_before := (stt.recent_own as Array).size()
+	LearningEngine.answer(p, ses, enr[0], true, true)
+	_check((stt.recent_own as Array).size() == own_before, "jawaban soal pengayaan tidak dihitung untuk penguasaan kelas 3")
+
+	# Latihan penguatan: topik yang perlu dilatih lebih sering dipilih Jurus Ilmu.
+	var pt := _prof(3)
+	var ts: Array = le.topics("matematika", 3, pt)
+	for t in ts:
+		var sx := LearningEngine.stats(pt, 3, str(t.id))
+		sx.correct = 10
+		sx.recent = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+		sx.recent_own = sx.recent.duplicate()
+	var weak_id := str(ts[0].id)
+	var sw := LearningEngine.stats(pt, 3, weak_id)
+	sw.recent_own = [0, 0, 1, 0, 0, 0, 0, 0]
+	_check(LearningEngine.status(pt, 3, weak_id) == "perlu_latihan", "contoh: satu topik perlu latihan, lainnya dikuasai")
+	var hits := 0
+	for i in 600:
+		if le.pick_topic(pt, "matematika", 3, rng) == weak_id:
+			hits += 1
+	var fair := 600.0 / ts.size()
+	_check(hits > 2.0 * fair, "Jurus Ilmu memilih topik lemah lebih sering (%d kali vs rata-rata %d)" % [hits, int(fair)])
+	_check(le.pick_topic(pt, "tidak_ada", 3, rng) == "", "ruang tanpa topik: tidak memilih apa pun")
 
 func _v3_quest_tests() -> void:
 	print("== 3.x Quest Engine (data misi Pulau 1)")

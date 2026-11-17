@@ -30,7 +30,8 @@ static func make(spec: String, topic: String, grade: int, rng: RandomNumberGener
 		"add":
 			var x := rng.randi_range(a, b)
 			var y := rng.randi_range(a, b)
-			q = _mc("%s + %s = …" % [_n(x), _n(y)], x + y, rng, "%s + %s = %s." % [_n(x), _n(y), _n(x + y)])
+			q = _mc("%s + %s = …" % [_n(x), _n(y)], x + y, rng, "%s + %s = %s." % [_n(x), _n(y), _n(x + y)],
+				[x + y - _carry(x, y), absi(x - y)])
 		"addneg":
 			var x := rng.randi_range(a, b)
 			var y := rng.randi_range(a, b)
@@ -44,7 +45,8 @@ static func make(spec: String, topic: String, grade: int, rng: RandomNumberGener
 				var t := x
 				x = y
 				y = t
-			q = _mc("%s − %s = …" % [_n(x), _n(y)], x - y, rng, "%s − %s = %s. Periksa: %s + %s = %s." % [_n(x), _n(y), _n(x - y), _n(x - y), _n(y), _n(x)])
+			q = _mc("%s − %s = …" % [_n(x), _n(y)], x - y, rng, "%s − %s = %s. Periksa: %s + %s = %s." % [_n(x), _n(y), _n(x - y), _n(x - y), _n(y), _n(x)],
+				[x - y + _borrow(x, y), x + y])
 		"subneg":
 			var x := rng.randi_range(a, b)
 			var y := rng.randi_range(a, b)
@@ -52,7 +54,7 @@ static func make(spec: String, topic: String, grade: int, rng: RandomNumberGener
 		"mul":
 			var x := rng.randi_range(a, b)
 			var y := rng.randi_range(1, 10)
-			q = _mc("%d × %d = …" % [x, y], x * y, rng, "%d × %d artinya %d dijumlahkan %d kali = %d." % [x, y, y, x, x * y])
+			q = _mc("%d × %d = …" % [x, y], x * y, rng, "%d × %d artinya %d dijumlahkan %d kali = %d." % [x, y, y, x, x * y], [x + y])
 		"mul2x1":
 			var x := rng.randi_range(11, 99)
 			var y := rng.randi_range(2, 9)
@@ -188,8 +190,14 @@ static func _pattern(level: int, rng: RandomNumberGenerator) -> Dictionary:
 	return q
 
 
-static func _mc(text: String, ans: int, rng: RandomNumberGenerator, explain: String) -> Dictionary:
+## traps = pengecoh diagnostik (kesalahan umum: lupa menyimpan/meminjam, operasi tertukar). Dipakai lebih dulu bila
+## sah (berbeda dari kunci, tidak negatif bila kunci tidak negatif); sisanya pengecoh acak di sekitar kunci.
+static func _mc(text: String, ans: int, rng: RandomNumberGenerator, explain: String, traps: Array = []) -> Dictionary:
 	var opts: Array = [ans]
+	for t in traps:
+		var w := int(t)
+		if opts.size() < 3 and w != ans and not opts.has(w) and (w >= 0 or ans < 0):
+			opts.append(w)
 	var spread := maxi(2, absi(ans) / 8)
 	var guard := 0
 	while opts.size() < 4 and guard < 60:
@@ -209,6 +217,39 @@ static func _mc(text: String, ans: int, rng: RandomNumberGenerator, explain: Str
 
 
 ## Angka dengan pemisah ribuan titik (gaya Indonesia), mis. 12.500.
+## Selisih bila anak lupa menyimpan: tiap kolom hanya ditulis satuannya, kolom paling kiri ditulis utuh
+## (27 + 15 -> 32, 59 + 44 -> 93). Mengembalikan jawaban benar dikurangi jawaban salah itu (0 bila tanpa simpanan).
+static func _carry(x: int, y: int) -> int:
+	var a := absi(x)
+	var b := absi(y)
+	var wrong := 0
+	var place := 1
+	while a >= 10 or b >= 10:
+		wrong += ((a % 10 + b % 10) % 10) * place
+		a /= 10
+		b /= 10
+		place *= 10
+	wrong += (a + b) * place
+	return absi(x) + absi(y) - wrong
+
+
+## Kesalahan meminjam yang khas: kolom yang perlu meminjam dihitung "angka besar dikurang angka kecil".
+## Mengembalikan selisih jawaban salah itu terhadap jawaban benar (0 bila tidak perlu meminjam).
+static func _borrow(x: int, y: int) -> int:
+	if x < 0 or y < 0 or y > x:
+		return 0
+	var wrong := 0
+	var place := 1
+	var a := x
+	var b := y
+	while a > 0 or b > 0:
+		wrong += absi(a % 10 - b % 10) * place
+		a /= 10
+		b /= 10
+		place *= 10
+	return wrong - (x - y)
+
+
 static func _n(v: int) -> String:
 	var s := str(absi(v))
 	var out := ""

@@ -247,10 +247,11 @@ func _topic() -> String:
 	var subj := str(monster.get("subject", "campur"))
 	var regions: Array = ["matematika", "bahasa", "ipa", "ips", "pancasila", "seni", "pjok"]
 	var region: String = str(regions[_ilmu_n % regions.size()]) if subj == "campur" else subj
-	var ts: Array = learning.topics(str(ROOM_OF.get(region, "matematika")), grade, p)
-	if ts.is_empty():
-		ts = learning.topics("matematika", grade, p)
-	return str(ts[rng.randi_range(0, ts.size() - 1)].id) if not ts.is_empty() else "penjumlahan"
+	# Latihan penguatan: topik yang perlu dilatih lebih sering muncul (lihat Learning.pick_topic).
+	var t: String = learning.pick_topic(p, str(ROOM_OF.get(region, "matematika")), grade, rng)
+	if t == "":
+		t = learning.pick_topic(p, "matematika", grade, rng)
+	return t if t != "" else "penjumlahan"
 
 
 func _open_question() -> void:
@@ -281,7 +282,7 @@ func current_question_view() -> Node:
 
 func _on_answer(res: Dictionary) -> void:
 	var ses: Dictionary = _sheet.get_meta("session")
-	Learning.answer(p, ses, res.question, bool(res.correct), bool(res.first_try))
+	Learning.answer(p, ses, res.question, bool(res.correct), bool(res.first_try), str(res.get("first_wrong", "")))
 	changed.emit()
 	_sheet.visible = false
 	qview = null
