@@ -797,10 +797,13 @@ func _hutan_ok() -> bool:
 
 
 ## Radar Musuh: tampil di Hutan Lebat bila radar ada di ransel; titik = musuh yang masih hidup, oranye = Goblin bos.
+## Paket 1.2.0: saat serbuan di Desa Awal radar tampil sendiri (tanpa barang Radar) dan hanya menunjukkan
+## penyerbu; begitu semua penyerbu kalah radar hilang sendiri.
 func _update_radar() -> void:
 	if _radar == null:
 		return
-	var on := Maps.TRIALS.has(_map_id) and Session.has_radar()
+	var raid: bool = _life != null and _life.radar_on()
+	var on := raid or (Maps.TRIALS.has(_map_id) and Session.has_radar())
 	_radar.visible = on
 	if not on:
 		return
@@ -809,8 +812,8 @@ func _update_radar() -> void:
 	var pts: Array[Vector2] = []
 	var sizes: Array[int] = []
 	var boss := Vector2(-1, -1)
-	for r: Roamer in _roamers:
-		if r.dying:
+	for r: Roamer in (_life.raiders if raid else _roamers):
+		if r.dying or not _roamers.has(r):
 			continue
 		if r == _hutan_boss:
 			boss = r.pos
@@ -1134,6 +1137,9 @@ func _update_warga(delta: float) -> void:
 		w.shelter = Atmosphere.outdoors(_map_id) and (Atmosphere.rain > 0.85 or (_life != null and _life.raid_on)) and not Maps.RAID_GUARDS.has(w.id)
 		# Tokoh cerita yang sedang menunggu pemain (Kepala Desa di prolog dan epilog) tetap di luar saat malam.
 		var awake: bool = (Maps.STORY_AWAKE.get(w.id, []) as Array).has(Session.story())
+		# Penjaga desa berjaga di luar sepanjang serbuan walau malam (paket 1.2.0).
+		if _life != null and _life.raid_on and Maps.RAID_GUARDS.has(w.id):
+			awake = true
 		if awake:
 			w.shelter = false
 		w.step(dt, _pos, others, night and not awake, hour, monsters)

@@ -550,6 +550,8 @@ type startRequest struct {
 	Boss bool `json:"boss"`
 	// Enemy (opsional) adalah id musuh berkeliaran yang disentuh pemain; dipakai bila sah di peta ini.
 	Enemy string `json:"enemy"`
+	// Wounds (opsional): luka dari penjaga desa pada penyerbu (lihat game.GuardWounds; dibatasi server).
+	Wounds int `json:"wounds"`
 }
 
 func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
@@ -581,6 +583,7 @@ func (s *Server) startBattle(w http.ResponseWriter, r *http.Request) {
 				return game.ErrNotBriefed // belum bicara dengan Kapten Rimba
 			}
 			b = game.StartBattleWith(&sess.Player, req.Enemy, s.rng, now)
+			b.GuardWounds(req.Wounds, sess.Player.State.Map, game.Now())
 		}
 		sess.Battle = &b
 		return nil

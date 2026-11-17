@@ -291,6 +291,45 @@ func start_chat(face: Vector2, line: String) -> void:
 ## Hujan deras atau Serbuan Goblin: warga biasa berteduh di rumah (diatur world3d tiap bingkai).
 var shelter := false
 
+## Penjaga desa saat serbuan (paket 1.2.0; diatur world_life): `guard_on` = sedang berjaga, `guard_target` =
+## posisi penyerbu yang dilawan ((-999, -999) = tidak ada). Penjaga mendekat sampai jangkauan serangnya lalu
+## menghadap penyerbu; serangannya sendiri (luka, efek) diatur world_life. Tanpa sasaran: kembali ke posnya.
+const GUARD_MELEE := 1.3   # jarak serang penjaga jarak dekat (petak)
+var guard_on := false
+var guard_target := Vector2(-999, -999)
+var guard_reach := GUARD_MELEE
+
+
+func has_guard_target() -> bool:
+	return guard_target.x > -900.0
+
+
+func _step_guard(delta: float, others: Array[Vector2]) -> void:
+	sleeping = false
+	chat_t = 0.0
+	scared = 0.0
+	calling_help = false
+	if has_guard_target():
+		var to := guard_target - pos
+		var dist := to.length()
+		if dist > 0.01:
+			yaw = lerp_angle(yaw, atan2(to.x, to.y), minf(1.0, delta * TURN_RATE * 1.5))
+		if speed <= 0.0 or dist <= guard_reach:
+			return
+		var dir := to / dist
+		var stepd := maxf(speed, 0.6) * 1.8 * delta  # penjaga berlari ke arah penyerbu
+		for ang: float in [0.0, 0.5, -0.5, 1.1, -1.1]:
+			var nxt := pos + dir.rotated(ang) * minf(stepd, dist - guard_reach * 0.8)
+			if Maps.warga_free(map_id, nxt):
+				pos = nxt
+				walking = true
+				break
+		return
+	if speed > 0.0 and pos.distance_to(home) > 0.8:
+		_travel_to(home, delta, 1.4, others)
+	else:
+		yaw = lerp_angle(yaw, _home_yaw, minf(1.0, delta * TURN_RATE))
+
 
 ## Maju delta detik. `player` = posisi pemain, `others` = posisi warga lain, `night` = sudah malam
 ## (warga yang punya rumah pulang dan bermalam di dalam), `hour` = jam (untuk jadwal),
@@ -312,6 +351,9 @@ func step(delta: float, player: Vector2, others: Array[Vector2], night := false,
 			leave_home()
 		if inside:
 			return
+	if guard_on:  # penjaga desa saat serbuan: tidak takut, melawan penyerbu
+		_step_guard(delta, others)
+		return
 	if _react_monsters(delta, player, monsters):
 		return
 	sleeping = night and malam == "tidur"

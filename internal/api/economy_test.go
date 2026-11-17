@@ -231,3 +231,39 @@ func TestWorldEventsAndSecret(t *testing.T) {
 		t.Fatalf("kunjungan tercatat: %d %s", resp.StatusCode, data)
 	}
 }
+
+// Paket adventure 1.2.0: luka dari penjaga desa dikirim saat memulai pertarungan dengan penyerbu.
+// Server mengurangi HP awal hanya selama serbuan, dan membatasi lukanya (HP awal >= 55%).
+func TestRaidGuardWoundsBattleStart(t *testing.T) {
+	old := game.Now
+	night := int64(game.DaySeconds + game.DaySeconds*21/24) // malam hari ke-1 = serbuan
+	game.Now = func() int64 { return night }
+	t.Cleanup(func() { game.Now = old })
+	ts, st := newTestServerWithStore(t)
+	start := func(name, enemy string, wounds int) (int, int, int, string) {
+		cr := register(t, ts, name)
+		place(t, st, cr.Player.ID, game.MapDesaAwal, 22, 22)
+		resp, data := do(t, "POST", ts.URL+"/v1/battle/start", cr.Token, map[string]any{"enemy": enemy, "wounds": wounds})
+		var br struct {
+			Battle struct {
+				EnemyID    string `json:"enemy_id"`
+				EnemyHP    int    `json:"enemy_hp"`
+				EnemyMaxHP int    `json:"enemy_max_hp"`
+			} `json:"battle"`
+		}
+		_ = json.Unmarshal(data, &br)
+		return resp.StatusCode, br.Battle.EnemyHP, br.Battle.EnemyMaxHP, br.Battle.EnemyID
+	}
+	code, hp, maxHP, id := start("Pembela1", "rubah_tulang_penyerbu", 2)
+	if code != http.StatusCreated || id != "rubah_tulang_penyerbu" || hp != maxHP*70/100 {
+		t.Fatalf("2 luka: %d %s %d/%d", code, id, hp, maxHP)
+	}
+	code, hp, maxHP, _ = start("Pembela2", "goblin_penyerbu", 50)
+	if code != http.StatusCreated || hp != maxHP*55/100 {
+		t.Fatalf("luka dibatasi: %d %d/%d", code, hp, maxHP)
+	}
+	code, hp, maxHP, _ = start("Pembela3", "goblin_penyerbu", 0)
+	if code != http.StatusCreated || hp != maxHP {
+		t.Fatalf("tanpa luka: %d %d/%d", code, hp, maxHP)
+	}
+}

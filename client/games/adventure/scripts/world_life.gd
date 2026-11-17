@@ -1,7 +1,10 @@
 extends Node
 ## Dunia yang hidup (roadmap no. 186-200), di atas world3d.gd:
-##   - Serbuan Goblin ke Desa Awal saat malam tertentu: penyerbu muncul di tepi desa, warga berlindung,
-##     penjaga desa menahan penyerbu, pemain mengumpulkan kemenangan untuk hadiah pertahanan desa.
+##   - Serbuan monster ke Desa Awal saat malam tertentu: goblin, orc, dan binatang tulang dari hutan muncul di
+##     tepi desa, warga berlindung. Paket 1.2.0: radar muncul sendiri selama penyerbu ada dan hilang saat semuanya
+##     kalah; serbuan terbatas (setelah RAID_GOAL dikalahkan tidak ada penyerbu baru); penjaga desa ikut bertarung
+##     dan melukai penyerbu (maks. Roamer.wounds 3, HP awal >= 55% di server) tetapi hanya pahlawan yang bisa
+##     mengalahkan mereka.
 ##   - Hari Pasar (potongan harga toko), papan wilayah Aman/Waspada/Berbahaya.
 ##   - Tempat rahasia berkilau samar yang bisa diperiksa, genangan air saat hujan, tanaman ladang
 ##     yang tumbuh dari hari ke hari.
@@ -16,8 +19,11 @@ const Roamer = preload("res://games/adventure/scripts/roamer.gd")
 const RAID_GOAL := 5             # sama dengan RaidGoal di server
 const RAID_REWARD := 200
 const RAID_RESPAWN_S := 8.0      # penyerbu pengganti muncul setiap sekian detik selama serbuan
-const GUARD_RANGE := 6.0         # penjaga menahan penyerbu dalam jarak ini
-const GUARD_EVERY := 2.2
+const GUARD_LEASH := 9.0         # penjaga melawan penyerbu sejauh ini dari posnya (tidak mengejar ke mana-mana)
+const GUARD_EVERY := 2.2         # jeda serangan penjaga (detik)
+const ARCHER_REACH := 7.5        # pemanah penjaga (Laras) menyerang dari jauh
+const MELEE_REACH := 1.3         # penjaga lain menyerang dari dekat (sama dengan Warga.GUARD_MELEE)
+const MAX_WOUNDS := 3            # sama dengan MaxGuardWounds di server (internal/game/worldtime.go)
 const SECRET_SHOW := 4.5         # kilau tempat rahasia terlihat dari sejauh ini
 const SECRET_NEAR := 1.8         # tombol Periksa muncul dari sejauh ini
 const PUDDLES := 26
@@ -27,6 +33,7 @@ const ZONE_COLOR := {"aman": Color("9fe6a0"), "waspada": Color("ffd27a"), "berba
 var world = null                 # world3d.gd
 var raid_on := false
 var raiders: Array = []          # Roamer penyerbu yang masih hidup di desa
+var cleared_note := false        # pesan "desa aman" sudah ditampilkan untuk serbuan ini
 var banner_text := ""            # isi papan (untuk uji)
 var crop_stage := -1
 
@@ -110,12 +117,14 @@ func tick(delta: float) -> void:
 		if _respawn >= RAID_RESPAWN_S:
 			_respawn = 0.0
 			_prune()
-			if raiders.size() < Maps.RAID_N:
+			if raiders.size() < raid_want():
 				_spawn_raider()
+		_assign_guards()
 		_guard_acc += delta
 		if _guard_acc >= GUARD_EVERY:
 			_guard_acc = 0.0
-			_guards_hold()
+			_guards_fight()
+		_check_cleared()
 	_update_sparkles()
 	if _puddle_mat != null:
 		_puddle_mat.albedo_color.a = clampf(Atmosphere.rain, 0.0, 1.0) * 0.55
@@ -135,12 +144,45 @@ func _check_raid() -> void:
 	if want and not raid_on:
 		raid_on = true
 		_respawn = 0.0
-		world.notify("Serbuan Goblin ke Desa Awal! Kalahkan %d penyerbu untuk hadiah." % RAID_GOAL, "kejadian", "SERBUAN GOBLIN!")
-		world._set_status("Goblin menyerbu desa! Warga berlindung, penjaga bersiap. Kalahkan %d penyerbu." % RAID_GOAL)
-		for _i in Maps.RAID_N:
+		cleared_note = raid_want() <= 0  # sudah dihalau sebelumnya (masuk lagi ke desa malam yang sama)
+		if raid_want() > 0:
+			world.notify("Serbuan monster ke Desa Awal! Goblin dan binatang tulang dari hutan menyerang. Radar menunjukkan posisi mereka.", "kejadian", "SERBUAN MONSTER!")
+			world._set_status("Monster menyerbu desa! Warga berlindung, penjaga ikut melawan. Kalahkan %d penyerbu." % RAID_GOAL)
+		for _i in raid_want():
 			_spawn_raider()
 	elif not want and raid_on:
 		_end_raid()
+
+
+## Jumlah penyerbu yang boleh hidup sekarang: serbuan terbatas, total penyerbu = RAID_GOAL. Kemenangan
+## pemain tercatat di server (state.raid.kills); setelah RAID_GOAL tidak ada penyerbu baru.
+func raid_want() -> int:
+	return clampi(RAID_GOAL - raid_kills(), 0, Maps.RAID_N)
+
+
+## Radar serbuan tampil sendiri selama serbuan masih punya penyerbu hidup di desa.
+func radar_on() -> bool:
+	if not raid_on:
+		return false
+	for r in raiders:
+		if r != null and not r.dying and world._roamers.has(r):
+			return true
+	return false
+
+
+## Semua penyerbu sudah dikalahkan pahlawan: radar hilang sendiri (lihat radar_on), papan berubah "desa aman".
+func raid_cleared() -> bool:
+	return raid_on and raid_want() <= 0 and not radar_on()
+
+
+func _check_cleared() -> void:
+	if cleared_note or not raid_cleared():
+		return
+	cleared_note = true
+	for w in world._warga:
+		w.guard_target = Vector2(-999, -999)
+	world.notify("Semua penyerbu dikalahkan! Desa aman, radar dimatikan.", "kejadian", "DESA AMAN!")
+	world._set_status("Penyerbu habis. Ambil hadiah pertahanan desa di kanan atas.")
 
 
 func _spawn_raider() -> void:
@@ -176,6 +218,9 @@ func _prune() -> void:
 
 func _end_raid() -> void:
 	raid_on = false
+	for w in world._warga:
+		w.guard_on = false
+		w.guard_target = Vector2(-999, -999)
 	_prune()
 	for r in raiders:
 		if r.fight:
@@ -188,22 +233,45 @@ func _end_raid() -> void:
 	world._set_status("Fajar tiba, para penyerbu mundur dari desa.")
 
 
-## Penjaga desa (no. 192) menahan penyerbu terdekat: penyerbu terhenti sejenak.
-func _guards_hold() -> void:
+## Penjaga desa (paket 1.2.0) memilih penyerbu terdekat dari posnya (dalam GUARD_LEASH) yang tidak sedang
+## bertarung dengan pemain. Pemanah (warga diam, mis. Laras) tetap di tempat dan menyerang dari jauh.
+func _assign_guards() -> void:
 	_prune()
 	for w in world._warga:
-		if not Maps.RAID_GUARDS.has(w.id) or w.inside:
+		var guard: bool = Maps.RAID_GUARDS.has(w.id)
+		w.guard_on = guard
+		if not guard:
 			continue
+		w.guard_reach = ARCHER_REACH if w.speed <= 0.0 else MELEE_REACH
 		var best: Roamer = null
-		var best_d := GUARD_RANGE
+		var best_d := GUARD_LEASH
 		for r in raiders:
-			if r.fight:
+			if r.fight or r.dying:
 				continue
-			var d: float = r.pos.distance_to(w.pos)
+			var d: float = r.pos.distance_to(w.home)
+			if w.speed <= 0.0:
+				d = r.pos.distance_to(w.pos)
+				if d > ARCHER_REACH:
+					continue
 			if d < best_d:
 				best = r
 				best_d = d
-		if best == null:
+		w.guard_target = best.pos if best != null else Vector2(-999, -999)
+
+
+## Serangan penjaga: penyerbu dalam jangkauan ditahan sejenak dan terluka (paling banyak MAX_WOUNDS luka).
+## Penjaga TIDAK bisa mengalahkan penyerbu: luka hanya mengurangi HP awal saat pahlawan melawannya.
+func _guards_fight() -> void:
+	_prune()
+	for w in world._warga:
+		if not w.guard_on or w.inside or not w.has_guard_target():
+			continue
+		var best: Roamer = null
+		for r in raiders:
+			if not r.fight and not r.dying and r.pos.distance_to(w.guard_target) < 0.05:
+				best = r
+				break
+		if best == null or best.pos.distance_to(w.pos) > w.guard_reach + 0.4:
 			continue
 		best.stun = maxf(best.stun, 1.6)
 		best.chasing = false
@@ -211,9 +279,17 @@ func _guards_hold() -> void:
 		w.yaw = atan2(to.x, to.y)
 		if w.model != null and is_instance_valid(w.model) and w.model.has_method("play_attack"):
 			w.model.call("play_attack")
-		HeroFx.burst(world, Vector3(best.pos.x, best.top * 0.6, best.pos.y), Color("bfe8ff"), 8, 2.2)
+		var at := Vector3(best.pos.x, best.top * 0.6, best.pos.y)
+		var text := ""
+		if best.wounds < MAX_WOUNDS:
+			best.wounds += 1
+			text = "%s: -%d%%" % [w.nama, 15]
+			HeroFx.burst(world, at, Color("ffd27a") if w.speed <= 0.0 else Color("bfe8ff"), 10, 2.4)
+		else:
+			text = "Ditahan %s! Kalahkan sekarang!" % w.nama
+			HeroFx.burst(world, at, Color("bfe8ff"), 6, 1.8)
 		if world._fight != null:
-			world._fight._float_text(Vector3(best.pos.x, best.top + 0.7, best.pos.y), "Ditahan %s!" % w.nama, Color("bfe8ff"), 40)
+			world._fight._float_text(Vector3(best.pos.x, best.top + 0.7, best.pos.y), text, Color("bfe8ff"), 38)
 
 
 func raid_kills() -> int:
@@ -266,8 +342,11 @@ func _update_banner() -> void:
 	var map_id: String = world._map_id
 	var text := ""
 	var col := Color.WHITE
-	if raid_on:
-		text = "SERBUAN GOBLIN!\nPertahanan desa %d/%d" % [mini(raid_kills(), RAID_GOAL), RAID_GOAL]
+	if raid_on and raid_want() <= 0 and not radar_on():
+		text = "DESA AMAN!\nSerbuan dihalau %d/%d" % [mini(raid_kills(), RAID_GOAL), RAID_GOAL]
+		col = Color("9fe6a0")
+	elif raid_on:
+		text = "SERBUAN MONSTER!\nPertahanan desa %d/%d" % [mini(raid_kills(), RAID_GOAL), RAID_GOAL]
 		col = Color("ff8a7a")
 	elif map_id == Maps.DEFAULT_MAP and Atmosphere.market_active():
 		text = "Hari Pasar\nPotongan %d%% di semua toko" % Atmosphere.MARKET_PERCENT

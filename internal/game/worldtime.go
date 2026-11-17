@@ -271,6 +271,29 @@ func (s *State) recordRaid(unix int64) string {
 	return fmt.Sprintf("Pertahanan desa: %d/%d penyerbu.", min(s.Raid.Kills, RaidGoal), RaidGoal)
 }
 
+// Luka dari penjaga desa (paket adventure 1.2.0). Penjaga ikut bertarung saat serbuan, tetapi hanya
+// pahlawan yang boleh mengalahkan penyerbu: tiap luka mengurangi HP awal penyerbu GuardWoundPct persen,
+// paling banyak MaxGuardWounds luka (HP awal tidak pernah di bawah 55%).
+const (
+	GuardWoundPct  = 15
+	MaxGuardWounds = 3
+)
+
+// GuardWounds menerapkan luka penjaga pada pertarungan yang baru dimulai. Hanya berlaku untuk penyerbu
+// di Desa Awal selama serbuan; selain itu (atau n <= 0) tidak mengubah apa pun.
+func (b *Battle) GuardWounds(n int, mapID string, unix int64) {
+	if n <= 0 || mapID != MapDesaAwal || !RaidActive(unix) {
+		return
+	}
+	e, ok := EnemyByID(b.EnemyID)
+	if !ok || !e.Raid {
+		return
+	}
+	n = min(n, MaxGuardWounds)
+	hp := b.EnemyMaxHP * (100 - GuardWoundPct*n) / 100
+	b.EnemyHP = max(1, min(b.EnemyHP, hp))
+}
+
 // ClaimRaid mengambil hadiah pertahanan desa (serbuan yang sedang atau baru saja berlangsung).
 func (s *State) ClaimRaid(unix int64) error {
 	switch {

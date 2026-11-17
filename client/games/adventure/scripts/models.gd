@@ -61,6 +61,11 @@ const VARIANTS := {
 	"goblin_pemburu": {"base": "goblin", "size": 1.2, "tint": Color("9fd8d0")},
 	# Penyerbu desa saat Serbuan Goblin (roadmap no. 190): goblin kemerahan dan orc besar.
 	"goblin_penyerbu": {"base": "goblin", "size": 1.1, "tint": Color("ff9c8c")},
+	# Binatang tulang penyerbu desa (paket 1.2.0): kerangka Gua Goblin, sedikit lebih kecil.
+	"rubah_tulang_penyerbu": {"base": "rubah_tulang", "size": 0.95, "tint": Color.WHITE},
+	"babi_tulang_penyerbu": {"base": "babi_tulang", "size": 0.95, "tint": Color.WHITE},
+	"serigala_tulang_penyerbu": {"base": "serigala_tulang", "size": 0.95, "tint": Color.WHITE},
+	"beruang_tulang_penyerbu": {"base": "beruang_tulang", "size": 0.9, "tint": Color.WHITE},
 	"orc_penyerbu": {"base": "goblin", "size": 1.7, "tint": Color("c9785a")},
 	"orc_gua": {"base": "goblin", "size": 1.55, "tint": Color("b8a070")},
 	"orc_penjaga": {"base": "goblin", "size": 1.8, "tint": Color("d9906a")},

@@ -37,6 +37,7 @@ var fight := false          # sedang bertarung dengan pemain (pertarungan langsu
 var warn := false           # tanda seru berkedip: sebentar lagi menyerang
 var stun := 0.0             # > 0: belum mau mengejar (habis ditinggal kabur / gagal memulai)
 var dying := false          # sudah kalah: tidak bergerak lagi
+var wounds := 0             # luka dari penjaga desa saat serbuan (0-3); server mengurangi HP awal (GuardWounds)
 var lv := 1                 # level musuh (no. 84)
 var origin := Vector2.ZERO  # pusat wilayahnya; mengejar tidak sampai keluar wilayah
 var shy := false            # pemalu: selalu menghindari pemain

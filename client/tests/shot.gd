@@ -230,8 +230,6 @@ func _ready() -> void:
 		return
 	if OS.get_environment("SHOT_QUALITY") != "":
 		Session.quality = int(OS.get_environment("SHOT_QUALITY"))
-	if OS.get_environment("SHOT_HOUR") != "":  # jam dunia tetap (mis. 11 = siang) supaya tangkapan bisa dibandingkan
-		load("res://games/adventure/scripts/atmosphere.gd").hour_override = float(OS.get_environment("SHOT_HOUR"))
 	var map_id := OS.get_environment("SHOT_MAP")
 	var x := float(OS.get_environment("SHOT_X")) if OS.get_environment("SHOT_X") != "" else 5.5
 	var z := float(OS.get_environment("SHOT_Z")) if OS.get_environment("SHOT_Z") != "" else 7.5
@@ -247,6 +245,8 @@ func _ready() -> void:
 		Atmo.hour_override = float(OS.get_environment("SHOT_HOUR"))
 	if OS.get_environment("SHOT_RAIN") != "":
 		Atmo.rain = float(OS.get_environment("SHOT_RAIN"))
+	if OS.get_environment("SHOT_EVENT") != "":  # kejadian dunia dipaksa (mis. "serbuan", "pasar")
+		Atmo.event_override = OS.get_environment("SHOT_EVENT")
 	if map_id != "":
 		Session.player.state.map = map_id
 	Session.player.state.x = int(x)

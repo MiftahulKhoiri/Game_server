@@ -138,7 +138,13 @@ func engage(r: Roamer, first_action := "") -> void:
 	if TAUNTS.has(r.id):
 		_float_text(Vector3(r.pos.x, r.top + 0.9, r.pos.y), "Penyihir itu memberi kami kekuatan!", Color("ffb080"), 44)
 	await world._flush_save()  # posisi harus tersimpan dulu; server memilih musuh sesuai peta
-	var res: Dictionary = await Api.battle_start(false, r.id)
+	var res: Dictionary
+	if r.wounds > 0:
+		# Penyerbu yang sudah dilukai penjaga desa (paket 1.2.0): server mengurangi HP awalnya (game.GuardWounds,
+		# dibatasi di server). Lewat _call langsung supaya tidak perlu mengubah api.gd di APK.
+		res = await Api._call(HTTPClient.METHOD_POST, "/v1/battle/start", {"enemy": r.id, "wounds": r.wounds}, true)
+	else:
+		res = await Api.battle_start(false, r.id)
 	if not res.ok and res.status == 409:
 		res = await Api.battle_get()  # sudah ada pertarungan di server: lanjutkan
 	_starting = false

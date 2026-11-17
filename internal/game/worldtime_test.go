@@ -201,3 +201,49 @@ func TestMarketDiscount(t *testing.T) {
 		t.Fatalf("Hari Pasar potongan %d%%: sisa %d", MarketPercent, s.Gold)
 	}
 }
+
+// Paket adventure 1.2.0: binatang tulang ikut menyerbu desa; penjaga desa melukai penyerbu tetapi tidak
+// pernah mengalahkannya (HP awal paling rendah 55%, hanya selama serbuan, hanya penyerbu di Desa Awal).
+func TestRaidBonesAndGuardWounds(t *testing.T) {
+	for _, id := range []string{"rubah_tulang_penyerbu", "babi_tulang_penyerbu", "serigala_tulang_penyerbu", "beruang_tulang_penyerbu"} {
+		e, ok := EnemyByID(id)
+		if !ok || !e.Raid || e.Time != TimeNight || !e.inZone(MapDesaAwal) || e.inZone(MapHutanLebat) {
+			t.Fatalf("%s harus penyerbu malam Desa Awal: %+v", id, e)
+		}
+	}
+	night := at(1, 21)
+	fullVs := func(id string, _ int) *Battle {
+		e, _ := EnemyByID(id)
+		return battleVs(id, e.HP)
+	}
+	b := fullVs("serigala_tulang_penyerbu", 1)
+	b.GuardWounds(2, MapDesaAwal, night)
+	if b.EnemyHP != b.EnemyMaxHP*70/100 {
+		t.Errorf("2 luka = 70%% HP: %d/%d", b.EnemyHP, b.EnemyMaxHP)
+	}
+	b = fullVs("beruang_tulang_penyerbu", 1)
+	b.GuardWounds(99, MapDesaAwal, night)
+	if b.EnemyHP != b.EnemyMaxHP*55/100 || b.EnemyHP <= 0 {
+		t.Errorf("luka dibatasi 3 (55%% HP): %d/%d", b.EnemyHP, b.EnemyMaxHP)
+	}
+	for _, c := range []struct {
+		name, enemy, mapID string
+		unix                int64
+	}{
+		{"bukan serbuan", "goblin_penyerbu", MapDesaAwal, at(0, 21)},
+		{"siang", "goblin_penyerbu", MapDesaAwal, at(1, 12)},
+		{"bukan penyerbu", "serigala_hutan", MapDesaAwal, night},
+		{"peta lain", "goblin_penyerbu", MapHutanLebat, night},
+	} {
+		b := fullVs(c.enemy, 1)
+		b.GuardWounds(3, c.mapID, c.unix)
+		if b.EnemyHP != b.EnemyMaxHP {
+			t.Errorf("%s: luka tidak boleh berlaku (%d/%d)", c.name, b.EnemyHP, b.EnemyMaxHP)
+		}
+	}
+	b = fullVs("goblin_penyerbu", 1)
+	b.GuardWounds(-5, MapDesaAwal, night)
+	if b.EnemyHP != b.EnemyMaxHP {
+		t.Error("luka negatif diabaikan")
+	}
+}

@@ -1757,7 +1757,17 @@ func _run() -> void:
 	lf._check_raid()
 	_check(lf.raid_on and lf.raiders.size() == Maps.RAID_N and wt._roamers.size() == lf_r0 + Maps.RAID_N, "Serbuan Goblin: %d penyerbu muncul di tepi desa" % lf.raiders.size())
 	lf._update_banner()
-	_check(lf.banner_text.begins_with("SERBUAN GOBLIN"), "papan menampilkan serbuan dan pertahanan desa (%s)" % lf.banner_text)
+	_check(lf.banner_text.begins_with("SERBUAN MONSTER"), "papan menampilkan serbuan dan pertahanan desa (%s)" % lf.banner_text)
+	var lf_kinds := {}
+	for lf_k: Dictionary in Maps.RAID_KINDS:
+		lf_kinds[lf_k.id] = true
+		var lf_m: Node3D = load("res://games/adventure/scripts/models.gd").create(str(lf_k.id))
+		_check(lf_m != null and lf_m.find_children("*", "MeshInstance3D", true, false).size() > 0, "model penyerbu %s ada" % lf_k.id)
+		lf_m.free()
+	_check(lf_kinds.has("serigala_tulang_penyerbu") and lf_kinds.has("rubah_tulang_penyerbu"), "binatang tulang dari hutan ikut menyerbu desa")
+	wt._update_radar()
+	_check(wt._radar.visible and wt._radar.dots.size() == lf.raiders.size() and not Session.has_radar(),
+		"radar serbuan muncul sendiri tanpa barang Radar (%d titik penyerbu)" % wt._radar.dots.size())
 	var lf_hide := false
 	var lf_guard_out := true
 	for lf_i in 60:
@@ -1773,10 +1783,41 @@ func _run() -> void:
 		if lf_w.id == "penjaga":
 			lf_g = lf_w
 	var lf_r = lf.raiders[0]
-	lf_r.pos = lf_g.pos + Vector2(1.5, 0)
+	for lf_o in lf.raiders:
+		if lf_o != lf_r:
+			lf_o.pos = Vector2(2.5, 17.5)  # penyerbu lain jauh dari pos penjaga
+	lf_r.pos = lf_g.pos + Vector2(0, -4.0)
+	lf_r.stun = 9.0
+	var lf_d0: float = lf_g.pos.distance_to(lf_r.pos)
+	for lf_i in 15:
+		lf._assign_guards()
+		wt._update_warga(0.1)
+	_check(lf_g.guard_on and lf_g.has_guard_target() and lf_g.pos.distance_to(lf_r.pos) < lf_d0 - 1.0,
+		"penjaga desa berjaga di luar dan mendekati penyerbu (%.1f -> %.1f)" % [lf_d0, lf_g.pos.distance_to(lf_r.pos)])
+	lf_r.pos = lf_g.pos + Vector2(1.2, 0)
 	lf_r.stun = 0.0
-	lf._guards_hold()
-	_check(lf_r.stun > 1.0, "penjaga desa menahan penyerbu di dekatnya")
+	lf_r.wounds = 0  # dunia ikut berjalan selama uji: penjaga mungkin sudah sempat menyerang
+	lf._assign_guards()
+	lf._guards_fight()
+	_check(lf_r.stun > 1.0 and lf_r.wounds >= 1, "penjaga desa menyerang (Laras ikut memanah): penyerbu ditahan dan terluka (%d luka)" % lf_r.wounds)
+	for lf_i in 6:
+		lf._assign_guards()
+		lf._guards_fight()
+	_check(lf_r.wounds == lf.MAX_WOUNDS and not lf_r.dying and wt._roamers.has(lf_r),
+		"penjaga tidak bisa mengalahkan penyerbu: luka maks %d, penyerbu tetap hidup untuk pahlawan" % lf.MAX_WOUNDS)
+	# Semua penyerbu dikalahkan pahlawan (kemenangan tercatat di server): serbuan terbatas, radar hilang sendiri.
+	Session.player.state["raid"] = {"id": AtL.raid_id(), "kills": lf.RAID_GOAL}
+	for lf_o in lf.raiders.duplicate():
+		wt._roamers.erase(lf_o)
+		lf_o.node.queue_free()
+	lf._respawn = lf.RAID_RESPAWN_S
+	lf.tick(0.01)
+	_check(lf.raid_want() == 0 and lf.raiders.is_empty(), "serbuan terbatas: setelah %d dikalahkan tidak ada penyerbu baru" % lf.RAID_GOAL)
+	wt._update_radar()
+	_check(not wt._radar.visible and lf.raid_cleared(), "radar hilang sendiri setelah semua penyerbu kalah")
+	lf._update_banner()
+	_check(lf.banner_text.begins_with("DESA AMAN") and lf.cleared_note, "papan: desa aman (%s)" % lf.banner_text)
+	Session.player.state.erase("raid")
 	AtL.event_override = "none"
 	lf._check_raid()
 	_check(not lf.raid_on and wt._roamers.size() == lf_r0, "serbuan berakhir: penyerbu mundur")

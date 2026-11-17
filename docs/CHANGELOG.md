@@ -2,6 +2,26 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket adventure 1.2.0 + server 0.85.1 — serbuan monster: radar otomatis, binatang tulang, penjaga ikut bertarung (17 November 2026)
+
+Game lewat unduhan (tombol UPDATE di launcher), tanpa APK baru. Server di-restart (musuh baru + luka penjaga).
+
+- **Radar serbuan otomatis**: selama serbuan di Desa Awal radar muncul sendiri (tanpa barang Radar) dan hanya
+  menunjukkan penyerbu; setelah semua penyerbu kalah radar hilang sendiri, papan berubah "DESA AMAN!".
+- **Serbuan terbatas**: total penyerbu = 5 (sama dengan syarat hadiah). Setelah 5 dikalahkan pahlawan tidak ada
+  penyerbu baru; masuk lagi ke desa di malam yang sama tidak memunculkan penyerbu.
+- **Binatang tulang dari hutan** ikut menyerbu: Rubah Tulang (Lv1), Babi Tulang (Lv2), Serigala Tulang (Lv3),
+  Beruang Tulang (Lv5) — model kerangka Gua Goblin, versi desa lebih lemah. Server: `*_tulang_penyerbu` di
+  `enemy.go` (Raid, malam, Desa Awal). Papan & pemberitahuan: "SERBUAN MONSTER!".
+- **Penjaga desa ikut bertarung** (Penjaga, Damar, Pak Joko, Laras): berjaga di luar sepanjang serbuan walau malam,
+  mendekati penyerbu dalam 9 petak dari posnya (Laras memanah dari tempatnya, jangkauan 7,5), menahan dan melukai
+  penyerbu tiap 2,2 detik. Penjaga TIDAK bisa mengalahkan penyerbu: tiap luka = -15% HP awal, maks. 3 luka
+  (HP awal >= 55%), hanya pahlawan yang bisa mengalahkan. Server: `POST /v1/battle/start` menerima `wounds`;
+  `Battle.GuardWounds` hanya berlaku untuk penyerbu, di Desa Awal, selama serbuan, dan dibatasi.
+- Uji: `client-test` 1175 ok (+radar muncul/hilang, model penyerbu, penjaga mendekat & menyerang, luka maks tanpa
+  mengalahkan, serbuan terbatas, papan desa aman); Go: `TestRaidBonesAndGuardWounds`,
+  `TestRaidGuardWoundsBattleStart` (HTTP). `tests/shot.gd`: `SHOT_EVENT`.
+
 ## Paket adventure 1.1.0 — tanah & rumput lebih hidup (17 November 2026)
 
 Lewat unduhan (tombol UPDATE di launcher), tanpa APK baru.

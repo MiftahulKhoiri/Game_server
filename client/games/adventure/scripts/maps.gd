@@ -317,6 +317,11 @@ const RAID_SPAWNS: Array[Vector2] = [Vector2(2.5, 17.5), Vector2(42.5, 17.5), Ve
 const RAID_KINDS := [
 	{"id": "goblin_penyerbu", "name": "Goblin Penyerbu", "lv": 1},
 	{"id": "orc_penyerbu", "name": "Orc Penyerbu", "lv": 4},
+	# Paket 1.2.0: binatang tulang dari hutan ikut menyerbu (model kerangka Gua Goblin; server: enemy.go).
+	{"id": "rubah_tulang_penyerbu", "name": "Rubah Tulang", "lv": 1},
+	{"id": "babi_tulang_penyerbu", "name": "Babi Tulang", "lv": 2},
+	{"id": "serigala_tulang_penyerbu", "name": "Serigala Tulang", "lv": 3},
+	{"id": "beruang_tulang_penyerbu", "name": "Beruang Tulang", "lv": 5},
 ]
 const RAID_GUARDS := ["penjaga", "prajurit_damar", "laras", "pak_joko"]
 
