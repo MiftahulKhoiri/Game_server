@@ -2,6 +2,20 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Server 0.85.3 — Naga Lava Lv2 & Lv3 bisa dikalahkan (19 November 2026)
+
+Hanya server (tanpa paket game / APK baru). Laporan pemain: Naga Lava Lv2 di Gunung Berapi tidak pernah bisa dikalahkan.
+
+- Penyebab: bos wilayah yang memburu (Gua Goblin, Gunung Berapi) diperkuat untuk pemain di atas level wilayahnya
+  7% HP & 4% serangan per level, sampai 15 level (HP +105%, serangan +60%). Pahlawan level tinggi tidak bertambah kuat
+  secepat itu. Simulasi pertarungan server dengan data akun level 61: Naga Lava Lv2 & Lv3 0 menang dari 20, bahkan
+  dengan Hindar tepat waktu dan pedang terpasang (Lv1 ±45%). Bukan masalah posisi: simulasi gerak di klien menunjukkan
+  pukulan selalu sampai (naga tidak terbang; posisinya di tanah).
+- Perbaikan (`tahap.go`): `BossLevelHP` 2, `BossLevelAtk` 1, `BossLevelMax` 5 = paling banyak HP +10%, serangan +5%.
+  Simulasi akun yang sama: Lv1 & Lv2 20/20 menang (±10 s & ±16 s), Induk Naga Lava ±60% menang dengan Hindar,
+  ±25% tanpa. Hadiah tidak berubah.
+- Uji: `TestGuaGoblinBossHunts` (+pemain level 61: HP bos ≤ +10%, serangan +5%); `go test ./...` LULUS.
+
 ## Paket adventure 1.3.0 + server 0.85.2 — hasil review The Last Dragon (18 November 2026)
 
 Game lewat unduhan (tombol UPDATE di launcher), tanpa APK baru. Server di-restart (jumlah binatang Bab 1).

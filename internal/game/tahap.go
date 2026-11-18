@@ -99,10 +99,15 @@ func (b *Battle) reward(v int) int {
 // Bos wilayah ujian yang memburu pemain (v0.71.0, Gua Goblin): untuk pemain di atas TrialDef.BossLevel HP bos naik
 // BossLevelHP% dan serangannya BossLevelAtk% per level (paling banyak BossLevelMax level), supaya pemain yang
 // sudah kuat tetap tertantang. Hadiah tidak berubah.
+//
+// Server 0.85.3: dulu 7% / 4% per level sampai 15 level (HP +105%, serangan +60%). Pahlawan level tinggi tidak
+// bertambah kuat secepat itu, sehingga Naga Lava Lv2 & Lv3 mustahil dikalahkan (simulasi akun level 61: 0 menang dari
+// 20, bahkan dengan Hindar tepat waktu). Kini paling banyak HP +10% dan serangan +5%: Lv1/Lv2 bisa dikalahkan, Induk
+// Naga Lava tetap menantang (±60% menang dengan Hindar, ±25% tanpa).
 const (
-	BossLevelHP  = 7
-	BossLevelAtk = 4
-	BossLevelMax = 15
+	BossLevelHP  = 2
+	BossLevelAtk = 1
+	BossLevelMax = 5
 )
 
 func (b *Battle) strengthenBoss(st State, e Enemy) {

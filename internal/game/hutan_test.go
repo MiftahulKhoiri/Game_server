@@ -265,6 +265,12 @@ func TestGuaGoblinBossHunts(t *testing.T) {
 	if b.EnemyMaxHP != e2.HP*(100+5*BossLevelHP)/100 || b.enemyAttack(e2) <= e2.Attack {
 		t.Fatalf("pemain level 11: bos +5 level, dapat HP %d serangan %d", b.EnemyMaxHP, b.enemyAttack(e2))
 	}
+	// Server 0.85.3: pemain jauh di atas level wilayah (mis. level 61) tidak membuat bos mustahil dikalahkan.
+	st.Level = 61
+	b, _ = StartHutanBossBattle(p, 0)
+	if b.EnemyMaxHP != e2.HP*110/100 || b.AtkPct != 105 {
+		t.Fatalf("pemain level 61: penguatan bos paling banyak HP +10%% serangan +5%%, dapat HP %d (dasar %d) serangan %d%%", b.EnemyMaxHP, e2.HP, b.AtkPct)
+	}
 	st.Map = MapHutanLebat
 	st.Level = 6
 	st.setTrial(MapHutanLebat, HutanProgress{Wave: 0, Kills: StageKills[0], Briefed: true})
