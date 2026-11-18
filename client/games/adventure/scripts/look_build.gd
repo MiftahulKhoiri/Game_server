@@ -85,6 +85,9 @@ const WEAPONS := {
 	"tongkat_kristal": {"kind": "tongkat", "len": 2.4, "blade": Color("8ad8ff"), "grip": Color("4a4a6a"), "glow": Color("3fb6ff"), "crystal": true},
 	"busur_pendek": {"kind": "busur", "len": 1.1, "blade": Color("8a5a30"), "grip": Color("4a2a1a")},
 	"busur_panjang": {"kind": "busur", "len": 1.6, "blade": Color("6a4426"), "grip": Color("c8a24a")},
+	# Tokoh cerita (1.3.0): tongkat tetua Kepala Desa dan tongkat kristal kegelapan Malzareth.
+	"tongkat_tetua": {"kind": "tongkat", "len": 2.0, "blade": Color("d8b25a"), "grip": Color("6a4426")},
+	"tongkat_malzareth": {"kind": "tongkat", "len": 2.6, "blade": Color("b066ff"), "grip": Color("1b1622"), "glow": Color("8a2aff"), "crystal": true},
 }
 const SHIELDS := {
 	"perisai_kayu": {"face": Color("9a6a3a"), "rim": Color("5a5a62"), "r": 0.42},
@@ -116,9 +119,30 @@ const STEP_TORSO := 0.05
 
 # --- data ---
 
+## Kosmetik khusus tokoh cerita (paket 1.3.0): warna & bentuk tetap di klien supaya Elara, Kepala Desa, dan
+## Malzareth tampil sama walau katalog server belum dimuat. Tidak dijual dan tidak bisa dipakai pemain.
+const NPC_COSM := {
+	"npc_kulit_elara": {"id": "npc_kulit_elara", "color": "#ffffff"},
+	"npc_gaun_elara": {"id": "npc_gaun_elara", "shape": "jubah_panjang", "color": "#4f9a62"},
+	"npc_tiara": {"id": "npc_tiara", "shape": "mahkota", "color": "#e8c050"},
+	"npc_selendang_elara": {"id": "npc_selendang_elara", "color": "#f4e3a1"},
+	"npc_kalung_elara": {"id": "npc_kalung_elara", "shape": "kalung", "color": "#e8c050"},
+	"npc_kulit_kepala": {"id": "npc_kulit_kepala", "color": "#c8b48a"},
+	"npc_jubah_kepala": {"id": "npc_jubah_kepala", "shape": "bangsawan", "color": "#3f6a46"},
+	"npc_mantel_kepala": {"id": "npc_mantel_kepala", "color": "#8a2a22"},
+	"npc_kalung_kepala": {"id": "npc_kalung_kepala", "shape": "kalung", "color": "#e8c050"},
+	"npc_kulit_malz": {"id": "npc_kulit_malz", "color": "#4a3466"},
+	"npc_jubah_malz": {"id": "npc_jubah_malz", "shape": "jubah_panjang", "color": "#2a1838"},
+	"npc_mantel_malz": {"id": "npc_mantel_malz", "color": "#3a0e4a", "glow": "#2a0638"},
+	"npc_bahu_malz": {"id": "npc_bahu_malz", "shape": "ornamen", "color": "#5a2a7a", "glow": "#7a2ac8"},
+}
+
+
 static func cosm(id: String) -> Dictionary:
 	if id == "":
 		return {}
+	if NPC_COSM.has(id):
+		return NPC_COSM[id]
 	var s := _session()
 	if s != null and (s.get("cosmetics") as Dictionary).has(id):
 		return s.cosmetics[id]

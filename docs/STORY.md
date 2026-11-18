@@ -2,7 +2,7 @@
 
 > Dokumen cerita resmi untuk Game_server. Menjadi acuan narasi, karakter, wilayah, misi utama, dialog, dan urutan kejadian.
 >
-> **Status:** diterapkan di game sejak v0.67.0 (server `internal/game/story.go`, klien `client/scripts/story.gd`); rincian langkah, hadiah, peta, dan bos ada di [GAME_DESIGN.md](GAME_DESIGN.md#penerapan-di-game-v0670).
+> **Status:** diterapkan di game sejak v0.67.0; diselaraskan lagi dengan paket adventure 1.3.0 (bos Orc Batu, Bab 1 lebih singkat, adegan prolog, tampilan tokoh & Bab 3–4) (server `internal/game/story.go`, klien `client/scripts/story.gd`); rincian langkah, hadiah, peta, dan bos ada di [GAME_DESIGN.md](GAME_DESIGN.md#penerapan-di-game-v0670).
 
 ## Identitas cerita
 
@@ -36,7 +36,7 @@ Malzareth menganggap kedamaian itu sebagai kelemahan. Ia mempelajari sihir terla
 
 ### Prolog — Serangan di Desa Awal
 
-Desa tempat pahlawan tinggal bersama kepala desa dan penduduknya diserang pada malam hari. Monster datang dari arah hutan. Di tengah kekacauan, Malzareth menculik Elara, putri kepala desa. Pahlawan berusaha melawan, tetapi penyihir menghilang sebelum dapat dihentikan.
+Desa tempat pahlawan tinggal bersama kepala desa dan penduduknya diserang pada malam hari. (Paket 1.3.0: pemain baru melihat adegan pembuka bergambar empat potongan sebelum layar teks prolog: Aldragor di langit senja, serbuan monster malam hari, Malzareth mengangkat Elara dalam bola sihir, dan penyihir lenyap saat pahlawan mengejar.) Monster datang dari arah hutan. Di tengah kekacauan, Malzareth menculik Elara, putri kepala desa. Pahlawan berusaha melawan, tetapi penyihir menghilang sebelum dapat dihentikan.
 
 Pagi berikutnya, kepala desa meminta pahlawan mencari Elara dan membawanya pulang. Ia memberikan bekal sederhana dan menunjukkan jalan menuju hutan.
 
@@ -63,8 +63,8 @@ Pahlawan menelusuri jejak penculik sambil menghadapi binatang yang terkena kutuk
 
 **Tujuan permainan:**
 1. Masuki Hutan Binatang.
-2. Hadapi binatang yang dikutuk.
-3. Temukan petunjuk dan penjaga hutan.
+2. Temukan Penjaga Hutan (Bayu) yang terluka di dekat pintu masuk.
+3. Hadapi binatang yang dikutuk: tiga tahap 15, 30, lalu 45 binatang (paket 1.3.0), masing-masing ditutup Goblin Level 1–3.
 4. Ikuti jejak pasukan Goblin ke Gua Goblin.
 
 **Akhir bab:** pahlawan mengetahui bahwa Elara dibawa ke Gua Goblin.
@@ -73,20 +73,20 @@ Pahlawan menelusuri jejak penculik sambil menghadapi binatang yang terkena kutuk
 
 Gua Goblin dahulu merupakan tempat tinggal bangsa Goblin yang bekerja sebagai penambang dan pengrajin. Setelah Malzareth menyebarkan kutukan, para Goblin berubah menjadi makhluk ganas dan gua mereka menjadi sarang monster.
 
-Pahlawan melewati penjaga gua, lorong tambang, dan pasukan Goblin hingga mencapai ruang pemimpin. Gua itu kini dikuasai Orc Batu kiriman penyihir; pemimpinnya, Raja Orc Batu, menunggu di singgasana. (v0.72.0: bos gua = Orc Batu, menggantikan Raja Goblin.) Setelah mengalahkannya, pahlawan menemukan sebuah catatan dan lambang sihir milik Malzareth. Catatan itu mengungkap bahwa Goblin bukan dalang penculikan; mereka hanya diperintah oleh penyihir.
+Pahlawan melewati penjaga gua, lorong tambang, dan pasukan Goblin hingga mencapai ruang pemimpin. Gua itu kini dikuasai Orc Batu kiriman penyihir; pemimpinnya, Raja Orc Batu, menunggu di singgasana (sejak v0.72.0 bos gua adalah Orc Batu, bukan Raja Goblin). Setelah mengalahkannya, pahlawan menemukan sebuah catatan dan lambang sihir milik Malzareth. Catatan itu mengungkap bahwa Goblin bukan dalang penculikan; mereka hanya diperintah oleh penyihir.
 
 Petunjuk tersebut juga menyebut kekuatan sihir yang berasal dari wilayah gunung berapi dan naga yang menjaga istana penyihir.
 
-**Dialog kunci sebelum pertarungan Raja Goblin:**
+**Narasi setelah Raja Orc Batu kalah:**
 
-> "Manusia! Penyihir itu memberi kami kekuatan! Kami tidak akan membiarkanmu melewati gua ini!"
+> "Kami... dulu penjaga gunung... penyihir itu menyuruh kami merebut gua ini..."
 
 **Catatan setelah pertarungan:** pahlawan menemukan lambang Malzareth dan bukti bahwa kutukan mengendalikan bangsa Goblin.
 
 **Tujuan permainan:**
 1. Masuki Gua Goblin.
 2. Kalahkan penjaga dan pasukan Goblin.
-3. Hadapi Raja Goblin yang terkutuk.
+3. Hadapi Raja Orc Batu yang terkutuk (tiga tahap: Orc Batu Lv 1, Lv 2, lalu Raja Orc Batu).
 4. Ambil catatan/lambang penyihir.
 5. Temukan jalur menuju Gunung Berapi.
 
@@ -187,7 +187,7 @@ Dokumen ini adalah sumber narasi, bukan kode pemicu permainan. Agar alur benar-b
 |---|---|
 | Prolog | Dialog kepala desa dan misi utama penyelamatan Elara |
 | Hutan Binatang | Gerbang wilayah, musuh binatang terkutuk, NPC penjaga hutan, petunjuk Gua Goblin |
-| Gua Goblin | Musuh Goblin, boss Raja Goblin, item/catatan Malzareth |
+| Gua Goblin | Musuh Goblin & binatang tulang, bos Orc Batu Lv 1–2 lalu Raja Orc Batu, Lambang Malzareth |
 | Gunung Berapi | Musuh Orc Batu, boss panglima, objek batu sihir yang dapat dihancurkan |
 | Istana Kegelapan | Musuh istana, boss Aldragor, penyelamatan Elara, boss Malzareth |
 | Epilog | Status kutukan selesai, dialog desa, dan penyelesaian cerita |

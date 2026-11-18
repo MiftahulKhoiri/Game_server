@@ -2,6 +2,37 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket adventure 1.3.0 + server 0.85.2 — hasil review The Last Dragon (18 November 2026)
+
+Game lewat unduhan (tombol UPDATE di launcher), tanpa APK baru. Server di-restart (jumlah binatang Bab 1).
+Laporan review & hasil: dokumen Project "Review The Last Dragon - 18 Nov 2026".
+
+- **Istana Kegelapan & Ruang Takhta** (`istana_dekor.gd`, baru; hanya tampilan, petak/server sama): pilar berukir
+  dengan kristal ungu melayang, tembok basal tinggi bergigi benteng, panji berlambang mata Malzareth, bibir batu di
+  tepi lava, karpet merah-emas, lingkar pemanggilan Aldragor (cincin rune + 4 kristal), singgasana obsidian
+  bertanduk di atas undakan, jendela ungu menyala di ruang takhta, sangkar sihir Elara (hanya langkah 10), siluet
+  benteng & menara beratap runcing di cakrawala. Langit halaman selalu kelam (tidak ikut fajar/siang).
+- **Tokoh cerita berpenampilan khusus** (Character Creator, warna di `LookBuild.NPC_COSM`, tidak butuh katalog
+  server): Elara (model pemanah, rambut panjang, mahkota kecil, gaun hijau-emas, selendang, kalung, tanpa senjata),
+  Kepala Desa (beruban & berjanggut, jubah bangsawan hijau, mantel merah, tongkat tetua), Malzareth (penyihir
+  berkerudung, jubah panjang ungu gelap, mantel, hiasan bahu menyala, mata merah, tongkat kristal).
+- **Gunung Berapi lebih berapi** (`gunung_dekor.gd`, baru): tanah abu vulkanik gelap, jalan kemerahan, tanah memerah
+  di dekat lava, batu digelapkan jadi basal hangus, ±140 retakan lava menyala, lubang asap, tiga kerucut gunung
+  berapi berkawah & beraliran lava di cakrawala; langit merah-jingga, malam tetap membara (bukan biru).
+- **Hemat panggilan gambar** (`rakit.gd`, baru): hiasan Bab 3–4 dirakit jadi beberapa mesh berwarna titik
+  (padat / rata / pendar / logam). Pi 5, Seimbang, panggilan gambar lama → baru: Desa 409 → 412, Gunung 276 → 285,
+  Istana 199 → 192, Ruang Takhta 182 → 184; segitiga Gunung 57 → 70 rb, Istana 26 → 41 rb, Takhta 23 → 32 rb.
+- **Bab 1 lebih singkat**: Hutan Binatang 15/30/45 binatang per tahap (dulu 25/75/100). Gua Goblin & Gunung Berapi
+  tetap. Server: `HutanStageKills`, `TrialDef.Kills`, `StageNeedOn`, `BossReadyOn`; kemajuan lama yang melebihi
+  angka baru langsung membuka bos. Klien: `Maps.stage_need`, dialog Kapten Rimba & papan misi ikut.
+- **Adegan prolog bergambar** (`prolog_adegan.gd`, baru): pemain baru melihat 4 potongan 3D (±18 detik, tombol
+  Lewati) sebelum layar teks prolog: Aldragor di langit senja, serbuan monster malam & rumah terbakar, Malzareth
+  mengangkat Elara dalam bola sihir, penyihir lenyap saat pahlawan (berpenampilan pemain) mengejar.
+- **Kamera tidak menembus bangunan** (`cam_clear.gd`, baru): kamera berhenti sebelum rumah, bangunan kecil, tembok
+  & pilar istana (dulu separuh layar bisa gelap tertutup dinding rumah di Desa). Pohon & batu tidak dihitung.
+- `docs/STORY.md` diselaraskan (Raja Orc Batu, alur & angka Bab 1, adegan prolog).
+- `tests/shot.gd`: `SHOT_VIEW` (kamera bebas), `SHOT_PROLOG` (gambar tiap potongan adegan prolog).
+
 ## Paket adventure 1.2.0 + server 0.85.1 — serbuan monster: radar otomatis, binatang tulang, penjaga ikut bertarung (17 November 2026)
 
 Game lewat unduhan (tombol UPDATE di launcher), tanpa APK baru. Server di-restart (musuh baru + luka penjaga).

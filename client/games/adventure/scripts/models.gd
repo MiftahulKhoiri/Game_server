@@ -101,7 +101,11 @@ const VARIANTS := {
 	# Cerita The Last Dragon (v0.67.0). Panglima Orc Batu (id lama raja_goblin) memakai model Monster Batu yang besar
 	# dan kelabu; Malzareth = model Mage yang gelap dan lebih tinggi; penjaga Istana Kegelapan berwarna ungu kutukan.
 	"raja_goblin": {"base": "ogre_batu", "size": 2.1, "tint": Color("a8a4a0")},
-	"malzareth": {"base": "nenek_penjual", "size": 1.35, "tint": Color("6f4a8f")},
+	# 1.3.0: Malzareth = penyihir berkerudung, jubah panjang ungu gelap, mantel, hiasan bahu menyala, tongkat kristal.
+	"malzareth": {"base": "penyihir", "size": 1.4, "tint": Color.WHITE, "equipment": {"weapon": "tongkat_malzareth"},
+		"look": {"made": true, "skin": "npc_kulit_malz", "clothes": "npc_jubah_malz", "cape": "npc_mantel_malz",
+			"accessories": ["npc_bahu_malz"], "eyes": "tajam", "eye_color": "#ff3a3a", "brow": "tebal", "hair_color": "#9a9aa8",
+			"beard": "penyihir", "skin_color": "#d8c8c0"}},
 	"kelelawar_istana": {"base": "kelelawar_hutan", "size": 1.3, "tint": Color("b48cff")},
 	"prajurit_kutukan": {"base": "goblin_penjaga", "size": 1.25, "tint": Color("a58ad6")},
 	"orc_kegelapan": {"base": "goblin", "size": 2.0, "tint": Color("8a6aa8")},
@@ -233,6 +237,8 @@ static func create(id: String) -> Node3D:
 		base.scale = base.scale * float(v.size)
 		if v.has("colors"):  # warna per bahan (model Quaternius), mis. naga lava / naga bayangan
 			_color_by_material(base, v.colors)
+		if v.has("look"):  # tokoh cerita berpenampilan (Malzareth, 1.3.0)
+			dress(base, 0, v.get("equipment", {}), v.look)
 		var tint: Color = v.tint
 		if BRIGHT.has(str(v.base)):
 			tint = tint.lerp(Color.WHITE, BRIGHT_TINT_SOFTEN)  # warna varian goblin tidak menggelapkan model
@@ -458,8 +464,9 @@ static func dress(rig: Node3D, outfit: int, equipment: Dictionary, look := {}) -
 	var helmet: Dictionary = HELMET_LOOK.get(str(equipment.get("helmet", "")), {})
 	var hat := str(look.get("hat", ""))
 	var head_covered := not helmet.is_empty() or hat != ""
-	var custom_weapon := LookBuild.WEAPONS.has(str(equipment.get("weapon", "")))
-	var custom_shield := LookBuild.SHIELDS.has(str(equipment.get("offhand", "")))
+	var no_arms := bool(look.get("tanpa_senjata", false))  # tokoh cerita tanpa senjata (Elara)
+	var custom_weapon := LookBuild.WEAPONS.has(str(equipment.get("weapon", ""))) or no_arms
+	var custom_shield := LookBuild.SHIELDS.has(str(equipment.get("offhand", ""))) or no_arms
 	var clothes_c := LookBuild.col(LookBuild.cosm(str(look.get("clothes", ""))).get("color", ""))
 	var pants_c := LookBuild.col(LookBuild.cosm(str(look.get("pants", ""))).get("color", ""))
 	var skin_on := str(look.get("skin_color", "")) != ""
@@ -861,6 +868,14 @@ static func create_warga(def: Dictionary) -> Node3D:
 	var m := create(str(def.model))
 	if def.has("ukuran"):
 		m.scale = m.scale * float(def.ukuran)
+	if def.has("look"):  # tokoh cerita (Elara, Kepala Desa; 1.3.0): penampilan lengkap ala Character Creator
+		dress(m, 0, def.get("equipment", {}), def.look)
+		for wn in m.find_children("wajah*", "", true, false):  # ciri wajah tidak digambar dari jauh (hemat HP)
+			for g in wn.find_children("*", "GeometryInstance3D", true, false):
+				(g as GeometryInstance3D).visibility_range_end = WARGA_FACE_FAR
+			if wn is GeometryInstance3D:
+				(wn as GeometryInstance3D).visibility_range_end = WARGA_FACE_FAR
+		return m
 	if def.has("baju") or def.has("kulit"):
 		npc_look(m, def.get("baju", Color(1, 1, 1)), def.get("kulit", Color(1, 1, 1)))
 	npc_face(m, def)

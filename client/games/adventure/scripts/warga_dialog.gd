@@ -301,7 +301,7 @@ static func story_step_for(id: String, story: int) -> int:
 ## wave = Goblin yang sudah kalah (0-3), kills = binatang kalah di tahap ini (tahap 1: 25, 2: 75, 3: 100), n = urutan bicara.
 ## `briefed` = sudah pernah diarahkan; bila belum, ini pertemuan pertama: Kapten memberi Radar Musuh.
 static func kapten_line(wave: int, kills: int, n: int, briefed := true) -> String:
-	var need: int = [25, 75, 100][clampi(wave, 0, 2)]
+	var need: int = (load("res://games/adventure/scripts/maps.gd") as GDScript).stage_need("hutan_lebat", wave)
 	var tugas := "Tugasmu tahap %d: kalahkan %d binatang terkutuk di Hutan Binatang. Setelah itu Goblin Level %d muncul di singgasana, dekat gerbang Gua Goblin." % [wave + 1, need, wave + 1]
 	var jalan := "Hutan Binatang ada di selatan kem ini: susuri jalan raja sampai ujung selatan. Di dalam, jalan tanah bercabang tiga (utara, tengah, selatan), tapi semuanya bertemu di satu persimpangan tepat di depan gerbang Gua Goblin. Panah di layar menunjukkan arahnya."
 	if not briefed:
@@ -316,7 +316,7 @@ static func kapten_line(wave: int, kills: int, n: int, briefed := true) -> Strin
 	if wave == 0:
 		return ["Binatang di Hutan Binatang dikutuk, dan tiga Goblin menjaga jalan ke gua. " + tugas + " Radar Musuh di ranselmu menunjukkan di mana binatangnya.",
 			progress + " " + jalan,
-			"Ada tiga tahap: 25, lalu 75, lalu 100 binatang, masing-masing ditutup satu Goblin. Setelah tiga Goblin tumbang, gerbang Gua Goblin terbuka. Di Gua Goblin dan Gunung Berapi ujiannya sama."][n % 3]
+			"Ada tiga tahap: 15, lalu 30, lalu 45 binatang, masing-masing ditutup satu Goblin. Setelah tiga Goblin tumbang, gerbang Gua Goblin terbuka. Di Gua Goblin dan Gunung Berapi ujiannya lebih berat: 25, 75, lalu 100 musuh."][n % 3]
 	return ["Goblin Level %d sudah kamu kalahkan! Binatang baru muncul di hutan. %s" % [wave, tugas],
 		progress + " " + jalan,
 		"Tersisa %d Goblin lagi. Terus semangat, Ksatria." % (3 - wave)][n % 3]

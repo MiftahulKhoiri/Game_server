@@ -9,6 +9,7 @@ extends Node
 const Maps = preload("res://games/adventure/scripts/maps.gd")
 const Models = preload("res://games/adventure/scripts/models.gd")
 const HeroFx = preload("res://games/adventure/scripts/hero_fx.gd")
+const PrologAdegan = preload("res://games/adventure/scripts/prolog_adegan.gd")
 
 const END := 12                       # sama dengan StoryEnd di server
 const SEEN_FILE := "user://cerita.cfg"
@@ -75,6 +76,7 @@ const NARASI := {
 var world = null              # world3d.gd
 var showing := false          # layar cerita sedang terbuka (untuk uji)
 var shown_title := ""         # judul layar cerita terakhir (untuk uji)
+var adegan: Control = null    # adegan prolog yang sedang diputar (prolog_adegan.gd)
 
 var _layer: CanvasLayer
 var _panel: Control
@@ -200,6 +202,9 @@ func check() -> void:
 	if seen == -2:  # belum pernah membuka cerita di HP ini
 		if cur == 0:
 			_queue.append(NARASI[-1])
+			_set_seen(cur)
+			play_prolog()  # 1.3.0: adegan bergambar dulu, lalu layar teks prolog
+			return
 		elif cur > 0:
 			_queue.append(NARASI[cur - 1])  # pemain lama: cukup narasi terakhir
 	elif cur > seen:
@@ -210,6 +215,22 @@ func check() -> void:
 	_set_seen(cur)
 	if not _queue.is_empty():
 		_show_next()
+
+
+## Adegan pembuka (prolog_adegan.gd): serangan malam dan penculikan Elara. Setelah selesai/dilewati, antrean
+## narasi (layar teks prolog) ditampilkan seperti biasa. Bisa juga diputar ulang dari mana saja (mis. Jurnal).
+func play_prolog() -> void:
+	showing = true
+	shown_title = "Adegan Prolog"
+	world._locked = true
+	adegan = PrologAdegan.new()
+	_layer.add_child(adegan)
+	adegan.selesai.connect(func() -> void:
+		adegan = null
+		if not _queue.is_empty():
+			_show_next()
+		else:
+			close())
 
 
 func _show_next() -> void:

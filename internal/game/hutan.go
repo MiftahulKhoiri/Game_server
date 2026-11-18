@@ -7,7 +7,7 @@ import (
 )
 
 // Ujian wilayah (v0.46.0, diubah v0.65.0): di Hutan Lebat, Gua Goblin, dan Gunung Batu pemain harus melewati
-// tiga tahap. Tahap 1: kalahkan 25 musuh, lalu bos Level 1 muncul di singgasananya; tahap 2: 75 musuh lalu bos
+// tiga tahap (Hutan Binatang sejak paket 1.3.0: 15/30/45, lihat HutanStageKills). Tahap 1: kalahkan 25 musuh, lalu bos Level 1 muncul di singgasananya; tahap 2: 75 musuh lalu bos
 // Level 2; tahap 3: 100 musuh lalu bos Level 3. Setelah ketiga bos kalah, pintu ke peta berikutnya terbuka
 // (Hutan Lebat -> Gua Goblin -> Gunung Batu -> Gua Batu). Server yang menghitung kemajuan ini; klien hanya
 // menampilkan. Kemajuan Hutan Lebat ada di State.Hutan (nama lama), peta lain di State.Trials.
@@ -35,7 +35,12 @@ const (
 // StageKills: musuh yang harus dikalahkan sebelum bos tiap tahap muncul (tahap 1, 2, 3).
 var StageKills = [HutanWaves]int{25, 75, 100}
 
-// HutanBeasts: jumlah musuh terbanyak dalam satu tahap (tahap terakhir).
+// HutanStageKills (paket adventure 1.3.0): Bab 1 Hutan Binatang lebih singkat supaya cerita tidak tertahan
+// (dulu 25/75/100 = 200 binatang). Gua Goblin dan Gunung Berapi tetap StageKills. Kemajuan lama yang sudah
+// melebihi angka baru langsung membuka bos tahap itu (BossReadyOn memakai >=).
+var HutanStageKills = [HutanWaves]int{15, 30, 45}
+
+// HutanBeasts: jumlah musuh terbanyak dalam satu tahap (tahap terakhir), batas sah data simpanan.
 const HutanBeasts = 100
 
 // StageNeed: musuh yang harus dikalahkan pada tahap `wave` (0 = tahap 1).
@@ -47,6 +52,20 @@ func StageNeed(wave int) int {
 		return StageKills[HutanWaves-1]
 	}
 	return StageKills[wave]
+}
+
+// StageNeedOn: musuh yang harus dikalahkan pada tahap `wave` di wilayah ujian `mapID`.
+func StageNeedOn(mapID string, wave int) int {
+	if wave < 0 {
+		wave = 0
+	}
+	if wave >= HutanWaves {
+		wave = HutanWaves - 1
+	}
+	if t, ok := TrialFor(mapID); ok && t.Kills[wave] > 0 {
+		return t.Kills[wave]
+	}
+	return StageNeed(wave)
 }
 
 // TrialDef: satu wilayah ujian. Bos = BossPrefix + "1".."3"; singgasana di (BossX, BossY), sama dengan
@@ -61,11 +80,13 @@ type TrialDef struct {
 	// BossLevel > 0 = bos makin kuat untuk pemain di atas level ini (lihat strengthenBoss).
 	Hunt      bool
 	BossLevel int
+	// Kills: musuh per tahap di wilayah ini (nol = StageKills).
+	Kills [HutanWaves]int
 }
 
 // Trials: wilayah ujian berurutan.
 var Trials = []TrialDef{
-	{Map: MapHutanLebat, BossPrefix: "goblin_hutan_", BossX: HutanBossX, BossY: HutanBossY, Next: MapGuaGoblin},
+	{Map: MapHutanLebat, BossPrefix: "goblin_hutan_", BossX: HutanBossX, BossY: HutanBossY, Next: MapGuaGoblin, Kills: HutanStageKills},
 	{Map: MapGuaGoblin, BossPrefix: "kepala_goblin_", BossX: 30, BossY: 61, Next: MapGunungBatu, Hunt: true, BossLevel: 6}, // v0.70.0: singgasana di depan pintu utama
 	{Map: MapGunungBatu, BossPrefix: "ogre_gunung_", BossX: 160, BossY: 41, Next: MapGuaBatu, Hunt: true, BossLevel: 9},    // bos: Naga Lava (v0.72.0); v0.75.0 balairung timur
 }
@@ -168,6 +189,13 @@ func (h HutanProgress) Need() int { return StageNeed(h.Wave) }
 // BossReady: musuh tahap ini sudah cukup dikalahkan dan bos berikutnya menunggu di singgasana.
 func (h HutanProgress) BossReady() bool { return h.Wave < HutanWaves && h.Kills >= h.Need() }
 
+// NeedOn / BossReadyOn: sama dengan Need / BossReady, memakai jumlah musuh khusus wilayah `mapID`.
+func (h HutanProgress) NeedOn(mapID string) int { return StageNeedOn(mapID, h.Wave) }
+
+func (h HutanProgress) BossReadyOn(mapID string) bool {
+	return h.Wave < HutanWaves && h.Kills >= h.NeedOn(mapID)
+}
+
 // BossID adalah id musuh bos Hutan Lebat tahap ini (goblin_hutan_1..3).
 func (h HutanProgress) BossID() string { return fmt.Sprintf("goblin_hutan_%d", h.Wave+1) }
 
@@ -204,11 +232,11 @@ func hutanBoss(p *Player) (Enemy, error) {
 		return Enemy{}, ErrNoBoss
 	}
 	h := st.Trial(st.Map)
-	if !h.BossReady() {
+	if !h.BossReadyOn(st.Map) {
 		if h.Done() {
 			return Enemy{}, ErrBossNotReady
 		}
-		return Enemy{}, fmt.Errorf("%w (%d/%d)", ErrBossNotReady, h.Kills, h.Need())
+		return Enemy{}, fmt.Errorf("%w (%d/%d)", ErrBossNotReady, h.Kills, h.NeedOn(st.Map))
 	}
 	e, ok := EnemyByID(fmt.Sprintf("%s%d", t.BossPrefix, h.Wave+1))
 	if !ok {
@@ -264,7 +292,7 @@ func (s *State) recordHutan(e Enemy) []string {
 	h := s.Trial(s.Map)
 	defer func() { s.setTrial(s.Map, h) }()
 	if e.Boss {
-		if !h.BossReady() || e.ID != fmt.Sprintf("%s%d", t.BossPrefix, h.Wave+1) {
+		if !h.BossReadyOn(s.Map) || e.ID != fmt.Sprintf("%s%d", t.BossPrefix, h.Wave+1) {
 			return nil
 		}
 		h.Wave++
@@ -272,13 +300,13 @@ func (s *State) recordHutan(e Enemy) []string {
 		if h.Done() {
 			return []string{fmt.Sprintf("Ketiga bos %s kalah! Pintu menuju %s terbuka.", MapName(t.Map), MapName(t.Next))}
 		}
-		return []string{fmt.Sprintf("%s kalah! Tahap %d: kalahkan %d musuh.", e.Name, h.Wave+1, h.Need())}
+		return []string{fmt.Sprintf("%s kalah! Tahap %d: kalahkan %d musuh.", e.Name, h.Wave+1, h.NeedOn(s.Map))}
 	}
-	if h.Done() || h.BossReady() {
+	if h.Done() || h.BossReadyOn(s.Map) {
 		return nil
 	}
 	h.Kills++
-	if h.BossReady() {
+	if h.BossReadyOn(s.Map) {
 		return []string{fmt.Sprintf("Tahap %d selesai! Bos Level %d menunggu di singgasana.", h.Wave+1, h.Wave+1)}
 	}
 	return nil

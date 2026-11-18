@@ -29,6 +29,9 @@ func TestTrialProgression(t *testing.T) {
 	if StageKills != [3]int{25, 75, 100} {
 		t.Fatalf("tahap harus 25/75/100: %v", StageKills)
 	}
+	if HutanStageKills != [3]int{15, 30, 45} || StageNeedOn(MapHutanLebat, 2) != 45 || StageNeedOn(MapGuaGoblin, 2) != 100 {
+		t.Fatalf("Bab 1 Hutan 15/30/45 (1.3.0), wilayah lain tetap: %v", HutanStageKills)
+	}
 	foe := map[string]string{MapHutanLebat: "kancil_hutan", MapGuaGoblin: "goblin", MapGunungBatu: "goblin"}
 	for _, tr := range Trials {
 		p := newPlayer()
@@ -39,15 +42,15 @@ func TestTrialProgression(t *testing.T) {
 			if _, err := StartBossBattle(p, 0); !errors.Is(err, ErrBossNotReady) {
 				t.Fatalf("%s tahap %d: bos terlalu cepat muncul: %v", tr.Map, wave+1, err)
 			}
-			for i := 0; i < StageKills[wave]; i++ {
+			for i := 0; i < StageNeedOn(tr.Map, wave); i++ {
 				kalahkan(t, p, foe[tr.Map])
 			}
 			h := st.Trial(tr.Map)
-			if h.Wave != wave || h.Kills != StageKills[wave] || !h.BossReady() {
+			if h.Wave != wave || h.Kills != StageNeedOn(tr.Map, wave) || !h.BossReadyOn(tr.Map) {
 				t.Fatalf("%s tahap %d: kemajuan salah %+v", tr.Map, wave+1, h)
 			}
 			kalahkan(t, p, foe[tr.Map]) // musuh tambahan tidak melewati batas tahap
-			if st.Trial(tr.Map).Kills != StageKills[wave] {
+			if st.Trial(tr.Map).Kills != StageNeedOn(tr.Map, wave) {
 				t.Fatalf("%s: kills melewati batas: %+v", tr.Map, st.Trial(tr.Map))
 			}
 			b, err := StartBossBattle(p, 0)

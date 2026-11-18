@@ -43,7 +43,7 @@ func _draw() -> void:
 	draw_style_box(_box(Color(0.05, 0.08, 0.05, 0.62)), Rect2(Vector2.ZERO, PANEL_SIZE))
 	var gold := Color("ffe27a")
 	var t: Dictionary = Maps.TRIALS.get(map_id, Maps.TRIALS["hutan_lebat"])
-	var need: int = [25, 75, 100][clampi(wave, 0, 2)]
+	var need: int = Maps.stage_need(map_id, wave)
 	var next_name := str(Maps.NAMES.get(str(t.next), ""))
 	var title: String
 	if not started:

@@ -2493,7 +2493,7 @@ func _run() -> void:
 	_check(absf(HHv47.arrow_angle(Vector2(10, 10), Vector2(20, 10), PI / 2.0) - PI) < 0.01, "kamera diputar: panah ikut berputar")
 	var WDv47: Script = load("res://games/adventure/scripts/warga_dialog.gd")
 	_check(WDv47.display_name("kapten_kem") == "Kapten Rimba", "Kapten Rimba punya nama dialog")
-	_check(WDv47.kapten_line(0, 0, 0).contains("25 binatang") and WDv47.kapten_line(0, 17, 1).contains("17") and WDv47.kapten_line(1, 40, 1).contains("40 dari 75"), "Kapten menjelaskan tugas bertahap (25/75/100) dan kemajuan binatang")
+	_check(WDv47.kapten_line(0, 0, 0).contains("15 binatang") and WDv47.kapten_line(0, 12, 1).contains("12") and WDv47.kapten_line(1, 20, 1).contains("20 dari 30"), "Kapten menjelaskan tugas bertahap (Bab 1 sejak 1.3.0: 15/30/45) dan kemajuan binatang")
 	_check(WDv47.kapten_line(1, 100, 0).contains("Level 2"), "Kapten menyebut Goblin berikutnya bila binatang habis")
 	_check(WDv47.kapten_line(3, 0, 0).contains("terbuka"), "Kapten menyebut gerbang terbuka setelah tiga Goblin")
 	var kapten_v47 := {}
@@ -3107,6 +3107,8 @@ func _run() -> void:
 	_check(wi67._map_id == Maps.ISTANA and wi67._terrain != null and wi67._roamers.size() > 0, "Istana Kegelapan dimuat dengan penjaga berkeliaran (%d)" % wi67._roamers.size())
 	var lava67: bool = wi67._terrain.find_children("*", "MultiMeshInstance3D", true, false).any(func(n: Node) -> bool: return (n as MultiMeshInstance3D).material_override is ShaderMaterial and str(((n as MultiMeshInstance3D).material_override as ShaderMaterial).shader.code).contains("0.62, 0.12"))
 	_check(lava67, "kolam lava digambar di Istana Kegelapan")
+	# Paket 1.3.0: hiasan Bab 4 (istana_dekor.gd).
+	_check(wi67._terrain.find_child("SiluetIstana", true, false) != null, "1.3.0: siluet benteng & menara Istana Kegelapan di cakrawala")
 	wi67.queue_free()
 	await process_frame
 	Session.player.state.map = Maps.TAKHTA
@@ -3123,6 +3125,7 @@ func _run() -> void:
 	for w67 in wt67._warga:
 		elara67 = elara67 or w67.id == "elara"
 	_check(wt67._map_id == Maps.TAKHTA and elara67, "Elara ditahan di ruang takhta pada langkah Malzareth")
+	_check(wt67._terrain.find_child("SangkarElara", true, false) != null, "1.3.0: Elara dikurung sangkar sihir selama Malzareth belum kalah")
 	wt67.queue_free()
 	await process_frame
 	Session.offline = false
@@ -3149,10 +3152,43 @@ func _run() -> void:
 	_check(wg67._story.showing, "narasi berikutnya menyusul")
 	wg67._story._on_next()
 	_check(not wg67._story.showing and not wg67._locked, "narasi ditutup, pemain bebas lagi")
+	# Paket 1.3.0: adegan prolog bergambar lalu layar teks prolog.
+	wg67._story._queue.append(wg67._story.NARASI[-1])
+	wg67._story.play_prolog()
+	await process_frame
+	_check(wg67._story.adegan != null and wg67._story.showing and wg67._locked and wg67._story.adegan.shot == 0, "1.3.0: adegan prolog diputar dan menahan gerak")
+	wg67._story.adegan.finish()
+	await process_frame
+	_check(wg67._story.adegan == null and wg67._story.showing and wg67._story.shown_title == "The Last Dragon", "1.3.0: setelah adegan (atau Lewati) layar teks prolog tampil")
+	wg67._story._on_next()
+	_check(not wg67._story.showing and not wg67._locked, "1.3.0: prolog ditutup, pemain bebas")
 	Session.story_popups = false
 	wg67.queue_free()
 	await process_frame
 	Session.player.state = saved67
+
+	print("== paket adventure 1.3.0: Bab 1 singkat, tokoh cerita, Gunung Berapi, kamera tidak menembus dinding")
+	_check(Maps.stage_need("hutan_lebat", 0) == 15 and Maps.stage_need("hutan_lebat", 2) == 45 and Maps.stage_need("gua_goblin", 2) == 100, "Bab 1 Hutan 15/30/45 binatang, Gua/Gunung tetap 25/75/100")
+	var M13: GDScript = load("res://games/adventure/scripts/models.gd")
+	var el13: Dictionary = {}
+	for wd13: Dictionary in Maps.WARGA:
+		if str(wd13.id) == "elara":
+			el13 = wd13
+	var elara13: Node3D = M13.create_warga(el13)
+	_check(elara13.find_child("topi", true, false) != null and elara13.find_child("jubah_panjang", true, false) != null, "Elara bermahkota dan bergaun (bukan model warga biasa)")
+	elara13.free()
+	var kd13: Node3D = M13.create_warga(Maps.WARGA.filter(func(w: Dictionary) -> bool: return str(w.id) == "kepala_suku")[0])
+	_check(kd13.find_child("jubah", true, false) != null and kd13.find_child("senjata", true, false) != null, "Kepala Desa bermantel dan bertongkat")
+	kd13.free()
+	var mz13: Node3D = M13.create("malzareth")
+	_check(mz13.find_child("jubah_panjang", true, false) != null and mz13.find_child("senjata", true, false) != null, "Malzareth berjubah panjang dan bertongkat kristal")
+	mz13.free()
+	var g13: Node3D = load("res://games/adventure/scripts/world_build.gd").build(Maps.GUNUNG)
+	_check(int(g13.get_meta("retak_lava", 0)) > 50 and g13.find_child("GunungJauh", true, false) != null, "Gunung Berapi: retakan lava (%d) dan kerucut gunung berapi di cakrawala" % int(g13.get_meta("retak_lava", 0)))
+	g13.free()
+	var CC13: GDScript = load("res://games/adventure/scripts/cam_clear.gd")
+	var dir13 := Vector3(-1.0, 0.3, 0.0).normalized()
+	_check(CC13.jarak(Maps.TAKHTA, Vector3(2.5, 1.0, 5.5), dir13, 6.0) < 6.0 and is_equal_approx(CC13.jarak(Maps.TAKHTA, Vector3(10.5, 1.0, 5.5), Vector3(0, 0.5, 1).normalized(), 3.0), 3.0), "kamera berhenti sebelum tembok, bebas di ruang terbuka")
 
 	print("== v0.68.3: kamera kembali ke belakang pahlawan")
 	Session.offline = true

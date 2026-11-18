@@ -127,12 +127,13 @@ const WALKABLE := ".=fTBDMGKOX"  # X: lantai gua bertumpuk tengkorak (Gua Goblin
 const BOSS_TILE := "K"
 ## Singgasana bos Goblin di Hutan Lebat (sama dengan HutanBossX/Y di internal/game/hutan.go).
 const HUTAN_BOSS := Vector2i(142, 47)
-## Wilayah ujian (v0.65.0, sama dengan game.Trials di server): kalahkan 25, 75, lalu 100 musuh; tiap tahap ditutup
+## Wilayah ujian (v0.65.0, sama dengan game.Trials di server): kalahkan 25, 75, lalu 100 musuh (Hutan Binatang sejak paket
+## 1.3.0: 15, 30, 45, lihat "kills" dan stage_need); tiap tahap ditutup
 ## bos Level 1..3 di dekat singgasana. Setelah ketiganya kalah gerbang `gate` (petak x0..x1 di baris y) ke peta
 ## `next` terbuka. `gate_point` / `home` = titik panah papan misi; `lock` = letak palang kayu gerbang.
 const TRIALS := {
 	"hutan_lebat": {"boss": Vector2i(142, 47), "prefix": "goblin_hutan_", "boss_name": "Goblin Level %d", "next": "gua_goblin",
-		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
+		"gate": [146, 147, 49], "gate_point": Vector2(147.0, 48.5), "home": Vector2(22.5, 1.5), "home_name": "Pulang", "foe": "Binatang", "kills": [15, 30, 45], "lock": Vector3(147.0, 0.0, 49.45), "lock_w": 2.0},
 	"gua_goblin": {"boss": Vector2i(30, 61), "prefix": "kepala_goblin_", "boss_name": "Orc Batu Lv %d", "boss_names": ["Orc Batu Lv 1", "Orc Batu Lv 2", "Raja Orc Batu"], "next": "gunung_batu",
 		"gate": [29, 31, 71], "gate_point": Vector2(30.5, 70.5), "home": Vector2(30.5, 1.5), "home_name": "Hutan", "foe": "Musuh", "lock": Vector3(30.5, 0.0, 71.45), "lock_w": 3.0,
 		# v0.71.0: bos memburu pemain ke seluruh gua (server: TrialDef.Hunt); kecepatan dan kegesitan per tahap
@@ -219,6 +220,14 @@ const NPCS := {
 }
 
 
+## Penampilan tokoh cerita (paket 1.3.0): Elara bergaun hijau-emas bermahkota kecil dan berselendang gading; Kepala Desa
+## berjubah hijau tua bermantel merah, beruban, bertongkat. Warna dari LookBuild.NPC_COSM (tidak butuh katalog server).
+const ELARA_LOOK := {"made": true, "gender": "wanita", "hair": "rambut_panjang", "hair_color": "#b8642a", "eyes": "bulat",
+	"eye_color": "#3a6a9a", "mouth": "senyum", "skin": "npc_kulit_elara", "clothes": "npc_gaun_elara", "hat": "npc_tiara",
+	"cape": "npc_selendang_elara", "accessories": ["npc_kalung_elara"], "tanpa_senjata": true}
+const KEPALA_LOOK := {"made": true, "hair": "rambut_lurus", "hair_color": "#b4aea4", "beard": "lengkap", "brow": "tebal",
+	"skin": "npc_kulit_kepala", "clothes": "npc_jubah_kepala", "cape": "npc_mantel_kepala", "accessories": ["npc_kalung_kepala"]}
+
 ## Warga desa: pemanis tanpa misi, berjalan bebas di sekitar titik asalnya (`pos`, petak) dalam
 ## jari-jari `radius` petak, hanya di petak jalan/rumput/bunga. `model` = id model 3D;
 ## `speed` = petak per detik; `id` = kunci dialognya di warga_dialog.gd. Tidak menghalangi pemain,
@@ -235,7 +244,7 @@ const WARGA := [
 	{"id": "pak_budi", "model": "warga_bapak2", "name": "Pak Budi", "peran": "Petani Ladang", "baju": Color("d8c890"), "kulit": Color("e8cfb0"), "map": "desa_awal", "pos": Vector2(22.5, 40.5), "radius": 7.0, "speed": 0.8, "rumah": Vector2i(15, 30), "jadwal": [{"dari": 6.0, "sampai": 15.0, "pos": Vector2(12.5, 28.5), "kerja": "cangkul", "hadap": 270.0, "kata": ["Hup! Tanahnya keras sekali.", "Semoga panen tahun ini melimpah.", "Rumput liar ini tumbuh terus..."]}]},
 	{"id": "rina", "model": "anak_desa", "name": "Rina", "peran": "Anak Desa", "baju": Color("ffa8c8"), "kulit": Color("fff0e0"), "map": "desa_awal", "pos": Vector2(19.5, 12.5), "radius": 5.0, "speed": 1.1, "rumah": Vector2i(10, 2)},
 	{"id": "dika", "model": "anak_desa", "name": "Dika", "peran": "Anak Desa", "baju": Color("a8c8ff"), "kulit": Color("e0c0a0"), "map": "desa_awal", "pos": Vector2(25.5, 14.5), "radius": 5.0, "speed": 1.2, "rumah": Vector2i(34, 2)},
-	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Desa", "peran": "Ayah Elara", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3), "wajah": {"brow": Color("b8b8b8"), "brow_tilt": 0.15, "brow_w": 1.3, "beard": Color("c8c8c8")}},
+	{"id": "kepala_suku", "model": "pendekar_kapak", "name": "Kepala Desa", "peran": "Ayah Elara", "map": "desa_awal", "pos": Vector2(40.5, 8.5), "radius": 4.5, "speed": 0.55, "rumah": Vector2i(40, 3), "look": KEPALA_LOOK, "equipment": {"weapon": "tongkat_tetua"}},
 	{"id": "penjaga", "model": "pendekar_tombak", "name": "Penjaga", "peran": "Penjaga Gerbang", "map": "desa_awal", "pos": Vector2(22.5, 46.5), "radius": 3.5, "speed": 0.6, "rumah": Vector2i(24, 45), "arah": Vector2i(-1, 0), "terlihat": true},
 	{"id": "ayam", "model": "anak_ayam", "name": "Ayam", "map": "desa_awal", "pos": Vector2(5.5, 12.5), "radius": 2.2, "speed": 0.6, "rumah": Vector2i(5, 11)},
 	{"id": "ayam", "model": "anak_ayam", "name": "Ayam", "map": "desa_awal", "pos": Vector2(8.5, 11.5), "radius": 2.2, "speed": 0.7, "rumah": Vector2i(5, 11)},
@@ -264,8 +273,8 @@ const WARGA := [
 	# warga hanya muncul pada langkah cerita itu (Session.story()).
 	{"id": "penjaga_hutan", "model": "pendekar_tombak", "name": "Bayu", "peran": "Penjaga Hutan (terluka)", "map": "hutan_lebat", "pos": Vector2(26.5, 4.5), "radius": 0.0, "speed": 0.0, "diam": true, "kerja": "duduk", "hadap": 200.0, "alat": "batu", "baju": Color("8fbf7a"), "kulit": Color("e6c8a8"), "wajah": {"brow": Color("3a2414"), "brow_tilt": 0.1, "scar": 1.0, "stubble": Color("4a3020")}},
 	{"id": "orc_tua", "model": "orc_gua", "name": "Orc Tua", "peran": "Penjaga Gunung", "map": "gua_batu", "pos": Vector2(5.5, 12.5), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 90.0},
-	{"id": "elara", "model": "warga_ibu2", "name": "Elara", "peran": "Putri Kepala Desa", "map": "ruang_takhta", "pos": Vector2(10.5, 17.2), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 180.0, "baju": Color("f4e3a1"), "kulit": Color("fbe3cf"), "cerita_min": 10, "cerita_max": 11},
-	{"id": "elara", "model": "warga_ibu2", "name": "Elara", "peran": "Putri Kepala Desa", "map": "desa_awal", "pos": Vector2(42.5, 8.5), "radius": 2.5, "speed": 0.5, "rumah": Vector2i(40, 3), "baju": Color("f4e3a1"), "kulit": Color("fbe3cf"), "cerita_min": 11},
+	{"id": "elara", "model": "pemanah", "name": "Elara", "peran": "Putri Kepala Desa", "map": "ruang_takhta", "pos": Vector2(10.5, 17.2), "radius": 0.0, "speed": 0.0, "diam": true, "hadap": 180.0, "look": ELARA_LOOK, "cerita_min": 10, "cerita_max": 11},
+	{"id": "elara", "model": "pemanah", "name": "Elara", "peran": "Putri Kepala Desa", "map": "desa_awal", "pos": Vector2(42.5, 8.5), "radius": 2.5, "speed": 0.5, "rumah": Vector2i(40, 3), "look": ELARA_LOOK, "cerita_min": 11},
 	# Perekrut di basecamp pahlawan (barat gerbang): tenda merah = pahlawan berkelas, tenda hijau = prajurit biasa.
 	{"id": "rekrut_pahlawan", "model": "ksatria", "name": "Komandan Raka", "peran": "Perekrut Pahlawan (tenda merah)", "map": "desa_awal", "pos": Vector2(14.3, 43.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_pahlawan"},
 	{"id": "rekrut_prajurit", "model": "pendekar_tombak", "name": "Sersan Joni", "peran": "Perekrut Prajurit (tenda hijau)", "map": "desa_awal", "pos": Vector2(14.3, 46.9), "radius": 0.0, "speed": 0.0, "diam": true, "toko": "rekrut_prajurit"},
@@ -349,7 +358,7 @@ const ROAMERS := {
 		{"id": "babi_hutan", "name": "Babi Hutan", "lv": 3},
 		{"id": "serigala_alfa", "name": "Serigala Alfa", "lv": 5},
 	]},
-	# Hutan Lebat: 25/75/100 binatang per tahap (server menghitung), yang hidup bersamaan dibatasi `n`.
+	# Hutan Lebat: 15/30/45 binatang per tahap (1.3.0) (server menghitung), yang hidup bersamaan dibatasi `n`.
 	"hutan_lebat": {"n": 22, "tiles": ".f", "min_y": 3, "kinds": [
 		{"id": "kancil_hutan", "name": "Kancil Hutan", "lv": 1, "pemalu": true, "waktu": "siang"},
 		{"id": "rubah_hutan", "name": "Rubah Hutan", "lv": 2},
@@ -945,6 +954,15 @@ const TAKHTA_ROWS: Array[String] = [
 	"SSSSSLOOOOOOOOOLSSSSS",
 	"SSSSSSSSSSSSSSSSSSSSS",
 ]
+
+
+## Musuh yang harus dikalahkan pada tahap `wave` (0..2) di wilayah ujian `map_id` (server: game.StageNeedOn).
+const STAGE_KILLS := [25, 75, 100]
+
+
+static func stage_need(map_id: String, wave: int) -> int:
+	var k: Array = (TRIALS.get(map_id, {}) as Dictionary).get("kills", STAGE_KILLS)
+	return int(k[clampi(wave, 0, 2)])
 
 
 ## Nama bos ujian Level `level` (1..3) di peta itu, mis. "Raja Orc Batu" untuk bos ketiga Gua Goblin.

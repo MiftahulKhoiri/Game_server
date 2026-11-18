@@ -15,6 +15,8 @@ const Interior = preload("res://games/adventure/scripts/interior.gd")
 const MeshMerge = preload("res://games/adventure/scripts/mesh_merge.gd")
 const Plang = preload("res://games/adventure/scripts/plang.gd")
 const GroundFx = preload("res://games/adventure/scripts/ground_fx.gd")
+const IstanaDekor = preload("res://games/adventure/scripts/istana_dekor.gd")
+const GunungDekor = preload("res://games/adventure/scripts/gunung_dekor.gd")
 const ALAM_DIR := "res://games/adventure/assets/models/alam/"
 
 ## Model bangunan KayKit (CC0, atap merah-cokelat) untuk rumah-rumah di desa. Paket ini tidak punya
@@ -605,6 +607,8 @@ static func build(map_id: String) -> Node3D:
 					gc = gc.darkened(0.08) if (x + z) % 2 == 0 else gc.lightened(0.03)
 				if gob and t == "=":  # jalan utama gua: tanah terinjak, sedikit lebih terang dari lantai batu
 					gc = Color("857258").lightened(0.06 * (j - 0.5))
+				if gunung:  # 1.3.0: abu vulkanik gelap, jalan kemerahan, tanah memerah di dekat lava
+					gc = GunungDekor.ground(t, gc, rows, x, z)
 				if not alami:
 					ground_c.append(gc.lightened(0.025 * (j - 0.5) * 2.0) if t == "." or t == "f" else gc)
 				if tepi and t == "." and _jitter(x, z, 91) < 0.45:  # ilalang di tepi air
@@ -704,7 +708,7 @@ static func build(map_id: String) -> Node3D:
 						rock_c.append(Color("6b655d"))
 				"S":
 					if istana:
-						pillar_x.append(_xf(c + Vector3(0, 1.1, 0), Vector3(0.98, 2.2, 0.98)))
+						pass  # pilar & tembok basal: istana_dekor.gd (v1.3.0)
 					else:
 						stone_x.append(_xf(c + Vector3(0, 0.45, 0), Vector3(0.98, 0.9 - 0.25 * j, 0.98)))
 				"F":
@@ -727,7 +731,9 @@ static func build(map_id: String) -> Node3D:
 				"H", "D":
 					house_tiles.append(Vector2i(x, z))
 				"P":
-					if map_id == Maps.HUTAN or istana:
+					if istana:
+						pass  # benteng gelap bergigi: istana_dekor.gd
+					elif map_id == Maps.HUTAN:
 						_add_stone_wall_tile(x, z, c, wall_x, wall_c, wall_cap_x, wall_top_x)
 					else:
 						_add_palisade_tile(rows, x, z, w, h, c, pal_log_x, pal_log_c, pal_tip_x, pal_tip_c, pal_rail_x)
@@ -736,7 +742,8 @@ static func build(map_id: String) -> Node3D:
 				"W":
 					_add_well(root, c)
 				"K":
-					_add_throne(root, c)
+					if not istana:  # Bab 4: lingkar naga / singgasana Malzareth di istana_dekor.gd
+						_add_throne(root, c)
 				"X":
 					skull_spots.append(c)
 				"Z":
@@ -769,7 +776,8 @@ static func build(map_id: String) -> Node3D:
 		_multi(root, _dekor_mesh(id), _sway_material(), sway_by[id], [], true, breakables, "pohon", id)
 	for id: String in static_by:
 		var bk := "batu" if (id in ROCKS or id in MOUNTAINS) else ""
-		_multi(root, _dekor_mesh(id), null, static_by[id], [], true, breakables, bk, id)
+		var rock_m: Material = GunungDekor.rock_mat(_dekor_mesh(id)) if gunung and bk != "" else null  # batu basal hangus
+		_multi(root, _dekor_mesh(id), rock_m, static_by[id], [], true, breakables, bk, id)
 	if lush:
 		_multi(root, GroundFx.tuft_mesh(), GroundFx.grass_mat(), tufts, [], false, breakables, "rumput")
 		var hias := GroundFx.plant(root, rows, func(x: int, z: int) -> bool:
@@ -804,6 +812,10 @@ static func build(map_id: String) -> Node3D:
 	_add_jerami(root, map_id)
 	if Maps.TRIALS.has(map_id):
 		_add_kunci_gerbang(root, map_id)
+	if istana:
+		IstanaDekor.build(root, rows, map_id)
+	elif gunung:
+		GunungDekor.build(root, rows)
 	if map_id == Maps.ISTANA:
 		_add_torches_at(root, ISTANA_TORCHES, Color("c070ff"))
 	elif map_id == Maps.TAKHTA:
@@ -2081,13 +2093,13 @@ static func environment_for(map_id: String) -> Environment:
 			ambient = 0.2
 			fog_c = Color("2a2724")
 			fog_d = 0.05
-		Maps.GUNUNG:  # lereng Gunung Berapi (cerita The Last Dragon): langit berasap jingga
-			top = Color("5a3a3a")
-			horizon = Color("d9956a")
-			ground = Color("8a7060")
-			ambient = 0.24
-			fog_c = Color("c98a66")
-			fog_d = 0.014
+		Maps.GUNUNG:  # lereng Gunung Berapi: langit berasap merah-jingga (1.3.0: lebih gelap, tidak seperti siang biasa)
+			top = Color("3a2024")
+			horizon = Color("c8643a")
+			ground = Color("4a3028")
+			ambient = 0.27
+			fog_c = Color("9a4e34")
+			fog_d = 0.013
 		Maps.ISTANA:  # halaman Istana Kegelapan: langit ungu kelam
 			top = Color("140c22")
 			horizon = Color("4a2c5e")
@@ -2149,5 +2161,5 @@ static func light_color_for(map_id: String) -> Color:
 	if map_id == Maps.ISTANA or map_id == Maps.TAKHTA:
 		return Color("c8b4ff")
 	if map_id == Maps.GUNUNG:
-		return Color("ffd2a8")
+		return Color("ffb888")
 	return Color("ffa86a") if map_id == Maps.GUA or map_id == Maps.GUA_GOBLIN else Color("fff0d2")

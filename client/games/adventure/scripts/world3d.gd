@@ -4,6 +4,7 @@ extends Node3D
 ## yang sama dengan peta petak lama; posisi halus (fx, fz, yaw) ikut disimpan ke server.
 
 const Maps = preload("res://games/adventure/scripts/maps.gd")
+const CamClear = preload("res://games/adventure/scripts/cam_clear.gd")
 const Movement = preload("res://games/adventure/scripts/movement.gd")
 const WorldBuild = preload("res://games/adventure/scripts/world_build.gd")
 const Models = preload("res://games/adventure/scripts/models.gd")
@@ -124,6 +125,7 @@ var _yaw := 0.0  # arah hadap pemain
 var _cam_yaw := 0.0
 var _cam_target := Vector3.ZERO   # titik pandang kamera yang dihaluskan
 var _cam_ready := false
+var _cam_clear_d := 99.0          # jarak kamera bebas penghalang (cam_clear.gd), dihaluskan
 const CAM_FOLLOW := 9.0           # makin besar makin rapat mengikuti
 const CAM_SNAP := 3.0             # petak: lebih jauh dari ini kamera langsung pindah
 var _cam_pitch := 0.4  # disetel dari Session.cam_pitch saat dunia dibuka
@@ -1193,7 +1195,14 @@ func _apply_transform() -> void:
 		_cam_target = target
 		_cam_ready = true
 	target = _cam_target
-	var offset := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch)) * dist
+	var arah := Vector3(sin(_cam_yaw) * cos(_cam_pitch), sin(_cam_pitch), cos(_cam_yaw) * cos(_cam_pitch))
+	# 1.3.0: kamera berhenti sebelum rumah/tembok (cam_clear.gd); maju cepat, mundur pelan supaya tidak berkedip.
+	var bebas := CamClear.jarak(_map_id, target, arah, dist)
+	if bebas < _cam_clear_d or dt <= 0.0:
+		_cam_clear_d = bebas
+	else:
+		_cam_clear_d = minf(bebas, _cam_clear_d + dt * 4.0)
+	var offset := arah * minf(dist, _cam_clear_d)
 	_camera.position = target + offset
 	if _shake > 0.0:
 		_camera.position += Vector3(randf() - 0.5, randf() - 0.5, randf() - 0.5) * _shake * 0.5

@@ -289,6 +289,23 @@ func _ready() -> void:
 		if OS.get_environment("SHOT_MENU") == "pengaturan":
 			scene._menu._show_page(false)
 	await get_tree().create_timer(0.8).timeout
+	if OS.get_environment("SHOT_PROLOG") != "":  # adegan prolog (1.3.0): satu gambar per potongan, SHOT_OUT_<n>.png
+		scene._story.play_prolog()
+		for n in 4:
+			await get_tree().create_timer(2.6 if n == 0 else 4.6).timeout
+			var pimg := get_viewport().get_texture().get_image()
+			pimg.resize(960, int(960.0 * pimg.get_height() / pimg.get_width()), Image.INTERPOLATE_BILINEAR)
+			pimg.save_png(OS.get_environment("SHOT_OUT").replace(".png", "_%d.png" % n))
+		print("prolog shot terakhir: ", scene._story.adegan.shot if scene._story.adegan != null else -1)
+	if OS.get_environment("SHOT_VIEW") != "":  # "x,y,z,tx,ty,tz": kamera pengamat bebas (lihat peta dari jauh)
+		var v: PackedFloat64Array = OS.get_environment("SHOT_VIEW").split_floats(",")
+		var view := Camera3D.new()
+		view.fov = 60.0
+		view.far = 400.0
+		scene.add_child(view)
+		view.look_at_from_position(Vector3(v[0], v[1], v[2]), Vector3(v[3], v[4], v[5]))
+		view.make_current()
+		await get_tree().create_timer(0.3).timeout
 	if OS.get_environment("SHOT_STATS") != "":  # angka render bingkai ini (bandingkan sebelum/sesudah)
 		print("STATS draw=%d prim=%d nodes=%d" % [int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)), int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))])

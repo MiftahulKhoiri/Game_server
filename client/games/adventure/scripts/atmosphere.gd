@@ -277,7 +277,8 @@ static func tick_wind(p: CPUParticles3D, base_speed := 1.0) -> void:
 static func apply(env: Environment, sun: DirectionalLight3D, base: Dictionary, map_id: String) -> void:
 	if base.is_empty():
 		return
-	if not outdoors(map_id):
+	if not outdoors(map_id) or map_id == Maps.ISTANA:
+		# v1.3.0: langit Istana Kegelapan selalu kelam terkutuk (tidak ikut fajar/siang yang membuatnya merah muda).
 		sun.rotation = DEFAULT_SUN_ROT
 		return
 	var h := hour()
@@ -287,9 +288,18 @@ static func apply(env: Environment, sun: DirectionalLight3D, base: Dictionary, m
 	var tw := clampf(1.0 - absf(s) / 0.28, 0.0, 1.0)  # kuat di fajar/senja
 	var r := rain
 
-	var top: Color = NIGHT_TOP.lerp(base.top, d)
-	var hor: Color = NIGHT_HORIZON.lerp(base.horizon, d).lerp(TWILIGHT, tw * 0.55)
-	var ground: Color = NIGHT_GROUND.lerp(base.ground, d)
+	var n_top := NIGHT_TOP
+	var n_hor := NIGHT_HORIZON
+	var n_ground := NIGHT_GROUND
+	var n_amb := NIGHT_AMBIENT
+	if map_id == Maps.GUNUNG:  # 1.3.0: malam di gunung berapi tetap merah membara, bukan biru
+		n_top = (base.top as Color).darkened(0.6)
+		n_hor = (base.horizon as Color).darkened(0.5)
+		n_ground = (base.ground as Color).darkened(0.6)
+		n_amb = (base.ambient_color as Color).darkened(0.35)
+	var top: Color = n_top.lerp(base.top, d)
+	var hor: Color = n_hor.lerp(base.horizon, d).lerp(TWILIGHT, tw * 0.55)
+	var ground: Color = n_ground.lerp(base.ground, d)
 	if r > 0.0:
 		top = top.lerp(RAIN_TOP.lerp(NIGHT_TOP, 1.0 - d), r * 0.8)
 		hor = hor.lerp(RAIN_HORIZON.lerp(NIGHT_HORIZON, 1.0 - d), r * 0.8)
@@ -299,7 +309,7 @@ static func apply(env: Environment, sun: DirectionalLight3D, base: Dictionary, m
 	mat.ground_horizon_color = hor
 	mat.ground_bottom_color = ground
 
-	env.ambient_light_color = NIGHT_AMBIENT.lerp(base.ambient_color, d)
+	env.ambient_light_color = n_amb.lerp(base.ambient_color, d)
 	env.ambient_light_energy = lerpf(NIGHT_AMBIENT_ENERGY, float(base.ambient_energy), d)
 	env.fog_light_color = hor
 	env.fog_density = float(base.fog_density) * (1.0 + 0.8 * (1.0 - d) + 1.6 * r + 2.2 * dawn_fog())
