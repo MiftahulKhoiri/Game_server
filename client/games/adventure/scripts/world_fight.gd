@@ -31,7 +31,7 @@ const BOSS_IDS := ["raja_goblin", "aldragor", "malzareth"]
 const POTION_ID := "ramuan"
 ## Seruan bos cerita saat pertarungan dimulai (The Last Dragon, docs/STORY.md).
 const TAUNTS := {"kepala_goblin_3": "Raja Orc Batu: \"Manusia! Penyihir itu memberi kami kekuatan! Kami tidak akan membiarkanmu melewati gua ini!\""}
-const ACTION_BUTTONS := {"attack": "tangan", "skill1": "kaki", "defend": "hindar", "dodge": "hindar"}
+const ACTION_BUTTONS := {"attack": "tangan", "skill1": "kaki", "defend": "hindar", "dodge": "hindar", "udara": "udara"}
 
 ## Bar nyawa musuh yang selalu menghadap kamera: bidang kecil dengan shader (isi mengikuti `ratio`).
 const BAR_SHADER := """
@@ -429,11 +429,12 @@ func _play_event(e: Dictionary) -> void:
 		return
 	if str(e.get("who", "")) == "player":
 		match kind:
-			"attack", "crit", "skill1", "combo":
+			"attack", "crit", "skill1", "combo", "udara", "petir":
 				if roamer != null and is_instance_valid(roamer.model) and roamer.model.has_method("play_hurt"):
 					roamer.model.call("play_hurt")
 				if roamer != null:
 					roamer.knock(world._pos, 0.5 if kind == "attack" else 1.0)  # terpental sedikit (v0.69.0)
+				var besar := kind == "udara" or kind == "petir"
 				var col := Color("ffe9a0")
 				var burst := 9
 				if kind == "skill1":
@@ -445,12 +446,22 @@ func _play_event(e: Dictionary) -> void:
 				elif kind == "combo":
 					col = Color("ff6ad5")
 					burst = 22
+				elif kind == "udara":
+					col = Color("ffb347")
+					burst = 24
+				elif kind == "petir":
+					col = Color("bfe6ff")
+					burst = 30
+					_flash.color = Color(0.85, 0.93, 1.0, 0.55)  # layar berkilat putih kebiruan
 				HeroFx.burst(world, enemy_at + Vector3(0, enemy_top * 0.55, 0), col, burst, 3.2)
 				_blood(enemy_at + Vector3(0, enemy_top * 0.55, 0), 6 if kind == "attack" else 12)
 				world._shake = 0.12 if kind == "attack" else 0.25
 				_float_text(enemy_at + Vector3(0, enemy_top + 0.7, 0), ("-%d" % dmg) + ("!" if kind != "attack" else ""), col, 64 if kind != "attack" else 52)
 				if kind == "combo":
 					_float_text(enemy_at + Vector3(0, enemy_top + 1.25, 0), "KOMBO!", col, 58)
+				elif besar:
+					_float_text(enemy_at + Vector3(0, enemy_top + 1.25, 0), "PETIR!" if kind == "petir" else "SERANGAN UDARA!", col, 60)
+					world._shake = 0.5 if kind == "petir" else 0.35
 				elif kind == "crit":
 					_float_text(enemy_at + Vector3(0, enemy_top + 1.25, 0), "KRITIS!", col, 50)
 			"skill2", "potion":
@@ -507,7 +518,7 @@ func _play_event(e: Dictionary) -> void:
 				world._shake = 0.6
 			elif tactic == "quick":
 				world._shake = 0.18
-			_flash.color.a = 0.32
+			_flash.color = Color(0.8, 0.0, 0.0, 0.32)
 			HeroFx.burst(world, me_at + Vector3(0, 0.9, 0), Color("ff5c5c"), 12, 2.6)
 			_float_text(me_at + Vector3(0, 2.0, 0), "-%d" % dmg, Color("ff6b5c"), 60)
 			var body: Variant = world._player

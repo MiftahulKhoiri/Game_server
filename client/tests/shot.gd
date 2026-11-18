@@ -297,6 +297,20 @@ func _ready() -> void:
 			pimg.resize(960, int(960.0 * pimg.get_height() / pimg.get_width()), Image.INTERPOLATE_BILINEAR)
 			pimg.save_png(OS.get_environment("SHOT_OUT").replace(".png", "_%d.png" % n))
 		print("prolog shot terakhir: ", scene._story.adegan.shot if scene._story.adegan != null else -1)
+	if OS.get_environment("SHOT_JURUS") != "":  # 1.4.0: "petir" | "meteor" | "terbang" (efek jurus di depan pahlawan)
+		var jurus := OS.get_environment("SHOT_JURUS")
+		var f := Vector2(sin(scene._yaw), cos(scene._yaw))
+		if jurus == "petir":
+			scene._energy = 100.0
+			scene._do_boost()
+			await get_tree().process_frame
+		else:
+			scene.stamina = 100.0
+			scene._do_lompat()
+			await get_tree().create_timer(0.3).timeout
+			scene._do_tangan() if jurus == "meteor" else scene._do_kaki()
+			await get_tree().create_timer(0.27).timeout
+		print("jurus ", jurus, " di depan ", f)
 	if OS.get_environment("SHOT_VIEW") != "":  # "x,y,z,tx,ty,tz": kamera pengamat bebas (lihat peta dari jauh)
 		var v: PackedFloat64Array = OS.get_environment("SHOT_VIEW").split_floats(",")
 		var view := Camera3D.new()

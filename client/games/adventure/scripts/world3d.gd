@@ -74,6 +74,14 @@ const KICKS := [
 	{"nama": "Tendangan dobel", "anim": "tendang2", "reach": 1.7, "cos": 0.0, "dmg": 1.7, "solid": 2, "grass": 4, "cd": 0.95, "hits": [0.14, 0.62], "dash": 0.3},
 ]
 const KICK_WINDOW := 1.0
+## Serangan udara (paket 1.4.0): Lompat lalu Tangan = Tinju Meteor (menukik, menghantam tanah di sekeliling),
+## Lompat lalu Kaki = Tendangan Terbang (meluncur jauh ke depan). Server: aksi "udara" (serangan x1,6, sesaat
+## menghindar karena di udara, isi ulang 2,2 detik).
+const AIR_MOVES := {
+	"tinju": {"nama": "Tinju Meteor", "anim": "hantam", "reach": 2.3, "cos": -1.0, "dmg": 3.0, "solid": 3, "grass": 8, "dash": 0.9, "dive": 0.18, "warna": Color("ff8a2a"), "ring": 2.6},
+	"tendang": {"nama": "Tendangan Terbang", "anim": "tendang2", "reach": 2.6, "cos": 0.2, "dmg": 2.6, "solid": 2, "grass": 5, "dash": 2.4, "dive": 0.24, "warna": Color("8fe0ff"), "ring": 1.8},
+}
+const AIR_CD := 2.2
 ## Kombo per gaya senjata (roadmap no. 155-158). "pedang" memakai COMBO di atas. `proj` = jenis peluru
 ## (panah/sihir) yang terbang ke sasaran; `wave` = gelombang kejut di tanah; `swoosh` = warna jejak senjata.
 const STYLE_COMBOS := {
@@ -213,8 +221,8 @@ var _btn_kaki: ActionButton
 var _btn_perisai: ActionButton
 var _btn_boost: ActionButton
 var _btn_lompat: ActionButton
-var _cd := {"tangan": 0.0, "kaki": 0.0, "hindar": 0.0, "lompat": 0.0}
-var _cd_len := {"tangan": 0.3, "kaki": 0.5, "hindar": 0.9, "lompat": 0.85}
+var _cd := {"tangan": 0.0, "kaki": 0.0, "hindar": 0.0, "lompat": 0.0, "udara": 0.0}
+var _cd_len := {"tangan": 0.3, "kaki": 0.5, "hindar": 0.9, "lompat": 0.85, "udara": 2.2}
 var _combo := 0
 var _combo_t := 0.0
 var _kick := 0           # urutan tendangan (1 = tendang, 2 = dobel)
@@ -1423,6 +1431,8 @@ func _dash(dir: Vector2, dist: float, time: float) -> void:
 
 ## Satu ayunan: pukul benda dalam jangkauan, isi tenaga Boost, laporkan yang hancur ke server.
 func _swing(reach: float, cos_min: float, dmg: float, solid_n: int, grass_n: int, action := "attack") -> int:
+	if _boost_t > 0.0:  # 1.4.0: selama Boost tiap pukulan memercikkan listrik
+		HeroFx.sparks(self, Vector3(_pos.x, 0.8, _pos.y) + Vector3(_facing().x, 0, _facing().y) * minf(reach, 1.2))
 	if _hit_roamer(reach, cos_min, action):
 		return 1
 	if _breakables == null or _fight.busy():
@@ -1445,6 +1455,9 @@ func _rig_attack() -> void:
 
 ## Tinju dobel -> tebas dobel -> tusuk. Tiap pukulan mengenai pada detik `hits` (selaras dengan gerakan tubuh).
 func _do_tangan() -> void:
+	if _jump_t > 0.0 and not _locked:  # di udara: Tinju Meteor (1.4.0)
+		_do_udara("tinju")
+		return
 	if _locked or float(_cd.tangan) > 0.0:
 		return
 	_lower_guard()
@@ -1513,6 +1526,9 @@ func _shot_target(reach: float, cos_min: float) -> Vector2:
 
 ## 1x tendang, 2x (dalam jeda singkat) tendangan dobel: dua kali menendang.
 func _do_kaki(_held := 0.0) -> void:
+	if _jump_t > 0.0 and not _locked:  # di udara: Tendangan Terbang (1.4.0)
+		_do_udara("tendang")
+		return
 	if _locked or float(_cd.kaki) > 0.0:
 		return
 	_lower_guard()
@@ -1538,6 +1554,42 @@ func _do_kaki(_held := 0.0) -> void:
 		HeroFx.swoosh(self, Vector3(_pos.x, 0.3, _pos.y), _yaw, 1.0, Color("bfe8ff"))
 		HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("7fd1ff"), 1.0, 0.25)
 		_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass), "skill1")
+
+
+## Serangan udara: menukik ke depan, mendarat dengan hantaman (gelombang, debu, guncangan). Mengenai musuh di
+## sekeliling titik mendarat; dalam pertarungan dikirim ke server sebagai aksi "udara".
+func _do_udara(jenis: String) -> void:
+	if float(_cd.udara) > 0.0:
+		_set_status("Serangan udara belum siap")
+		return
+	var sp: Dictionary = AIR_MOVES[jenis]
+	_cd.udara = AIR_CD
+	_cd_len.udara = AIR_CD
+	_lower_guard()
+	_aim_assist(float(sp.reach))
+	_rig_action(str(sp.anim))
+	var dive := float(sp.dive)
+	var from := Vector3(_pos.x, _jump_height() + 0.6, _pos.y)
+	_dash(_facing(), float(sp.dash), dive)
+	_jump_t = minf(_jump_t, dive)  # turun cepat ke tanah
+	_set_status(str(sp.nama) + "!")
+	_show_toast(str(sp.nama).to_upper() + "!")
+	await get_tree().create_timer(dive).timeout
+	if not is_inside_tree() or _locked:
+		return
+	var land := Vector3(_pos.x, 0.05, _pos.y)
+	HeroFx.dive_trail(self, from, land + Vector3(0, 0.4, 0), sp.warna as Color)
+	HeroFx.ring(self, land, sp.warna as Color, float(sp.ring), 0.45)
+	HeroFx.ring(self, land, Color("fff2c0"), float(sp.ring) * 0.55, 0.3)
+	HeroFx.burst(self, land + Vector3(0, 0.2, 0), Color("d9c8a0"), 16, 3.6)
+	if jenis == "tinju":
+		HeroFx.burst(self, land + Vector3(0, 0.4, 0), Color("ffb347"), 14, 4.5)
+	else:
+		HeroFx.swoosh(self, Vector3(_pos.x, 0.5, _pos.y), _yaw, 1.8, sp.warna as Color)
+	if _boost_t > 0.0:
+		HeroFx.lightning(self, land, 7.0)  # selama Boost: petir ikut menyambar di titik mendarat
+	_shake = maxf(_shake, 0.4 if jenis == "tinju" else 0.28)
+	_swing(float(sp.reach), float(sp.cos), float(sp.dmg), int(sp.solid), int(sp.grass), "udara")
 
 
 ## Jurus 1 gaya jarak jauh (Panah Tembus / Bola Api): satu tembakan besar.
@@ -1639,6 +1691,8 @@ func _do_lompat() -> void:
 		return
 	stamina -= STAMINA_JUMP
 	_jump_t = JUMP_TIME
+	if float(_cd.udara) <= 0.0 and _roamers.any(func(r: Roamer) -> bool: return not r.dying and r.pos.distance_to(_pos) < 6.0):
+		_set_status("Di udara: Tangan = Tinju Meteor, Kaki = Tendangan Terbang")  # petunjuk serangan udara (1.4.0)
 	_cd.lompat = 0.85
 	_cd_len.lompat = 0.85
 	_rig_action("lompat")
@@ -1680,7 +1734,17 @@ func _do_boost() -> void:
 	_shake = 0.35
 	HeroFx.ring(self, Vector3(_pos.x, 0.0, _pos.y), Color("ffb347"), 3.6, 0.5)
 	HeroFx.burst(self, Vector3(_pos.x, 0.5, _pos.y), Color("ffd25a"), 24, 4.0)
-	if _hit_roamer(3.4, -1.0):
+	# 1.4.0: Boost memanggil Sambaran Petir ke musuh terdekat (dalam 6 petak), atau ke depan pahlawan.
+	var sasaran := _pos + _facing() * 2.0
+	var best_d := 6.4
+	for r in _roamers:
+		if not r.dying and r.pos.distance_to(_pos) < best_d:
+			best_d = r.pos.distance_to(_pos)
+			sasaran = r.pos
+	HeroFx.lightning(self, Vector3(sasaran.x, 0.0, sasaran.y))
+	_show_toast("SAMBARAN PETIR!")
+	if _hit_roamer(6.0, -1.0, "petir"):
+		_set_status("Sambaran Petir! Mode Boost: lebih cepat, pukulan dua kali lipat")
 		return
 	if _breakables != null:
 		var list := _breakables.targets(_pos, Vector2.ZERO, 3.4, -1.0, 99, 99)

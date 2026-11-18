@@ -2,6 +2,25 @@
 
 Riwayat rilis sebelum v0.84.0 ada di pesan commit dan tag Git (`git log --oneline`).
 
+## Paket adventure 1.4.0 + server 0.86.0 — serangan udara & Sambaran Petir (19 November 2026)
+
+Game lewat unduhan (tombol UPDATE di launcher), tanpa APK baru. Server di-restart (aksi pertarungan baru).
+
+- **Serangan udara**: tekan Lompat, lalu selagi di udara:
+  - **Tangan = Tinju Meteor**: menukik ke depan, menghantam tanah; mengenai musuh di sekeliling titik mendarat
+    (riak api, debu, guncangan).
+  - **Kaki = Tendangan Terbang**: meluncur jauh ke depan dengan jejak angin biru.
+  - Server: aksi `udara` = serangan x1,6 (gaya senjata tetap berlaku), +8 tenaga jurus, isi ulang 2,2 detik, dan
+    serangan musuh yang tiba ≤ 0,4 detik sesudahnya meleset (pemain sedang di udara). Musuh lincah tetap
+    menghindar sebagian (sama dengan Skill 1). Petunjuk muncul saat melompat di dekat musuh.
+- **Sambaran Petir**: tombol Boost penuh kini memanggil petir dari langit ke musuh terdekat (≤ 6 petak) atau ke depan
+  pahlawan: kilat bercabang berkedip, cahaya kilat, riak & percikan, layar berkilat. Server: aksi `petir` =
+  serangan x3,5, isi ulang 20 detik. Mode Boost (lebih cepat, pukulan x2 ke benda) tetap berjalan.
+- **Percikan listrik** di setiap pukulan selama Boost; Tinju Meteor saat Boost ikut disambar petir.
+- `hero_fx.gd`: `lightning`, `sparks`, `dive_trail`. `tests/shot.gd`: `SHOT_JURUS` (petir | meteor | terbang).
+- Uji: `client-test` +7 pemeriksaan 1.4.0; Go `TestAirAttackAndPetir` (lebih kuat dari serangan biasa, meleset saat
+  di udara, isi ulang, petir paling kuat).
+
 ## Server 0.85.3 — Naga Lava Lv2 & Lv3 bisa dikalahkan (19 November 2026)
 
 Hanya server (tanpa paket game / APK baru). Laporan pemain: Naga Lava Lv2 di Gunung Berapi tidak pernah bisa dikalahkan.

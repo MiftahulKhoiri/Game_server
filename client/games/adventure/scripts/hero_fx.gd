@@ -326,3 +326,103 @@ static func fire_breath(parent: Node3D, from: Vector3, to: Vector3, length := 0.
 	# lingkaran api di tanah tempat semburan mendarat
 	var land := from + dir * dist
 	ring(parent, Vector3(land.x, 0.0, land.z), Color("ff6a1a"), 1.3, 0.6)
+
+
+# --- petir & serangan udara (paket adventure 1.4.0) ---
+
+## Garis lurus tipis berpendar dari `a` ke `b` (satu ruas kilat).
+static func _ruas(parent: Node3D, a: Vector3, b: Vector3, mat: Material, tebal: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var m := BoxMesh.new()
+	var len := maxf(0.01, a.distance_to(b))
+	m.size = Vector3(tebal, len, tebal)
+	mi.mesh = m
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var y := (b - a) / len
+	var x := y.cross(Vector3(0.31, 0.0, 0.95)).normalized()
+	if x.length() < 0.1:
+		x = Vector3.RIGHT
+	var z := x.cross(y)
+	mi.transform = Transform3D(Basis(x, y, z), (a + b) * 0.5)
+	parent.add_child(mi)
+	return mi
+
+
+## Titik-titik kilat berzigzag dari `from` ke `to`.
+static func _zigzag(from: Vector3, to: Vector3, n: int, lebar: float) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	for i in n + 1:
+		var t := float(i) / float(n)
+		var p := from.lerp(to, t)
+		if i > 0 and i < n:
+			p += Vector3(randf_range(-1.0, 1.0), randf_range(-0.3, 0.3), randf_range(-1.0, 1.0)) * lebar * (1.0 - absf(t - 0.5))
+		pts.append(p)
+	return pts
+
+
+## Sambaran petir dari langit ke titik `at`: kilat bercabang yang berkedip, cahaya kilat, riak dan percikan di tanah.
+static func lightning(parent: Node3D, at: Vector3, height := 9.0, color := Color("6fb8ff")) -> void:
+	var root := Node3D.new()
+	root.name = "Petir"
+	parent.add_child(root)
+	var inti := _unshaded(Color(1, 1, 1, 1))
+	var pendar := _unshaded(Color(color.darkened(0.15), 0.6))  # campur biasa (bukan tambah): tetap terlihat di langit siang
+	var top := at + Vector3(randf_range(-1.2, 1.2), height, randf_range(-1.2, 1.2))
+	var pts := _zigzag(top, at, 9, 1.1)
+	for i in pts.size() - 1:
+		_ruas(root, pts[i], pts[i + 1], inti, 0.13)
+		_ruas(root, pts[i], pts[i + 1], pendar, 0.42)
+	for k in 3:  # cabang
+		var s := pts[2 + k * 2]
+		var ujung := s + Vector3(randf_range(-2.0, 2.0), -randf_range(1.2, 2.6), randf_range(-2.0, 2.0))
+		var cp := _zigzag(s, ujung, 4, 0.5)
+		for i in cp.size() - 1:
+			_ruas(root, cp[i], cp[i + 1], inti, 0.06)
+			_ruas(root, cp[i], cp[i + 1], pendar, 0.2)
+	var lampu := OmniLight3D.new()
+	lampu.light_color = color
+	lampu.light_energy = 6.0
+	lampu.omni_range = 9.0
+	lampu.position = at + Vector3(0, 1.5, 0)
+	root.add_child(lampu)
+	ring(parent, at + Vector3(0, 0.02, 0), color, 2.6, 0.5)
+	ring(parent, at + Vector3(0, 0.02, 0), Color.WHITE, 1.2, 0.3)
+	burst(parent, at + Vector3(0, 0.3, 0), Color("e8f6ff"), 22, 5.0)
+	var tw := root.create_tween()  # berkedip: tampil - hilang - tampil, lalu cahaya meredup
+	tw.tween_interval(0.16)
+	tw.tween_callback(func() -> void: root.visible = false)
+	tw.tween_interval(0.04)
+	tw.tween_callback(func() -> void: root.visible = true)
+	tw.tween_property(lampu, "light_energy", 0.0, 0.26)
+	tw.tween_callback(root.queue_free)
+
+
+## Percikan listrik kecil di sekitar `at` (pukulan selama Boost).
+static func sparks(parent: Node3D, at: Vector3, color := Color("9fdcff")) -> void:
+	var root := Node3D.new()
+	parent.add_child(root)
+	var mat := _unshaded(Color(color, 0.95))
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	for k in 3:
+		var a := randf() * TAU
+		var from := at + Vector3(cos(a), randf_range(-0.2, 0.3), sin(a)) * 0.25
+		var to := at + Vector3(cos(a), randf_range(-0.3, 0.5), sin(a)) * randf_range(0.7, 1.1)
+		var pts := _zigzag(from, to, 3, 0.18)
+		for i in pts.size() - 1:
+			_ruas(root, pts[i], pts[i + 1], mat, 0.05)
+	var tw := root.create_tween()
+	tw.tween_interval(0.12)
+	tw.tween_callback(root.queue_free)
+
+
+## Jejak menukik serangan udara dari `from` ke `to` (tinju meteor: api; tendangan terbang: angin).
+static func dive_trail(parent: Node3D, from: Vector3, to: Vector3, color: Color) -> void:
+	var mat := _unshaded(Color(color, 0.8))
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	var bar := _ruas(parent, from, to, mat, 0.35)
+	var tw := bar.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(bar, "scale", Vector3(0.2, 1.0, 0.2), 0.25)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.25)
+	tw.chain().tween_callback(bar.queue_free)

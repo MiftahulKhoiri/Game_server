@@ -23,7 +23,7 @@ const (
 // Server adalah versi server ini. Naikkan saat merilis.
 // Commit diisi saat build lewat -ldflags (lihat Makefile).
 var (
-	Server = "0.85.3"
+	Server = "0.86.0"
 	Commit = "dev"
 )
 

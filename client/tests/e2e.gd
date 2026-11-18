@@ -3190,6 +3190,41 @@ func _run() -> void:
 	var dir13 := Vector3(-1.0, 0.3, 0.0).normalized()
 	_check(CC13.jarak(Maps.TAKHTA, Vector3(2.5, 1.0, 5.5), dir13, 6.0) < 6.0 and is_equal_approx(CC13.jarak(Maps.TAKHTA, Vector3(10.5, 1.0, 5.5), Vector3(0, 0.5, 1).normalized(), 3.0), 3.0), "kamera berhenti sebelum tembok, bebas di ruang terbuka")
 
+	print("== paket adventure 1.4.0: serangan udara & Sambaran Petir")
+	Session.offline = true
+	var wu14: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()
+	get_root().add_child(wu14)
+	await process_frame
+	await process_frame
+	wu14.stamina = 100.0
+	wu14._cd.lompat = 0.0
+	wu14._do_lompat()
+	var x14: float = wu14._pos.x
+	var z14: float = wu14._pos.y
+	wu14._do_tangan()
+	_check(float(wu14._cd.udara) > 2.0 and wu14._jump_t <= 0.19, "Lompat lalu Tangan = Tinju Meteor (menukik, isi ulang serangan udara)")
+	await create_timer(0.35).timeout
+	_check(wu14._jump_t <= 0.0, "Tinju Meteor mendarat lagi di tanah")
+	wu14._do_tangan()
+	_check(float(wu14._cd.tangan) > 0.0, "di tanah: Tangan kembali pukulan biasa")
+	wu14._cd.lompat = 0.0
+	wu14._cd.udara = 0.0
+	wu14.stamina = 100.0
+	wu14._do_lompat()
+	wu14._do_kaki()
+	_check(float(wu14._cd.udara) > 2.0, "Lompat lalu Kaki = Tendangan Terbang")
+	await create_timer(0.4).timeout
+	var HF14: GDScript = load("res://games/adventure/scripts/hero_fx.gd")
+	HF14.lightning(wu14, Vector3(x14, 0, z14))
+	_check(wu14.find_child("Petir", false, false) != null, "Sambaran Petir digambar (kilat bercabang + cahaya)")
+	await create_timer(0.6).timeout
+	_check(wu14.find_child("Petir", false, false) == null, "kilat petir hilang sendiri setelah menyambar")
+	wu14._energy = 100.0
+	wu14._do_boost()
+	_check(wu14._boost_t > 0.0 and (wu14._toast.text == "SAMBARAN PETIR!" or wu14._toast_queue.has("SAMBARAN PETIR!")), "Boost penuh memanggil Sambaran Petir dan mode Boost")
+	wu14.queue_free()
+	await process_frame
+
 	print("== v0.68.3: kamera kembali ke belakang pahlawan")
 	Session.offline = true
 	var wcam: Node = load("res://games/adventure/scenes/world3d.tscn").instantiate()

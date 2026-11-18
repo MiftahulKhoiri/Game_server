@@ -22,6 +22,17 @@ const (
 	ActionSkill2 = "skill2" // Perisai Cahaya: pulihkan HP dan kurangi kerusakan sesaat
 	ActionPotion = "potion"
 	ActionFlee   = "flee"
+	// Server 0.86.0 (paket adventure 1.4.0):
+	ActionAir   = "udara" // serangan udara (lompat + Tangan/Kaki): kerusakan lebih besar, di udara = menghindar sesaat
+	ActionPetir = "petir" // Sambaran Petir (Boost penuh): kerusakan sangat besar, tidak bisa dihindari musuh lincah
+)
+
+// Serangan udara & petir (server 0.86.0).
+const (
+	AirMult      = 16  // kerusakan serangan udara = serangan x 1,6 (per 10)
+	AirDodgeMs   = 400 // serangan musuh yang tiba dalam sekian ms setelah serangan udara meleset (pemain di udara)
+	PetirMult    = 35  // kerusakan Sambaran Petir = serangan x 3,5 (per 10)
+	EnergyPerAir = 8   // tenaga jurus yang didapat dari serangan udara
 )
 
 // Aturan pertarungan (draf awal untuk diseimbangkan). Satuan waktu: milidetik.
@@ -56,6 +67,8 @@ var CooldownMs = map[string]int64{
 	ActionPotion: 2500,
 	ActionFlee:   3000,
 	ActionDodge:  2500,
+	ActionAir:    2200,
+	ActionPetir:  20000,
 }
 
 // Kesalahan aturan pertarungan.
@@ -339,7 +352,7 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		if kind == "combo" {
 			dmg = dmg * ComboPct / 100
 		}
-		if kind == "skill1" && ProfileFor(e).Evasive { // musuh lincah menghindari jurus berat (ai.go)
+		if (kind == "skill1" || kind == "udara") && ProfileFor(e).Evasive { // musuh lincah menghindari jurus berat (ai.go)
 			dmg = max(1, dmg*EvadePct/100)
 			logf("%s melompat menghindar sebagian!", b.EnemyName)
 		}
@@ -357,6 +370,10 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		switch {
 		case kind == "skill1":
 			logf("%s! %s kehilangan %d HP.", st.HeroDef().Skill1, b.EnemyName, dmg)
+		case kind == "udara":
+			logf("Serangan udara! %s kehilangan %d HP.", b.EnemyName, dmg)
+		case kind == "petir":
+			logf("SAMBARAN PETIR! %s kehilangan %d HP.", b.EnemyName, dmg)
 		case kind == "combo":
 			logf("Pukulan Kombo! %s kehilangan %d HP.", b.EnemyName, dmg)
 		case crit:
@@ -395,6 +412,18 @@ func (b *Battle) Act(p *Player, action string, now int64, rng Rand) (Result, err
 		b.DodgePress = now
 		res.Events = append(res.Events, Event{Who: "player", Kind: "dodge"})
 		logf("Kamu melompat menghindar.")
+	case ActionAir:
+		cd()
+		b.DodgePress = now - DodgeMs + AirDodgeMs // sedang di udara: serangan yang tiba sesaat lagi meleset
+		st.gainEnergy(EnergyPerAir)
+		if strike(st.Attack()*style.DamagePct/100*AirMult/10, "udara") {
+			return res, nil
+		}
+	case ActionPetir:
+		cd()
+		if strike(st.Attack()*PetirMult/10, "petir") {
+			return res, nil
+		}
 	case ActionSkill1:
 		if !st.spendEnergy(st.skillCost(Skill1Energy)) {
 			return Result{}, ErrNoEnergy

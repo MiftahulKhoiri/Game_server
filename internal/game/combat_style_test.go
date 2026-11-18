@@ -229,3 +229,40 @@ func potions(p *Player) int {
 	}
 	return 0
 }
+
+// Server 0.86.0: serangan udara (lebih kuat dari serangan biasa, menghindar sesaat) dan Sambaran Petir.
+func TestAirAttackAndPetir(t *testing.T) {
+	p := newPlayer()
+	mid := RandFunc(func(n int) int { return n / 2 }) // tanpa kritis, nilai tengah
+	b := battleVs("babi_hutan", 34)
+	b.EnemyHP, b.EnemyMaxHP = 5000, 5000
+	b.NextEnemyMs = 1300
+	res, err := b.Act(p, ActionAir, 1000, mid)
+	if err != nil || len(res.Events) == 0 || res.Events[0].Kind != "udara" || res.Events[0].Dmg <= 0 {
+		t.Fatalf("serangan udara harus mengenai: %v %+v", err, res.Events)
+	}
+	udara := res.Events[0].Dmg
+	hp := p.State.HP
+	res, _ = b.Sync(p, 1300, mid)
+	if p.State.HP != hp || len(res.Events) != 1 || res.Events[0].Kind != "miss" {
+		t.Fatalf("serangan musuh saat pemain di udara harus meleset: %+v", res.Events)
+	}
+	if _, err := b.Act(p, ActionAir, 1500, mid); err == nil {
+		t.Fatal("serangan udara harus punya isi ulang")
+	}
+	b2 := battleVs("babi_hutan", 34)
+	b2.EnemyHP, b2.EnemyMaxHP = 5000, 5000
+	r2, _ := b2.Act(p, ActionAttack, 1000, mid)
+	if r2.Events[0].Dmg >= udara {
+		t.Fatalf("serangan udara (%d) harus lebih kuat dari serangan biasa (%d)", udara, r2.Events[0].Dmg)
+	}
+	b3 := battleVs("babi_hutan", 34)
+	b3.EnemyHP, b3.EnemyMaxHP = 5000, 5000
+	r3, err := b3.Act(p, ActionPetir, 1000, mid)
+	if err != nil || r3.Events[0].Kind != "petir" || r3.Events[0].Dmg <= udara {
+		t.Fatalf("petir harus paling kuat: %v %+v", err, r3.Events)
+	}
+	if _, err := b3.Act(p, ActionPetir, 1000+CooldownMs[ActionPetir]-1000, mid); err == nil {
+		t.Fatal("petir harus punya isi ulang panjang")
+	}
+}
