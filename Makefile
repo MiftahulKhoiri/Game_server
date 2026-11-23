@@ -1,4 +1,4 @@
-.PHONY: maps build run test vet fmt check client-test patch game-pack game-keys platform-test sd-test install-user-service install-backup-timer restart clean backup backup-all restore bench cover smoke test-all logs
+.PHONY: maps build run test vet fmt check client-test patch game-pack game-keys platform-test sd-test install-user-service install-backup-timer uninstall restart clean backup backup-all restore bench cover smoke test-all logs
 
 BIN := bin/gameserver
 GODOT ?= godot
@@ -104,6 +104,11 @@ install-backup-timer:
 
 restore:
 	bash scripts/restore-db.sh $(FILE)
+
+# Copot layanan systemd + bin/ (data tetap). Hapus data juga: make uninstall ARGS=--hapus-data
+# Lihat dulu tanpa mengubah: make uninstall ARGS=--coba
+uninstall:
+	bash scripts/uninstall.sh $(ARGS)
 
 clean:
 	rm -rf bin

@@ -37,7 +37,7 @@ curl -s -X POST localhost:8090/v1/players \
 curl -s -H "Authorization: Bearer <token>" localhost:8090/v1/players/me
 ```
 
-Menjalankan sebagai layanan di Pi (tanpa sudo): `make install-user-service`, lalu `make restart` setelah mengubah kode.
+Menjalankan sebagai layanan di Pi (tanpa sudo): `make install-user-service`, lalu `make restart` setelah mengubah kode. Mencopot: `make uninstall` (data tetap; `ARGS=--hapus-data` untuk ikut menghapus data setelah dicadangkan, `ARGS=--coba` untuk melihat dulu).
 
 ## Alamat server untuk aplikasi (HTTPS)
 
